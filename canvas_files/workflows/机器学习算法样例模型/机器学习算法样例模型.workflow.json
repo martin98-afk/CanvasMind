@@ -11,10 +11,10 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x115d270ec10": {
-        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "文档上传",
+      "0x1cc30fb4ed0": {
+        "type_": "dynamic.DYNAMIC_CODE",
+        "icon": ":/icons/代码执行.svg",
+        "name": "代码编辑",
         "color": [
           39,
           174,
@@ -36,133 +36,46 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 205.4375,
-        "height": 83.0,
+        "width": 794.078125,
+        "height": 806.0,
         "pos": [
-          -507.5032975919296,
-          296.2785307553788
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "7cd1da75-280b-424f-81e3-f40ffd756998",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest",
-          "file_upload": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv"
-        }
-      },
-      "0x115d27383d0": {
-        "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "输入array",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 305.765625,
-        "height": 156.0,
-        "pos": [
-          -52.679302123175944,
-          1156.2183650510403
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest",
-          "param1": "1,2,3,4"
-        }
-      },
-      "0x115d2739b90": {
-        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "逻辑回归推理(npy)",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 288.921875,
-        "height": 108.0,
-        "pos": [
-          1575.7064353233568,
-          892.9048514856712
+          422.453477876673,
+          1337.1342868821866
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
         "subgraph_session": {},
-        "input_ports": [
-          {
-            "name": "feature",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "model",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
+        "input_ports": [],
         "output_ports": [
           {
-            "name": "value",
+            "name": "html",
             "multi_connection": true,
             "display_name": true
           }
         ],
         "custom": {
-          "persistent_id": "3a7164f5-6f4f-4b92-a362-8e9168fa0604",
+          "persistent_id": "795ee0c9-f207-4d17-9856-1ee95d72b55c",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "version": "latest"
+          "input_ports": [],
+          "output_ports": [
+            {
+              "name": "html",
+              "type": "文本"
+            }
+          ],
+          "glue_code_template": "default:空白模板",
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    from pyecharts.charts import Bar\n    from pyecharts import options as opts\n    \n    # V1 版本开始支持链式调用\n    bar = (\n        Bar()\n        .add_xaxis([\"衬衫\", \"毛衣\", \"领带\", \"裤子\", \"风衣\", \"高跟鞋\", \"袜子\"])\n        .add_yaxis(\"商家A\", [114, 55, 27, 101, 125, 27, 105])\n        .add_yaxis(\"商家B\", [57, 134, 137, 129, 145, 60, 49])\n        .set_global_opts(title_opts=opts.TitleOpts(title=\"某商场销售情况\"))\n    )\n    result = bar.render_embed()\n    return {\n        \"html\": result\n    }"
         }
       },
-      "0x115d273b290": {
-        "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
+      "0x1cc30faaed0": {
+        "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "MinMax归一化",
+        "name": "多媒体展示节点 1",
         "color": [
-          39,
-          174,
-          96,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -180,26 +93,26 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 256.625,
-        "height": 108.0,
+        "width": 438.98492366535856,
+        "height": 457.88947669784625,
         "pos": [
-          -52.679302123175944,
-          940.211606959769
+          2868.7056514708015,
+          653.9048514856717
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
+          "persistent_id": "d569b482-958d-4fdb-ac4b-4301c6fe210b",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "version": "latest"
+          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\fa4b5189-cafe-416f-859a-3864b4ec006f\\result\\image_fa4b5189-cafe-416f-859a-3864b4ec006f_output.png"
         }
       },
-      "0x115d273c690": {
-        "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
+      "0x1cc30f8e9d0": {
+        "type_": "dynamic.StatusDynamicNode_f946ed63-36ae-4da3-8a3b-de6d0d80cf01",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "归一化推理(npy)",
+        "name": "通用ECharts图表绘制",
         "color": [
           39,
           174,
@@ -221,245 +134,34 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 269.5625,
-        "height": 108.0,
+        "width": 460.3125,
+        "height": 384.0,
         "pos": [
-          751.9734437481476,
-          1195.5886338223302
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": true,
-        "subgraph_session": {},
-        "input_ports": [
-          {
-            "name": "input",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "scaler",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "output",
-            "multi_connection": true,
-            "display_name": true
-          }
-        ],
-        "custom": {
-          "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest"
-        }
-      },
-      "0x115d273e090": {
-        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "逻辑回归推理(npy) 1",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 301.78125,
-        "height": 108.0,
-        "pos": [
-          1553.7064353233568,
-          1156.2183650510403
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": true,
-        "subgraph_session": {},
-        "input_ports": [
-          {
-            "name": "feature",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "model",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "value",
-            "multi_connection": true,
-            "display_name": true
-          }
-        ],
-        "custom": {
-          "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest"
-        }
-      },
-      "0x115d273f6d0": {
-        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "逻辑回归训练",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 377.984375,
-        "height": 243.0,
-        "pos": [
-          751.9734437481476,
-          485.6968646831619
+          1872.7108804200523,
+          -130.2446503575144
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
+          "persistent_id": "36008b50-52b8-4644-a883-ba2a83b38920",
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "version": "latest",
-          "solver": "newton-cg",
-          "max_iter": 100
-        }
-      },
-      "0x115d274d150": {
-        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "逻辑回归训练 1",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 377.984375,
-        "height": 243.0,
-        "pos": [
-          751.9734437481476,
-          940.211606959769
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest",
-          "solver": "lbfgs",
-          "max_iter": 100
-        }
-      },
-      "0x115d274ef90": {
-        "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "Matplotlib画图",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 256.96875,
-        "height": 100.0,
-        "pos": [
-          2300.243446317106,
-          716.9978719078575
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "fa4b5189-cafe-416f-859a-3864b4ec006f",
-          "_collapsed": true,
-          "_exec_mode": "subprocess",
-          "version": "latest",
+          "chart_type": "bar",
           "title": "",
-          "xlabel": "",
-          "ylabel": "",
-          "plot_mode": "柱状图",
-          "line_color": "blue",
-          "line_width": 1.0,
-          "show_grid": true,
-          "fig_size": "8,6",
-          "auto_arrange": true
+          "widt": 1000.0,
+          "heigh": 300.0
         }
       },
-      "0x115d2774050": {
-        "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
+      "0x1cc30fa8c50": {
+        "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "sklearn模型推理(csv)",
+        "name": "多媒体展示节点 2",
         "color": [
-          39,
-          174,
-          96,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -477,149 +179,23 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 305.984375,
-        "height": 108.0,
+        "width": 1013.3125,
+        "height": 642.0,
         "pos": [
-          1155.6914353233574,
-          69.75534964248573
+          1458.0963161284399,
+          1337.1342868821866
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "persistent_id": "f2776f95-0ee4-4092-817e-824be7f8ba84",
+          "persistent_id": "ab16c97e-9d68-415a-b30a-43a232f0120c",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "version": "latest"
+          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"42a29bf82b1a4cc88acf0ad63dea766e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_42a29bf82b1a4cc88acf0ad63dea766e = echarts.init(\n            document.getElementById('42a29bf82b1a4cc88acf0ad63dea766e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_42a29bf82b1a4cc88acf0ad63dea766e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_42a29bf82b1a4cc88acf0ad63dea766e.setOption(option_42a29bf82b1a4cc88acf0ad63dea766e);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x115d2775310": {
-        "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "CSV读取器",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 220.40625,
-        "height": 83.0,
-        "pos": [
-          -52.679302123175944,
-          405.2389645022743
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "e3a79f0b-3bfe-4f5b-bddd-160cd0e0adfe",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest"
-        }
-      },
-      "0x115d2776650": {
-        "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "模型评估",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 428.8125,
-        "height": 250.0,
-        "pos": [
-          2094.852821317106,
-          352.23896450227426
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "7fa4a0a1-930f-494a-9569-5217d7cfdb08",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest",
-          "metric": "precision",
-          "average": "micro"
-        }
-      },
-      "0x115d27848d0": {
-        "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "csv转npy 1",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 406.015625,
-        "height": 195.0,
-        "pos": [
-          1265.171435323357,
-          405.2389645022743
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "30ab0492-c0db-4e76-9276-91c59476835f",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "version": "latest",
-          "number": -1
-        }
-      },
-      "0x115d27866d0": {
+      "0x1cc30f777d0": {
         "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "随机森林分类训练",
@@ -667,10 +243,10 @@
           "n_jobs": -1
         }
       },
-      "0x115d2795750": {
-        "type_": "dynamic.StatusDynamicNode_f946ed63-36ae-4da3-8a3b-de6d0d80cf01",
+      "0x1cc30e4cad0": {
+        "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "通用ECharts图表绘制",
+        "name": "MinMax归一化",
         "color": [
           39,
           174,
@@ -692,27 +268,445 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 460.3125,
-        "height": 384.0,
+        "width": 256.625,
+        "height": 108.0,
         "pos": [
-          1872.7108804200523,
-          -130.2446503575144
+          -52.679302123175944,
+          940.211606959769
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "persistent_id": "36008b50-52b8-4644-a883-ba2a83b38920",
+          "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x1cc30e4f550": {
+        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "逻辑回归推理(npy) 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 302.765625,
+        "height": 108.0,
+        "pos": [
+          1553.7064353233568,
+          1156.2183650510403
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "53081407-40bd-48e4-9e7a-ef3e4a06e3ed",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x1cc30e3c6d0": {
+        "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "文档上传",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 205.5,
+        "height": 83.0,
+        "pos": [
+          -507.5032975919296,
+          296.2785307553788
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7cd1da75-280b-424f-81e3-f40ffd756998",
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "version": "latest",
-          "chart_type": "bar",
-          "title": "",
-          "widt": 1000.0,
-          "heigh": 300.0
+          "file_upload": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv"
         }
       },
-      "0x115d27a0850": {
+      "0x1cc30f6bc90": {
+        "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "模型评估",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 428.8125,
+        "height": 250.0,
+        "pos": [
+          2094.852821317106,
+          352.23896450227426
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7fa4a0a1-930f-494a-9569-5217d7cfdb08",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "metric": "precision",
+          "average": "micro"
+        }
+      },
+      "0x1cc30f54650": {
+        "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "Matplotlib画图",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 257.046875,
+        "height": 98.0,
+        "pos": [
+          2300.243446317106,
+          716.9978719078575
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "fa4b5189-cafe-416f-859a-3864b4ec006f",
+          "_collapsed": true,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "title": "",
+          "xlabel": "",
+          "ylabel": "",
+          "plot_mode": "柱状图",
+          "line_color": "blue",
+          "line_width": 1.0,
+          "show_grid": true,
+          "fig_size": "8,6",
+          "auto_arrange": true
+        }
+      },
+      "0x1cc30f69750": {
+        "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "sklearn模型推理(csv)",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 307.46875,
+        "height": 108.0,
+        "pos": [
+          1155.6914353233574,
+          69.75534964248573
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "f2776f95-0ee4-4092-817e-824be7f8ba84",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x1cc30e3f3d0": {
+        "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "逻辑回归推理(npy)",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 289.46875,
+        "height": 108.0,
+        "pos": [
+          1575.7064353233568,
+          892.9048514856712
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "feature",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "model",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "value",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "3a7164f5-6f4f-4b92-a362-8e9168fa0604",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x1cc30f75c10": {
+        "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "csv转npy 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 406.015625,
+        "height": 195.0,
+        "pos": [
+          1265.171435323357,
+          405.2389645022743
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "30ab0492-c0db-4e76-9276-91c59476835f",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "number": -1
+        }
+      },
+      "0x1cc30e58bd0": {
+        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "逻辑回归训练",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 377.984375,
+        "height": 243.0,
+        "pos": [
+          751.9734437481476,
+          485.6968646831619
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "solver": "newton-cg",
+          "max_iter": 100
+        }
+      },
+      "0x1cc30f6a790": {
+        "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "CSV读取器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 222.578125,
+        "height": 83.0,
+        "pos": [
+          -52.679302123175944,
+          405.2389645022743
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e3a79f0b-3bfe-4f5b-bddd-160cd0e0adfe",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest"
+        }
+      },
+      "0x1cc30f99a10": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "csv转npy 2",
@@ -778,7 +772,50 @@
           "number": -1
         }
       },
-      "0x115d27a2510": {
+      "0x1cc30e5a550": {
+        "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "逻辑回归训练 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 377.984375,
+        "height": 243.0,
+        "pos": [
+          751.9734437481476,
+          940.211606959769
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "solver": "lbfgs",
+          "max_iter": 100
+        }
+      },
+      "0x1cc30f9b590": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点",
@@ -819,92 +856,10 @@
           "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"81bbb945abbd4f7aabb43969b6a3d076\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_81bbb945abbd4f7aabb43969b6a3d076 = echarts.init(\n            document.getElementById('81bbb945abbd4f7aabb43969b6a3d076'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_81bbb945abbd4f7aabb43969b6a3d076 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_81bbb945abbd4f7aabb43969b6a3d076.setOption(option_81bbb945abbd4f7aabb43969b6a3d076);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x115d27b6010": {
-        "type_": "visualize.MediaNode",
+      "0x1cc30e4ddd0": {
+        "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "多媒体展示节点 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 593.3125,
-        "height": 505.0,
-        "pos": [
-          2868.7056514708015,
-          653.9048514856717
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "d569b482-958d-4fdb-ac4b-4301c6fe210b",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "media_display": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\fa4b5189-cafe-416f-859a-3864b4ec006f\\result\\image_fa4b5189-cafe-416f-859a-3864b4ec006f_output.png"
-        }
-      },
-      "0x115d27b71d0": {
-        "type_": "visualize.MediaNode",
-        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
-        "name": "多媒体展示节点 2",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 1013.3125,
-        "height": 642.0,
-        "pos": [
-          1458.0963161284399,
-          1337.1342868821866
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "ab16c97e-9d68-415a-b30a-43a232f0120c",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"42a29bf82b1a4cc88acf0ad63dea766e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_42a29bf82b1a4cc88acf0ad63dea766e = echarts.init(\n            document.getElementById('42a29bf82b1a4cc88acf0ad63dea766e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_42a29bf82b1a4cc88acf0ad63dea766e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_42a29bf82b1a4cc88acf0ad63dea766e.setOption(option_42a29bf82b1a4cc88acf0ad63dea766e);\n    </script>\n</body>\n</html>\n"
-        }
-      },
-      "0x115d27c8810": {
-        "type_": "dynamic.DYNAMIC_CODE",
-        "icon": ":/icons/代码执行.svg",
-        "name": "代码编辑",
+        "name": "归一化推理(npy)",
         "color": [
           39,
           174,
@@ -926,46 +881,49 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 794.078125,
-        "height": 806.0,
+        "width": 270.09375,
+        "height": 108.0,
         "pos": [
-          422.453477876673,
-          1337.1342868821866
+          751.9734437481476,
+          1195.5886338223302
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
         "subgraph_session": {},
-        "input_ports": [],
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "scaler",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
         "output_ports": [
           {
-            "name": "html",
+            "name": "output",
             "multi_connection": true,
             "display_name": true
           }
         ],
         "custom": {
-          "persistent_id": "795ee0c9-f207-4d17-9856-1ee95d72b55c",
+          "persistent_id": "0f14a852-995f-4c65-8cfb-ef6ccccfdc94",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "input_ports": [],
-          "output_ports": [
-            {
-              "name": "html",
-              "type": "文本"
-            }
-          ],
-          "glue_code_template": "default:空白模板",
-          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    from pyecharts.charts import Bar\n    from pyecharts import options as opts\n    \n    # V1 版本开始支持链式调用\n    bar = (\n        Bar()\n        .add_xaxis([\"衬衫\", \"毛衣\", \"领带\", \"裤子\", \"风衣\", \"高跟鞋\", \"袜子\"])\n        .add_yaxis(\"商家A\", [114, 55, 27, 101, 125, 27, 105])\n        .add_yaxis(\"商家B\", [57, 134, 137, 129, 145, 60, 49])\n        .set_global_opts(title_opts=opts.TitleOpts(title=\"某商场销售情况\"))\n    )\n    result = bar.render_embed()\n    return {\n        \"html\": result\n    }"
+          "version": "latest"
         }
       },
-      "0x115d270d750": {
-        "type_": "general.StickyNote",
-        "icon": null,
-        "name": "注释节点",
+      "0x1cc30e3dad0": {
+        "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
+        "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
+        "name": "输入array",
         "color": [
-          241,
-          241,
-          241,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -983,329 +941,293 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 4185.822780505414,
-        "height": 3257.8905355803313,
+        "width": 305.765625,
+        "height": 156.0,
         "pos": [
-          -575.3359075021591,
-          -1136.3394438581886
+          -52.679302123175944,
+          1156.2183650510403
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "backdrop_text": "",
-          "notes_json": "[{\"text\": \"\\u53cc\\u51fb\\u7f16\\u8f91...\", \"x\": 2952.7555375793936, \"y\": 1656.7351892786764, \"w\": 200.0, \"size\": 20, \"anchor\": null}, {\"text\": \"\\u53cc\\u51fb\\u7f16\\u8f91...\", \"x\": 3541.7516866337373, \"y\": 1497.2712320046705, \"w\": 200.0, \"size\": 20, \"anchor\": null}, {\"text\": \"\\u53cc\\u51fb\\u7f16\\u8f91...\", \"x\": 1825.5691295768806, \"y\": 1009.4401984036421, \"w\": 200.0, \"size\": 20, \"anchor\": null}, {\"text\": \"1.  **\\u533a\\u5206\\u201c\\u7f16\\u8f91\\u6a21\\u5f0f\\u201d\\u548c\\u201c\\u5c55\\u793a\\u6a21\\u5f0f\\u201d**\\uff1a\\n    *   **\\u7f16\\u8f91\\u6a21\\u5f0f**\\uff08\\u53cc\\u51fb\\u8fdb\\u5165\\uff09\\uff1a\\u663e\\u793a\\u539f\\u59cb\\u6587\\u672c\\uff08Markdown\\uff09\\uff0c\\u5141\\u8bb8\\u7528\\u6237\\u4fee\\u6539\\u3002\\n    *   **\\u5c55\\u793a\\u6a21\\u5f0f**\\uff08\\u5931\\u53bb\\u7126\\u70b9\\uff09\\uff1a\\u5c06 Markdown \\u8f6c\\u6362\\u4e3a HTML \\u8fdb\\u884c\\u6e32\\u67d3\\uff0c\\u5e76\\u652f\\u6301\\u8d85\\u94fe\\u63a5\\u70b9\\u51fb\\u3002\\n2.  **Markdown \\u8f6c HTML**\\uff1a\\u5199\\u4e00\\u4e2a\\u7b80\\u5355\\u7684\\u6b63\\u5219\\u66ff\\u6362\\u51fd\\u6570\\uff0c\\u652f\\u6301 `[\\u6587\\u672c](url)` \\u8f6c `<a href=\\\"...\\\">`\\uff0c\\u4ee5\\u53ca\\u6362\\u884c\\u7b26\\u8f6c `<br>`\", \"x\": 2978.3630337440586, \"y\": 359.0058636194598, \"w\": 750.4175747691238, \"size\": 26, \"anchor\": {\"pos\": [3600.234424749635, 965.3747935006744], \"target_pid\": \"76a94e46-beee-45f3-ad00-8196b973fd8d\", \"offset\": [622.8320200256944, -40.0]}}]"
-        }
-      },
-      "0x1164e686a90": {
-        "type_": "general.StickyNote",
-        "icon": null,
-        "name": "注释节点 1",
-        "color": [
-          45,
-          45,
-          45,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 1011.0921814294513,
-        "height": 1038.2234391909124,
-        "pos": [
-          54.64530937359453,
-          -997.5089499862257
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "backdrop_text": "",
-          "notes_json": "[{\"text\": \"\\u8bf4\\u660e\\u6811...\", \"x\": 550.0954641002695, \"y\": 232.54038174319396, \"w\": 200.0, \"size\": 20, \"anchor\": null}]"
+          "persistent_id": "f023577e-5cd0-4099-9f53-4c747aae8a5c",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "version": "latest",
+          "param1": "1,2,3,4"
         }
       }
     },
     "connections": [
       {
         "out": [
-          "0x115d270ec10",
-          "file"
+          "0x1cc30fb4ed0",
+          "html"
         ],
         "in": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "out": [
-          "0x115d27383d0",
-          "output"
-        ],
-        "in": [
-          "0x115d273c690",
-          "input"
-        ]
-      },
-      {
-        "in": [
-          "0x115d2739b90",
-          "feature"
-        ],
-        "out": [
-          "0x115d27a0850",
-          "output"
-        ]
-      },
-      {
-        "in": [
-          "0x115d2739b90",
-          "model"
-        ],
-        "out": [
-          "0x115d273f6d0",
-          "model"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2739b90",
-          "value"
-        ],
-        "in": [
-          "0x115d2776650",
-          "predictions"
-        ]
-      },
-      {
-        "in": [
-          "0x115d273b290",
-          "input"
-        ],
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "out": [
-          "0x115d273b290",
-          "output"
-        ],
-        "in": [
-          "0x115d274d150",
-          "feature"
-        ]
-      },
-      {
-        "out": [
-          "0x115d273b290",
-          "scaler"
-        ],
-        "in": [
-          "0x115d273c690",
-          "scaler"
-        ]
-      },
-      {
-        "out": [
-          "0x115d273c690",
-          "output"
-        ],
-        "in": [
-          "0x115d273e090",
-          "feature"
-        ]
-      },
-      {
-        "in": [
-          "0x115d273e090",
-          "model"
-        ],
-        "out": [
-          "0x115d274d150",
-          "model"
-        ]
-      },
-      {
-        "in": [
-          "0x115d273f6d0",
-          "feature"
-        ],
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "in": [
-          "0x115d273f6d0",
-          "target"
-        ],
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "out": [
-          "0x115d273f6d0",
-          "model"
-        ],
-        "in": [
-          "0x115d2774050",
-          "model"
-        ]
-      },
-      {
-        "in": [
-          "0x115d274d150",
-          "target"
-        ],
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "in": [
-          "0x115d274ef90",
-          "x"
-        ],
-        "out": [
-          "0x115d27a0850",
-          "output"
-        ]
-      },
-      {
-        "in": [
-          "0x115d274ef90",
-          "y"
-        ],
-        "out": [
-          "0x115d27a0850",
-          "output"
-        ]
-      },
-      {
-        "out": [
-          "0x115d274ef90",
-          "output"
-        ],
-        "in": [
-          "0x115d27b6010",
+          "0x1cc30fa8c50",
           "data"
         ]
       },
       {
         "in": [
-          "0x115d2774050",
-          "feature"
+          "0x1cc30faaed0",
+          "data"
         ],
         "out": [
-          "0x115d2775310",
-          "csv"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2774050",
-          "value"
-        ],
-        "in": [
-          "0x115d2795750",
-          "y_data"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ],
-        "in": [
-          "0x115d27848d0",
-          "input"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ],
-        "in": [
-          "0x115d27866d0",
-          "features"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ],
-        "in": [
-          "0x115d27866d0",
-          "target"
-        ]
-      },
-      {
-        "out": [
-          "0x115d2775310",
-          "csv"
-        ],
-        "in": [
-          "0x115d27a0850",
-          "input"
-        ]
-      },
-      {
-        "in": [
-          "0x115d2776650",
-          "true_labels"
-        ],
-        "out": [
-          "0x115d27848d0",
+          "0x1cc30f54650",
           "output"
         ]
       },
       {
         "in": [
-          "0x115d2795750",
+          "0x1cc30f8e9d0",
           "x_data"
         ],
         "out": [
-          "0x115d27a0850",
+          "0x1cc30f99a10",
           "index"
         ]
       },
       {
+        "in": [
+          "0x1cc30f8e9d0",
+          "y_data"
+        ],
         "out": [
-          "0x115d2795750",
+          "0x1cc30f69750",
+          "value"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30f8e9d0",
           "output1"
         ],
         "in": [
-          "0x115d27a2510",
+          "0x1cc30f9b590",
           "data"
         ]
       },
       {
         "in": [
-          "0x115d27b71d0",
-          "data"
+          "0x1cc30f777d0",
+          "features"
         ],
         "out": [
-          "0x115d27c8810",
-          "html"
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f777d0",
+          "target"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e4cad0",
+          "input"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30e4cad0",
+          "output"
+        ],
+        "in": [
+          "0x1cc30e5a550",
+          "feature"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30e4cad0",
+          "scaler"
+        ],
+        "in": [
+          "0x1cc30e4ddd0",
+          "scaler"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e4f550",
+          "feature"
+        ],
+        "out": [
+          "0x1cc30e4ddd0",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e4f550",
+          "model"
+        ],
+        "out": [
+          "0x1cc30e5a550",
+          "model"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30e3c6d0",
+          "file"
+        ],
+        "in": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f6bc90",
+          "predictions"
+        ],
+        "out": [
+          "0x1cc30e3f3d0",
+          "value"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f6bc90",
+          "true_labels"
+        ],
+        "out": [
+          "0x1cc30f75c10",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f54650",
+          "x"
+        ],
+        "out": [
+          "0x1cc30f99a10",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f54650",
+          "y"
+        ],
+        "out": [
+          "0x1cc30f99a10",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f69750",
+          "feature"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f69750",
+          "model"
+        ],
+        "out": [
+          "0x1cc30e58bd0",
+          "model"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e3f3d0",
+          "feature"
+        ],
+        "out": [
+          "0x1cc30f99a10",
+          "output"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e3f3d0",
+          "model"
+        ],
+        "out": [
+          "0x1cc30e58bd0",
+          "model"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30f75c10",
+          "input"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e58bd0",
+          "feature"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e58bd0",
+          "target"
+        ],
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ],
+        "in": [
+          "0x1cc30e5a550",
+          "target"
+        ]
+      },
+      {
+        "out": [
+          "0x1cc30f6a790",
+          "csv"
+        ],
+        "in": [
+          "0x1cc30f99a10",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x1cc30e4ddd0",
+          "input"
+        ],
+        "out": [
+          "0x1cc30e3dad0",
+          "output"
         ]
       }
     ]
@@ -1318,244 +1240,91 @@
     },
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x115d270ec10": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
-      "0x115d27383d0": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
-      "0x115d2739b90": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
-      "0x115d273b290": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
-      "0x115d273c690": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
-      "0x115d273e090": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
-      "0x115d273f6d0": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
-      "0x115d274d150": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
-      "0x115d274ef90": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
-      "0x115d2774050": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
-      "0x115d2775310": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
-      "0x115d2776650": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
-      "0x115d27848d0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
-      "0x115d27866d0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
-      "0x115d2795750": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
-      "0x115d27a0850": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2",
-      "0x115d27a2510": "unknown||多媒体展示节点",
-      "0x115d27b6010": "unknown||多媒体展示节点 1",
-      "0x115d27b71d0": "unknown||多媒体展示节点 2",
-      "0x115d27c8810": "unknown||代码编辑",
-      "0x115d270d750": "unknown||注释节点",
-      "0x1164e686a90": "unknown||注释节点 1"
+      "0x1cc30fb4ed0": "unknown||代码编辑",
+      "0x1cc30faaed0": "unknown||多媒体展示节点 1",
+      "0x1cc30f8e9d0": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
+      "0x1cc30fa8c50": "unknown||多媒体展示节点 2",
+      "0x1cc30f777d0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
+      "0x1cc30e4cad0": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
+      "0x1cc30e4f550": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
+      "0x1cc30e3c6d0": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x1cc30f6bc90": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
+      "0x1cc30f54650": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
+      "0x1cc30f69750": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
+      "0x1cc30e3f3d0": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
+      "0x1cc30f75c10": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
+      "0x1cc30e58bd0": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
+      "0x1cc30f6a790": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
+      "0x1cc30f99a10": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2",
+      "0x1cc30e5a550": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
+      "0x1cc30f9b590": "unknown||多媒体展示节点",
+      "0x1cc30e4ddd0": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
+      "0x1cc30e3dad0": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array"
     },
     "node_states": {
-      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
-      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": "success",
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": "success",
+      "unknown||代码编辑": "success",
+      "unknown||多媒体展示节点 1": "success",
+      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": "success",
+      "unknown||多媒体展示节点 2": "success",
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "success",
       "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": "success",
-      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": "success",
       "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": "success",
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": "success",
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": "success",
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": "success",
       "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": "success",
       "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": "success",
-      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": "success",
-      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": "success",
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": "success",
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": "success",
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "success",
-      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": "success",
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": "success",
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": "success",
       "unknown||多媒体展示节点": "success",
-      "unknown||多媒体展示节点 1": "success",
-      "unknown||多媒体展示节点 2": "success",
-      "unknown||代码编辑": "success",
-      "unknown||注释节点": "pending",
-      "unknown||注释节点 1": "pending"
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": "success",
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": "success"
     },
     "node_inputs": {
-      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
-      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {},
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
+      "unknown||代码编辑": {},
+      "unknown||多媒体展示节点 1": {},
+      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {},
+      "unknown||多媒体展示节点 2": {},
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {},
       "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {},
-      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
       "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {},
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {},
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
       "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {},
       "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {},
-      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
-      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {},
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {},
-      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {},
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {},
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {},
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {},
       "unknown||多媒体展示节点": {},
-      "unknown||多媒体展示节点 1": {},
-      "unknown||多媒体展示节点 2": {},
-      "unknown||代码编辑": {},
-      "unknown||注释节点": {},
-      "unknown||注释节点 1": {}
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {}
     },
     "node_outputs": {
-      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
-        "file": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv"
+      "unknown||代码编辑": {
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"42a29bf82b1a4cc88acf0ad63dea766e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_42a29bf82b1a4cc88acf0ad63dea766e = echarts.init(\n            document.getElementById('42a29bf82b1a4cc88acf0ad63dea766e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_42a29bf82b1a4cc88acf0ad63dea766e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_42a29bf82b1a4cc88acf0ad63dea766e.setOption(option_42a29bf82b1a4cc88acf0ad63dea766e);\n    </script>\n</body>\n</html>\n"
       },
-      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {
-        "output": {
-          "__type__": "ndarray",
-          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
-          "dtype": "float64",
+      "unknown||多媒体展示节点 1": {},
+      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {
+        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"81bbb945abbd4f7aabb43969b6a3d076\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_81bbb945abbd4f7aabb43969b6a3d076 = echarts.init(\n            document.getElementById('81bbb945abbd4f7aabb43969b6a3d076'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_81bbb945abbd4f7aabb43969b6a3d076 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_81bbb945abbd4f7aabb43969b6a3d076.setOption(option_81bbb945abbd4f7aabb43969b6a3d076);\n    </script>\n</body>\n</html>\n"
+      },
+      "unknown||多媒体展示节点 2": {},
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
+        "predictions": {
+          "__type__": "DataFrame",
+          "data": "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",
+          "format": "feather_base64",
           "shape": [
-            4
-          ],
-          "format": "npy_base64"
-        }
-      },
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {
-        "value": [
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          1,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          1,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2,
-          2
-        ]
+            150,
+            1
+          ]
+        },
+        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\result\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1_model.pkl"
       },
       "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {
         "output": {
@@ -1569,34 +1338,18 @@
         },
         "scaler": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\result\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74_scaler.pkl"
       },
-      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {
-        "output": {
-          "__type__": "ndarray",
-          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
-          "dtype": "float64",
-          "shape": [
-            1,
-            4
-          ],
-          "format": "npy_base64"
-        }
-      },
       "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {
         "value": [
           2
         ]
       },
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
-        "value": [
-          0
-        ],
-        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\result\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819_model.pkl"
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {
+        "file": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv"
       },
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
-        "value": [
-          0
-        ],
-        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\result\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31_model.pkl"
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {
+        "evaluation_results": {
+          "precision": 0.9731543624161074
+        }
       },
       "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {
         "output": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\fa4b5189-cafe-416f-859a-3864b4ec006f\\result\\image_fa4b5189-cafe-416f-859a-3864b4ec006f_output.png"
@@ -1755,21 +1508,158 @@
           2
         ]
       },
-      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {
-        "csv": {
-          "__type__": "DataFrame",
-          "data": "QVJST1cxAAD/////AAUAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAvAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAJQDAAAEAAAAhgMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
-          "format": "feather_base64",
-          "shape": [
-            150,
-            5
-          ]
-        }
-      },
-      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {
-        "evaluation_results": {
-          "precision": 0.9731543624161074
-        }
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {
+        "value": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
       },
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
         "output": {
@@ -1937,20 +1827,22 @@
           148
         ]
       },
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
-        "predictions": {
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
+        "value": [
+          0
+        ],
+        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\result\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819_model.pkl"
+      },
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {
+        "csv": {
           "__type__": "DataFrame",
-          "data": "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",
+          "data": "QVJST1cxAAD/////AAUAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAAvAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAAJQDAAAEAAAAhgMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInZpcmdpbmljYSIsICJmaWVsZF9uYW1lIjogInZpcmdpbmljYSIsICJwYW5kYXNfdHlwZSI6ICJpbnQ2NCIsICJudW1weV90eXBlIjogImludDY0IiwgIm1ldGFkYXRhIjogbnVsbH1d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",
           "format": "feather_base64",
           "shape": [
             150,
-            1
+            5
           ]
-        },
-        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\result\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1_model.pkl"
-      },
-      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {
-        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"81bbb945abbd4f7aabb43969b6a3d076\" class=\"chart-container\" style=\"width:1000px; height:300px; \"></div>\n    <script>\n        var chart_81bbb945abbd4f7aabb43969b6a3d076 = echarts.init(\n            document.getElementById('81bbb945abbd4f7aabb43969b6a3d076'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_81bbb945abbd4f7aabb43969b6a3d076 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_81bbb945abbd4f7aabb43969b6a3d076.setOption(option_81bbb945abbd4f7aabb43969b6a3d076);\n    </script>\n</body>\n</html>\n"
+        }
       },
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {
         "output": {
@@ -2121,19 +2013,53 @@
           148
         ]
       },
-      "unknown||多媒体展示节点": {},
-      "unknown||多媒体展示节点 1": {},
-      "unknown||多媒体展示节点 2": {},
-      "unknown||代码编辑": {
-        "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"42a29bf82b1a4cc88acf0ad63dea766e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_42a29bf82b1a4cc88acf0ad63dea766e = echarts.init(\n            document.getElementById('42a29bf82b1a4cc88acf0ad63dea766e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_42a29bf82b1a4cc88acf0ad63dea766e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_42a29bf82b1a4cc88acf0ad63dea766e.setOption(option_42a29bf82b1a4cc88acf0ad63dea766e);\n    </script>\n</body>\n</html>\n"
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
+        "value": [
+          0
+        ],
+        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\result\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31_model.pkl"
       },
-      "unknown||注释节点": {},
-      "unknown||注释节点 1": {}
+      "unknown||多媒体展示节点": {},
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEsIDQpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApUVVVVVVXtvwAAAAAAAAAA0HBS9+Wx1T8AAAAAAAD6Pw==",
+          "dtype": "float64",
+          "shape": [
+            1,
+            4
+          ],
+          "format": "npy_base64"
+        }
+      },
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {
+        "output": {
+          "__type__": "ndarray",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDQsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAADwPwAAAAAAAABAAAAAAAAACEAAAAAAAAAQQA==",
+          "dtype": "float64",
+          "shape": [
+            4
+          ],
+          "format": "npy_base64"
+        }
+      }
     },
     "column_select": {
-      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
-      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {},
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
+      "unknown||代码编辑": {},
+      "unknown||多媒体展示节点 1": {},
+      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {},
+      "unknown||多媒体展示节点 2": {},
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
+        "features": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ],
+        "target": [
+          "virginica"
+        ]
+      },
       "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {
         "input": [
           "150",
@@ -2142,8 +2068,24 @@
           "versicolor"
         ]
       },
-      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
       "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": {},
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": {},
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {},
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {
+        "feature": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
+        ]
+      },
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
+        "input": [
+          "virginica"
+        ]
+      },
       "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
         "feature": [
           "150",
@@ -2153,6 +2095,15 @@
         ],
         "target": [
           "virginica"
+        ]
+      },
+      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {
+        "input": [
+          "150",
+          "4",
+          "setosa",
+          "versicolor"
         ]
       },
       "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
@@ -2166,48 +2117,9 @@
           "virginica"
         ]
       },
-      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {},
-      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": {
-        "feature": [
-          "150",
-          "4",
-          "setosa",
-          "versicolor"
-        ]
-      },
-      "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": {},
-      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {},
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
-        "input": [
-          "virginica"
-        ]
-      },
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
-        "features": [
-          "150",
-          "4",
-          "setosa",
-          "versicolor"
-        ],
-        "target": [
-          "virginica"
-        ]
-      },
-      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {},
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {
-        "input": [
-          "150",
-          "4",
-          "setosa",
-          "versicolor"
-        ]
-      },
       "unknown||多媒体展示节点": {},
-      "unknown||多媒体展示节点 1": {},
-      "unknown||多媒体展示节点 2": {},
-      "unknown||代码编辑": {},
-      "unknown||注释节点": {},
-      "unknown||注释节点 1": {}
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": {},
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": {}
     }
   },
   "global_variable": {
@@ -2345,17 +2257,12 @@
       "Elasticsearch搜索引擎配置"
     ],
     "node_vars": {
-      "Matplotlib画图__output": {
-        "value": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\fa4b5189-cafe-416f-859a-3864b4ec006f\\result\\image_fa4b5189-cafe-416f-859a-3864b4ec006f_output.png",
-        "update_policy": "更新"
-      },
       "代码编辑__html": {
         "value": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"42a29bf82b1a4cc88acf0ad63dea766e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_42a29bf82b1a4cc88acf0ad63dea766e = echarts.init(\n            document.getElementById('42a29bf82b1a4cc88acf0ad63dea766e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_42a29bf82b1a4cc88acf0ad63dea766e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_42a29bf82b1a4cc88acf0ad63dea766e.setOption(option_42a29bf82b1a4cc88acf0ad63dea766e);\n    </script>\n</body>\n</html>\n",
         "update_policy": "更新"
       }
     },
     "node_vars_order": [
-      "Matplotlib画图__output",
       "代码编辑__html"
     ]
   }
