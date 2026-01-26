@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import re
 import shutil
 import traceback
@@ -571,8 +572,9 @@ class CanvasPage(QWidget):
 
     def canvas_drop_event(self, event):
         try:
-            if event.mimeData().hasText():
-                full_path = event.mimeData().text()
+            mime_data = event.mimeData()
+            if mime_data.hasText():
+                full_path = mime_data.text()
                 node_type = self.node_type_map.get(full_path)
                 if node_type:
                     pos = event.pos()
@@ -584,6 +586,11 @@ class CanvasPage(QWidget):
                     self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
                     if hasattr(node, 'status'):
                         node.status = NodeStatus.NODE_STATUS_UNRUN
+
+                    if mime_data.hasFormat("application/x-global-variable"):
+                        data_bytes = bytes(mime_data.data("application/x-global-variable"))
+                        drag_data = json.loads(data_bytes.decode('utf-8'))
+                        node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
                 event.accept()
             else:
                 event.ignore()

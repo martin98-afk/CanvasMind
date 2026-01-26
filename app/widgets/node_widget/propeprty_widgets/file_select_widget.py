@@ -36,8 +36,7 @@ class FileSelectWidget(QtWidgets.QWidget):
 
         # 1. 路径显示框
         self.path_edit = LineEdit(parent=self)
-        self.path_edit.setReadOnly(True)
-        self.path_edit.setMinimumWidth(150)
+        self.path_edit.setMinimumWidth(180)
         # 根据模式设置不同的提示语
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
         self.path_edit.setPlaceholderText(placeholder)
