@@ -19,7 +19,7 @@ class ComfyWanVideoDecode(BaseComponent):
     name = "Wan视频解码器"
     category = "comfyui节点/视频生成"
     description = "将 Wan 的 5D 潜空间解码并合成为 MP4 视频"
-    requirements = "torch,numpy,opencv-python,comfy"
+    requirements = "torch,numpy,opencv-python,#comfy"
 
     inputs = [
         PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),

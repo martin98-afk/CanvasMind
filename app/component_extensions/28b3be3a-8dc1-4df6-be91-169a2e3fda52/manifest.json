@@ -7,6 +7,6 @@
   "description": "将参考图注入到潜空间的首帧，并生成噪声掩码。",
   "category": "comfyui节点/LTX模型适配",
   "main": "main.py",
-  "updated_at": "2026-01-26 15:39:50",
+  "updated_at": "2026-01-26 19:28:13",
   "author": "mading"
 }

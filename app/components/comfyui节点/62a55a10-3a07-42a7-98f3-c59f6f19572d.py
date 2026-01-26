@@ -19,7 +19,7 @@ class ComfyReservedVRAM(BaseComponent):
     name = "显存管理"
     category = "comfyui节点"
     description = "强制设置 ComfyUI 预留的显存空间(GB)，防止显存完全溢出"
-    requirements = "pynvml,torch,comfy"
+    requirements = "pynvml,torch,#comfy"
 
     inputs = [
         PortDefinition(name="anything", label="输入(透传)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),

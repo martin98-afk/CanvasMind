@@ -7,6 +7,6 @@
   "description": "专为 Wan 优化的视频采样器，支持首尾帧 Latent 注入和实时单帧预览",
   "category": "comfyui节点/视频生成",
   "main": "main.py",
-  "updated_at": "2026-01-24 21:04:12",
+  "updated_at": "2026-01-26 19:10:18",
   "author": "black"
 }

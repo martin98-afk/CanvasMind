@@ -7,6 +7,6 @@
   "description": "将 Wan 的 5D 潜空间解码并合成为 MP4 视频",
   "category": "comfyui节点/视频生成",
   "main": "main.py",
-  "updated_at": "2026-01-26 16:17:12",
+  "updated_at": "2026-01-26 19:11:21",
   "author": "mading"
 }

@@ -7,6 +7,6 @@
   "description": "将视频潜空间与音频潜空间合并，通过 NestedTensor 传递给模型。",
   "category": "comfyui节点/LTX模型适配",
   "main": "main.py",
-  "updated_at": "2026-01-26 15:41:07",
+  "updated_at": "2026-01-26 19:35:08",
   "author": "mading"
 }

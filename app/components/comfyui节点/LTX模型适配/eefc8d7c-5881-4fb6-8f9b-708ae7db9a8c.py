@@ -27,23 +27,54 @@ class LTXVSeparateAVLatent(BaseComponent):
     ]
 
     def run(self, params, inputs):
+        import torch
+        import comfy.nested_tensor
         av_latent = inputs.get("latent")
+        if av_latent is None:
+            return {"video_latent": None, "audio_latent": None}
+
         samples = av_latent["samples"]
         
-        if not hasattr(samples, "unbind"):
-            # 如果不是嵌套张量，说明可能没音频或已经分离
-            return {"video_latent": av_latent, "audio_latent": None}
+        # 初始化返回结果
+        video_latent = av_latent.copy()
+        audio_latent = None # 默认音频为空
+
+        # 核心修复：判断是否为真正的 LTX2 嵌套张量 (NestedTensor)
+        if isinstance(samples, comfy.nested_tensor.NestedTensor):
+            self.logger.info("检测到嵌套张量，正在执行音视频轨道分离...")
+            tracks = samples.unbind()
             
-        latents = samples.unbind()
-        v_latent = av_latent.copy()
-        v_latent["samples"] = latents[0]
-        
-        a_latent = av_latent.copy()
-        a_latent["samples"] = latents[1]
-        
-        if "noise_mask" in av_latent:
-            masks = av_latent["noise_mask"].unbind()
-            v_latent["noise_mask"] = masks[0]
-            a_latent["noise_mask"] = masks[1]
+            # 视频轨道
+            if len(tracks) >= 1:
+                video_latent["samples"] = tracks[0]
             
-        return {"video_latent": v_latent, "audio_latent": a_latent}
+            # 音频轨道
+            if len(tracks) >= 2:
+                audio_latent = av_latent.copy()
+                audio_latent["samples"] = tracks[1]
+                # 修改类型标记
+                audio_latent["type"] = "audio"
+            
+            # 处理噪声掩码 (noise_mask 也可能是 NestedTensor)
+            if "noise_mask" in av_latent:
+                masks = av_latent["noise_mask"]
+                if isinstance(masks, comfy.nested_tensor.NestedTensor):
+                    mask_tracks = masks.unbind()
+                    video_latent["noise_mask"] = mask_tracks[0]
+                    if len(mask_tracks) >= 2 and audio_latent:
+                        audio_latent["noise_mask"] = mask_tracks[1]
+                else:
+                    video_latent["noise_mask"] = masks
+        else:
+            # 如果是标准 Tensor，说明这就是纯视频
+            self.logger.info("输入为标准张量，识别为纯视频模式。")
+            video_latent["samples"] = samples
+            audio_latent = None
+
+        # 确保 video_latent 标记为视频
+        video_latent["type"] = "video"
+
+        return {
+            "video_latent": video_latent, 
+            "audio_latent": audio_latent
+        }

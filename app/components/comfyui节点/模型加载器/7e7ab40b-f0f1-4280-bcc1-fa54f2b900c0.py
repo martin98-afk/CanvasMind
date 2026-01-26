@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVAudioVAELoader(BaseComponent):
-    requirements = "folder_paths,comfy"
+    requirements = "#folder_paths,#comfy"
     name = "LTX2音频VAE加载器"
     category = "comfyui节点/模型加载器"
     description = "加载 LTXV 专用的音频 VAE 模型，用于音频与潜空间的转换。"
@@ -24,18 +24,32 @@ class LTXVAudioVAELoader(BaseComponent):
     outputs = [PortDefinition(name="audio_vae", label="音频VAE", type=ArgumentType.OBJECT)]
     properties = {
         "ckpt_name": PropertyDefinition(
-            type=PropertyType.FILE, 
-            default="safetensors", 
-            label="检查点文件"
+            type=PropertyType.FILE,
+            default="safetensors",
+            label="检查点文件",
         ),
     }
 
     def run(self, params, inputs):
+        import os
         import folder_paths
         import comfy.utils
         from comfy.ldm.lightricks.vae.audio_vae import AudioVAE
         ckpt_name = params.get("ckpt_name")
-        ckpt_path = folder_paths.get_full_path_or_raise("checkpoints", ckpt_name)
+        if os.path.isabs(ckpt_name) and os.path.exists(ckpt_name):
+            ckpt_path = ckpt_name
+        else:
+            # 2. 如果不是绝对路径，尝试从 ComfyUI 标准路径获取
+            try:
+                ckpt_path = folder_paths.get_full_path_or_raise("checkpoints", ckpt_name)
+            except Exception:
+                # 3. 最后的保底逻辑：如果 choices 传过来的是带路径的相对名
+                ckpt_path = folder_paths.get_full_path("checkpoints", ckpt_name)
+                if ckpt_path is None or not os.path.exists(ckpt_path):
+                    raise FileNotFoundError(f"无法定位模型文件: {ckpt_name}")
+        # --- 修复逻辑结束 ---
+
+        self.logger.info(f"正在加载音频 VAE: {ckpt_path}")
         
         # 加载权重
         sd, metadata = comfy.utils.load_torch_file(ckpt_path, return_metadata=True)
