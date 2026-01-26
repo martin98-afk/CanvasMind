@@ -61,15 +61,11 @@ class DragDropTreeView(TreeView):
         # 计算曼哈顿长度（比勾股定理快，足以判断距离）
         distance = (event.pos() - self._start_pos).manhattanLength()
 
-        # QApplication.startDragDistance() 通常是 10px
-        # 只有移动超过这个距离，才交给父类处理（父类会启动 startDrag）
-        # 从而避免微小抖动触发拖拽，导致双击失败
         if distance >= QApplication.startDragDistance():
             super().mouseMoveEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         """显式处理双击事件，确保优先级"""
-        # 这一步非常关键，阻止双击事件继续向下传递变成其他的点击行为
         idx = self.indexAt(event.pos())
         if idx.isValid():
             # 这里调用原本的逻辑
@@ -110,8 +106,12 @@ class DragDropTreeView(TreeView):
             super().keyPressEvent(event)
 
     # ==============================
-    # 功能逻辑实现 (保持不变)
+    # 功能逻辑实现
     # ==============================
+    def _copy_path_to_clipboard(self, path):
+        QApplication.clipboard().setText(path)
+        logger.info(f"路径已复制: {path}")
+
     def _delete_selected(self):
         paths = self._get_selected_paths()
         if not paths: return
@@ -134,7 +134,6 @@ class DragDropTreeView(TreeView):
                 os.remove(path)
         except Exception as e:
             logger.error(f"删除失败: {e}")
-            # QMessageBox.critical(self, "错误", f"无法删除: {e}") # 建议在大批量删除时不要弹窗，否则弹死
 
     def _copy_selection_to_clipboard(self):
         paths = self._get_selected_paths()

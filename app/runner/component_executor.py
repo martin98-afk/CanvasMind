@@ -55,6 +55,10 @@ def run_component_in_subprocess(
     else:
         CLASS_NAME = comp_class.__name__
         FILE_PATH = file_path
+        comp_uuid = Path(FILE_PATH).stem
+        # 如果非自定义组件且存在组件扩展资源，把扩展资源同时加入sys.path
+        if (dir_path / "component_extensions" / comp_uuid).exists():
+            sys.path.insert(0, str(dir_path / "component_extensions" / comp_uuid))
 
     ERROR_PATH = temp_script_path / 'run.error'
     NODE_ID = str(uuid.uuid4())
@@ -137,5 +141,10 @@ def run_component_in_subprocess(
         # 底部边框
         raw_logger.info("=" * total_width + "\n")
 
+    comp_uuid = Path(FILE_PATH).stem
+    # 如果非自定义组件且存在组件扩展资源，把扩展资源同时加入sys.path
+    if (dir_path / "component_extensions" / comp_uuid).exists():
+        sys.path.remove(str(dir_path / "component_extensions" / comp_uuid))
+    sys.path.remove(str(dir_path))
     # 处理结果
     return output
