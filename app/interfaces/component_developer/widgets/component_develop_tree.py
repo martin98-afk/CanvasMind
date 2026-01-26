@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import json
+import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -279,10 +280,11 @@ class ComponentTreeWidget(TreeWidget):
 
         try:
             file_path = self._file_map.get(full_path)
-            uuid = Path(file_path).name
+            uuid = Path(file_path).stem
+            if Path(f"app/component_extensions/{uuid}").exists():
+                shutil.rmtree(resource_path(f"app/component_extensions/{uuid}"))
             if file_path and Path(file_path).exists():
                 Path(file_path).unlink()
-                Path(resource_path(f"app/components_extensions/{uuid}")).unlink(missing_ok=True)
                 self._show_success("组件删除成功！")
             else:
                 self._show_warning("组件文件不存在")

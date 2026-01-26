@@ -125,8 +125,7 @@ class ExtensionFileManager(QWidget):
                 )
             )
             menu.addAction(Action(FluentIcon.FOLDER, self.tr("打开系统位置"),
-                                  triggered=lambda: QDesktopServices.openUrl(
-                                      QUrl.fromLocalFile(context_path))))
+                                  triggered=lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(context_path))))
 
         # 4. 弹出菜单，建议使用 exec 而非 exec_，并传入动画类型
         menu.exec(self.tree.viewport().mapToGlobal(position), aniType=MenuAnimationType.DROP_DOWN)

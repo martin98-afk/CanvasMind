@@ -115,6 +115,7 @@ class CanvasExporter:
             export_path = Path(self.config.project_paths.value[0]) / project_name
             export_path.mkdir(parents=True, exist_ok=True)
             components_dir = export_path / "components"
+            component_extensions_dir = export_path / "component_extensions"
             inputs_dir = export_path / "inputs"
             components_dir.mkdir(parents=True, exist_ok=True)
             inputs_dir.mkdir(parents=True, exist_ok=True)
@@ -124,6 +125,11 @@ class CanvasExporter:
             for fp in used_components:
                 if fp in self.file_map:
                     src = Path(self.file_map[fp])
+                    uuid = src.stem
+                    # 同步拷贝组件扩展资源
+                    src_extension_path = Path(resource_path(f"app/component_extensions/{uuid}"))
+                    if src_extension_path.exists():
+                        shutil.copytree(src_extension_path, component_extensions_dir / uuid, dirs_exist_ok=True)
                     if src.exists():
                         try:
                             rel = src.relative_to(src.parent.parent)
@@ -211,7 +217,7 @@ class CanvasExporter:
                 json.dumps(project_spec, ensure_ascii=False, indent=2),
                 encoding="utf-8"
             )
-            # === 新增：生成并保存 MCP 实例脚本 ===
+            # === 生成并保存 MCP 实例脚本 ===
             mcp_code = self._generate_mcp_instance_code(project_spec)
             (export_path / "mcp_instance.py").write_text(mcp_code, encoding="utf-8")
 

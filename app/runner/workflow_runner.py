@@ -14,14 +14,13 @@ from loguru import logger
 from collections import defaultdict, deque
 from pathlib import Path
 from threading import Lock
-# 确保能导入你的组件
 sys.path.append(str(Path(__file__).parent.parent))
 from scan_components import scan_components
 from runner.component_executor import run_component_in_subprocess
 from components.base import GlobalVariableContext
 from runner.expression_engine import ExpressionEngine
 
-# --- (deserialize_from_json 函数保持不变) ---
+
 def deserialize_from_json(obj):
     if isinstance(obj, dict):
         if obj.get("__type__") == "DataFrame" and obj.get("format") == "feather_base64":
