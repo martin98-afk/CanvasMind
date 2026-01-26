@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import ast
 import shutil
+import time
 import traceback
 import uuid
 import json
@@ -246,7 +247,10 @@ class ComponentStorageManager:
                 "category": category,
                 "description": description
             }
-            self._update_extension_manifest(comp_uuid, comp_info)
+            QTimer.singleShot(
+                1000,
+                lambda: self._update_extension_manifest(comp_uuid, comp_info)
+            )
 
             if self._current_component_file:
                 current_signature = {
@@ -341,7 +345,10 @@ class ComponentStorageManager:
                     "category": getattr(comp_obj, 'category', ''),
                     "description": getattr(comp_obj, 'description', '')
                 }
-                self._update_extension_manifest(comp_obj.uuid, info)
+                QTimer.singleShot(
+                    1000,
+                    lambda: self._update_extension_manifest(comp_obj.uuid, info)
+                )
 
             MessageManager.success(f"组件已保存：{name}", "", self.parent)
         except Exception as e:
@@ -406,7 +413,10 @@ class ComponentStorageManager:
             "category": getattr(component_obj, 'category', '') if component_obj else '',
             "description": getattr(component_obj, 'description', '') if component_obj else ''
         }
-        self._update_extension_manifest(uuid_str, info)
+        QTimer.singleShot(
+            1000,
+            lambda: self._update_extension_manifest(uuid_str, info)
+        )
 
         # 更新文件管理器根目录 (如果 UI 存在)
         if self.ui:
@@ -416,13 +426,6 @@ class ComponentStorageManager:
         """生成或更新 manifest.json"""
         target_dir = self.extension_base_dir / uuid_str
         manifest_path = target_dir / "manifest.json"
-
-        # --- 确保目标目录存在 ---
-        try:
-            target_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.error(f"Failed to create directory {target_dir}: {e}")
-            return
 
         existing_data = {}
         if manifest_path.exists():

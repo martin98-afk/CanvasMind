@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.7e7ab40b-f0f1-4280-bcc1-fa54f2b900c0",
+  "uuid": "7e7ab40b-f0f1-4280-bcc1-fa54f2b900c0",
+  "name": "LTX2音频VAE加载器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 LTXV 专用的音频 VAE 模型，用于音频与潜空间的转换。",
+  "category": "comfyui节点/模型加载器",
+  "main": "main.py",
+  "updated_at": "2026-01-26 16:05:06",
+  "author": "mading"
+}

@@ -15,42 +15,64 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-class LTXVAudioEncoder(BaseComponent):
-    requirements = "torchaudio,torch"
-    name = "LTX2音频编码器"
+class LTXVAudioVAEEncodeFromFile(BaseComponent):
+    requirements = "torchaudio"
+    name = "LTX2音频编码(文件输入)"
     category = "comfyui节点/LTX模型适配"
-    description = "将音频文件编码为 LTX2 潜空间特征。用于驱动视频口型和表情。"
+    description = "直接从音频文件读取并编码为 LTX2 潜空间。"
     
     inputs = [
-         PortDefinition(name="audio_model", label="音频模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_vae", label="音频VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_file", label="音频文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="audio_latent", label="音频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="音频LATENT", type=ArgumentType.OBJECT),
     ]
     properties = {
-        "audio_path": PropertyDefinition(type=PropertyType.TEXT, default="", label="音频文件路径"),
+        "audio_file": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="音频文件路径 (FILE)",
+        ),
     }
 
     def run(self, params, inputs):
-        import torch
         import torchaudio
-        audio_model = inputs.get("audio_model")
-        path = params.get("audio_path")
+        import os
+        audio_vae = inputs.get("audio_vae")
+        file_path = params.get("audio_file")
         
-        if not path:
-            raise ValueError("请提供有效的音频路径")
+        if not file_path or not os.path.exists(file_path):
+            raise FileNotFoundError(f"未找到音频文件: {file_path}")
 
-        # 1. 加载音频
-        waveform, sample_rate = torchaudio.load(path)
+        # 1. 加载音频文件
+        waveform, sample_rate = torchaudio.load(file_path)
         
-        # 2. 音频重采样/预处理 (假设模型需要 16k 或 44.1k)
-        # 这里需要根据你加载的具体音频模型进行调整
-        self.logger.info(f"正在编码音频: {path}")
-        
-        # 3. 推理得到 Latent
-        with torch.no_grad():
-            # 这里的 audio_model 通常是 LTX2 的专用音频编码器
-            # 输出形状应匹配视频潜空间的时间步长：[B, 128, F, 1, 1]
-            audio_latent_tensor = audio_model.encode(waveform) 
+        # 2. 预处理：重采样到 Audio VAE 要求的采样率
+        target_sr = int(audio_vae.sample_rate)
+        if sample_rate != target_sr:
+            self.logger.info(f"音频重采样: {sample_rate} -> {target_sr}")
+            resampler = torchaudio.transforms.Resample(sample_rate, target_sr)
+            waveform = resampler(waveform)
+
+        # 3. 调整维度以符合 ComfyUI 音频格式 [Batch, Channels, Samples]
+        # 如果是单声道，增加通道维；如果是双声道，保持
+        if waveform.ndim == 1:
+            waveform = waveform.unsqueeze(0).unsqueeze(0)
+        elif waveform.ndim == 2:
+            waveform = waveform.unsqueeze(0) # 增加 Batch 维
             
-        return {"audio_latent": {"samples": audio_latent_tensor}}
+        audio_data = {
+            "waveform": waveform,
+            "sample_rate": target_sr
+        }
+
+        # 4. 调用 VAE 编码
+        self.logger.info(f"正在通过 VAE 编码音频潜空间...")
+        audio_latents = audio_vae.encode(audio_data)
+        
+        return {"latent": {
+            "samples": audio_latents,
+            "sample_rate": target_sr,
+            "type": "audio",
+        }}
