@@ -72,6 +72,11 @@ class VarComboBoxWidget(QtWidgets.QWidget):
                 "get_vars": self._get_global_vars,
                 "signal_name": "global_variables_changed"
             }
+        if type_name == "画布节点":
+            return {
+                "get_vars": self._get_all_node_names,
+                "signal_name": "global_variables_changed"
+            }
         elif type_name == "导出项目":
             return {
                 "get_vars": self._get_exported_project_vars,
@@ -102,6 +107,13 @@ class VarComboBoxWidget(QtWidgets.QWidget):
         for key in sorted(env_vars.keys()):
             all_vars.append(f"env.{key}")
         return all_vars
+
+    def _get_all_node_names(self):
+        """获取全局变量列表（带前缀）"""
+        if not self.main_window:
+            return []
+        graph = self.main_window.graph
+        return [node.name() for node in graph.all_nodes()]
 
     def _get_exported_project_vars(self):
         """返回所有导出项目：值=路径，显示=项目名，格式: exported_project|{path}"""
