@@ -19,7 +19,7 @@ class ComfyGGUFUnetLoader(BaseComponent):
     name = "GGUF Unet模型加载器"
     category = "comfyui节点/模型加载器"
     description = "加载 GGUF 格式的扩散模型(UNet)，支持自定义精度和设备加载策略"
-    requirements = "gguf>=0.13.0,sentencepiece,protobuf,folder_paths,comfy_gguf,torch"
+    requirements = "gguf>=0.13.0,sentencepiece,protobuf,# folder_paths,# comfy_gguf,torch"
     
     outputs = [
         PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
@@ -39,9 +39,9 @@ class ComfyGGUFUnetLoader(BaseComponent):
         ),
         "patch_dtype": PropertyDefinition(
             type=PropertyType.CHOICE,
-            default="",
+            default="default",
             label="Patch精度 (Patch Dtype)",
-            choices=["default", "target", "float32", "float16", "bfloat16"],
+            choices=["default", "target", "float32", "float16", "bfloat16"]
         ),
         "patch_on_device": PropertyDefinition(
             type=PropertyType.BOOL,

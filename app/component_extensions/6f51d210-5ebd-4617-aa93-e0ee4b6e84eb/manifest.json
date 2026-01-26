@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.6f51d210-5ebd-4617-aa93-e0ee4b6e84eb",
+  "uuid": "6f51d210-5ebd-4617-aa93-e0ee4b6e84eb",
+  "name": "LTX2空音频潜空间",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 22:00:38",
+  "author": "black"
+}

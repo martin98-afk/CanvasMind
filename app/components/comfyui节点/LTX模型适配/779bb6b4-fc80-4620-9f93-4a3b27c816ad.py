@@ -23,12 +23,12 @@ class LTXVEmptyLatentVideo(BaseComponent):
     
     outputs = [PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT)]
     properties = {
-        "width": PropertyDefinition(
+        "widt": PropertyDefinition(
             type=PropertyType.INT,
             default=768,
             label="宽",
         ),
-        "height": PropertyDefinition(
+        "heigh": PropertyDefinition(
             type=PropertyType.INT,
             default=512,
             label="高",
@@ -48,8 +48,8 @@ class LTXVEmptyLatentVideo(BaseComponent):
     def run(self, params, inputs):
         import torch
         import comfy.model_management as mm
-        width = int(params.get("width"))
-        height = int(params.get("height"))
+        width = int(params.get("widt"))
+        height = int(params.get("heigh"))
         length = int(params.get("length"))
         batch_size = int(params.get("batch_size"))
         

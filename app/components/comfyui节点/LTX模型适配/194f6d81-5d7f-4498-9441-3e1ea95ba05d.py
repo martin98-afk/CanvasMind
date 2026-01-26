@@ -85,7 +85,7 @@ class LTXVSampler(BaseComponent):
         latent = inputs.get("latent")
         
         seed = int(params.get("seed"))
-        if seed == -1: seed = np.random.randint(0, 0xffffffffffffffff)
+        if seed == -1: seed = np.random.randint(2 ** 16)
 
         # 进度回调
         def cb(step, x0, x, total):
@@ -118,30 +118,74 @@ class LTXVSampler(BaseComponent):
         samples_data = final_latent["samples"]
         if isinstance(samples_data, comfy.nested_tensor.NestedTensor):
             v_lat = samples_data.unbind()[0]
-            final_latent = {"samples": v_lat}
+            final_img = self._decode_frame(vae, v_lat[:, :, 0:1, :, :])
 
         # 最终解码预览图
-        final_img = self._decode_frame(vae, final_latent["samples"][:, :, 0:1, :, :])
+        
         return {"latent": final_latent, "preview": final_img}
 
     def _decode_frame(self, vae, latent_pixel):
+        """核心修复 3: 鲁棒的解码与降维逻辑"""
         import torch
         import numpy as np
         from PIL import Image
         with torch.no_grad():
+            # LTX2 解码输出通常是 [B, F, H, W, C]
             pixels = vae.decode_tiled(latent_pixel, tile_x=512, tile_y=512)
+            
+            # 转为 numpy 并归一化到 0-255
             arr = (pixels.cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
-            return Image.fromarray(arr[0])
+            
+            # --- 暴力降维逻辑 ---
+            # 循环检查维度，如果维度大于 3，就取第 0 个元素，直到剩下 [H, W, C]
+            while arr.ndim > 3:
+                if arr.shape[0] == 0: break # 防止空数组
+                arr = arr[0]
+                
+            # 如果最后剩下了 [H, W, 1] (单通道)，也转为 2D [H, W]
+            if arr.ndim == 3 and arr.shape[-1] == 1:
+                arr = arr.squeeze(-1)
+                
+            return Image.fromarray(arr)
 
     def _send_preview(self, vae, x0):
+        """极其健壮的预览提取逻辑"""
+        import io
         import base64
-        from io import BytesIO
-        try:
-            # 如果是嵌套张量，取视频部分
-            s = x0.unbind()[0] if hasattr(x0, "unbind") else x0
-            pil_img = self._decode_frame(vae, s[:, :, 0:1, :, :]).resize((512, 512))
-            buf = BytesIO()
-            pil_img.save(buf, format="JPEG", quality=70)
-            base64_str = base64.b64encode(buf.getvalue()).decode()
-            self.emit_message(method="display_image", params={"output": {"data": f"data:image/jpeg;base64,{base64_str}"}})
-        except: pass
+        import comfy.nested_tensor
+        
+        # 1. 精确判断是否为 LTX2 的音视频合并包 (NestedTensor)
+        # 不要用 hasattr("unbind")，因为普通 Tensor 也有这个方法
+        if isinstance(x0, comfy.nested_tensor.NestedTensor):
+            # NestedTensor unbind 后，第 0 位是视频，第 1 位是音频
+            s = x0.unbind()[0]
+        else:
+            s = x0
+
+        # 2. 维度安全性检查
+        # 预期的视频 Latent 应该是 [Batch, Channels, Frames, Height, Width] (5维)
+        if s.ndim < 5:
+            # 如果是 4 维 [Channels, Frames, Height, Width]，补回 Batch 维
+            if s.ndim == 4:
+                s = s.unsqueeze(0)
+            else:
+                # 如果是 2 维或其他，说明 sampler 此时输出的是非空间格式，无法预览，直接跳过
+                return
+
+        # 3. 提取第一帧 [B, C, 1, H, W]
+        # 使用更安全的切片方式
+        preview_latent = s[:, :, 0:1, :, :]
+        
+        # 4. 解码并缩放
+        pil_img = self._decode_frame(vae, preview_latent)
+        if pil_img is None:
+            return
+            
+        pil_img = pil_img.resize((512, 512))
+        
+        # 5. Base64 发送
+        buf = io.BytesIO()
+        pil_img.save(buf, format="JPEG", quality=70)
+        base64_str = base64.b64encode(buf.getvalue()).decode()
+        self.emit_message(method="display_image", params={"output": {"data": f"data:image/jpeg;base64,{base64_str}"}})
+        

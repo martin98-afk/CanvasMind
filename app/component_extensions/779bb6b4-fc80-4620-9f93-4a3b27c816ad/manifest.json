@@ -7,6 +7,6 @@
   "description": "生成 LTX2 专用的 128 通道视频画布。",
   "category": "comfyui节点/LTX模型适配",
   "main": "main.py",
-  "updated_at": "2026-01-26 15:40:06",
+  "updated_at": "2026-01-26 19:07:48",
   "author": "black"
 }

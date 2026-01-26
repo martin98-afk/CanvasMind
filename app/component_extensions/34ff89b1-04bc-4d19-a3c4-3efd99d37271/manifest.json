@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.34ff89b1-04bc-4d19-a3c4-3efd99d37271",
+  "uuid": "34ff89b1-04bc-4d19-a3c4-3efd99d37271",
+  "name": "音视频文件合成",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "使用 PyAV 库合并 MP4 和 WAV，无需安装外部 FFmpeg 软件。支持视频流拷贝和音频重编码。",
+  "category": "数据存储",
+  "main": "main.py",
+  "updated_at": "2026-01-26 23:12:38",
+  "author": "black"
+}

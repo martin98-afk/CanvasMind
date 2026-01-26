@@ -23,7 +23,7 @@ class LTXVImageToVideoConditioner(BaseComponent):
     
     inputs = [
         PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="image", label="参考图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="image", label="参考图像", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
         PortDefinition(name="latent", label="画布LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
     ]
     outputs = [

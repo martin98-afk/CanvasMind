@@ -110,6 +110,10 @@ class CanvasPage(QWidget):
         self.ui_manager.update_position()
 
     @property
+    def node_created(self):
+        return self.graph.node_created
+
+    @property
     def nav_panel(self):
         return self.ui_manager.nav_panel
 

@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "通用三模型加载器"
     category = "comfyui节点/模型加载器"
     description = "使用 ComfyUI 后端加载 Checkpoint (.safetensors/.ckpt)"
-    requirements = "numpy,comfy,folder_paths,nodes"
+    requirements = "numpy,#comfy,#folder_paths,#nodes"
     inputs = [
     ]
     outputs = [

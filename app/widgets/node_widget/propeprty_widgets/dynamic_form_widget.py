@@ -134,6 +134,7 @@ class FormFieldWidget(QtWidgets.QWidget):
 
     def set_data(self, data):
         """仅在数据有差异时更新，防止触发死循环刷新"""
+        if not isinstance(data, dict): return
         for k, v in data.items():
             if k in self.fields:
                 widget = self.fields[k]

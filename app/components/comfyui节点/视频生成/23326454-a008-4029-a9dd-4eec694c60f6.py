@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyWanVideoSampler(BaseComponent):
-    requirements = "torch,comfy,nodes,Pillow,numpy,opencv-python"
+    requirements = "torch,# comfy,# nodes,Pillow,numpy,opencv-python"
     name = "Wan视频采样器"
     category = "comfyui节点/视频生成"
     description = "专为 Wan 优化的视频采样器，支持首尾帧 Latent 注入和实时单帧预览"

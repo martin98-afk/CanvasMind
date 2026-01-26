@@ -11,7 +11,8 @@ import paramiko
 from PyQt5 import QtCore
 from loguru import logger
 
-from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage, resource_path
+from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage, resource_path, \
+    ConnectionType
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
@@ -24,7 +25,7 @@ from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import Dynami
 from .status_node import StatusNode
 from ..templates.node_cleanup_script import CLEANUP_CODE
 from ..widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
-from ..widgets.custom_nodegraphqt.custom_port_item import draw_special_outputport
+from ..widgets.custom_nodegraphqt.custom_port_item import draw_special_outputport, draw_square_port
 
 _TEMP_COMPONENT_TEMPLATE = '''{import_code}class DynamicComponent(BaseComponent):
     name = "动态代码组件"
@@ -111,10 +112,11 @@ def create_dynamic_code_node(parent_window=None):
                     "label": "输入端口类型",
                     "choices": [item.value for item in ArgumentType]
                 },
-                "var": {
-                    "type": PropertyType.VARIABLE.value,
-                    "default": "全局变量",
-                    "label": "默认变量选择",
+                "conn_type": {
+                    "type": PropertyType.CHOICE.value,
+                    "default": ConnectionType.SINGLE.value,
+                    "label": "单/多输入",
+                    "choices": [item.value for item in ConnectionType]
                 }
             }
             processed_schema = {}
@@ -218,6 +220,7 @@ def create_dynamic_code_node(parent_window=None):
 
             # 1. 按顺序生成期望的输入端口名（自动去重）
             expected_names = []
+            conn_types = []
             used_names = set()
             name_mapping = {}  # {原始索引: 最终端口名}
             for i, item in enumerate(input_configs):
@@ -230,6 +233,7 @@ def create_dynamic_code_node(parent_window=None):
                     counter += 1
                 used_names.add(port_name)
                 expected_names.append(port_name)
+                conn_types.append(item.get("conn_type", ConnectionType.SINGLE.value))
                 name_mapping[i] = port_name
 
             # 2. 记录当前所有输入端口的连线状态：{port_name: [connected_upstream_ports]}
@@ -245,8 +249,11 @@ def create_dynamic_code_node(parent_window=None):
                 self.delete_input(port.name())
 
             # 4. 按 expected_names 顺序重建输入端口
-            for name in expected_names:
-                self.add_input(name)
+            for name, conn_type in zip(expected_names, conn_types):
+                if conn_type == ConnectionType.MULTIPLE.value:
+                    self.add_input(name, multi_input=True, painter_func=draw_square_port)
+                else:
+                    self.add_input(name)
 
             # 5. 恢复连线：仅当“旧端口名 == 新端口名”且新端口存在
             new_ports = {p.name(): p for p in self.input_ports()}
@@ -498,8 +505,6 @@ def create_dynamic_code_node(parent_window=None):
                             input_vars[safe_key] = inputs_raw[port_name]
                         if port_name in self.column_select:
                             inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
-                    else:
-                        inputs_raw[port_name] = gv.get(self.get_property("input_ports")[i]["var"])
 
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 
