@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.97031cf7-5f53-43a5-a881-47a51af5fc05",
+  "uuid": "97031cf7-5f53-43a5-a881-47a51af5fc05",
+  "name": "LTX2专用调度器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "生成 LTX2 优化的时间步序列（Sigmas），支持偏移拉伸。",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 15:49:06",
+  "author": "mading"
+}

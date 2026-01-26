@@ -15,60 +15,45 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-class ComfyLTXVideoLatent(BaseComponent):
-    description = ""
-    requirements = "torch"
-    name = "LTX视频潜空间生成"
+class LTXVEmptyLatentVideo(BaseComponent):
+    requirements = "# comfy,torch"
+    name = "LTX2空白视频潜空间"
     category = "comfyui节点/LTX模型适配"
+    description = "生成 LTX2 专用的 128 通道视频画布。"
     
-    inputs = [
-    ]
+    outputs = [PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT)]
     properties = {
-        "widt": PropertyDefinition(
+        "width": PropertyDefinition(
             type=PropertyType.INT,
-            default=512,
-            label="宽度",
+            default=768,
+            label="宽",
         ),
-        "heigh": PropertyDefinition(
+        "height": PropertyDefinition(
             type=PropertyType.INT,
             default=512,
-            label="高度",
+            label="高",
         ),
         "length": PropertyDefinition(
             type=PropertyType.INT,
-            default=81,
-            label="总帧数 (建议81, 121)",
+            default=97,
+            label="帧数(需为8n+1)",
         ),
         "batch_size": PropertyDefinition(
             type=PropertyType.INT,
             default=1,
-            label="张数",
+            label="批次",
         ),
     }
-    outputs = [
-        PortDefinition(name="latent", label="视频潜空间", type=ArgumentType.OBJECT),
-    ]
 
-    def run(self, params, inputs=None):
+    def run(self, params, inputs):
         import torch
-        width = params.get("widt", 864) # LTX建议是32的倍数
-        height = params.get("heigh", 480)
-        length = params.get("length", 81)
-
-        # 1. 空间 32 倍压缩
-        latent_width = width // 32
-        latent_height = height // 32
+        import comfy.model_management as mm
+        width = int(params.get("width"))
+        height = int(params.get("height"))
+        length = int(params.get("length"))
+        batch_size = int(params.get("batch_size"))
         
-        # 2. 时间 8 倍压缩 (LTX 公式: (N-1)//8 + 1)
-        latent_length = (length - 1) // 8 + 1
-
-        # 3. 强制 128 通道
-        samples = torch.zeros([
-            params.get("batch_size", 1), 
-            128,            # LTX 核心要求：128通道
-            latent_length, 
-            latent_height, 
-            latent_width
-        ], device="cpu")
-
-        return {"latent": {"samples": samples}}
+        # LTX2 下采样倍率为 32 (空间) 和 8 (时间)
+        latent = torch.zeros([batch_size, 128, ((length - 1) // 8) + 1, height // 32, width // 32], 
+                             device=mm.intermediate_device())
+        return {"latent": {"samples": latent}}

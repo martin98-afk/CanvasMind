@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.1b3c8bfa-0c5d-4634-82be-321c92418499",
+  "uuid": "1b3c8bfa-0c5d-4634-82be-321c92418499",
+  "name": "删除内存对象",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "显式释放输入端口连接的内存对象，并触发垃圾回收以释放系统内存。",
+  "category": "内存对象管理",
+  "main": "main.py",
+  "updated_at": "2026-01-26 08:57:36",
+  "author": "mading"
+}

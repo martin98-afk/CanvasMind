@@ -417,13 +417,26 @@ class ComponentStorageManager:
         target_dir = self.extension_base_dir / uuid_str
         manifest_path = target_dir / "manifest.json"
 
+        # --- 确保目标目录存在 ---
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.error(f"Failed to create directory {target_dir}: {e}")
+            return
+
         existing_data = {}
         if manifest_path.exists():
             try:
                 with open(manifest_path, 'r', encoding='utf-8') as f:
                     existing_data = json.load(f)
-            except:
+            except Exception:
                 pass
+
+        # --- 处理 os.getlogin() 可能在某些环境报错的问题 ---
+        try:
+            current_user = os.getlogin()
+        except Exception:
+            current_user = "Unknown"
 
         manifest = {
             "id": f"com.canvasmind.{uuid_str}",
@@ -435,7 +448,7 @@ class ComponentStorageManager:
             "category": info.get("category", existing_data.get("category", "Custom")),
             "main": "main.py",
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "author": existing_data.get("author", os.getlogin())
+            "author": existing_data.get("author", current_user)
         }
 
         try:

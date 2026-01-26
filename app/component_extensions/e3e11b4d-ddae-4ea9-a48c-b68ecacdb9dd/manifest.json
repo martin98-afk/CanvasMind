@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.e3e11b4d-ddae-4ea9-a48c-b68ecacdb9dd",
+  "uuid": "e3e11b4d-ddae-4ea9-a48c-b68ecacdb9dd",
+  "name": "LTX2多帧引导注入",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "在视频的指定位置插入参考帧（Keyframes），支持多图引导。",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 15:54:04",
+  "author": "mading"
+}

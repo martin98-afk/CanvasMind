@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.194f6d81-5d7f-4498-9441-3e1ea95ba05d",
+  "uuid": "194f6d81-5d7f-4498-9441-3e1ea95ba05d",
+  "name": "LTX2核心采样器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "LTX2 专用采样器，支持进度回调、首帧预览以及 AV 潜空间处理。",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 15:43:30",
+  "author": "mading"
+}

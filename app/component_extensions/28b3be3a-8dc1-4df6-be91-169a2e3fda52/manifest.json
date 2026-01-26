@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.28b3be3a-8dc1-4df6-be91-169a2e3fda52",
+  "uuid": "28b3be3a-8dc1-4df6-be91-169a2e3fda52",
+  "name": "LTX2图生视频注入",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将参考图注入到潜空间的首帧，并生成噪声掩码。",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 15:39:50",
+  "author": "mading"
+}
