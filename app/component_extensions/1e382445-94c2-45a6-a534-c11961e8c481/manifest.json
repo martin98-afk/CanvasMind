@@ -1,12 +1,12 @@
 {
   "id": "com.canvasmind.1e382445-94c2-45a6-a534-c11961e8c481",
   "uuid": "1e382445-94c2-45a6-a534-c11961e8c481",
-  "name": "LTX2音频编码器",
+  "name": "LTX2音频编码(文件输入)",
   "version": "1.0.0",
   "api_version": "2.0",
-  "description": "将音频文件转换为 LTX2 潜空间特征",
+  "description": "直接从音频文件读取并编码为 LTX2 潜空间。",
   "category": "comfyui节点/LTX模型适配",
   "main": "main.py",
-  "updated_at": "2026-01-24 21:16:05",
+  "updated_at": "2026-01-26 16:12:37",
   "author": "black"
 }

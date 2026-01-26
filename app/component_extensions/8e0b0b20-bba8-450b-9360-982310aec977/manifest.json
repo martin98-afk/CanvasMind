@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.8e0b0b20-bba8-450b-9360-982310aec977",
+  "uuid": "8e0b0b20-bba8-450b-9360-982310aec977",
+  "name": "Wan视频解码器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将 Wan 的 5D 潜空间解码并合成为 MP4 视频",
+  "category": "comfyui节点/视频生成",
+  "main": "main.py",
+  "updated_at": "2026-01-26 16:17:12",
+  "author": "mading"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.eefc8d7c-5881-4fb6-8f9b-708ae7db9a8c",
+  "uuid": "eefc8d7c-5881-4fb6-8f9b-708ae7db9a8c",
+  "name": "LTX2音视频分离",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将合并的 AV Latent 拆分为独立的视频和音频潜空间。",
+  "category": "comfyui节点/LTX模型适配",
+  "main": "main.py",
+  "updated_at": "2026-01-26 15:55:09",
+  "author": "mading"
+}

@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfyEmptyLatent(BaseComponent):
     description = ""
     requirements = "torch,nodes"
-    name = "空潜空间生成"
+    name = "图像空潜空间生成"
     category = "comfyui节点"
     
     outputs = [

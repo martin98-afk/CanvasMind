@@ -15,72 +15,64 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-class ComfyLTXAudioEncode(BaseComponent):
-    name = "LTX2音频编码器"
+class LTXVAudioVAEEncodeFromFile(BaseComponent):
+    requirements = "torchaudio"
+    name = "LTX2音频编码(文件输入)"
     category = "comfyui节点/LTX模型适配"
-    description = "将音频文件转换为 LTX2 潜空间特征"
-    requirements = "torchaudio,numpy,comfy,torch"
-
+    description = "直接从音频文件读取并编码为 LTX2 潜空间。"
+    
     inputs = [
-        PortDefinition(name="audio_vae", label="AUDIO_VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio_vae", label="音频VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_file", label="音频文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="audio_latent", label="AUDIO_LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="音频LATENT", type=ArgumentType.OBJECT),
     ]
-
     properties = {
-        "audio_path": PropertyDefinition(
+        "audio_file": PropertyDefinition(
             type=PropertyType.FILE,
             default="",
-            label="语音文件 (.wav/.mp3)",
-        ),
-        "frame_rate": PropertyDefinition(
-            type=PropertyType.INT,
-            default=16,
-            label="对口型视频帧率",
+            label="音频文件路径 (FILE)",
         ),
     }
 
     def run(self, params, inputs):
-        import torch
-        import numpy as np
-        import librosa  # 使用 librosa 替代 soundfile 和 torchaudio
-        import comfy.model_management as mm
-
+        import torchaudio
+        import os
         audio_vae = inputs.get("audio_vae")
-        audio_path = params.get("audio_path")
+        file_path = params.get("audio_file")
         
-        if audio_vae is None or not audio_path:
-            raise ValueError("音频编码器：缺少 VAE 或音频文件路径")
+        if not file_path or not os.path.exists(file_path):
+            raise FileNotFoundError(f"未找到音频文件: {file_path}")
 
-        self.logger.info(f"正在加载并解析音频: {audio_path}")
-
-        try:
-            # --- 核心修复：一行搞定加载、单声道、重采样 ---
-            # sr=16000: 强制采样率为 16000Hz (LTX2要求)
-            # mono=True: 自动混合多声道为单声道
-            waveform_np, sr = librosa.load(audio_path, sr=16000, mono=True)
-            
-            # 转换为 Tensor 格式 [Channels, Samples] -> [1, L]
-            waveform = torch.from_numpy(waveform_np).float().unsqueeze(0)
-            
-            self.logger.info(f"音频解析成功: {sr}Hz, 持续时间: {len(waveform_np)/sr:.2f}秒")
-            
-        except Exception as e:
-            error_msg = str(e)
-            if "No backend" in error_msg or "audioread" in error_msg:
-                self.logger.error("缺少 FFmpeg 解码器，无法读取 m4a/mp3 文件！")
-                raise RuntimeError("请在环境中执行 'conda install ffmpeg' 以支持该音频格式。")
-            else:
-                self.logger.error(f"音频解析异常: {error_msg}")
-                raise e
-
-        # 2. 显存调度与编码
+        # 1. 加载音频文件
+        waveform, sample_rate = torchaudio.load(file_path)
         
-        with torch.no_grad():
-            # waveform 需要 [Batch, Channels, Samples] -> [1, 1, L]
-            # LTX2 音频 VAE 会输出 [1, C_latent, T_latent]
-            self.logger.info("执行音频潜空间 VAE 编码...")
-            audio_latent = audio_vae.encode(waveform.unsqueeze(0)) 
+        # 2. 预处理：重采样到 Audio VAE 要求的采样率
+        target_sr = int(audio_vae.sample_rate)
+        if sample_rate != target_sr:
+            self.logger.info(f"音频重采样: {sample_rate} -> {target_sr}")
+            resampler = torchaudio.transforms.Resample(sample_rate, target_sr)
+            waveform = resampler(waveform)
+
+        # 3. 调整维度以符合 ComfyUI 音频格式 [Batch, Channels, Samples]
+        # 如果是单声道，增加通道维；如果是双声道，保持
+        if waveform.ndim == 1:
+            waveform = waveform.unsqueeze(0).unsqueeze(0)
+        elif waveform.ndim == 2:
+            waveform = waveform.unsqueeze(0) # 增加 Batch 维
             
-        return {"audio_latent": audio_latent}
+        audio_data = {
+            "waveform": waveform,
+            "sample_rate": target_sr
+        }
+
+        # 4. 调用 VAE 编码
+        self.logger.info(f"正在通过 VAE 编码音频潜空间...")
+        audio_latents = audio_vae.encode(audio_data)
+        
+        return {"latent": {
+            "samples": audio_latents,
+            "sample_rate": target_sr,
+            "type": "audio",
+        }}
