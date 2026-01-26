@@ -118,10 +118,10 @@ class LTXVSampler(BaseComponent):
         samples_data = final_latent["samples"]
         if isinstance(samples_data, comfy.nested_tensor.NestedTensor):
             v_lat = samples_data.unbind()[0]
-            final_latent = {"samples": v_lat}
+            final_img = self._decode_frame(vae, v_lat[:, :, 0:1, :, :])
 
         # 最终解码预览图
-        final_img = self._decode_frame(vae, final_latent["samples"][:, :, 0:1, :, :])
+        
         return {"latent": final_latent, "preview": final_img}
 
     def _decode_frame(self, vae, latent_pixel):

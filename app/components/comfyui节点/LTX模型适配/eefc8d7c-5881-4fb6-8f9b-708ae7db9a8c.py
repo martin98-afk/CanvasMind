@@ -16,6 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVSeparateAVLatent(BaseComponent):
+    requirements = "comfy,torch"
     name = "LTX2音视频分离"
     category = "comfyui节点/LTX模型适配"
     description = "将合并的 AV Latent 拆分为独立的视频和音频潜空间。"
@@ -40,36 +41,30 @@ class LTXVSeparateAVLatent(BaseComponent):
         audio_latent = None # 默认音频为空
 
         # 核心修复：判断是否为真正的 LTX2 嵌套张量 (NestedTensor)
-        if isinstance(samples, comfy.nested_tensor.NestedTensor):
-            self.logger.info("检测到嵌套张量，正在执行音视频轨道分离...")
-            tracks = samples.unbind()
-            
-            # 视频轨道
-            if len(tracks) >= 1:
-                video_latent["samples"] = tracks[0]
-            
-            # 音频轨道
-            if len(tracks) >= 2:
-                audio_latent = av_latent.copy()
-                audio_latent["samples"] = tracks[1]
-                # 修改类型标记
-                audio_latent["type"] = "audio"
-            
-            # 处理噪声掩码 (noise_mask 也可能是 NestedTensor)
-            if "noise_mask" in av_latent:
-                masks = av_latent["noise_mask"]
-                if isinstance(masks, comfy.nested_tensor.NestedTensor):
-                    mask_tracks = masks.unbind()
-                    video_latent["noise_mask"] = mask_tracks[0]
-                    if len(mask_tracks) >= 2 and audio_latent:
-                        audio_latent["noise_mask"] = mask_tracks[1]
-                else:
-                    video_latent["noise_mask"] = masks
-        else:
-            # 如果是标准 Tensor，说明这就是纯视频
-            self.logger.info("输入为标准张量，识别为纯视频模式。")
-            video_latent["samples"] = samples
-            audio_latent = None
+        self.logger.info("检测到嵌套张量，正在执行音视频轨道分离...")
+        tracks = samples.unbind()
+        
+        # 视频轨道
+        if len(tracks) >= 1:
+            video_latent["samples"] = tracks[0]
+        
+        # 音频轨道
+        if len(tracks) >= 2:
+            audio_latent = av_latent.copy()
+            audio_latent["samples"] = tracks[1]
+            # 修改类型标记
+            audio_latent["type"] = "audio"
+        
+        # 处理噪声掩码 (noise_mask 也可能是 NestedTensor)
+        if "noise_mask" in av_latent:
+            masks = av_latent["noise_mask"]
+            if isinstance(masks, comfy.nested_tensor.NestedTensor):
+                mask_tracks = masks.unbind()
+                video_latent["noise_mask"] = mask_tracks[0]
+                if len(mask_tracks) >= 2 and audio_latent:
+                    audio_latent["noise_mask"] = mask_tracks[1]
+            else:
+                video_latent["noise_mask"] = masks
 
         # 确保 video_latent 标记为视频
         video_latent["type"] = "video"
