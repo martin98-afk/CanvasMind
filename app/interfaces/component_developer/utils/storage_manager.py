@@ -68,8 +68,9 @@ class ComponentStorageManager:
         self._current_component_file = None
 
         # 重置文件树到根目录
-        if self.ui:
-            self.ui.file_manager.set_root_path(str(self.extension_base_dir))
+        self.ui.file_manager.set_root_path(str(self.extension_base_dir))
+        # 将主tab改为当前新建组件名称
+        self.ui.tab_manager.change_main_tab_name(component_info["name"])
 
     def _load_component_filepath(self, component_path: Path):
         file_map = {value: key for key, value in self.scanner.get_file_maps().items()}
@@ -145,9 +146,9 @@ class ComponentStorageManager:
             self._ensure_extension_environment(comp_uuid, component)
 
             # 更新 UI 状态
-            if self.ui:
-                self.ui.current_comp_uuid = comp_uuid
-                self.ui._update_file_manager_path(comp_uuid)
+            self.ui.current_comp_uuid = comp_uuid
+            self.ui._update_file_manager_path(comp_uuid)
+            self.ui.tab_manager.change_main_tab_name(getattr(component, 'name', ''))
 
             QTimer.singleShot(300, lambda: self.parent.update_usage_table(component.uuid))
         except Exception as e:

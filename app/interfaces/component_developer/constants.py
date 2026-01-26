@@ -15,7 +15,7 @@ SideDockRegistry.register(category, MultiConsoleToolWindow.name, MultiConsoleToo
 SideDockRegistry.register(category, ComponentHistoryToolWindow.name, ComponentHistoryToolWindow, DockPosition.BOTTOM)
 SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow, DockPosition.BOTTOM)
 
-
+COMPONENT_EXTENSION_PATH = "app/component_extensions"
 
 class EditingSource:
     NONE = 0

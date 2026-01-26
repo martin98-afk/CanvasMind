@@ -147,6 +147,9 @@ class ComponentDeveloperPage(QWidget):
             if obj in [self.name_edit, self.category_edit, self.description_edit, self.requirements_edit]:
                 # ✅ 用户结束编辑，立即同步到代码
                 self.sync_basic_info_to_code()
+            if obj == self.name_edit:
+                # 额外将名称同步到ui中的tab
+                self.ui_manager.tab_manager.change_main_tab_name(self.name_edit.text())
         return super().eventFilter(obj, event)
 
     def _handle_insert_code_from_llm(self, code: str):

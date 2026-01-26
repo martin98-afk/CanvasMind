@@ -106,7 +106,8 @@ class SyncCodeToUI(QObject):
             self.parent.category_edit.blockSignals(False)
             self.parent.description_edit.blockSignals(False)
             self.parent.requirements_edit.blockSignals(False)
-
+            # 将名称也同步到当前的name tab
+            self.parent.ui_manager.tab_manager.change_main_tab_name(name)
             # ✅ 更新缓存
             self._current_component_code = code
         except Exception as e:

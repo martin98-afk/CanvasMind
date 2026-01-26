@@ -59,7 +59,6 @@ class ComponentTabManager(TabWidget):
         """左侧：模板选择按钮"""
         self.template_btn = TransparentDropDownToolButton(FluentIcon.ALIGNMENT, self)
         self.template_btn.setToolTip("选择代码模板")
-        self.template_btn.setFixedSize(36, 36)
         self.template_btn.setIconSize(QSize(16, 16))
 
         menu = RoundMenu(parent=self)
@@ -196,13 +195,18 @@ class ComponentTabManager(TabWidget):
 
     def init_main_editor(self, widget, name):
         """初始化默认的、不可关闭的主代码编辑器"""
-        self.insertTab(0, widget, "组件代码", get_icon("代码执行"), routeKey="main_entry_point")
+        self.insertTab(0, widget, "未命名组件", get_icon("代码执行"), routeKey="main_entry_point")
         self.main_code_editor = widget  # 记录引用，方便后续操作
 
         if self.tabBar.count() > 0:
             item = self.tabBar.tabItem(0)
             if item:
                 item.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.NEVER)
+
+    def change_main_tab_name(self, name):
+        """外部调用或信号触发：修改主编辑器的名称"""
+        if hasattr(self, 'main_code_editor') and self.main_code_editor:
+            self.setTabText(0, name)
 
     def set_template_code(self, code):
         """外部调用或信号触发：修改主编辑器的代码"""
