@@ -316,6 +316,9 @@ class CustomNodeItem(NodeItem):
         self._port_height = 0.0
         self._widget_height = 0.0
 
+        # 性能优化：缓存渐变资源
+        self._cached_gradients = {}
+
     def _init_base_components(self):
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
         if not pixmap.isNull():
@@ -617,20 +620,27 @@ class CustomNodeItem(NodeItem):
                 painter.setPen(QtGui.QPen(glow_color, i * 2))
                 painter.drawRoundedRect(rect.adjusted(-i, -i, i, i), radius + i, radius + i)
 
-        bg_gradient = QtGui.QLinearGradient(rect.topLeft(), rect.bottomLeft())
-        bg_gradient.setColorAt(0, QtGui.QColor(*COLOR_BG_GRAD_TOP))
-        bg_gradient.setColorAt(1, QtGui.QColor(*COLOR_BG_GRAD_BOTTOM))
-        painter.setBrush(bg_gradient)
+        # 性能优化：缓存渐变
+        bg_key = f"bg_{rect.width()}_{rect.height()}"
+        if bg_key not in self._cached_gradients:
+            bg_gradient = QtGui.QLinearGradient(rect.topLeft(), rect.bottomLeft())
+            bg_gradient.setColorAt(0, QtGui.QColor(*COLOR_BG_GRAD_TOP))
+            bg_gradient.setColorAt(1, QtGui.QColor(*COLOR_BG_GRAD_BOTTOM))
+            self._cached_gradients[bg_key] = bg_gradient
+        painter.setBrush(self._cached_gradients[bg_key])
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, radius, radius)
 
         header_h = max(self._text_item.boundingRect().height() + 10, 34.0)
         header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_h)
         base_color = QtGui.QColor(*self.color)
-        head_grad = QtGui.QLinearGradient(header_rect.topLeft(), header_rect.bottomLeft())
-        head_grad.setColorAt(0, base_color.lighter(110))
-        head_grad.setColorAt(1, base_color)
-        painter.setBrush(head_grad)
+        head_key = f"head_{header_rect.width()}_{header_rect.height()}"
+        if head_key not in self._cached_gradients:
+            head_grad = QtGui.QLinearGradient(header_rect.topLeft(), header_rect.bottomLeft())
+            head_grad.setColorAt(0, base_color.lighter(110))
+            head_grad.setColorAt(1, base_color)
+            self._cached_gradients[head_key] = head_grad
+        painter.setBrush(self._cached_gradients[head_key])
 
         path = QtGui.QPainterPath()
         path.moveTo(header_rect.bottomLeft())

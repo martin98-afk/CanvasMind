@@ -364,10 +364,6 @@ class CustomNodeViewer(NodeViewer):
 
     def mousePressEvent(self, event):
         # --- 性能优化：交互开始时，临时关闭抗锯齿 ---
-        # 这会让拖动帧率显著提升，而不会改变渲染架构
-        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
-        self.setRenderHint(QtGui.QPainter.TextAntialiasing, False)
-        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
         # ----------------------------------------
         if (event.button() == QtCore.Qt.MiddleButton or
             (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
@@ -380,6 +376,9 @@ class CustomNodeViewer(NodeViewer):
             self.RMB_state = True
         elif event.button() == QtCore.Qt.MiddleButton:
             self.MMB_state = True
+        if self._panning:
+            # 这会让拖动帧率显著提升，而不会改变渲染架构
+            self.setRenderHint(QtGui.QPainter.Antialiasing, False)
 
         self._origin_pos = event.pos()
         self._previous_pos = event.pos()
@@ -479,7 +478,18 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # 2. 注入导航模式下的平移逻辑 (模仿 Alt+LMB)
+        # import time
+        # if not hasattr(self, '_last_pan_time'):
+        #     self._last_pan_time = time.time()
+        #     self._pan_frames = 0
+        #
+        # if self._panning:
+        #     self._pan_frames += 1
+        #     if time.time() - self._last_pan_time > 1.0:
+        #         print(f"Pan FPS: {self._pan_frames}")
+        #         self._last_pan_time = time.time()
+        #         self._pan_frames = 0
+        # 注入导航模式下的平移逻辑 (模仿 Alt+LMB)
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
@@ -513,12 +523,6 @@ class CustomNodeViewer(NodeViewer):
     # ---------------------------------------------
 
     def mouseReleaseEvent(self, event):
-        # --- 性能优化：交互结束，恢复高质量抗锯齿 ---
-        self.setRenderHint(QtGui.QPainter.Antialiasing, True)
-        self.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
-        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
-        # ---------------------------------------
-
         # --- 对齐功能：鼠标松开，立即隐藏对齐线 ---
         self._snap_lines_item.hide()
         self._snap_lines_item.setPath(QtGui.QPainterPath())  # 清空路径
@@ -534,7 +538,8 @@ class CustomNodeViewer(NodeViewer):
         elif event.button() == QtCore.Qt.MiddleButton:
             self.MMB_state = False
             self._panning = False
-
+        if was_panning:
+            self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         if self._SLICER_PIPE.isVisible():
             self._on_pipes_sliced(self._SLICER_PIPE.path())
             p = QtCore.QPointF(0.0, 0.0)
