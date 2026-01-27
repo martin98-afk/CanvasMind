@@ -50,9 +50,9 @@ class CheckBoxWidget(QtWidgets.QWidget):
 
 
 class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", text="", state=False, window=None):
+    def __init__(self, parent=None, name="", label="", text="", state=False, window=None, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{name}")
         widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=window)

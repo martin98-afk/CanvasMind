@@ -91,9 +91,9 @@ class LongTextWidget(QtWidgets.QWidget):
 
 
 class LongTextWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", default="", window=None):
+    def __init__(self, parent=None, name="", label="", default="", window=None, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
         widget = LongTextWidget(default_text=default, parent=window, get_port_func=self.get_port_func)

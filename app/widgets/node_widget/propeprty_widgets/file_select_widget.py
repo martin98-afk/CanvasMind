@@ -117,9 +117,9 @@ class FileSelectWidget(QtWidgets.QWidget):
 class FileSelectWrapper(CustomNodeBaseWidget):
     """文件选择控件封装类"""
 
-    def __init__(self, parent=None, name="", label="", default="", window=None):
+    def __init__(self, parent=None, name="", label="", default="", window=None, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
 
