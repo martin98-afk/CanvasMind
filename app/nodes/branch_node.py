@@ -84,7 +84,7 @@ def create_branch_node(parent_window):
                 label="分支条件",
                 schema=processed_schema,
                 window=parent_window,
-                z_value=100
+                z_value=3
             )
             self.add_custom_widget(self.widget, tab='Properties')
 
@@ -93,7 +93,8 @@ def create_branch_node(parent_window):
                 name="enable_else",
                 text="启用默认分支（else）",
                 state=True,
-                window=parent_window
+                window=parent_window,
+                z_value=2
             )
             self.add_custom_widget(checkbox_widget, tab="properties")
             execute_all_widget = CheckBoxWidgetWrapper(
@@ -101,7 +102,8 @@ def create_branch_node(parent_window):
                 name="execute_all_matches",
                 text="执行所有满足条件的分支",
                 state=False,
-                window=parent_window
+                window=parent_window,
+                z_value=1
             )
             self.add_custom_widget(execute_all_widget, tab="properties")
 

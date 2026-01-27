@@ -380,18 +380,22 @@ class DraggableTreeWidget(TreeWidget):
             drag.exec_(Qt.CopyAction)
 
     def create_drag_preview(self, full_path):
+        """创建半透明磨砂质感的拖拽预览图"""
         comp_map, file_map = ComponentScanner().get_components()
         comp_cls = comp_map.get(full_path)
+
+        # 如果找不到组件类或者是控制流组件，使用默认预览
         if not comp_cls or comp_cls.__name__.startswith("ControlFlow"):
             return self.get_default_preview(full_path)
 
         try:
-            base_width, base_height = 180, 120
+            # 基础尺寸
+            base_width, base_height = 190, 125
             dpr = self.devicePixelRatioF() if hasattr(self, 'devicePixelRatioF') else 1.0
 
             pixmap = QPixmap(int(base_width * dpr), int(base_height * dpr))
             pixmap.setDevicePixelRatio(dpr)
-            pixmap.fill(Qt.transparent)
+            pixmap.fill(Qt.transparent)  # 关键：填充透明背景
 
             painter = QPainter(pixmap)
             painter.setRenderHint(QPainter.Antialiasing)
@@ -400,95 +404,88 @@ class DraggableTreeWidget(TreeWidget):
 
             width, height = base_width, base_height
 
+            # === 1. 绘制半透明磨砂背景 ===
             path = QPainterPath()
-            path.addRoundedRect(0, 0, width - 1, height - 1, 10, 10)
-            painter.setPen(QPen(QColor("#4A90E2"), 1.5))
-            painter.setBrush(QColor("#2D2D2D"))
+            path.addRoundedRect(1, 1, width - 2, height - 2, 10, 10)
+
+            # 背景色: 深灰色，180透明度 (约70%)
+            painter.setBrush(QColor(40, 40, 40, 180))
+            # 边框色: 白色，40透明度 (模拟玻璃边缘反光)
+            painter.setPen(QPen(QColor(255, 255, 255, 40), 1.5))
             painter.drawPath(path)
 
-            for i, alpha in enumerate([40, 25, 10], 1):
-                painter.setPen(QColor(0, 0, 0, alpha))
-                painter.setBrush(Qt.NoBrush)
-                painter.drawRoundedRect(i, i, width - 1 - i * 2, height - 1 - i * 2, 10, 10)
+            # (移除了原代码中的内部阴影循环，因为在半透明背景下会显脏)
 
-            # === 1. 标题 ===
-            painter.setPen(Qt.white)
-            font = QFont()
-            font.setPointSize(12)
+            # === 2. 标题 (高亮白色) ===
+            painter.setPen(QColor(255, 255, 255, 240))
+            font = QFont("Microsoft YaHei")  # 建议指定字体
+            font.setPointSize(11)
             font.setBold(True)
             painter.setFont(font)
-            title = getattr(comp_cls, 'name', comp_cls.__name__)
-            if len(title) > 14:
-                title = title[:14] + "…"
-            painter.drawText(QRectF(12, 12, width - 24, 24), Qt.AlignLeft, title)
 
-            # === 2. 类别 ===
-            painter.setPen(QColor("#AAAAAA"))
-            font.setPointSize(10)
+            title = getattr(comp_cls, 'name', comp_cls.__name__)
+            # 使用省略号处理超长标题
+            fm = QFontMetrics(font)
+            elided_title = fm.elidedText(title, Qt.ElideRight, width - 30)
+            painter.drawText(QRectF(12, 12, width - 24, 24), Qt.AlignLeft | Qt.AlignVCenter, elided_title)
+
+            # === 3. 类别 (淡白色) ===
+            painter.setPen(QColor(255, 255, 255, 160))
+            font.setPointSize(9)
             font.setBold(False)
             painter.setFont(font)
             category = getattr(comp_cls, 'category', self.tr('General'))
-            painter.drawText(QRectF(12, 38, width - 24, 20), Qt.AlignLeft, self.tr("📁 {}").format(category))
+            painter.drawText(QRectF(12, 36, width - 24, 20), Qt.AlignLeft | Qt.AlignVCenter,
+                             self.tr("📁 {}").format(category))
 
-            # === 3. 描述 ===
-            desc_lines = []
+            # === 4. 描述 (更淡的颜色) ===
             description = getattr(comp_cls, 'description', "")
             if isinstance(description, str) and description.strip():
-                desc_text = description.strip()
-                font.setPointSize(9)
-                font.setItalic(True)
+                painter.setPen(QColor(255, 255, 255, 120))
+                font.setItalic(True)  # 斜体增加设计感
                 painter.setFont(font)
-                fm = QFontMetrics(font)
-                text_width = width - 24
-                max_lines = 2
-                current_line = ""
-                for char in desc_text:
-                    test_line = current_line + char
-                    w = fm.horizontalAdvance(test_line) if hasattr(fm, 'horizontalAdvance') else fm.width(test_line)
-                    if w <= text_width:
-                        current_line = test_line
-                    else:
-                        if current_line:
-                            desc_lines.append(current_line)
-                            if len(desc_lines) >= max_lines:
-                                desc_lines[-1] = desc_lines[-1][:max(0, len(desc_lines[-1]) - 1)] + "…"
-                                break
-                        current_line = char
-                if current_line and len(desc_lines) < max_lines:
-                    desc_lines.append(current_line)
 
-            line_height = QFontMetrics(font).height() + 2
-            desc_y = 38 + 20 + 4
-            painter.setPen(QColor("#CCCCCC"))
-            for i, line in enumerate(desc_lines):
-                painter.drawText(QRectF(12, desc_y + i * line_height, width - 24, line_height), Qt.AlignLeft, line)
+                # 使用 Qt 自带的自动换行绘制，比手动计算更准确
+                desc_rect = QRectF(12, 60, width - 24, 35)
+                desc_text = description.strip()
+                painter.drawText(desc_rect, Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap, desc_text)
 
-            # === 底部信息 ===
+            # === 底部信息 (输入/输出/使用次数) ===
             inputs = getattr(comp_cls, 'get_inputs', lambda: [])()
             outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
             usage_count = len(self._usage_stats.get(full_path, []))
-            bottom_y = height - 22
-            font.setPointSize(10)
-            font.setBold(True)
-            painter.setFont(font)
-            if inputs:
-                painter.setPen(QColor("#2ECC71"))
-                painter.drawText(QRectF(12, bottom_y, 80, 20), Qt.AlignLeft, f"◂ {len(inputs)}")
-            if usage_count > 0:
-                painter.setPen(QColor("#F39C12"))
-                usage_text = self.tr("🕒 {}次").format(usage_count)
-                fm = QFontMetrics(font)
-                tw = fm.horizontalAdvance(usage_text) if hasattr(fm, 'horizontalAdvance') else fm.width(usage_text)
-                painter.drawText(QRectF((width - tw) / 2, bottom_y, tw, 20), Qt.AlignLeft, usage_text)
-            if outputs:
-                painter.setPen(QColor("#E74C3C"))
-                painter.drawText(QRectF(width - 92, bottom_y, 80, 20), Qt.AlignRight, f"{len(outputs)} ▸")
 
+            bottom_y = height - 25
+            font.setItalic(False)
+            font.setBold(True)
+            font.setPointSize(9)
+            painter.setFont(font)
+
+            # 输入 (绿色，稍微调亮以适应暗背景)
+            if inputs:
+                painter.setPen(QColor("#4ADE80"))
+                painter.drawText(QRectF(12, bottom_y, 60, 20), Qt.AlignLeft | Qt.AlignVCenter, f"◂ {len(inputs)}")
+
+            # 使用次数 (橙色)
+            if usage_count > 0:
+                painter.setPen(QColor("#FBBF24"))
+                usage_text = self.tr("🕒 {}").format(usage_count)
+                painter.drawText(QRectF(0, bottom_y, width, 20), Qt.AlignCenter, usage_text)
+
+            # 输出 (红色/粉色)
+            if outputs:
+                painter.setPen(QColor("#F87171"))
+                painter.drawText(QRectF(width - 72, bottom_y, 60, 20), Qt.AlignRight | Qt.AlignVCenter,
+                                 f"{len(outputs)} ▸")
+
+            # === 收藏星标 ===
             if self.is_favorite(full_path):
                 painter.setPen(QColor("#FFD700"))
                 font.setPointSize(14)
                 painter.setFont(font)
-                painter.drawText(QRectF(width - 24, 10, 20, 20), Qt.AlignCenter, "★")
+                # 放在右上角
+                painter.drawText(QRectF(width - 30, 8, 20, 20), Qt.AlignCenter, "★")
+
             painter.end()
             return pixmap
         except Exception as e:
@@ -496,22 +493,32 @@ class DraggableTreeWidget(TreeWidget):
             return self.get_default_preview(full_path)
 
     def get_default_preview(self, name):
-        pixmap = QPixmap(120, 60)
+        """默认预览图也改为磨砂风格"""
+        width, height = 140, 60
+        pixmap = QPixmap(width, height)
         pixmap.fill(Qt.transparent)
+
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
+
+        # 背景
         path = QPainterPath()
-        path.addRoundedRect(0, 0, 119, 59, 6, 6)
-        painter.setPen(QPen(QColor("#4A90E2"), 2))
-        painter.setBrush(QColor("#2D2D2D"))
+        path.addRoundedRect(1, 1, width - 2, height - 2, 8, 8)
+        painter.setBrush(QColor(40, 40, 40, 180))  # 半透明背景
+        painter.setPen(QPen(QColor(255, 255, 255, 40), 1.5))  # 玻璃边框
         painter.drawPath(path)
-        painter.setPen(Qt.black)
-        font = QFont()
+
+        # 文字
+        painter.setPen(QColor(255, 255, 255, 230))
+        font = QFont("Microsoft YaHei")
         font.setPointSize(10)
         painter.setFont(font)
+
         display_name = name.split("/")[-1]
-        if len(display_name) > 12: display_name = display_name[:12] + "..."
-        painter.drawText(QRectF(10, 20, 100, 20), Qt.AlignLeft, display_name)
+        fm = QFontMetrics(font)
+        elided_name = fm.elidedText(display_name, Qt.ElideRight, width - 20)
+
+        painter.drawText(QRectF(0, 0, width, height), Qt.AlignCenter, elided_name)
         painter.end()
         return pixmap
 

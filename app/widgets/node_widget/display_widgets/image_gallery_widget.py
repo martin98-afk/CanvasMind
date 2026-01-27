@@ -6,6 +6,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QImage, QPainter
 
+from app.widgets.node_widget.base import CustomNodeBaseWidget
+
 
 class GalleryImageItem(QtWidgets.QWidget):
     """单个图像块"""
@@ -173,3 +175,26 @@ class ImageGalleryWidget(QtWidgets.QWidget):
     def clear(self):
         """供外部手动调用的清空方法"""
         self.set_value([])
+
+
+class ImageGalleryWidgetWrapper(CustomNodeBaseWidget):
+    """
+    包装器：将 ImageGalleryWidget 适配到节点编辑器系统中
+    """
+
+    def __init__(self, parent=None, name="", window=None):
+        super().__init__(parent)
+        self.set_name(name)
+        self.set_label_visible(False)
+
+        self._image_widget = ImageGalleryWidget(parent=window)
+
+        # 关键：手动设置包装层的 Policy
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.set_custom_widget(self._image_widget)
+
+    def get_value(self):
+        pass
+
+    def set_value(self, value):
+        self._image_widget.set_value(value)

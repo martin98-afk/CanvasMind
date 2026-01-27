@@ -203,9 +203,9 @@ class SpinBoxWidget(QtWidgets.QWidget):
 
 
 class NumberWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", default=0, type="float", window=None):
+    def __init__(self, parent=None, name="", label="", default=0, type="float", window=None, z_value=Z_VAL_NODE_WIDGET):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
         self.type = type

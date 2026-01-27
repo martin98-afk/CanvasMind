@@ -1387,6 +1387,12 @@ class BaseComponent(ABC):
             elif prop_type in [PropertyType.FLOAT, PropertyType.RANGE]:
                 return float(clean_val)
 
+            elif prop_type in [PropertyType.BOOL]:
+                return bool(clean_val)
+
+            elif prop_type in [PropertyType.DYNAMICFORM, PropertyType.DYNAMICTREE]:
+                return json.loads(clean_val)
+
         except (ValueError, TypeError):
             # 如果转换失败，保留原样。
             # 这样 Pydantic 校验时会抛出清晰的类型错误（例如：'abc' is not a valid float）

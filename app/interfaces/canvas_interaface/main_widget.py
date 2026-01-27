@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from qfluentwidgets import FluentIcon
+from qfluentwidgets import FluentIcon, InfoBar
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -573,25 +573,51 @@ class CanvasPage(QWidget):
     def canvas_drop_event(self, event):
         try:
             mime_data = event.mimeData()
-            if mime_data.hasText():
-                full_path = mime_data.text()
-                node_type = self.node_type_map.get(full_path)
-                if node_type:
-                    pos = event.pos()
-                    scene_pos = self.canvas_widget.mapToScene(pos)
-                    node = self.graph.create_node(node_type)
-                    self.nav_view.record_usage(full_path)
-                    node.set_pos(scene_pos.x(), scene_pos.y())
-                    QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-                    self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
-                    if hasattr(node, 'status'):
-                        node.status = NodeStatus.NODE_STATUS_UNRUN
+            if not mime_data.hasText():
+                event.ignore()
+                return
 
-                    if mime_data.hasFormat("application/x-global-variable"):
-                        data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                        drag_data = json.loads(data_bytes.decode('utf-8'))
-                        node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                        node.view.name = drag_data['var_name']
+            full_path = mime_data.text()
+            pos = event.pos()
+
+            # --- 核心优化：检测鼠标下是否有属性控件 ---
+            # 查找鼠标点击位置下的所有图形项
+            items = self.canvas_widget.items(pos)
+            target_widget = None
+            for item in items:
+                # 寻找我们的 CustomNodeBaseWidget 代理
+                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
+                if isinstance(item, CustomNodeBaseWidget):
+                    target_widget = item
+                    break
+
+            # --- 情况 A：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
+            if mime_data.hasFormat("application/x-global-variable") and target_widget:
+                data_bytes = bytes(mime_data.data("application/x-global-variable"))
+                drag_data = json.loads(data_bytes.decode('utf-8'))
+                # 调用我们之前写好的完美版 set_value
+                if not target_widget._is_using_global:
+                    target_widget.toggle_global_mode()
+                target_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
+                event.accept()
+                return
+            node_type = self.node_type_map.get(full_path)
+            if node_type:
+                pos = event.pos()
+                scene_pos = self.canvas_widget.mapToScene(pos)
+                node = self.graph.create_node(node_type)
+                self.nav_view.record_usage(full_path)
+                node.set_pos(scene_pos.x(), scene_pos.y())
+                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+                self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
+                if hasattr(node, 'status'):
+                    node.status = NodeStatus.NODE_STATUS_UNRUN
+
+                if mime_data.hasFormat("application/x-global-variable"):
+                    data_bytes = bytes(mime_data.data("application/x-global-variable"))
+                    drag_data = json.loads(data_bytes.decode('utf-8'))
+                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
+                    node.view.name = drag_data['var_name']
                 event.accept()
             else:
                 event.ignore()

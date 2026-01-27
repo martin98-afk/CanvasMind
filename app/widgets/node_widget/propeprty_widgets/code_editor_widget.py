@@ -11,9 +11,9 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 class CodeEditorWidgetWrapper(CustomNodeBaseWidget):
     valueChanged = QtCore.Signal(str)
 
-    def __init__(self, parent=None, name="", label="", default="", window=None, width=700, height=400):
+    def __init__(self, parent=None, name="", label="", default="", window=None, width=700, height=400, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(label)
         self.setFocusPolicy(Qt.WheelFocus)

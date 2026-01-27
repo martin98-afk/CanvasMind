@@ -286,7 +286,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
             self._on_changed()
 
     def _on_changed(self):
-        self.valueChanged.emit(self.get_data())
+        self.valueChanged.emit(self.get_value())
         self._on_size_changed()
 
     def _on_size_changed(self):
@@ -295,16 +295,16 @@ class JsonTreeWidget(QtWidgets.QWidget):
         self.updateGeometry()
         self.sizeHintChanged.emit()
 
-    def get_data(self):
+    def get_value(self):
         res = {}
         for n in self.root_nodes:
             if n.key_edit:
                 res[n.key_edit.text()] = n.get_value()
         return res
 
-    def set_data(self, data):
+    def set_value(self, data):
         if not isinstance(data, dict): return
-        if data == self.get_data(): return
+        if data == self.get_value(): return
 
         # 批量操作防止多次重绘
         self.blockSignals(True)
@@ -324,8 +324,9 @@ class JsonTreeWidget(QtWidgets.QWidget):
 
 
 class DynamicTreeWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", window=None):
+    def __init__(self, parent=None, name="", label="", window=None, z_value=1):
         super(DynamicTreeWidgetWrapper, self).__init__(parent, name, label)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.tree_widget = JsonTreeWidget(window)
         self.set_custom_widget(self.tree_widget)
 
@@ -352,9 +353,9 @@ class DynamicTreeWidgetWrapper(CustomNodeBaseWidget):
         view.update()
 
     def get_value(self):
-        return self.tree_widget.get_data()
+        return self.tree_widget.get_value()
 
     def set_value(self, value):
-        self.tree_widget.set_data(value)
+        self.tree_widget.set_value(value)
         # 加载数据后同步一次高度
         self._sync_node_geometry()

@@ -15,6 +15,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def __init__(self, label, parent=None):
         super(_NodeGroupBox, self).__init__(parent)
+        self._highlight = False
         self._label_text = label
 
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -124,6 +125,19 @@ class _NodeGroupBox(QtWidgets.QWidget):
             return item.widget() if item else None
         return None
 
+    def toggle_highlight(self):
+        if self._highlight:
+            self.reset()
+        else:
+            self.highlight()
+        self._highlight = not self._highlight
+
+    def highlight(self):
+        self.setStyleSheet(f"{self.styleSheet()} border: 2px dashed #00E5FF; border-radius: 5px;")
+
+    def reset(self):
+        self._apply_style()
+
 
 class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     """
@@ -138,7 +152,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         self._name = name
         self._label = label
         self._node = None
-
+        self.label_visible = True
         self._local_widget = None
         self._global_widget = None
         self._is_using_global = False
@@ -176,18 +190,22 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
             group.layout.replaceWidget(self._local_widget, self._global_widget)
             self._global_widget.show()
             group._set_dot_style(True)
+            if not self.label_visible:
+                self.widget().setLabelVisible(True)
         else:
             if self._global_widget:
                 self._global_widget.hide()
                 group.layout.replaceWidget(self._global_widget, self._local_widget)
             self._local_widget.show()
             group._set_dot_style(False)
+            if not self.label_visible:
+                self.widget().setLabelVisible(False)
 
         self.on_value_changed()
 
     def get_value(self):
         if self._is_using_global and self._global_widget:
-            return f"${self._global_widget.get_value()}$"
+            return self._global_widget.get_value()
 
         return self._get_local_value()
 
@@ -195,6 +213,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             if not self._is_using_global:
                 self.toggle_global_mode()
+            self._global_widget.set_value(value)
         else:
             if self._is_using_global:
                 self.toggle_global_mode()
@@ -240,4 +259,5 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
 
     def set_label_visible(self, visible=True):
         if self.widget() and hasattr(self.widget(), 'setLabelVisible'):
+            self.label_visible = visible
             self.widget().setLabelVisible(visible)

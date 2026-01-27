@@ -58,9 +58,9 @@ class TextWidget(QtWidgets.QWidget):
 
 
 class TextWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", type=None, default="", window=None):
+    def __init__(self, parent=None, name="", label="", type=None, default="", window=None, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
         widget = TextWidget(default_text=default, type=type, parent=window, get_port_func=self.get_port_func)

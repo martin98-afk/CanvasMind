@@ -217,23 +217,23 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def _on_field_changed(self):
         if not self._batch_mode:
-            self.valueChanged.emit(self.get_data())
+            self.valueChanged.emit(self.get_value())
 
     def _notify_update(self):
         self.updateGeometry()
         self.sizeHintChanged.emit()
-        self.valueChanged.emit(self.get_data())
+        self.valueChanged.emit(self.get_value())
 
-    def get_data(self):
+    def get_value(self):
         return [f.get_data() for f in self.field_widgets]
 
-    def set_data(self, data_list):
+    def set_value(self, data_list):
         """
         核心优化：脏检查逻辑。
         如果新传入的数据与当前数据一致，则不执行重建操作。
         """
         new_data = data_list or []
-        if self.get_data() == new_data:
+        if self.get_value() == new_data:
             return
 
         self._batch_mode = True
@@ -305,12 +305,12 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         return vars_path
 
     def get_value(self):
-        return self.get_custom_widget().get_data()
+        return self.get_custom_widget().get_value()
 
     def set_value(self, value):
         widget = self.get_custom_widget()
         if widget:
-            widget.set_data(value)
+            widget.set_value(value)
             # 使用异步队列，确保在加载阶段完成后执行几何刷新
             QtCore.QTimer.singleShot(0, self._sync_node_geometry)
 

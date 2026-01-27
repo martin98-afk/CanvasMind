@@ -139,9 +139,9 @@ class RangeWidget(QtWidgets.QWidget):
             raise ValueError(f"Invalid number format: '{text}'") from e
 
 class RangeWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", min_val=0, max_val=100, step=1, default=0, window=None):
+    def __init__(self, parent=None, name="", label="", min_val=0, max_val=100, step=1, default=0, window=None, z_value=1):
         super().__init__(parent)
-        self.setZValue(Z_VAL_NODE_WIDGET)
+        self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
         widget = RangeWidget(min_val, max_val, step, default, window)

@@ -218,14 +218,17 @@ def create_node_class(full_path, file_path, parent_window=None):
                 label = prop_def.get("label", prop_name)
                 if prop_type == PropertyType.BOOL:
                     self.add_custom_widget(
-                        CheckBoxWidgetWrapper(parent=self.view, name=prop_name, text=label, state=default, window=parent_window),
+                        CheckBoxWidgetWrapper(
+                            parent=self.view, name=prop_name, text=label, state=default, window=parent_window,
+                            z_value=custom_widgets_num - i
+                        ),
                         tab="properties"
                     )
                 elif prop_type in (PropertyType.INT, PropertyType.FLOAT):
                     self.add_custom_widget(
                         NumberWidgetWrapper(
-                            parent=self.view, name=prop_name, label=label, default=default,window=parent_window,
-                            type=prop_type.name.lower(),
+                            parent=self.view, name=prop_name, label=label, default=default, window=parent_window,
+                            type=prop_type.name.lower(), z_value=custom_widgets_num - i
                         ),
                         tab="properties"
                     )
@@ -246,7 +249,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                         name=prop_name,
                         label=label,
                         default=default,
-                        window=parent_window
+                        window=parent_window,
+                        z_value=custom_widgets_num - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.RANGE:
@@ -262,13 +266,15 @@ def create_node_class(full_path, file_path, parent_window=None):
                         max_val=max_val,
                         step=step_val,
                         default=default_val,
-                        window=parent_window
+                        window=parent_window,
+                        z_value=custom_widgets_num - i
                     )
                     self.add_custom_widget(widget, tab='Properties')
                 elif prop_type == PropertyType.DYNAMICTREE:
                     self.add_custom_widget(
                         DynamicTreeWidgetWrapper(
-                            parent=self.view, name=prop_name, label=label,window=parent_window
+                            parent=self.view, name=prop_name, label=label,window=parent_window,
+                            z_value=custom_widgets_num - i
                         ),
                         tab="properties"
                     )
@@ -318,7 +324,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                             name=prop_name,
                             label=label,
                             default=default,
-                            window=parent_window
+                            window=parent_window,
+                            z_value=custom_widgets_num - i
                         ), tab='Properties'
                     )
                 else:
@@ -329,7 +336,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                             label=label,
                             type=prop_type,
                             default=str(default),
-                            window=parent_window
+                            window=parent_window,
+                            z_value=custom_widgets_num - i
                         ), tab='Properties'
                     )
 
