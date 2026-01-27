@@ -167,7 +167,7 @@ def draw_square_port(painter, rect, info):
         border_color = base_color.darker(120)
         fill_color = QtGui.QColor(40, 40, 40)
 
-    painter.setPen(QtGui.QPen(border_color, 1.5))
+    painter.setPen(QtGui.QPen(border_color, 2.5))
     painter.setBrush(fill_color)
     # 使用稍微圆角的矩形看起来比纯直角更现代
     painter.drawRoundedRect(rect, 2, 2)

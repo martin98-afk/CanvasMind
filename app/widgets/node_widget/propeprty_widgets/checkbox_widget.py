@@ -54,7 +54,7 @@ class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
-        self.set_label(f"{name}")
+        self.set_label(f"{text}({name})")
         widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

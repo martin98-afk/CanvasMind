@@ -138,7 +138,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         self._name = name
         self._label = label
         self._node = None
-
+        self.label_visible = True
         self._local_widget = None
         self._global_widget = None
         self._is_using_global = False
@@ -176,12 +176,16 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
             group.layout.replaceWidget(self._local_widget, self._global_widget)
             self._global_widget.show()
             group._set_dot_style(True)
+            if not self.label_visible:
+                self.widget().setLabelVisible(True)
         else:
             if self._global_widget:
                 self._global_widget.hide()
                 group.layout.replaceWidget(self._global_widget, self._local_widget)
             self._local_widget.show()
             group._set_dot_style(False)
+            if not self.label_visible:
+                self.widget().setLabelVisible(False)
 
         self.on_value_changed()
 
@@ -240,4 +244,5 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
 
     def set_label_visible(self, visible=True):
         if self.widget() and hasattr(self.widget(), 'setLabelVisible'):
+            self.label_visible = visible
             self.widget().setLabelVisible(visible)
