@@ -169,7 +169,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
                 self._global_widget = self.VAR_WIDGET_CLASS(
                     main_window=self.get_custom_widget().main_window, type="全局变量"
                 )
-                self._global_widget.setZValue(Z_VAL_NODE_WIDGET + 10)
+                # self._global_widget.setZValue(Z_VAL_NODE_WIDGET + 10)
                 self._global_widget.valueChanged.connect(self.on_value_changed)
 
             self._local_widget.hide()

@@ -18,6 +18,7 @@ from NodeGraphQt.widgets.viewer import NodeViewer
 from Qt import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
+from app.components.base import GlobalVariableContext
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
@@ -764,6 +765,8 @@ class CustomNodeGraph(NodeGraph):
                         node._view.toggle_collapse()
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
+                            if GlobalVariableContext.is_variable_name(val):
+                                node.view.widgets[prop].toggle_global_mode()
                             node.view.widgets[prop].set_value(val)
                     elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)

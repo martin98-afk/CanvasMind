@@ -213,27 +213,9 @@ def create_node_class(full_path, file_path, parent_window=None):
             # 生成其他组件属性控件
             custom_widgets_num = len(ComponentScanner().get_component_by_uuid(self.uuid).get_properties()) + 10
             for i, (prop_name, prop_def) in enumerate(ComponentScanner().get_component_by_uuid(self.uuid).get_properties().items()):
-
-                prop_value = self.get_property(prop_name)
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
-
-                # 额外增加一个强制转换机制，如果prop_name在节点属性中的值是变量类型的，则全部使用变量下拉
-                if GlobalVariableContext.is_variable_name(prop_value):
-                    self.add_custom_widget(
-                        VarComboBoxWidgetWrapper(
-                            parent=self.view,
-                            name=prop_name,
-                            label=label,
-                            var_type="全局变量",
-                            main_window=parent_window,  # 传入 main_window 引用
-                            z_value=custom_widgets_num - i
-                        ),
-                        tab="properties"
-                    )
-                    continue
-
                 if prop_type == PropertyType.BOOL:
                     self.add_custom_widget(
                         CheckBoxWidgetWrapper(parent=self.view, name=prop_name, text=label, state=default, window=parent_window),
