@@ -40,5 +40,5 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         return {
-            "output1": self.global_variable.get(params.var_name)
+            "output1": params.var_name
         }

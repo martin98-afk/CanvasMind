@@ -449,7 +449,6 @@ class ComponentStorageManager:
             "api_version": "2.0",
             "description": info.get("description", existing_data.get("description", "")),
             "category": info.get("category", existing_data.get("category", "Custom")),
-            "main": "main.py",
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "author": existing_data.get("author", current_user)
         }

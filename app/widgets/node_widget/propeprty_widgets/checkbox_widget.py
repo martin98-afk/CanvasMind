@@ -14,7 +14,8 @@ class CheckBoxWidget(QtWidgets.QWidget):
     fixed_height = True
 
     def __init__(self, text="", state=False, parent=None):
-        super().__init__()
+        super().__init__(parent)
+        self.main_window = parent
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
         label = BodyLabel(text)
         label.setFont(QFont(Settings.get_instance().canvas_font_type.value))
@@ -49,12 +50,12 @@ class CheckBoxWidget(QtWidgets.QWidget):
 
 
 class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", text="", state=False):
+    def __init__(self, parent=None, name="", label="", text="", state=False, window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label(f"{name}")
-        widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=parent)
+        widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
         self.set_label_visible(False)

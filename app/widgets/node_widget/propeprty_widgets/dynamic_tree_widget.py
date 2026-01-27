@@ -246,6 +246,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super(JsonTreeWidget, self).__init__(parent)
+        self.main_window = parent
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(2, 2, 2, 2)
         self.main_layout.setSpacing(4)

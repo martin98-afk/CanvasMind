@@ -16,7 +16,7 @@ class FileSelectWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None, default_ext=""):
         super().__init__(parent)
-        self.parent = parent
+        self.main_window = parent
         self._path = ""
 
         # 判断是否为文件夹模式 (约定传入 "folder" 为选择文件夹)
@@ -71,7 +71,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         if self._is_folder_mode:
             # --- 文件夹选择模式 ---
             dir_path = QtWidgets.QFileDialog.getExistingDirectory(
-                self.parent,
+                self.main_window,
                 "Select Directory",
                 start_dir,
                 QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
@@ -82,7 +82,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         else:
             # --- 文件选择模式 ---
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self.parent,
+                self.main_window,
                 "Select File",
                 start_dir,
                 self._file_filter

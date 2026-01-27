@@ -348,6 +348,14 @@ class GlobalVariableContext(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    @classmethod
+    def is_variable_name(cls, name: str) -> bool:
+        """判断 name 是否为变量名"""
+        if isinstance(name, str):
+            return name.startswith("custom.") or name.startswith("node_vars.") or name.startswith("env.")
+        else:
+            return False
+
     def set(self, key: str, value: Any) -> None:
         """设置自定义变量"""
         if key not in self.custom:
@@ -1220,10 +1228,16 @@ class BaseComponent(ABC):
                 default_val = _parse_default_value(prop_def.default, bool)
 
             elif prop_def.type == PropertyType.CHOICE:
-                choices = prop_def.choices
                 # 动态创建 Literal 类型
-                field_type = Literal[tuple(choices)]  # type: ignore
-                default_val = prop_def.default if prop_def.default in choices else choices[0]
+                field_type = str
+                choices = prop_def.choices
+                # 默认值逻辑：优先用 default，没定义则用第一个选项，再没有则为空字符串
+                if prop_def.default is not None and prop_def.default != "":
+                    default_val = prop_def.default
+                elif choices:
+                    default_val = choices[0]
+                else:
+                    default_val = ""
             elif prop_def.type == PropertyType.RANGE:
                 field_type = float if isinstance(prop_def.step, float) else int
                 default_val = _parse_default_value(prop_def.default, field_type)
@@ -1327,6 +1341,31 @@ class BaseComponent(ABC):
         """快捷方式：发送数据预览"""
         self.emit_message("data.preview", {"type": data_type, "data": payload})
 
+    # ---------------- 变量解析逻辑 ----------------
+    def _resolve_value(self, value: Any) -> Any:
+        """解析单个值：如果是变量引用，则返回全局变量中的实际值"""
+        if isinstance(value, str):
+            # 定义需要拦截的前缀
+            if GlobalVariableContext.is_variable_name(value):
+                try:
+                    # 直接调用 global_variable 的 __getitem__ 解析路径
+                    resolved = self.global_variable.get(value)
+                    # self.logger.debug(f"解析变量: {value} -> {resolved}")
+                    return resolved
+                except KeyError:
+                    # 如果全局变量里没找到，保留原样，交给后续校验（可能会报错）
+                    return value
+        return value
+
+    def _resolve_recursive(self, data: Any) -> Any:
+        """递归解析字典或列表中的所有变量引用"""
+        if isinstance(data, dict):
+            return {k: self._resolve_recursive(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._resolve_recursive(v) for v in data]
+        else:
+            return self._resolve_value(data)
+
     # ---------------- 执行包装器 ----------------
     def execute(
             self,
@@ -1344,6 +1383,9 @@ class BaseComponent(ABC):
         try:
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
+            # 2. 【核心优化】：在校验前解析 params 和 inputs 中的变量引用
+            # 这样如果 params['threshold'] 是 "custom.val"，会被替换为实际的数字/对象
+            params = self._resolve_recursive(params)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

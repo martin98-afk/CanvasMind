@@ -158,7 +158,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def __init__(self, schema, parent=None, label=None, get_port_func=lambda: []):
         super(DynamicFormWidget, self).__init__()
-        self.parent = parent
+        self.main_window = parent
         self.schema = schema
         self.label = label or "项"
         self.get_port_func = get_port_func
@@ -184,7 +184,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def add_field(self, data=None):
         field = FormFieldWidget(
-            self.schema, home=self.parent, parent=self,
+            self.schema, home=self.main_window, parent=self,
             get_port_func=self.get_port_func, index=len(self.field_widgets) + 1
         )
         if data:

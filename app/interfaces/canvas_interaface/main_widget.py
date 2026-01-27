@@ -591,6 +591,7 @@ class CanvasPage(QWidget):
                         data_bytes = bytes(mime_data.data("application/x-global-variable"))
                         drag_data = json.loads(data_bytes.decode('utf-8'))
                         node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
+                        node.view.name = drag_data['var_name']
                 event.accept()
             else:
                 event.ignore()

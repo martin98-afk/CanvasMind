@@ -177,6 +177,7 @@ class SpinBoxWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None, default=0, type="float"):
         super().__init__(parent)
+        self.main_window = parent
         is_int = (type == "int")
         # 初始步长设置
         step = 1 if is_int else 0.1

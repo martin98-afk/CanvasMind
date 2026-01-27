@@ -174,7 +174,8 @@ def create_dynamic_code_node(parent_window=None):
                 name="glue_code_template",
                 label="胶水代码模板",
                 items=template_items,
-                z_value=2
+                z_value=2,
+                window=parent_window
             )
             self.add_custom_widget(self.glue_templates_widget, tab='Properties')
 

@@ -46,7 +46,7 @@ class LongTextWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None, default_text="", get_port_func=lambda: []):
         super().__init__(parent)
-        self.parent = parent
+        self.main_window = parent
         self._text = default_text
         self.get_port_func = get_port_func
         self.summary_label = LineEdit()
@@ -67,7 +67,7 @@ class LongTextWidget(QtWidgets.QWidget):
         return (text[:30] + "...") if len(text) > 30 else text
 
     def _open_editor(self):
-        dialog = LongTextEditorDialog(self._text, self.parent, self.parent, get_port_func=self.get_port_func)
+        dialog = LongTextEditorDialog(self._text, self.main_window, self.main_window, get_port_func=self.get_port_func)
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             new_text = dialog.text_edit.toPlainText()
             if new_text != self._text:

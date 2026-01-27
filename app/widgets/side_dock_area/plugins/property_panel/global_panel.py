@@ -95,7 +95,6 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
-        self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
         # 重新获取 global_vars 对象，以防信号处理延迟导致的数据不一致
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
@@ -130,10 +129,15 @@ class GlobalPanelWidget:
                         self.custom_separator.setVisible(has_params and has_kvs)
                     else:
                         logger.warning(f"Variable {var_name} not found in global_vars.custom during update.")
+                else:
+                    action = "add"
+                    self._refresh_custom_vars_page()
             else:
                 self._refresh_custom_vars_page()
         elif var_type == "env":
             self._refresh_env_page()
+
+        self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
 
     def _on_global_tab_changed(self, key):
         if key == 'env':
