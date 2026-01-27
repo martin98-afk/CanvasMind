@@ -46,6 +46,7 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
+        self._last_drag_target = None  # 记录当前正在高亮的代理控件
         # 国际化工作流名称
         self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
@@ -101,6 +102,8 @@ class CanvasPage(QWidget):
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
+        self.canvas_widget.dragMoveEvent = self.canvas_drag_move_event  # 确保这行存在
+        self.canvas_widget.dragLeaveEvent = self.canvas_drag_leave_event  # 确保这行存在
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
         self._connect_signals()
@@ -570,12 +573,69 @@ class CanvasPage(QWidget):
         else:
             event.ignore()
 
+    def canvas_drag_move_event(self, event):
+        # 只有在拖拽全局变量时才触发高亮逻辑
+        if event.mimeData().hasFormat("application/x-global-variable"):
+            # 1. 查找鼠标下的项
+            pos = event.pos()
+            items = self.canvas_widget.items(pos)
+
+            target_widget = None
+            from app.widgets.node_widget.base import CustomNodeBaseWidget
+            for item in items:
+                if isinstance(item, CustomNodeBaseWidget):
+                    target_widget = item
+                    break
+
+            # 2. 状态切换逻辑
+            if target_widget != self._last_drag_target:
+                # 移出旧控件，重置样式
+                if self._last_drag_target:
+                    group_box = self._last_drag_target.widget()
+                    if hasattr(group_box, 'reset'):
+                        group_box.reset()
+
+                # 进入新控件，高亮样式
+                if target_widget:
+                    group_box = target_widget.widget()
+                    if hasattr(group_box, 'highlight'):
+                        group_box.highlight()
+
+                self._last_drag_target = target_widget
+
+            event.accept()
+        else:
+            # 处理普通的节点创建拖拽
+            is_acceptable = any([
+                event.mimeData().hasFormat(i) for i in
+                ['nodegraphqt/nodes', 'text/plain']
+            ])
+            if is_acceptable:
+                event.accept()
+            else:
+                event.ignore()
+
+    def canvas_drag_leave_event(self, event):
+        """当拖拽彻底离开画布区域时，重置所有高亮"""
+        if self._last_drag_target:
+            group_box = self._last_drag_target.widget()
+            if hasattr(group_box, 'reset'):
+                group_box.reset()
+            self._last_drag_target = None
+        event.accept()
+
     def canvas_drop_event(self, event):
         try:
             mime_data = event.mimeData()
             if not mime_data.hasText():
                 event.ignore()
                 return
+
+            if self._last_drag_target:
+                group_box = self._last_drag_target.widget()
+                if hasattr(group_box, 'reset'):
+                    group_box.reset()
+                self._last_drag_target = None
 
             full_path = mime_data.text()
             pos = event.pos()
