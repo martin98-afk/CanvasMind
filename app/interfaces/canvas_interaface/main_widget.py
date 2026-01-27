@@ -596,7 +596,8 @@ class CanvasPage(QWidget):
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
                 drag_data = json.loads(data_bytes.decode('utf-8'))
                 # 调用我们之前写好的完美版 set_value
-                target_widget.toggle_global_mode()
+                if not target_widget._is_using_global:
+                    target_widget.toggle_global_mode()
                 target_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
                 event.accept()
                 return
