@@ -15,6 +15,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def __init__(self, label, parent=None):
         super(_NodeGroupBox, self).__init__(parent)
+        self._highlight = False
         self._label_text = label
 
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -124,6 +125,19 @@ class _NodeGroupBox(QtWidgets.QWidget):
             return item.widget() if item else None
         return None
 
+    def toggle_highlight(self):
+        if self._highlight:
+            self.reset()
+        else:
+            self.highlight()
+        self._highlight = not self._highlight
+
+    def highlight(self):
+        self.setStyleSheet(f"{self.styleSheet()} border: 2px dashed #00E5FF; border-radius: 5px;")
+
+    def reset(self):
+        self._apply_style()
+
 
 class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     """
@@ -191,7 +205,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
 
     def get_value(self):
         if self._is_using_global and self._global_widget:
-            return f"${self._global_widget.get_value()}$"
+            return self._global_widget.get_value()
 
         return self._get_local_value()
 
@@ -199,6 +213,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             if not self._is_using_global:
                 self.toggle_global_mode()
+            self._global_widget.set_value(value)
         else:
             if self._is_using_global:
                 self.toggle_global_mode()

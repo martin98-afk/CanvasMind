@@ -507,7 +507,9 @@ class GlobalPanelWidget:
         menu.addActions([
             Action(FluentIcon.COPY, "复制表达式", triggered=lambda: self.copy_as_expression("node_vars", name)),
             Action(FluentIcon.DELETE, "清空数据",
-                   triggered=lambda: self._handle_global_variable_change("node_vars", name, "clear"))
+                   triggered=lambda: self._handle_global_variable_change("node_vars", name, "clear")),
+            Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
+                   triggered=lambda: self.track_variable_usages("node_vars", name))
         ])
         menu.exec_(widget.mapToGlobal(pos))
 
@@ -590,6 +592,11 @@ class GlobalPanelWidget:
                     Action(
                         FluentIcon.EDIT, "编辑变量", parent=self.parent_panel,
                         triggered=lambda: self.edit_custom_variable(name, current_val)
+                    ),
+                    # 追踪变量
+                    Action(
+                        get_icon("追踪"), "追踪变量", parent=self.parent_panel,
+                        triggered=lambda: self.track_variable_usages("custom", name)
                     )
                 ]
             )
@@ -675,7 +682,10 @@ class GlobalPanelWidget:
                     Action(
                         FluentIcon.EDIT, "编辑参数组", parent=self.parent_panel,
                         triggered=lambda: self.edit_parameter_group(name, current_val)
-                    )
+                    ),
+                    # 追踪变量
+                    Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
+                           triggered=lambda: self.track_variable_usages("custom", key))
                 ]
             )
             menu.exec_(card.mapToGlobal(pos))
@@ -725,6 +735,11 @@ class GlobalPanelWidget:
                                   triggered=lambda: self.copy_as_expression("env", key)))
             menu.addAction(Action(FluentIcon.EDIT, "编辑变量", parent=self.parent_panel,
                                   triggered=lambda: self.edit_env_variable(key, current_val)))
+            # 追踪变量
+            menu.addAction(
+                Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
+                       triggered=lambda: self.track_variable_usages("env", key))
+            )
             menu.exec_(card.mapToGlobal(pos))
 
         card.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -1058,3 +1073,35 @@ class GlobalPanelWidget:
         safe_port_name = re.sub(r'\s+', '_', port_name)
         safe_port_name = re.sub(r'\.+', '_', safe_port_name)
         return main_window.global_variables.is_output_in_node_vars(safe_node_name, safe_port_name)
+
+    def track_variable_usages(self, prefix: str, var_name: str):
+        """追踪所有使用该变量的节点"""
+        target_expr = f"{prefix}.{var_name}"
+        nodes_found = []
+
+        # 获取画布上所有节点
+        all_nodes = self.main_window.graph.all_nodes()
+
+        for node in all_nodes:
+            # 获取节点上的所有自定义控件
+            for widget_name, widget in node.widgets().items():
+                # 检查是否是我们的 CustomNodeBaseWidget
+                if hasattr(widget, "get_value"):
+                    if widget.get_value() == target_expr:
+                        widget.widget().toggle_highlight()
+                        nodes_found.append(node)
+                        break  # 一个节点找到一个匹配即可
+
+        if not nodes_found:
+            InfoBar.info("引用追踪", f"未找到使用变量 {target_expr} 的节点", parent=self.main_window)
+            return
+
+        # 交互优化：如果有多个引用，可以弹出一个列表，或者直接全部选中并缩放
+        self.main_window.canvas_widget.zoom_to_nodes([n._view for n in nodes_found])
+
+        # 视觉反馈：让这些节点“闪烁”一下
+        for node in nodes_found:
+            # 假设你的 StatusNode 有 highlight 方法，或者直接用选择状态
+            node.set_selected(True)
+
+        InfoBar.success("引用追踪", f"找到 {len(nodes_found)} 处引用并已在画布中选中", parent=self.main_window)
