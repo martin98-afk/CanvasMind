@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
 
@@ -239,3 +238,6 @@ class VarComboBoxWidgetWrapper(CustomNodeBaseWidget):
 
     def set_value(self, value):
         self.get_custom_widget().set_value(value)
+
+
+CustomNodeBaseWidget.VAR_WIDGET_CLASS = VarComboBoxWidget

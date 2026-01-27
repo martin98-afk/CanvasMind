@@ -416,13 +416,16 @@ class PropertyPanel(QWidget):
         return comp_cls.description if comp_cls else ""
 
     def _on_global_variables_changed(self, var_type, var_name, action):
-        if self.global_panel_widget: self.global_panel_widget.on_global_variables_changed(var_type, var_name, action)
+        if self.global_panel_widget:
+            self.global_panel_widget.on_global_variables_changed(var_type, var_name, action)
 
     def _refresh_node_vars_page(self):
-        if self.global_panel_widget: self.global_panel_widget._refresh_node_vars_page()
+        if self.global_panel_widget:
+            self.global_panel_widget._refresh_node_vars_page()
 
     def _copy_as_expression(self, prefix, var_name):
-        if self.global_panel_widget: self.global_panel_widget.copy_as_expression(prefix, var_name)
+        if self.global_panel_widget:
+            self.global_panel_widget.copy_as_expression(prefix, var_name)
 
     def _add_output_to_global_variable(self, node, port_name):
         self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)

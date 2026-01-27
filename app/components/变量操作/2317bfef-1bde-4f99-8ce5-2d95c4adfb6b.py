@@ -26,7 +26,7 @@ class Component(BaseComponent):
         PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
     ]
     properties = {
-        "prop1": PropertyDefinition(
+        "var_name": PropertyDefinition(
             type=PropertyType.VARIABLE,
             default="全局变量",
             label="属性1",
@@ -40,5 +40,5 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         return {
-            "output1": self.global_variable.get(params.prop1)
+            "output1": params.var_name
         }

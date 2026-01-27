@@ -12,9 +12,9 @@ class TextWidget(QtWidgets.QWidget):
     fixed_height = False
     def __init__(self, parent=None, type=None, default_text="", get_port_func=lambda: []):
         super().__init__(parent)
-        self.parent = parent
+        self.main_window = parent
         self._text = default_text
-        global_vars = getattr(self.parent, 'global_variables', None)
+        global_vars = getattr(self.main_window, 'global_variables', None)
         if type.value == "多行文本":
             self.summary_label = VariableCompletionTextEdit(
                 get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),

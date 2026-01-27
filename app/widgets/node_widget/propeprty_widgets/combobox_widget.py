@@ -12,6 +12,7 @@ class ComboBoxWidget(QtWidgets.QWidget):
 
     def __init__(self, items=[], parent=None):
         super().__init__()
+        self.main_window = parent
         self.items = list(items) if items else []
         self._value = self.items[0] if self.items else ""
         self.combobox = CustomComboBox(self)
@@ -41,12 +42,12 @@ class ComboBoxWidget(QtWidgets.QWidget):
 
 
 class ComboBoxWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", items=[], z_value=1):
+    def __init__(self, parent=None, name="", label="", items=[], z_value=1, window=None):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
-        widget = ComboBoxWidget(items=items, parent=parent)
+        widget = ComboBoxWidget(items=items, parent=window)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 

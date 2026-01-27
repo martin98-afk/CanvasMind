@@ -1,40 +1,58 @@
-from NodeGraphQt.constants import ViewerEnum, Z_VAL_NODE_WIDGET
+from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from NodeGraphQt.errors import NodeWidgetError
-from qtpy import QtWidgets, QtCore, QtGui
+from loguru import logger
+from qtpy import QtWidgets, QtCore
 
+from app.components.base import GlobalVariableContext
 from app.utils.config import Settings
 
 
 class _NodeGroupBox(QtWidgets.QWidget):
     """
-    自定义控件容器
-    1. 垂直布局：上标题，下控件。
-    2. 智能对齐：固定大小控件居中，其他控件填满。
-    3. 支持隐藏标题。
-    4. 视觉隔离间距。
+    自定义控件容器 - 支持标题栏小圆点切换
     """
+    toggle_clicked = QtCore.Signal()
 
     def __init__(self, label, parent=None):
         super(_NodeGroupBox, self).__init__(parent)
         self._label_text = label
 
-        # 主布局：垂直
         self.layout = QtWidgets.QVBoxLayout(self)
-        # 底部保留 8px 间距，实现视觉隔离
         self.layout.setContentsMargins(0, 0, 0, 8)
         self.layout.setSpacing(1)
 
-        # 标题 Label
-        self._label_item = QtWidgets.QLabel(label)
-        sp = self._label_item.sizePolicy()
-        sp.setRetainSizeWhenHidden(False)
-        self._label_item.setSizePolicy(sp)
-        self._label_item.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.layout.addWidget(self._label_item)
+        self.header_layout = QtWidgets.QHBoxLayout()
+        self.header_layout.setContentsMargins(0, 0, 2, 0)
 
-        # 应用初始字体和样式
+        self._label_item = QtWidgets.QLabel(label)
+        self._label_item.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+
+        self.dot_btn = QtWidgets.QToolButton()
+        self.dot_btn.setFixedSize(10, 10)
+        self.dot_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.dot_btn.setToolTip("切换 本地输入 / 全局变量")
+        self.dot_btn.clicked.connect(self.toggle_clicked.emit)
+
+        self.header_layout.addWidget(self._label_item)
+        self.header_layout.addStretch()
+        self.header_layout.addWidget(self.dot_btn)
+
+        self.layout.addLayout(self.header_layout)
+
+        self._set_dot_style(False)
         self._update_font()
         self._apply_style()
+
+    def _set_dot_style(self, is_global):
+        color = "#00E5FF" if is_global else "#555555"
+        self.dot_btn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: {color};
+                border-radius: 5px;
+                border: 1px solid rgba(255,255,255,30);
+            }}
+            QToolButton:hover {{ background-color: white; }}
+        """)
 
     def _get_font_family(self):
         try:
@@ -57,18 +75,9 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def _apply_style(self):
         label_color = "rgba(170, 170, 170, 255)"
-
         style = f"""
-            QWidget {{
-                font-family: "{self._get_font_family()}";
-                background-color: transparent;
-            }}
-            QLabel {{
-                color: {label_color};
-                border: none;
-                padding-left: 2px;
-                background-color: transparent;
-            }}
+            QWidget {{ font-family: "{self._get_font_family()}"; background-color: transparent; }}
+            QLabel {{ color: {label_color}; border: none; padding-left: 2px; background-color: transparent; }}
         """
         self.setStyleSheet(style)
 
@@ -80,68 +89,48 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def setLabelVisible(self, visible):
         self._label_item.setVisible(visible)
-        # 调整边距：无论是否有标题，都保持底部间距以维持隔离感
         self.layout.setContentsMargins(0, 0, 0, 0)
 
     def _apply_unified_font(self, widget):
-        """
-        统一设置字体逻辑：获取当前配置并递归应用
-        """
         font_name = self._get_font_family()
-
-        # 1. 基础设置逻辑 (你要求的格式)
         font = widget.font()
         font.setFamily(font_name)
-        # 如果需要统一大小，可以在这里设置，例如 font.setPointSize(10)
         widget.setFont(font)
-
-        # 2. 递归处理：确保复合控件（如带子控件的容器）内部也统一
         for child in widget.findChildren(QtWidgets.QWidget):
             child_font = child.font()
             child_font.setFamily(font_name)
             child.setFont(child_font)
 
     def add_node_widget(self, widget):
-        """
-        核心修改：添加控件时智能判断对齐方式
-        """
-        # 1. 统一字体
-        font_name = self._get_font_family()
-        font = widget.font()
-        font.setFamily(font_name)
-        font.setPointSize(10)
-        widget.setFont(font)
         self._apply_unified_font(widget)
-        # 智能布局逻辑
         sp = widget.sizePolicy()
         h_policy = sp.horizontalPolicy()
         if hasattr(widget, "fixed_height") and widget.fixed_height:
             widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             stretch = 0
         else:
             widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             stretch = 1
-        center_policies = [QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Maximum]
-        is_explicit_fixed = (widget.minimumWidth() == widget.maximumWidth() and 0 < widget.minimumWidth() < 16777215)
 
-        if h_policy in center_policies or is_explicit_fixed:
+        is_explicit_fixed = (widget.minimumWidth() == widget.maximumWidth() and 0 < widget.minimumWidth() < 16777215)
+        if h_policy in [QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Maximum] or is_explicit_fixed:
             self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
         else:
-            self.layout.addWidget(widget, stretch)  # 这里的 1 代表拉伸权重
+            self.layout.addWidget(widget, stretch)
 
     def get_node_widget(self):
         if self.layout.count() > 1:
-            return self.layout.itemAt(1).widget()
+            item = self.layout.itemAt(1)
+            return item.widget() if item else None
         return None
 
 
 class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     """
-    包装类保持不变
+    支持状态显示与全局变量切换的基类控件
     """
     value_changed = QtCore.Signal(str, object)
+    VAR_WIDGET_CLASS = None
 
     def __init__(self, parent=None, name=None, label=''):
         super(CustomNodeBaseWidget, self).__init__(parent)
@@ -150,24 +139,84 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         self._label = label
         self._node = None
 
-    def setToolTip(self, tooltip):
-        tooltip = tooltip.replace('\n', '<br/>')
-        tooltip = '<b>{}</b><br/>{}'.format(self.get_name(), tooltip)
-        super(CustomNodeBaseWidget, self).setToolTip(tooltip)
-
-    def on_value_changed(self, *args, **kwargs):
-        self.value_changed.emit(self.get_name(), self.get_value())
-
-    @property
-    def type_(self):
-        return str(self.__class__.__name__)
+        self._local_widget = None
+        self._global_widget = None
+        self._is_using_global = False
 
     @property
     def node(self):
         return self._node
 
-    def get_icon(self, name):
-        return self.style().standardIcon(QtWidgets.QStyle.StandardPixmap(name))
+    @node.setter
+    def node(self, node):
+        self._node = node
+
+    def toggle_global_mode(self):
+        group = self.widget()
+        if not group: return
+        # 检查是否是参数类控件，展示类控件不需要替换
+        if not hasattr(self.get_custom_widget(), "main_window"): return
+        # 检查槽位是否已经注入了类
+        if self.VAR_WIDGET_CLASS is None:
+            logger.error("VarComboBoxWidget class not registered in CustomNodeBaseWidget")
+            return
+
+        self._is_using_global = not self._is_using_global
+
+        if self._is_using_global:
+            if not self._global_widget:
+                # 使用注入的类创建实例
+                self._global_widget = self.VAR_WIDGET_CLASS(
+                    main_window=self.get_custom_widget().main_window, type="全局变量"
+                )
+                # self._global_widget.setZValue(Z_VAL_NODE_WIDGET + 10)
+                self._global_widget.valueChanged.connect(self.on_value_changed)
+
+            self._local_widget.hide()
+            group.layout.replaceWidget(self._local_widget, self._global_widget)
+            self._global_widget.show()
+            group._set_dot_style(True)
+        else:
+            if self._global_widget:
+                self._global_widget.hide()
+                group.layout.replaceWidget(self._global_widget, self._local_widget)
+            self._local_widget.show()
+            group._set_dot_style(False)
+
+        self.on_value_changed()
+
+    def get_value(self):
+        if self._is_using_global and self._global_widget:
+            return f"${self._global_widget.get_value()}$"
+
+        return self._get_local_value()
+
+    def set_value(self, value):
+        if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
+            if not self._is_using_global:
+                self.toggle_global_mode()
+        else:
+            if self._is_using_global:
+                self.toggle_global_mode()
+            self._set_local_value(value)
+
+    def _get_local_value(self):
+        raise NotImplementedError
+
+    def _set_local_value(self, value):
+        raise NotImplementedError
+
+    def set_custom_widget(self, widget):
+        if self.widget():
+            raise NodeWidgetError('Custom node widget already set.')
+        self._local_widget = widget
+        group = _NodeGroupBox(self._label)
+        group.toggle_clicked.connect(self.toggle_global_mode)
+        group.add_node_widget(widget)
+        self.setWidget(group)
+
+    def on_value_changed(self, *args, **kwargs):
+        self.value_changed.emit(self.get_name(), self.get_value())
 
     def get_name(self):
         return self._name
@@ -178,28 +227,11 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
             raise NodeWidgetError('Can\'t set property name widget already added to a Node')
         self._name = name
 
-    def get_value(self):
-        raise NotImplementedError
-
-    def set_value(self, text):
-        raise NotImplementedError
-
     def get_custom_widget(self):
         widget = self.widget()
         if hasattr(widget, 'get_node_widget'):
             return widget.get_node_widget()
         return widget
-
-    def set_custom_widget(self, widget):
-        if self.widget():
-            raise NodeWidgetError('Custom node widget already set.')
-
-        group = _NodeGroupBox(self._label)
-        group.add_node_widget(widget)
-        self.setWidget(group)
-
-    def get_label(self):
-        return self._label
 
     def set_label(self, label=''):
         if self.widget() and hasattr(self.widget(), 'setTitle'):

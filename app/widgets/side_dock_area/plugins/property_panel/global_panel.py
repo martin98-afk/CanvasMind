@@ -11,9 +11,9 @@ from qfluentwidgets import CardWidget, SegmentedWidget, \
     TransparentDropDownToolButton, BodyLabel, StrongBodyLabel, CaptionLabel, ToolButton
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
-from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
+from app.widgets.side_dock_area.plugins.property_panel.draggable_variable_card import DraggableVariableCard
 from app.widgets.side_dock_area.plugins.property_panel.parameter_group import ParameterGroupDialog
 from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
 
@@ -95,7 +95,6 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
-        self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
         # 重新获取 global_vars 对象，以防信号处理延迟导致的数据不一致
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
@@ -130,10 +129,15 @@ class GlobalPanelWidget:
                         self.custom_separator.setVisible(has_params and has_kvs)
                     else:
                         logger.warning(f"Variable {var_name} not found in global_vars.custom during update.")
+                else:
+                    action = "add"
+                    self._refresh_custom_vars_page()
             else:
                 self._refresh_custom_vars_page()
         elif var_type == "env":
             self._refresh_env_page()
+
+        self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
 
     def _on_global_tab_changed(self, key):
         if key == 'env':
@@ -410,17 +414,23 @@ class GlobalPanelWidget:
 
     def _create_compact_port_row(self, full_var_name: str, node_var_obj):
         """更紧凑的端口行，而不是嵌套卡片"""
-        row_widget = QWidget()
+        row_widget = DraggableVariableCard(
+            self.parent_panel,
+            "node_vars",
+            full_var_name,
+            node_var_obj.value
+        )
         row_widget.setObjectName("portRow")
         row_widget.setStyleSheet("""
-            #portRow { 
-                background: rgba(0, 0, 0, 0.05); 
-                border-radius: 4px; 
+            #portRow {
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 4px;
             }
-            #portRow:hover { 
-                background: rgba(0, 0, 0, 0.08); 
+            #portRow:hover {
+                background: rgba(0, 0, 0, 0.08);
+                border-left: 3px solid #2ecc71;  /* 拖拽提示 */
             }
-        """)
+            """)
 
         layout = QVBoxLayout(row_widget)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -540,7 +550,12 @@ class GlobalPanelWidget:
 
     def _create_dict_row(self, name: str, value):
         """创建普通的KV变量卡片"""
-        card = CardWidget(self.parent_panel)
+        card = DraggableVariableCard(self.parent_panel, "custom", name, value)
+        card.setObjectName("kvCard")
+        card.setStyleSheet("""#kvCard:hover {
+            background: rgba(0, 0, 0, 0.08);
+            border-left: 3px solid #3498db;  /* 拖拽提示 */
+        }""")
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -586,7 +601,12 @@ class GlobalPanelWidget:
 
     def _create_parameter_group_row(self, name: str, value):
         """创建参数组卡片"""
-        card = CardWidget(self.parent_panel)
+        card = DraggableVariableCard(self.parent_panel, "custom", name, value)
+        card.setObjectName("kvGroupCard")
+        card.setStyleSheet("""#kvGroupCard:hover {
+                    background: rgba(0, 0, 0, 0.08);
+                    border-left: 3px solid #3498db;  /* 拖拽提示 */
+                }""")
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
@@ -671,7 +691,12 @@ class GlobalPanelWidget:
         toggle_btn.setText("收起" if not is_visible else "展开")
 
     def _create_env_var_row(self, key: str, value):
-        card = CardWidget(self.parent_panel)
+        card = DraggableVariableCard(self.parent_panel, "env", key, value)
+        card.setObjectName("envCard")
+        card.setStyleSheet("""#envCard:hover {
+                    background: rgba(0, 0, 0, 0.08);
+                    border-left: 3px solid #9b59b6;  /* 拖拽提示 */
+                }""")
         layout = QHBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)

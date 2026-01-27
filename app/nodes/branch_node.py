@@ -92,14 +92,16 @@ def create_branch_node(parent_window):
                 parent=self.view,
                 name="enable_else",
                 text="启用默认分支（else）",
-                state=True
+                state=True,
+                window=parent_window
             )
             self.add_custom_widget(checkbox_widget, tab="properties")
             execute_all_widget = CheckBoxWidgetWrapper(
                 parent=self.view,
                 name="execute_all_matches",
                 text="执行所有满足条件的分支",
-                state=False
+                state=False,
+                window=parent_window
             )
             self.add_custom_widget(execute_all_widget, tab="properties")
 

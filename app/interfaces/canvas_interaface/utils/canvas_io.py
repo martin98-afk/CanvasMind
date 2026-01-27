@@ -289,6 +289,9 @@ class CanvasIO(QObject):
             node.column_select = data["column_select"]
             status_str = data["status_str"]
             status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
+            # 每次加载时把上次成功的节点设置为枯黄色，用于区分
+            if status_enum == NodeStatus.NODE_STATUS_SUCCESS:
+                status_enum = NodeStatus.NODE_STATUS_LAST_SUCCESS
             self.node_status[node.id] = status_enum
             if hasattr(node, 'status'):
                 node.status = status_enum

@@ -24,6 +24,7 @@ class CodeEditorWidget(QWidget):
 
     def __init__(self, parent=None, python_exe=None, popup_offset=0, editor_type="lsp", default_code=DEFAULT_NODE_TEMPLATE):
         super().__init__(parent)  # 确保父类初始化
+        self.main_window = parent
         self.default_code = default_code
         self.editor_type = editor_type
         self._suspend_sync_depth = 0  # 初始化，避免在_setup_ui前访问

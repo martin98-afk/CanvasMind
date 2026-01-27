@@ -18,7 +18,6 @@ from loguru import logger
 from app.components.base import COMPONENT_IMPORT_CODE
 from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 
-# --- 新增依赖 ---
 try:
     from watchfiles import awatch, Change
     HAS_WATCHFILES = True
@@ -32,7 +31,7 @@ HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 CANVAS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# === 新增：使用记录 ===
+# === 使用记录 ===
 class UsageRecord:
     __slots__ = ("canvas_path", "node_name", "version")
     def __init__(self, canvas_path: Path, node_name: str, version: str):
@@ -41,7 +40,7 @@ class UsageRecord:
         self.version = version
 
 
-# === 新增：使用情况追踪器 ===
+# === 使用情况追踪器 ===
 class ComponentUsageTracker:
     _instance = None
 
@@ -116,7 +115,7 @@ class ComponentUsageTracker:
         return self._index.get(node_uuid, [])
 
 
-# === 原 ComponentScanner 保持不变（略作清理）===
+# === ComponentScanner===
 def get_file_hash(file_path: Path) -> str:
     import hashlib
     hasher = hashlib.sha256()
