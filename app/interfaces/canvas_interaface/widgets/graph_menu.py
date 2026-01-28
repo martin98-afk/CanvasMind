@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.utils.utils import get_pinyin_search_keys, get_icon
@@ -316,10 +316,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
                         [p.name() for p in source_node._outputs].index(source_port_item.name)
                     ]
                     # 找新节点的第一个输入口
-                    new_node.set_input(0, source_port)
+                    QTimer.singleShot(0, lambda: new_node.set_input(0, source_port))
+
                 else:
                     port_index = [p.name() for p in source_node._inputs].index(source_port_item.name)
-                    source_node.set_input(port_index, new_node.output_ports()[0])
+                    QTimer.singleShot(0, lambda: source_node.set_input(port_index, new_node.output_ports()[0]))
 
             self.parent.on_selection_changed()
             self._graph.end_undo()
