@@ -25,10 +25,6 @@ class LocalConnectWorker(QThread):
             if success:
                 # 增加一个微小的握手检查，确保 Client 准备好了
                 self.status_update.emit("[*] 正在同步本地内核状态...")
-                try:
-                    self.manager.kernel_client.wait_for_ready(timeout=5)
-                except:
-                    pass
                 self.finished.emit(True, "")
             else:
                 self.finished.emit(False, "本地内核启动失败，请检查 Python 路径")
