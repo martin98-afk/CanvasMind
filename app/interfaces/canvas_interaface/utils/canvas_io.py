@@ -7,6 +7,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt, QRectF, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel, QProgressDialog
 
+from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from .logger import get_logger
 from .utils import WorkflowLoader, SaveTask, FinishLoadingWorker, FinishLoadingTask
@@ -279,7 +280,6 @@ class CanvasIO(QObject):
 
         # --- 主线程 UI 更新 ---
         self.canvas_loaded.emit(target_env)
-        from app.nodes.status_node import NodeStatus
         for node in self.graph.all_nodes():
             data = restored_data.get(node.id)
             if not data:

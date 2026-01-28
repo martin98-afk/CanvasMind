@@ -23,13 +23,14 @@ class EnvironmentManager:
             else:
                 self.env_combo.setCurrentText(self.parent.config.current_env_selected.value)
             self.env_data = self.env_combo.currentData()
+            self.parent.ipython_kernel.start_kernel(self.env_data)
         self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
         # 获取userData
         self.env_data = self.env_combo.currentData()
-        QTimer.singleShot(0, self.parent.connect_kernel)
+        self.parent.ipython_kernel.start_kernel(self.env_data)
         self.parent.env_changed.emit(self.env_data.get("path"))
         self.parent.dependency_checker.run_check()
         MessageManager.info("环境切换", f"当前运行环境: {current_text}", self.parent)

@@ -38,7 +38,7 @@ class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
-    env_changed = pyqtSignal(str)
+    env_changed = pyqtSignal()
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
@@ -110,7 +110,6 @@ class CanvasPage(QWidget):
         self.node_operations.setup_context_menu()
 
         # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
-        self.connect_kernel()
         self.ui_manager.update_position()
 
     @property
@@ -282,11 +281,6 @@ class CanvasPage(QWidget):
             return
         return self.node_operations.select_nodes_by_name(name_list)
 
-    def connect_kernel(self):
-        if self.env_data:
-            self.ipython_kernel.stop_kernel()
-            self.ipython_kernel.start_kernel(self.env_data)
-
     def run_from(self, node):
         self.canvas_runner.run_from(node)
 
@@ -425,7 +419,6 @@ class CanvasPage(QWidget):
         self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self.canvas_io.canvas_loaded.connect(self.environment_manager.load_env_combos)
-
         # 连接自动组件同步刷新信号
         ComponentScanner.register_on_change(self.nav_view.refresh_components)
         ComponentScanner.register_on_change(self.node_operations.register_components, False)

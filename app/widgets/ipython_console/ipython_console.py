@@ -8,7 +8,7 @@ from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon, Tab
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
-from app.server_manager.ipython_server.remote_ipython_kernel import RemoteIPythonKernelManager, RemoteKernelThread
+from app.server_manager.ipython_server.remote_ipython_kernel import RemoteIPythonKernelManager, RemoteConnectWorker
 from app.utils.utils import get_icon
 
 
@@ -142,10 +142,10 @@ class EmbeddedIPythonConsole(QWidget):
             self.console._append_plain_text("[*] 准备建立异步连接...\n")
 
             # 2. 启动后台线程
-            self.conn_thread = RemoteKernelThread(self.remote_km, env_data)
-            self.conn_thread.status_msg.connect(lambda m: self.console._append_plain_text(f"[*] {m}\n"))
-            self.conn_thread.finished.connect(self._on_kernel_started)
-            self.conn_thread.start()
+            self.worker = RemoteConnectWorker(self.remote_km, env_data)
+            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
+            self.worker.finished.connect(self._on_kernel_started)
+            self.worker.start()
         else:
             self.console._append_plain_text(f"[*] 正在启动本地环境: {env_data['name']}...\n")
             success = self.local_km.start_kernel(env_data['path'])
