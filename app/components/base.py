@@ -1253,6 +1253,9 @@ class BaseComponent(ABC):
                 # 使用 Field 并指定默认工厂为 dict
                 fields[prop_name] = (field_type, Field(default_factory=dict))
                 default_val = {}
+            elif prop_def.type == PropertyType.VARIABLE:
+                field_type = Any
+                default_val = ""
             else:  # TEXT 等
                 field_type = str
                 default_val = prop_def.default if prop_def.default != "" else ""
@@ -1410,6 +1413,7 @@ class BaseComponent(ABC):
             workflow_path: str = None
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
+        print(params)
         self.node_id = node_id
         self.data_handler = DataHandler(
             node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger, component_instance=self

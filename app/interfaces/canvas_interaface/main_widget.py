@@ -30,6 +30,7 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
+from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
@@ -656,11 +657,15 @@ class CanvasPage(QWidget):
                 if hasattr(node, 'status'):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
 
+                # 变量节点自动设置部分属性，便于与普通节点区分
                 if mime_data.hasFormat("application/x-global-variable"):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
                     drag_data = json.loads(data_bytes.decode('utf-8'))
+                    node.set_icon(":/icons/变量.svg")
                     node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                    node.view.name = drag_data['var_name']
+                    node.view.name = "\n".join(drag_data['var_name'].split("__"))
+                    node.view.toggle_collapse()
+                    self.canvas_runner.run_node(node)
                 event.accept()
             else:
                 event.ignore()

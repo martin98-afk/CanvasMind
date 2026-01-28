@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "LTX2 专用采样器，支持进度回调、首帧预览以及 AV 潜空间处理。",
   "category": "comfyui节点/LTX模型适配",
-  "main": "main.py",
-  "updated_at": "2026-01-26 22:48:45",
+  "updated_at": "2026-01-29 00:37:07",
   "author": "mading"
 }
