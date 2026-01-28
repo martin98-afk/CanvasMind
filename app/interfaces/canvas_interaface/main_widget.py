@@ -624,7 +624,6 @@ class CanvasPage(QWidget):
             full_path = mime_data.text()
             pos = event.pos()
 
-            # --- 核心优化：检测鼠标下是否有属性控件 ---
             # 查找鼠标点击位置下的所有图形项
             items = self.canvas_widget.items(pos)
             target_widget = None
@@ -642,7 +641,7 @@ class CanvasPage(QWidget):
                 # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
-                target_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
+                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
                 event.accept()
                 return
             node_type = self.node_type_map.get(full_path)

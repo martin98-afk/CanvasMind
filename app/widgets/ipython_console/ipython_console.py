@@ -90,12 +90,6 @@ class EmbeddedIPythonConsole(QWidget):
         self.console.banner = "IPython Console (Ready)\n"
         self.layout.addWidget(self.console)
 
-        # 4. 尝试启动默认环境
-        if self.env_selector:
-            initial_env = self.env_selector.get_current_env_data()
-            if initial_env:
-                self.start_kernel(initial_env)
-
     @property
     def kernel_manager(self):
         """返回当前正在使用的内核管理器"""
@@ -253,6 +247,7 @@ class IPythonConsoleManager(QWidget):
 
         # 获取当前选中的环境信息用于显示标题
         current_env = console_widget.env_selector.get_current_env_data()
+        console_widget.start_kernel(current_env)
         env_display = current_env['name'] if current_env else "Unknown"
         tab_title = tab_name if tab_name else f"Console ({env_display})"
 

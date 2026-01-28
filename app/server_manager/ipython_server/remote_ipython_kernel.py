@@ -94,8 +94,7 @@ class RemoteIPythonKernelManager:
 
             # 2. 极其严苛的远程脚本
             # 增加 sync 强制刷盘，增加 python 路径检测
-.
-0.0timeout_seconds = 300
+            timeout_seconds = 300
             remote_script = (
                 f"if [ ! -x '{python_path}' ]; then echo 'PYTHON_NOT_FOUND: {python_path}'; exit 1; fi; "
                 f"export PYTHONUNBUFFERED=1; "
