@@ -617,7 +617,7 @@ def create_dynamic_code_node(parent_window=None):
                     log_file_path=log_path,
                     node_id=self.persistent_id,
                     workflow_path="/tmp",
-                    is_memory_resident=True
+                    is_memory_resident=self.view.current_mode == "ipython"
                 )
 
                 # 4. 执行

@@ -561,7 +561,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     log_file_path=log_path,
                     node_id=self.persistent_id,
                     workflow_path="/tmp",
-                    is_memory_resident=True
+                    is_memory_resident=self.view.current_mode == "ipython"
                 )
                 with open(run_dir / "exec_script.py", 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)

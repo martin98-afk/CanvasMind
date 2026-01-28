@@ -1,6 +1,39 @@
 import uuid
-
 from loguru import logger
+
+from PyQt5.QtCore import QThread, pyqtSignal
+
+
+class LocalConnectWorker(QThread):
+    """
+    本地内核连接工人：负责在后台启动本地 Python 进程并建立 ZMQ 通信。
+    """
+    finished = pyqtSignal(bool, str)
+    status_update = pyqtSignal(str)
+
+    def __init__(self, manager, python_exe_path):
+        super().__init__()
+        self.manager = manager
+        self.python_exe_path = python_exe_path
+
+    def run(self):
+        try:
+            self.status_update.emit("[*] 正在准备本地环境...")
+            # 调用你原有的 IPythonKernelManager.start_kernel
+            success = self.manager.start_kernel(self.python_exe_path)
+
+            if success:
+                # 增加一个微小的握手检查，确保 Client 准备好了
+                self.status_update.emit("[*] 正在同步本地内核状态...")
+                try:
+                    self.manager.kernel_client.wait_for_ready(timeout=5)
+                except:
+                    pass
+                self.finished.emit(True, "")
+            else:
+                self.finished.emit(False, "本地内核启动失败，请检查 Python 路径")
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class IPythonKernelManager:

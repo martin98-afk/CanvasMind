@@ -1,4 +1,6 @@
 import uuid
+
+from PyQt5 import QtCore
 from loguru import logger
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
@@ -7,7 +9,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon, TabCloseButtonDisplayMode
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
+from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager, LocalConnectWorker
 from app.server_manager.ipython_server.remote_ipython_kernel import RemoteIPythonKernelManager, RemoteConnectWorker
 from app.utils.utils import get_icon
 
@@ -138,41 +140,45 @@ class EmbeddedIPythonConsole(QWidget):
         """启动内核"""
         self.stop_kernel()  # 先停止旧的
 
+        # 1. 禁用界面组件，防止重复点击
+        self.env_selector.setEnabled(False)
         env_type = env_data.get('type', 'local')
+        self.env_selector.combo.setCurrentText(env_data['name'])
         success = False
 
         if env_type == 'ssh':
-            # 1. 禁用界面组件，防止重复点击
-            self.env_selector.setEnabled(False)
             self.console._append_plain_text(f"[*] 正在通过 SSH 连接远程内核: {env_data['host']}...\n")
             self.console._append_plain_text("[*] 准备建立异步连接...\n")
 
             # 2. 启动后台线程
-            self.worker = RemoteConnectWorker(self.remote_km, env_data)
-            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
-            self.worker.finished.connect(self._on_kernel_started)
-            self.worker.start()
+            self.conn_worker = RemoteConnectWorker(self.remote_km, env_data)
+            self.current_km = self.remote_km
         else:
             self.console._append_plain_text(f"[*] 正在启动本地环境: {env_data['name']}...\n")
-            success = self.local_km.start_kernel(env_data['path'])
+            python_path = env_data['path'] if isinstance(env_data, dict) else env_data
+
+            self.conn_worker = LocalConnectWorker(self.local_km, python_path)
             self.current_km = self.local_km
 
-            if success:
-                self.console.kernel_manager = self.current_km.kernel_manager
-                self.console.kernel_client = self.current_km.kernel_client
-                self.console._append_plain_text(f"[+] 内核已就绪 ({env_type}).\n")
-            else:
-                self.console._append_plain_text(f"[-] 内核启动失败。\n")
+            # 绑定通用信号
+        self.conn_worker.status_update.connect(lambda msg: self.console._append_plain_text(f"{msg}\n"))
+        self.conn_worker.finished.connect(self._on_kernel_started_done)
+        self.conn_worker.start()
 
-    def _on_kernel_started(self, success, error_msg):
+    def _on_kernel_started_done(self, success, error_msg):
+        """连接结束的回调 (本地/远程通用)"""
         self.env_selector.setEnabled(True)
+
         if success:
-            self.current_km = self.remote_km
+            # 绑定控制台组件到当前活跃的管理器
             self.console.kernel_manager = self.current_km.kernel_manager
             self.console.kernel_client = self.current_km.kernel_client
-            self.console._append_plain_text("[+] 远程 SSH 内核连接成功！\n")
+
+            mode = "远程" if self.current_km == self.remote_km else "本地"
+            self.console._append_plain_text(f"[+] {mode}内核连接成功！\n")
         else:
             self.console._append_plain_text(f"[-] 连接失败: {error_msg}\n")
+            self.current_km = None
 
     def restart_kernel(self):
         env_data = self.env_selector.get_current_env_data()
