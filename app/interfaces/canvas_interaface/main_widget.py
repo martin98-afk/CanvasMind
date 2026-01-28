@@ -224,10 +224,6 @@ class CanvasPage(QWidget):
     def env_data(self):
         return self.environment_manager.env_data
 
-    def get_console_id(self):
-        workflow_id = str(self.file_path) if self.file_path else self.objectName()
-        return self.ipython_kernel.get_or_create_main_console(workflow_id, self.env_data.get("name"))
-
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
@@ -287,11 +283,9 @@ class CanvasPage(QWidget):
         return self.node_operations.select_nodes_by_name(name_list)
 
     def connect_kernel(self):
-        # 直接通过 runner 获取当前画布对应的主 ID 并启动
-        if self.env_data and self.env_data.get("type") != "ssh":
-            main_id = self.get_console_id()
-            self.ipython_kernel.stop_kernel(main_id)
-            self.ipython_kernel.start_kernel(self.env_data.get("path"), self.env_data.get("name"), console_id=main_id)
+        if self.env_data:
+            self.ipython_kernel.stop_kernel()
+            self.ipython_kernel.start_kernel(self.env_data)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
@@ -447,8 +441,6 @@ class CanvasPage(QWidget):
                 self.switch_to_parent()
             )
         )
-        # 环境变化自动重连主ipython进程
-        self.env_changed.connect(self.connect_kernel)
         # 状态信号
         self.canvas_runner.workflow_started.connect(self._on_workflow_started)
         self.canvas_runner.workflow_paused.connect(self._on_workflow_paused)
@@ -498,7 +490,6 @@ class CanvasPage(QWidget):
             self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
             self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
             self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
-            self.env_changed.disconnect(self.connect_kernel)
             self.global_variables_changed.disconnect(self._on_global_variables_changed)
         except TypeError:
             pass

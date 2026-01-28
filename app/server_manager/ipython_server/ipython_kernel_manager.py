@@ -1,4 +1,3 @@
-import os
 import uuid
 
 from loguru import logger
