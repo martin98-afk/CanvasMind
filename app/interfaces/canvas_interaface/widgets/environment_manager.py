@@ -31,7 +31,6 @@ class EnvironmentManager:
         # 获取userData
         self.env_data = self.env_combo.currentData()
         self.parent.ipython_kernel.start_kernel(self.env_data)
-        self.parent.env_changed.emit(self.env_data.get("path"))
         self.parent.dependency_checker.run_check()
         MessageManager.info("环境切换", f"当前运行环境: {current_text}", self.parent)
 

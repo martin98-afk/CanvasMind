@@ -38,7 +38,6 @@ class CanvasPage(QWidget):
     canvas_deleted = pyqtSignal()
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
-    env_changed = pyqtSignal()
 
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()

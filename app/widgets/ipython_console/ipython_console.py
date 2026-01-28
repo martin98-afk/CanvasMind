@@ -90,9 +90,15 @@ class EmbeddedIPythonConsole(QWidget):
         self.layout.addWidget(self.console)
 
         # 4. 尝试启动默认环境
-        initial_env = self.env_selector.get_current_env_data()
-        if initial_env:
-            self.start_kernel(initial_env)
+        if self.env_selector:
+            initial_env = self.env_selector.get_current_env_data()
+            if initial_env:
+                self.start_kernel(initial_env)
+
+    @property
+    def kernel_manager(self):
+        """返回当前正在使用的内核管理器"""
+        return self.current_km
 
     def add_common_tools(self, commandBar):
         """添加常用工具按钮 - 确保这个方法在类定义内"""
@@ -151,12 +157,12 @@ class EmbeddedIPythonConsole(QWidget):
             success = self.local_km.start_kernel(env_data['path'])
             self.current_km = self.local_km
 
-        if success:
-            self.console.kernel_manager = self.current_km.kernel_manager
-            self.console.kernel_client = self.current_km.kernel_client
-            self.console._append_plain_text(f"[+] 内核已就绪 ({env_type}).\n")
-        else:
-            self.console._append_plain_text(f"[-] 内核启动失败。\n")
+            if success:
+                self.console.kernel_manager = self.current_km.kernel_manager
+                self.console.kernel_client = self.current_km.kernel_client
+                self.console._append_plain_text(f"[+] 内核已就绪 ({env_type}).\n")
+            else:
+                self.console._append_plain_text(f"[-] 内核启动失败。\n")
 
     def _on_kernel_started(self, success, error_msg):
         self.env_selector.setEnabled(True)
