@@ -81,6 +81,8 @@ class CustomNodeViewer(NodeViewer):
     def __init__(self, parent=None, undo_stack=None):
         super(CustomNodeViewer, self).__init__(parent)
         self._navigation_mode = False
+        self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
+        self._temp_connection_source = None  # 用于存放拉线的起始端口
         self.setScene(CustomNodeScene(self))
         # --- 性能优化：初始开启抗锯齿 ---
         self.setRenderHint(QtGui.QPainter.Antialiasing, True)
@@ -527,7 +529,35 @@ class CustomNodeViewer(NodeViewer):
         self._snap_lines_item.hide()
         self._snap_lines_item.setPath(QtGui.QPainterPath())  # 清空路径
         # -------------------------------------
-
+        # # 1. 记录拉线状态
+        # live_pipe_active = self._LIVE_PIPE.isVisible()
+        # # 注意：使用 self._start_port，这是 NodeGraphQt 内部记录起始端口的变量
+        # start_port = self._LIVE_PIPE._start_port if live_pipe_active else None
+        #
+        # # 2. 检测释放位置是否是空白处
+        # scene_pos = self.mapToScene(event.pos())
+        # items = self.scene().items(scene_pos)
+        # from NodeGraphQt.qgraphics.port import PortItem
+        # on_port = any(isinstance(i, PortItem) for i in items)
+        #
+        # # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
+        # if live_pipe_active and start_port and not on_port:
+        #     if hasattr(self, '_custom_menu') and self._custom_menu:
+        #         # 暂存端口，给菜单创建节点后使用
+        #         self._temp_connection_source = start_port
+        #
+        #         # 手动触发你的自定义菜单显示
+        #         self._custom_menu.show_at_cursor(event.globalPos())
+        #
+        #         # 隐藏当前的拉线虚影
+        #         self._LIVE_PIPE.setVisible(False)
+        #         self._LIVE_PIPE.reset()
+        #
+        #         # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
+        #         self.LMB_state = False
+        #         super(CustomNodeViewer, self).mouseReleaseEvent(event)
+        #         return
+        # 处理平移
         was_panning = self._panning
         if event.button() == QtCore.Qt.LeftButton:
             self.LMB_state = False

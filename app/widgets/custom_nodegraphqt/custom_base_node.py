@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import BaseNode
+from NodeGraphQt import BaseNode, Port
 from NodeGraphQt.base.commands import NodeVisibleCmd
-from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.constants import NodePropWidgetEnum, PortTypeEnum
+from NodeGraphQt.errors import PortRegistrationError
 from PyQt5 import QtWidgets
 
 from app.utils.utils import _safe_equal
@@ -54,6 +55,7 @@ class PropertyChangedCmd(QtWidgets.QUndoCommand):
     def redo(self):
         if not _safe_equal(self.old_val, self.new_val):
             self.set_node_property(self.name, self.new_val)
+
 
 class CustomBaseNode(BaseNode):
 
@@ -147,3 +149,88 @@ class CustomBaseNode(BaseNode):
         self.view.draw_node()
 
         widget.parent()
+
+    def add_input(self, name='input', multi_input=False, display_name=True,
+                  color=None, locked=False, painter_func=None):
+        """
+        Add input :class:`Port` to node.
+
+        Warnings:
+            Undo is NOT supported for this function.
+
+        Args:
+            name (str): name for the input port.
+            multi_input (bool): allow port to have more than one connection.
+            display_name (bool): display the port name on the node.
+            color (tuple): initial port color (r, g, b) ``0-255``.
+            locked (bool): locked state see :meth:`Port.set_locked`
+            painter_func (function or None): custom function to override the drawing
+                of the port shape see example: :ref:`Creating Custom Shapes`
+
+        Returns:
+            NodeGraphQt.Port: the created port object.
+        """
+        if name in self.inputs().keys():
+            raise PortRegistrationError(
+                'port name "{}" already registered.'.format(name))
+
+        port_args = [name, multi_input, display_name, locked]
+        if painter_func and callable(painter_func):
+            port_args.append(painter_func)
+        view = self.view.add_input(*port_args)
+        view.original_node = self
+        if color:
+            view.color = color
+            view.border_color = [min([255, max([0, i + 80])]) for i in color]
+
+        port = Port(self, view)
+        port.model.type_ = PortTypeEnum.IN.value
+        port.model.name = name
+        port.model.display_name = display_name
+        port.model.multi_connection = multi_input
+        port.model.locked = locked
+        self._inputs.append(port)
+        self.model.inputs[port.name()] = port.model
+        return port
+
+    def add_output(self, name='output', multi_output=True, display_name=True,
+                   color=None, locked=False, painter_func=None):
+        """
+        Add output :class:`Port` to node.
+
+        Warnings:
+            Undo is NOT supported for this function.
+
+        Args:
+            name (str): name for the output port.
+            multi_output (bool): allow port to have more than one connection.
+            display_name (bool): display the port name on the node.
+            color (tuple): initial port color (r, g, b) ``0-255``.
+            locked (bool): locked state see :meth:`Port.set_locked`
+            painter_func (function or None): custom function to override the drawing
+                of the port shape see example: :ref:`Creating Custom Shapes`
+
+        Returns:
+            NodeGraphQt.Port: the created port object.
+        """
+        if name in self.outputs().keys():
+            raise PortRegistrationError(
+                'port name "{}" already registered.'.format(name))
+
+        port_args = [name, multi_output, display_name, locked]
+        if painter_func and callable(painter_func):
+            port_args.append(painter_func)
+        view = self.view.add_output(*port_args)
+        view.original_node = self
+        if color:
+            view.color = color
+            view.border_color = [min([255, max([0, i + 80])]) for i in color]
+        port = Port(self, view)
+        port.model.type_ = PortTypeEnum.OUT.value
+        port.model.name = name
+        port.model.display_name = display_name
+        port.model.multi_connection = multi_output
+        port.model.locked = locked
+        self._outputs.append(port)
+        self.model.outputs[port.name()] = port.model
+        return port
