@@ -94,10 +94,16 @@ class RemoteIPythonKernelManager:
 
             # 2. 极其严苛的远程脚本
             # 增加 sync 强制刷盘，增加 python 路径检测
+.
+0.0timeout_seconds = 300
             remote_script = (
                 f"if [ ! -x '{python_path}' ]; then echo 'PYTHON_NOT_FOUND: {python_path}'; exit 1; fi; "
                 f"export PYTHONUNBUFFERED=1; "
-                f"nohup {python_path} -m ipykernel_launcher --f={self.remote_connection_file} --ip=127.0.0.1 > {remote_log} 2>&1 & "
+                f"nohup {python_path} -m ipykernel_launcher "
+                f"--f={self.remote_connection_file} "
+                f"--ip=127.0.0.1 "
+                f"--KernelApp.shutdown_no_activity_timeout={timeout_seconds} "  # 核心参数
+                f"> {remote_log} 2>&1 & "
                 f"PID=$!; sleep 1; "
                 f"for i in {{1..30}}; do "
                 f"  if [ -f {self.remote_connection_file} ]; then cat {self.remote_connection_file}; exit 0; fi; "
