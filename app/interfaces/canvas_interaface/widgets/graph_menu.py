@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.utils.utils import get_pinyin_search_keys, get_icon
@@ -303,7 +303,25 @@ class CustomGraphMenu(QtWidgets.QWidget):
             scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
             scene_pos = scene_viewer.mapToScene(self._spawn_pos)
             self._graph.begin_undo("Create Node")
-            self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+            new_node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+            # 处理自动连接逻辑，从节点端口拉出连线松开后弹出框，点击组件触发自动连接
+            viewer = self._graph.viewer()  # 根据你的结构获取 viewer
+            if hasattr(viewer, '_temp_connection_source') and viewer._temp_connection_source:
+                source_port_item = viewer._temp_connection_source
+                source_node = source_port_item.original_node
+                viewer._temp_connection_source = None  # 用完立即清空
+
+                if source_port_item.port_type == 'out':
+                    source_port = source_node._outputs[
+                        [p.name() for p in source_node._outputs].index(source_port_item.name)
+                    ]
+                    # 找新节点的第一个输入口
+                    QTimer.singleShot(0, lambda: new_node.set_input(0, source_port))
+
+                else:
+                    port_index = [p.name() for p in source_node._inputs].index(source_port_item.name)
+                    QTimer.singleShot(0, lambda: source_node.set_input(port_index, new_node.output_ports()[0]))
+
             self.parent.on_selection_changed()
             self._graph.end_undo()
         else:

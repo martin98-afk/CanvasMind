@@ -7,89 +7,96 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon, TabCloseButtonDisplayMode
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager
+from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager, LocalConnectWorker
+from app.server_manager.ipython_server.remote_ipython_kernel import RemoteIPythonKernelManager, RemoteConnectWorker
 from app.utils.utils import get_icon
 
 
 class EnvironmentSelector(QWidget):
-    """环境选择器（保持原有功能）"""
-    env_changed = pyqtSignal(str)
+    """环境选择器：支持本地和 SSH 环境"""
+    env_changed = pyqtSignal(dict)  # 改为发送字典
 
     def __init__(self, parent=None, package_manager=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(2)
         self.layout.setContentsMargins(0, 0, 0, 0)
-
         self.combo = ComboBox()
         self.package_manager = package_manager
+        self._env_list = []  # 缓存环境数据
+
         self.combo.currentTextChanged.connect(self.on_environment_changed)
-        self.load_env_combos()
+        self.load_envs()
         self.layout.addWidget(self.combo)
 
-    def load_env_combos(self):
+    def load_envs(self):
         if self.package_manager:
-            envs = self.package_manager.mgr.list_envs()
-            self.combo.addItems(envs)
+            self._env_list = self.package_manager.get_all_environments()
+            # 显示名称，如果为 ssh 类型，标注一下
+            display_names = [
+                f"[{e['type'].upper()}] {e['name']}" for e in self._env_list
+            ]
+            self.combo.addItems(display_names)
 
     def on_environment_changed(self, text):
-        if self.package_manager and text:
-            try:
-                python_exe = str(self.package_manager.mgr.get_python_exe(text))
-                self.env_changed.emit(python_exe)
-            except Exception as e:
-                print(f"获取环境 {text} 的Python路径失败: {str(e)}")
+        index = self.combo.currentIndex()
+        if 0 <= index < len(self._env_list):
+            env_data = self._env_list[index]
+            self.env_changed.emit(env_data)
 
-    def get_current_python_exe(self):
-        current_text = self.combo.currentText()
-        if self.package_manager and current_text:
-            try:
-                return str(self.package_manager.mgr.get_python_exe(current_text))
-            except Exception as e:
-                print(f"获取环境 {current_text} 的Python路径失败: {str(e)}")
-                return None
+    def get_current_env_data(self):
+        index = self.combo.currentIndex()
+        if 0 <= index < len(self._env_list):
+            return self._env_list[index]
         return None
 
 
 class EmbeddedIPythonConsole(QWidget):
-    """嵌入式IPython控制台GUI组件"""
+    """嵌入式IPython控制台GUI组件 - 支持本地/远程双内核管理器"""
 
     def __init__(self, parent=None, package_manager=None):
         super().__init__(parent)
+        self.is_connecting = False
         self.setMinimumWidth(300)
         self.package_manager = package_manager
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        # 命令栏
+
+        # 1. 初始化内核管理器
+        self.local_km = IPythonKernelManager()
+        self.remote_km = RemoteIPythonKernelManager()
+        self.current_km = None  # 追踪当前正在使用的内核
+
+        # 2. 构建命令栏 (CommandBar)
         commandBar = CommandBar()
         if package_manager is not None:
-            title_label = QLabel("环境选择: ")
+            title_label = QLabel(" 环境选择: ")
             title_label.setStyleSheet("font: 12px 'Segoe UI', 'Microsoft YaHei'; color: white;")
             commandBar.addWidget(title_label)
             self.env_selector = EnvironmentSelector(parent=self, package_manager=package_manager)
             commandBar.addWidget(self.env_selector)
             commandBar.addSeparator()
+            # 绑定环境切换信号
             self.env_selector.env_changed.connect(self.start_kernel)
 
+        # 调用 add_common_tools (报错的地方)
         self.add_common_tools(commandBar)
         self.layout.addWidget(commandBar)
-        # 控制台
+
+        # 3. 控制台
         self.console = RichJupyterWidget()
-        # 透明背景
         self.console.setStyleSheet("background-color: transparent;")
         self.console.set_default_style(colors='linux')
-        self.console.banner = "IPython Console (Embedded)\n"
+        self.console.banner = "IPython Console (Ready)\n"
         self.layout.addWidget(self.console)
 
-        # 内核管理器
-        self.kernel_manager = IPythonKernelManager()
-
-        if hasattr(self, "env_selector") and self.env_selector.get_current_python_exe():
-            self.start_kernel(self.env_selector.get_current_python_exe())
+    @property
+    def kernel_manager(self):
+        """返回当前正在使用的内核管理器"""
+        return self.current_km
 
     def add_common_tools(self, commandBar):
-        """添加常用工具按钮"""
+        """添加常用工具按钮 - 确保这个方法在类定义内"""
         restart_action = Action(get_icon("远程重启"), "重新运行Console", self)
         restart_action.triggered.connect(self.restart_kernel)
         commandBar.addAction(restart_action)
@@ -122,43 +129,65 @@ class EmbeddedIPythonConsole(QWidget):
         globals_action.triggered.connect(lambda: self.execute_code("globals()"))
         commandBar.addAction(globals_action)
 
+    def start_kernel(self, env_data: dict):
+        """启动内核"""
+        if self.is_connecting:
+            return
+        else:
+            self.is_connecting = True
+        self.stop_kernel()  # 先停止旧的
+        self.env_selector.combo.setCurrentText(f"[{env_data['type'].upper()}] {env_data['name']}")
+        env_type = env_data.get('type', 'local')
+        success = False
+        # 1. 禁用界面组件，防止重复点击
+        self.env_selector.setEnabled(False)
+        if env_type == 'ssh':
+            self.console._append_plain_text(f"[*] 正在通过 SSH 连接远程内核: {env_data['host']}...\n")
+            self.console._append_plain_text("[*] 准备建立异步连接...\n")
+
+            # 2. 启动后台线程
+            self.worker = RemoteConnectWorker(self.remote_km, env_data)
+            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
+            self.worker.finished.connect(self._on_kernel_started)
+            self.worker.start()
+            self.current_km = self.remote_km
+        else:
+            self.console._append_plain_text(f"[*] 正在启动本地环境: {env_data['name']}...\n")
+
+            self.worker = LocalConnectWorker(self.local_km, env_data.get("path"))
+            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
+            self.worker.finished.connect(self._on_kernel_started)
+            self.worker.start()
+            self.current_km = self.local_km
+
+    def _on_kernel_started(self, success, error_msg):
+        self.env_selector.setEnabled(True)
+        if success:
+            self.console.kernel_manager = self.current_km.kernel_manager
+            self.console.kernel_client = self.current_km.kernel_client
+            self.console._append_plain_text("[+] 内核连接成功！\n")
+        else:
+            self.console._append_plain_text(f"[-] 连接失败: {error_msg}\n")
+        self.is_connecting = False
+
     def restart_kernel(self):
-        """重新启动Kernel"""
-        logger.info("正在重新启动 Kernel...")
-        self.kernel_manager.shutdown_kernel()
-        self.start_kernel(self.kernel_manager.python_exe_path)
+        env_data = self.env_selector.get_current_env_data()
+        if env_data: self.start_kernel(env_data)
 
     def stop_kernel(self):
-        """停止内核"""
-        logger.info("正在停止 Kernel...")
-        if self.kernel_manager.is_alive():
-            self.kernel_manager.shutdown_kernel()
+        # 停止所有可能的残留内核
+        if self.local_km.is_alive(): self.local_km.shutdown_kernel()
+        if hasattr(self.remote_km, 'shutdown_kernel'): self.remote_km.shutdown_kernel()
+        self.current_km = None
 
     def execute_code(self, code, hidden=False):
-        """执行代码"""
-        self.console.execute(code, hidden)
+        if self.current_km: self.console.execute(code, hidden)
 
     def interrupt_kernel(self):
-        """中断正在运行的代码"""
-        return self.kernel_manager.interrupt_kernel()
-
-    def start_kernel(self, python_exe_path=None):
-        """启动内核"""
-        if python_exe_path is None:
-            python_exe_path = self.env_selector.get_current_python_exe()
-
-        if self.kernel_manager.start_kernel(python_exe_path):
-            # 设置控制台的内核管理器和客户端
-            self.console.kernel_manager = self.kernel_manager.kernel_manager
-            self.console.kernel_client = self.kernel_manager.kernel_client
-            return True
-        else:
-            logger.error("Kernel启动失败")
-            return False
+        return self.current_km.interrupt_kernel() if self.current_km else False
 
     def get_kernel_manager(self):
-        """获取内核管理器"""
-        return self.kernel_manager
+        return self.current_km
 
 
 class IPythonConsoleManager(QWidget):
@@ -192,11 +221,6 @@ class IPythonConsoleManager(QWidget):
         if len(package_manager.mgr.list_envs()) > 0 and init_console:
             self.add_new_console_tab()
 
-    def on_tab_changed(self, index):
-        """标签切换"""
-        self.stacked_widget.setCurrentIndex(index)
-        self.set_var_explorer()
-
     def set_var_explorer(self):
         kernel_manager = self.get_current_kernel_manager()
         if kernel_manager and self.var_explorer:
@@ -205,34 +229,49 @@ class IPythonConsoleManager(QWidget):
             self.var_explorer.start_auto_refresh()
 
     def add_new_console_tab(self, env_name=None, tab_name=None, closable=True):
-        """
-        创建新控制台标签
-        :param env_name: 可选，指定环境名称（需存在于 package_manager 中）
-        :return: console_id 唯一标识符
-        """
+        """创建新控制台标签"""
         console_id = str(uuid.uuid4())
+        # 创建 widget 时，其内部会根据 selector 默认值启动一次 start_kernel
         console_widget = EmbeddedIPythonConsole(
             parent=self.stacked_widget, package_manager=self.package_manager
         )
         self.consoles[console_id] = console_widget
 
+        # 如果指定了环境名称，需要手动切换 selector 的当前项
         if env_name:
-            # 这会自动触发 env_selector 的 currentTextChanged 信号
-            # 从而调用 console_widget.start_kernel
-            console_widget.env_selector.combo.setCurrentText(env_name)
+            for i in range(console_widget.env_selector.combo.count()):
+                # 这里根据包含关系判断，因为显示文本可能有 [SSH] 前缀
+                if env_name in console_widget.env_selector.combo.itemText(i):
+                    console_widget.env_selector.combo.setCurrentIndex(i)
+                    break
 
-        initial_env = console_widget.env_selector.combo.currentText()
-        tab_title = f"{tab_name}" if tab_name else f"Console {initial_env}"
+        # 获取当前选中的环境信息用于显示标题
+        current_env = console_widget.env_selector.get_current_env_data()
+        console_widget.start_kernel(current_env)
+        env_display = current_env['name'] if current_env else "Unknown"
+        tab_title = tab_name if tab_name else f"Console ({env_display})"
 
         index = self.stacked_widget.addWidget(console_widget)
-        # 在 qfluentwidgets 中，routeKey 存储在 TabItem 中
         tab = self.tab_bar.addTab(routeKey=console_id, text=tab_title)
+
         if not closable:
             tab.setCloseButtonDisplayMode(TabCloseButtonDisplayMode.NEVER)
+
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
         self.set_var_explorer()
         return console_id
+
+    def on_tab_changed(self, index):
+        """标签切换时更新变量浏览器"""
+        self.stacked_widget.setCurrentIndex(index)
+        # 延迟一下更新，确保 kernel 已经 start
+        self.set_var_explorer()
+
+    def get_current_kernel_manager(self):
+        console = self.get_current_console()
+        # 这里返回的是活跃的 km (可能是 local 也可能是 remote)
+        return console.get_kernel_manager() if console else None
 
     def update_tab_title(self, index):
         """保持原有的 index 标题更新逻辑（兼容性保留）"""
@@ -274,10 +313,6 @@ class IPythonConsoleManager(QWidget):
         if current_index >= 0:
             return self.stacked_widget.widget(current_index)
         return None
-
-    def get_current_kernel_manager(self):
-        console = self.get_current_console()
-        return console.get_kernel_manager() if console else None
 
     # --- 兼容性/功能扩展接口 ---
 

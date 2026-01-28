@@ -461,7 +461,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.timeout_seconds = parent_window.config.node_run_timeout.value
             if env_data.get('type') == 'ssh':
                 # 远程 SSH 执行
-                self._execute_via_ssh(comp_obj, env_data, run_dir, log_file_path, error_path, check_cancel)
+                self._execute_via_ssh(comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path, check_cancel)
             else:
                 shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
                 # 将组件扩展全部复制到运行目录
@@ -519,7 +519,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         self.last_log_pos = lf.tell()
                 shutil.rmtree(run_dir, ignore_errors=True)
 
-        def _execute_via_ssh(self, comp_obj, env_data, run_dir, log_file_path, error_path, check_cancel):
+        def _execute_via_ssh(self, comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path, check_cancel):
             """远程 SSH 执行逻辑 - 针对日志文件流式读取优化"""
             local_result_path = run_dir / "result.pkl"
             remote_root = "/tmp/workspace"
@@ -561,7 +561,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     log_file_path=log_path,
                     node_id=self.persistent_id,
                     workflow_path="/tmp",
-                    is_memory_resident=True
+                    is_memory_resident=self.view.current_mode == "ipython"
                 )
                 with open(run_dir / "exec_script.py", 'w', encoding='utf-8') as f:
                     f.write(remote_script_content)
@@ -578,37 +578,83 @@ def create_node_class(full_path, file_path, parent_window=None):
                     sftp.put(log_file_path, log_path)
 
                 # 4. 执行
-                python_exe = env_data['path']
-                cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
-                stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
-                stdout.channel.setblocking(0)
-                # 轮询直到进程结束
-                start_time = time.time()
-                while not stdout.channel.exit_status_ready():
-                    if check_cancel and check_cancel():
-                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
-                        ssh.close()
-                        raise Exception("远程执行被用户取消")
+                if self.view.current_mode == "ipython" or self.object_io:
+                    if not kernel_manager:
+                        raise Exception("远程 IPython 内核未连接。请确保右侧控制台已连接到对应的 SSH 环境。")
 
-                    # 只有当远程日志文件产生时才尝试读取
-                    try:
-                        with sftp.open(log_path, 'r') as f:
-                            f.seek(self.last_log_pos)  # 跳到上次读取的位置
-                            new_data = f.read().decode('utf-8', errors='ignore')
-                            if new_data:
-                                self._log_message(self.persistent_id, new_data)
-                                # 增量写入本地日志文件
-                                with open(log_file_path, 'a', encoding='utf-8') as lf:
-                                    lf.write(new_data)
-                                self.last_log_pos += len(new_data)  # 更新偏移量
-                    except IOError:
-                        # 脚本可能还没开始写日志，忽略
-                        pass
-                    if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
-                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
-                        ssh.close()
-                        raise Exception(f"节点执行超时{self.timeout_seconds}秒")
-                    time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
+                    # B. 通过 SSH 隧道发送给远程内核执行 (非阻塞发送)
+                    kernel_manager.execute_code(remote_script_content, hidden=True)
+
+                    # C. 轮询远程文件系统，等待结果生成，同时拉取日志
+                    start_time = time.time()
+                    remote_res_file = f"{remote_run_dir}/result.pkl"
+                    remote_err_file = f"{remote_run_dir}/error.pkl"
+
+                    while True:
+                        # 1. 检查取消信号
+                        if check_cancel and check_cancel():
+                            kernel_manager.interrupt_kernel()
+                            raise Exception("远程 IPython 执行被用户取消")
+
+                        # 2. 检查远程结果文件是否存在 (ls 比 stat 在某些 SSH 环境下更稳定)
+                        _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
+                        found_files = stdout.read().decode()
+
+                        if remote_res_file in found_files or remote_err_file in found_files:
+                            # 如果文件生成了，跳出轮询准备下载
+                            break
+
+                        # 3. 实时同步远程日志 (复用你 Subprocess 分支的日志读取逻辑)
+                        try:
+                            with sftp.open(log_path, 'r') as f:
+                                f.seek(self.last_log_pos)
+                                new_data = f.read().decode('utf-8', errors='ignore')
+                                if new_data:
+                                    self._log_message(self.persistent_id, new_data)
+                                    with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                        lf.write(new_data)
+                                    self.last_log_pos += len(new_data)
+                        except IOError:
+                            pass
+
+                        # 4. 检查超时
+                        if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
+                            kernel_manager.interrupt_kernel()
+                            raise Exception(f"远程 IPython 执行超时 {self.timeout_seconds} 秒")
+
+                        time.sleep(0.5)  # 降低轮询频率
+                else:
+                    python_exe = env_data['path']
+                    cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                    stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
+                    stdout.channel.setblocking(0)
+                    # 轮询直到进程结束
+                    start_time = time.time()
+                    while not stdout.channel.exit_status_ready():
+                        if check_cancel and check_cancel():
+                            ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
+                            ssh.close()
+                            raise Exception("远程执行被用户取消")
+
+                        # 只有当远程日志文件产生时才尝试读取
+                        try:
+                            with sftp.open(log_path, 'r') as f:
+                                f.seek(self.last_log_pos)  # 跳到上次读取的位置
+                                new_data = f.read().decode('utf-8', errors='ignore')
+                                if new_data:
+                                    self._log_message(self.persistent_id, new_data)
+                                    # 增量写入本地日志文件
+                                    with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                        lf.write(new_data)
+                                    self.last_log_pos += len(new_data)  # 更新偏移量
+                        except IOError:
+                            # 脚本可能还没开始写日志，忽略
+                            pass
+                        if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
+                            ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
+                            ssh.close()
+                            raise Exception(f"节点执行超时{self.timeout_seconds}秒")
+                        time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
 
                 # 下载并处理 result.pkl
                 remote_pkl = f"{remote_run_dir}/result.pkl"

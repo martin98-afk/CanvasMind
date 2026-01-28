@@ -46,6 +46,7 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
+        self._last_drag_target = None  # 记录当前正在高亮的代理控件
         # 国际化工作流名称
         self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
@@ -101,13 +102,14 @@ class CanvasPage(QWidget):
         # 启用画布拖拽
         self.canvas_widget.setAcceptDrops(True)
         self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
+        self.canvas_widget.dragMoveEvent = self.canvas_drag_move_event  # 确保这行存在
+        self.canvas_widget.dragLeaveEvent = self.canvas_drag_leave_event  # 确保这行存在
         self.canvas_widget.dropEvent = self.canvas_drop_event
         self.canvas_widget.installEventFilter(self)
         self._connect_signals()
         self.node_operations.setup_context_menu()
 
         # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
-        self.connect_kernel()
         self.ui_manager.update_position()
 
     @property
@@ -221,10 +223,6 @@ class CanvasPage(QWidget):
     def env_data(self):
         return self.environment_manager.env_data
 
-    def get_console_id(self):
-        workflow_id = str(self.file_path) if self.file_path else self.objectName()
-        return self.ipython_kernel.get_or_create_main_console(workflow_id, self.env_data.get("name"))
-
     def rename_node_vars(self, old_name, new_name):
         old_name = re.sub(r'\s+', '_', old_name)
         new_name = re.sub(r'\s+', '_', new_name)
@@ -282,13 +280,6 @@ class CanvasPage(QWidget):
         if name_list is None:
             return
         return self.node_operations.select_nodes_by_name(name_list)
-
-    def connect_kernel(self):
-        # 直接通过 runner 获取当前画布对应的主 ID 并启动
-        if self.env_data and self.env_data.get("type") != "ssh":
-            main_id = self.get_console_id()
-            self.ipython_kernel.stop_kernel(main_id)
-            self.ipython_kernel.start_kernel(self.env_data.get("path"), self.env_data.get("name"), console_id=main_id)
 
     def run_from(self, node):
         self.canvas_runner.run_from(node)
@@ -428,7 +419,6 @@ class CanvasPage(QWidget):
         self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
         self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
         self.canvas_io.canvas_loaded.connect(self.environment_manager.load_env_combos)
-
         # 连接自动组件同步刷新信号
         ComponentScanner.register_on_change(self.nav_view.refresh_components)
         ComponentScanner.register_on_change(self.node_operations.register_components, False)
@@ -444,8 +434,6 @@ class CanvasPage(QWidget):
                 self.switch_to_parent()
             )
         )
-        # 环境变化自动重连主ipython进程
-        self.env_changed.connect(self.connect_kernel)
         # 状态信号
         self.canvas_runner.workflow_started.connect(self._on_workflow_started)
         self.canvas_runner.workflow_paused.connect(self._on_workflow_paused)
@@ -495,7 +483,6 @@ class CanvasPage(QWidget):
             self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
             self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
             self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
-            self.env_changed.disconnect(self.connect_kernel)
             self.global_variables_changed.disconnect(self._on_global_variables_changed)
         except TypeError:
             pass
@@ -570,6 +557,57 @@ class CanvasPage(QWidget):
         else:
             event.ignore()
 
+    def canvas_drag_move_event(self, event):
+        # 只有在拖拽全局变量时才触发高亮逻辑
+        if event.mimeData().hasFormat("application/x-global-variable"):
+            # 1. 查找鼠标下的项
+            pos = event.pos()
+            items = self.canvas_widget.items(pos)
+
+            target_widget = None
+            from app.widgets.node_widget.base import CustomNodeBaseWidget
+            for item in items:
+                if isinstance(item, CustomNodeBaseWidget):
+                    target_widget = item
+                    break
+
+            # 2. 状态切换逻辑
+            if target_widget != self._last_drag_target:
+                # 移出旧控件，重置样式
+                if self._last_drag_target:
+                    group_box = self._last_drag_target.widget()
+                    if hasattr(group_box, 'reset'):
+                        group_box.reset()
+
+                # 进入新控件，高亮样式
+                if target_widget:
+                    group_box = target_widget.widget()
+                    if hasattr(group_box, 'highlight'):
+                        group_box.highlight()
+
+                self._last_drag_target = target_widget
+
+            event.accept()
+        else:
+            # 处理普通的节点创建拖拽
+            is_acceptable = any([
+                event.mimeData().hasFormat(i) for i in
+                ['nodegraphqt/nodes', 'text/plain']
+            ])
+            if is_acceptable:
+                event.accept()
+            else:
+                event.ignore()
+
+    def canvas_drag_leave_event(self, event):
+        """当拖拽彻底离开画布区域时，重置所有高亮"""
+        if self._last_drag_target:
+            group_box = self._last_drag_target.widget()
+            if hasattr(group_box, 'reset'):
+                group_box.reset()
+            self._last_drag_target = None
+        event.accept()
+
     def canvas_drop_event(self, event):
         try:
             mime_data = event.mimeData()
@@ -577,10 +615,15 @@ class CanvasPage(QWidget):
                 event.ignore()
                 return
 
+            if self._last_drag_target:
+                group_box = self._last_drag_target.widget()
+                if hasattr(group_box, 'reset'):
+                    group_box.reset()
+                self._last_drag_target = None
+
             full_path = mime_data.text()
             pos = event.pos()
 
-            # --- 核心优化：检测鼠标下是否有属性控件 ---
             # 查找鼠标点击位置下的所有图形项
             items = self.canvas_widget.items(pos)
             target_widget = None
@@ -598,7 +641,7 @@ class CanvasPage(QWidget):
                 # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
-                target_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
+                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
                 event.accept()
                 return
             node_type = self.node_type_map.get(full_path)

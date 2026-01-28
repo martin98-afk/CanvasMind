@@ -6,6 +6,7 @@ from NodeGraphQt.qgraphics.port import PortItem
 class GlowPortItem(PortItem):
     def __init__(self, parent=None):
         super(GlowPortItem, self).__init__(parent)
+        self.original_node = None
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self._port_painter = None
 

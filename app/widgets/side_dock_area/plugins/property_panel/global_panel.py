@@ -1088,7 +1088,7 @@ class GlobalPanelWidget:
                 # 检查是否是我们的 CustomNodeBaseWidget
                 if hasattr(widget, "get_value"):
                     if widget.get_value() == target_expr:
-                        widget.widget().toggle_highlight()
+                        # widget.widget().toggle_highlight()
                         nodes_found.append(node)
                         break  # 一个节点找到一个匹配即可
 

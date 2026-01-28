@@ -314,10 +314,12 @@ class CustomPipeItem(PipeItem):
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
     def __init__(self):
         self._flow_running = False
+        self._start_port = None
         self._current_flow_offset = 0.0
         self._is_hovered = False
         self._controller = FlowController()
         super(CustomLivePipeItem, self).__init__()
 
     def draw_path(self, start_port, end_port=None, cursor_pos=None, color=None):
+        self._start_port = start_port
         LivePipeItem.draw_path(self, start_port, end_port, cursor_pos, color)

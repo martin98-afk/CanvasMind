@@ -51,7 +51,7 @@ class CodeEditorWidget(QWidget):
             self.code_editor = LSPCodeEditor(self, self.original_parent, python_exe_path=python_exe)
         elif self.editor_type == "jedi":
             self.code_editor = JediCodeEditor(
-                self, self.original_parent, python_exe_path=python_exe, popup_offset=popup_offset
+                self.original_parent, self.original_parent, python_exe_path=python_exe, popup_offset=popup_offset
             )
         self.code_editor.textChanged.connect(self.code_changed)
         # --- 关键修改：连接内部按钮的点击信号到本类的切换方法 ---

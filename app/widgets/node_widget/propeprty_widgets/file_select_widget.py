@@ -36,6 +36,7 @@ class FileSelectWidget(QtWidgets.QWidget):
 
         # 1. 路径显示框
         self.path_edit = LineEdit(parent=self)
+        self.path_edit.textChanged.connect(self._on_text_changed)
         self.path_edit.setMinimumWidth(180)
         # 根据模式设置不同的提示语
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
@@ -95,6 +96,11 @@ class FileSelectWidget(QtWidgets.QWidget):
         """清空当前路径"""
         self.set_value("")
         self.valueChanged.emit("")
+
+    def _on_text_changed(self, text):
+        """处理文本变化事件"""
+        self._path = text
+        self.valueChanged.emit(text)
 
     def get_value(self):
         return self._path

@@ -1,5 +1,6 @@
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from NodeGraphQt.errors import NodeWidgetError
+from PyQt5 import QtGui
 from loguru import logger
 from qtpy import QtWidgets, QtCore
 
@@ -132,10 +133,28 @@ class _NodeGroupBox(QtWidgets.QWidget):
             self.highlight()
         self._highlight = not self._highlight
 
+    def paintEvent(self, event):
+        opt = QtWidgets.QStyleOption()
+        opt.initFrom(self)
+        p = QtGui.QPainter(self)
+        self.style().drawPrimitive(QtWidgets.QStyle.PE_Widget, opt, p, self)
+        super().paintEvent(event)
+
     def highlight(self):
-        self.setStyleSheet(f"{self.styleSheet()} border: 2px dashed #00E5FF; border-radius: 5px;")
+        # 使用 ID 选择器或类名选择器包裹属性
+        # 注意：这里我们给 self 设置一个 objectName 确保选择器精准
+        self.setObjectName("highlighted_group")
+        style = self.styleSheet() + """
+            #highlighted_group { 
+                border: 2px dashed #00E5FF; 
+                border-radius: 5px; 
+            }
+        """
+        self.setStyleSheet(style)
 
     def reset(self):
+        # 还原样式，移除 objectName 或重新调用 _apply_style
+        self.setObjectName("")
         self._apply_style()
 
 

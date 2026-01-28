@@ -142,3 +142,4 @@ watchfiles
 simplejson
 opencv-python
 pyecharts
+sshtunnel

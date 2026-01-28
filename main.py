@@ -1,26 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
-import warnings
-
-import NodeGraphQt
-import matplotlib
-import qtconsole.client
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
-from PyQt5.QtGui import QPalette, QColor
-
-from app.utils.utils import get_icon
-
-warnings.filterwarnings("ignore")
-
-from app.utils import icons_rc
-from PyQt5.QtCore import Qt, QLocale
-from PyQt5.QtWidgets import QApplication
-
-from app.main_window import LowCodeWindow
-
-
 def enable_dpi_scale():
     """启用 DPI 缩放支持"""
     # enable dpi scale
@@ -107,6 +85,27 @@ def load_localization(app,  language="en"):
 # 启动应
 # ----------------------------
 if __name__ == '__main__':
+    import os
+    import sys
+    import warnings
+
+    import NodeGraphQt
+    import matplotlib
+    import qtconsole.client
+    from PyQt5 import QtGui, QtCore
+    from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
+    from PyQt5.QtGui import QPalette, QColor
+
+    from app.utils.utils import get_icon
+
+    warnings.filterwarnings("ignore")
+
+    from app.utils import icons_rc
+    from PyQt5.QtCore import Qt, QLocale
+    from PyQt5.QtWidgets import QApplication
+
+    from app.main_window import LowCodeWindow
+
     patch_nodegraphqt()
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()

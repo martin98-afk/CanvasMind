@@ -8,28 +8,32 @@ logger = get_logger("EnvironmentManager")
 class EnvironmentManager:
     def __init__(self, parent):
         self.parent = parent
+        self.init = False
         self.env_data = None
         self.env_combo = self.parent.env_combo
+        # 新增、删除环境时，重新加载环境列表
         self.parent.parent.package_manager.env_changed.connect(self.load_env_combos)
 
     def load_env_combos(self, env_data=None):
         envs = self.parent.parent.package_manager.get_all_environments()
         self.env_combo.clear()
-        if hasattr(self.parent.parent, 'package_manager') and self.parent.parent.package_manager:
-            for env in envs:
-                self.env_combo.addItem(env["name"], userData=env)
-            if env_data and env_data in envs:
-                self.env_combo.setCurrentText(env_data.get("name"))
-            else:
-                self.env_combo.setCurrentText(self.parent.config.current_env_selected.value)
-            self.env_data = self.env_combo.currentData()
-        self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
+        for env in envs:
+            self.env_combo.addItem(env["name"], userData=env)
+        if env_data and env_data in envs:
+            self.env_combo.setCurrentText(env_data.get("name"))
+        else:
+            self.env_combo.setCurrentText(self.parent.config.current_env_selected.value)
+        self.env_data = self.env_combo.currentData()
+        if not self.init:
+            self.parent.ipython_kernel.start_kernel(self.env_data)
+            self.env_combo.currentIndexChanged.connect(self.on_environment_changed)
+            self.init = True
 
     def on_environment_changed(self):
         current_text = self.env_combo.currentText()
         # 获取userData
         self.env_data = self.env_combo.currentData()
-        QTimer.singleShot(0, self.parent.connect_kernel)
+        self.parent.ipython_kernel.start_kernel(self.env_data)
         self.parent.env_changed.emit(self.env_data.get("path"))
         self.parent.dependency_checker.run_check()
         MessageManager.info("环境切换", f"当前运行环境: {current_text}", self.parent)

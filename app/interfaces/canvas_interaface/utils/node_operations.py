@@ -119,7 +119,7 @@ class NodeOperations:
 
         viewer = self.graph.viewer()
         scene_view = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
-
+        scene_view._custom_menu = self.graph_menu
         original_context_menu_event = scene_view.contextMenuEvent
 
         def custom_context_menu_event(event):
