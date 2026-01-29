@@ -11,7 +11,7 @@ from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode,
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.execute_node import create_node_class
-from app.nodes.group_node import create_group_node_class
+# from app.nodes.group_node import create_group_node_class
 from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import create_sticky_note_node
@@ -77,10 +77,10 @@ class NodeOperations:
         self.graph.register_node(branch_node)
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
 
-        group_node = create_group_node_class(self.graph, self.parent)
-        group_node.__name__ = "GroupNode"
-        self.graph.register_node(group_node)
-        self.node_type_map[branch_node.FULL_PATH] = f"general.{branch_node.__name__}"
+        # group_node = create_group_node_class(self.graph, self.parent)
+        # group_node.__name__ = "GroupNode"
+        # self.graph.register_node(group_node)
+        # self.node_type_map[branch_node.FULL_PATH] = f"general.{branch_node.__name__}"
         # 注册图表绘制节点
         media_node = create_media_node(self.parent)
         media_node.__name__ = "MediaNode"
@@ -540,6 +540,8 @@ class NodeOperations:
                 unconnected_inputs = []
                 unconnected_outputs = []
                 for node in other_nodes:
+                    if not hasattr(node, "input_ports"):
+                        continue
                     for input_port in node.input_ports():
                         if not input_port.connected_ports():
                             unconnected_inputs.append((node, input_port))

@@ -541,7 +541,7 @@ class CustomNodeViewer(NodeViewer):
         on_port = any(isinstance(i, PortItem) for i in items)
 
         # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
-        if live_pipe_active and start_port and not on_port:
+        if live_pipe_active and start_port and not on_port and event.button() == QtCore.Qt.LeftButton:
             if hasattr(self, '_custom_menu') and self._custom_menu:
                 # 暂存端口，给菜单创建节点后使用
                 self._temp_connection_source = start_port
@@ -778,7 +778,11 @@ class CustomNodeGraph(NodeGraph):
             node_width, node_height = n_data.get('width'), n_data.get('height')
             node = self._node_factory.create_node_instance(identifier)
             if node:
+                if hasattr(node, "block_rename_signals"):
+                    node.block_rename_signals(True)
                 node.NODE_NAME = n_data.get('name', node.NODE_NAME)
+                if hasattr(node, "block_rename_signals"):
+                    node.block_rename_signals(False)
                 # set properties.
                 for prop in node.model.properties.keys():
                     if prop in n_data.keys():

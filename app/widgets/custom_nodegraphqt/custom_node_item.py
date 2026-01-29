@@ -281,12 +281,13 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
 class CustomNodeItem(NodeItem):
     current_mode = "subprocess"
     ICON_NODE_BASE = ":/icons/同心圆.svg"
+    _is_collapsed = False
+    _is_resizing = False  # 初始化缩放状态锁
+    _rename_signal_block = False
 
     def __init__(self, name='', parent=None):
-        self._is_resizing = False  # 初始化缩放状态锁
         super(CustomNodeItem, self).__init__(name, parent)
         self.setAcceptHoverEvents(True)
-        self._is_collapsed = False
         self.custom_signals = CustomNodeSignals()
         self.center_signal = self.custom_signals.node_center_triggered
         self.rename_signal = self.custom_signals.rename_triggered
@@ -655,10 +656,14 @@ class CustomNodeItem(NodeItem):
             if self.scene(): self.scene().clearSelection(); self.setSelected(True); event.accept()
         super(CustomNodeItem, self).mousePressEvent(event)
 
+    def block_rename_signals(self, block):
+        self._rename_signal_block = block
+
     @AbstractNodeItem.name.setter
     def name(self, name=''):
         if self.name == name: return
-        self.rename_signal.emit(self.name, name)
+        if not self._rename_signal_block:
+            self.rename_signal.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
         self._text_item.setPlainText(name)
         self._proxy_text_item.setPlainText(name)

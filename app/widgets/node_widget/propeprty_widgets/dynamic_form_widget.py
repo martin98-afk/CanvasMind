@@ -6,7 +6,7 @@ from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolBut
 from app.components.base import PropertyType
 from app.utils.utils import str_to_bool
 from app.widgets.basic_widget.combo_widget import CustomComboBox
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidget
 from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWidget
@@ -65,7 +65,15 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.set_value(default)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
-
+            elif field_type == PropertyType.MULTILINE.name:   #  多行文本
+                widget = VariableCompletionTextEdit(
+                    lambda func=get_port_func: gv.get_vars(func()) if gv else [], use_qcursor=True, parent=self
+                )
+                widget.textChanged.connect(self.changed)
+                widget.setText(str(default))
+                self.fields[key] = widget
+                input_row.addWidget(widget, 1)
+                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             elif field_type == PropertyType.CHOICE.name:
                 widget = CustomComboBox(parent=self.home)
                 widget.addItems(defn.get("choices", []))
@@ -128,6 +136,8 @@ class FormFieldWidget(QtWidgets.QWidget):
                 data[k] = v.text()
             elif hasattr(v, 'currentText'):
                 data[k] = v.currentText()
+            elif hasattr(v, 'toPlainText'):
+                data[k] = v.toPlainText()
             else:
                 data[k] = ""
         return data
