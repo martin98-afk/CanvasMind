@@ -789,4 +789,24 @@ def create_node_class(full_path, file_path, parent_window=None):
                 time.sleep(0.1)
             self._log_message(self.persistent_id, "✅ 节点在独立环境执行完成")
 
+        # 构建节点变量引用逻辑图
+        def get_logical_inputs(self) -> list:
+            """
+            解析当前节点所有属性，捕获 $node_vars.XXX$ 格式的依赖
+            返回格式: ['节点名__端口名', ...]
+            """
+            reads = set()
+            # 匹配 $node_vars.xxxx_xxxx$
+            pattern = re.compile(r"\$node_vars\.([a-zA-Z0-9_]+)\$")
+
+            for name, value in self.model.custom_properties.items():
+                # 只扫描字符串类型的属性（比如提示词、输入框）
+                if isinstance(value, str) and value.startswith("node_vars."):
+                    reads.add(value)
+                if isinstance(value, str):
+                    matches = pattern.findall(value)
+                    for m in matches:
+                        reads.add(m)
+            return list(reads)
+
     return DynamicNode

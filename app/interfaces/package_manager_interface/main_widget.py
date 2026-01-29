@@ -177,6 +177,7 @@ class EnvManagerUI(QWidget):
         rpLayout.setContentsMargins(0, 0, 0, 0)
         rpTop = QHBoxLayout()
         self.remoteEnvCombo = ComboBox(self)
+        self.remoteEnvCombo.setMaxVisibleItems(12)
         self.remoteEnvCombo.currentIndexChanged.connect(self.on_env_changed)
 
         self.addSshBtn = TransparentToolButton(FluentIcon.ADD, self)

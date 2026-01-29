@@ -668,158 +668,172 @@ def _safe_load_pickle(path, timeout=5.0, retry_interval=0.05):
     raise RuntimeError(f"无法加载结果文件: {path}")
 
 
-def topological_sort(nodes: List, split_components: bool = False) -> Union[Optional[List], Optional[List[List]]]:
+def locate_node_by_name(graph, node_name):
+    """根据全局变量名定位到对应的节点"""
+    found_node = graph.get_node_by_name(node_name)
+    # 如果 base 本身就在组里，直接返回
+    if found_node:
+        return found_node.name()
+    parts = node_name.split('_')
+    n = len(parts)
+
+    # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
+    for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+        candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+        found_node = graph.get_node_by_name(candidate)
+        if found_node:
+            return found_node.name()
+
+    # 如果上面都失败，尝试直接用空格替换所有下划线
+    fallback = ' '.join(parts)
+    found_node = graph.get_node_by_name(fallback)
+    if found_node:
+        return found_node.name()
+
+
+def topological_sort(
+        nodes: List,
+        split_components: bool = False,
+        use_logic: bool = True
+) -> Union[Optional[List], Optional[List[List]]]:
     """
-    拓扑排序
-
-    Args:
-        nodes: 节点列表
-        split_components: 是否将非连通图拆分为多个连通分量，每个分量内部进行拓扑排序
-
-    Returns:
-        如果 split_components 为 False: 返回整个图的拓扑排序列表，如果存在环则返回 None
-        如果 split_components 为 True: 返回每个连通分量的拓扑排序列表组成的列表，如果存在环则返回 None
+    增强版拓扑排序：支持物理连线依赖 + 逻辑变量依赖 ($node_vars.节点名__端口名$)
     """
     if not nodes:
         return [] if split_components else []
 
-    # 为了确保顺序固定，先对节点进行排序
+    # 1. 预处理：确保顺序固定
     sorted_nodes = sorted(nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+    node_set = set(sorted_nodes)
 
     in_degree = {node: 0 for node in sorted_nodes}
     graph_deps = defaultdict(list)
-    graph_reverse_deps = defaultdict(list)  # 反向图，用于查找连通分量
+    graph_reverse_deps = defaultdict(list)
 
-    node_set = set(sorted_nodes)
+    # --- 逻辑依赖预解析 ---
+    if use_logic:
+        # 建立 变量标识符 -> 节点的映射
+        # 变量标识符格式: 节点名__端口名 (空格会被替换为下划线，与节点类逻辑一致)
+        var_to_producer = {}
+        for node in sorted_nodes:
+            safe_node_name = re.sub(r'\s+', '_', node.name())
+            if hasattr(node, 'output_ports'):
+                for port in node.output_ports():
+                    var_key = f"node_vars.{safe_node_name}__{port.name()}"
+                    var_to_producer[var_key] = node
+
+    # 2. 构建依赖图
     for node in sorted_nodes:
-        if not hasattr(node, 'input_ports'):
-            continue
-        for input_port in node.input_ports():
-            for upstream_out in input_port.connected_ports():
-                upstream = get_port_node(upstream_out)
-                if upstream in node_set:
-                    graph_deps[upstream].append(node)
-                    graph_reverse_deps[node].append(upstream)  # 添加反向边
-                    in_degree[node] += 1
+        # A. 物理依赖：通过端口连线
+        if hasattr(node, 'input_ports'):
+            for input_port in node.input_ports():
+                for upstream_out in input_port.connected_ports():
+                    upstream = get_port_node(upstream_out)
+                    if upstream in node_set:
+                        # 避免重复添加相同的物理边
+                        if node not in graph_deps[upstream]:
+                            graph_deps[upstream].append(node)
+                            graph_reverse_deps[node].append(upstream)
+                            in_degree[node] += 1
 
+        # B. 逻辑依赖：解析 $node_vars$ 引用
+        if use_logic and hasattr(node, 'get_logical_inputs'):
+            logical_inputs = node.get_logical_inputs()
+            # 记录本节点已经依赖过的逻辑上游，防止重复计算入度
+            logic_upstreams_for_this_node = set()
+
+            for input_name in logical_inputs:
+                if input_name in var_to_producer:
+                    var_key = input_name
+                    upstream = var_to_producer.get(var_key)
+                    # 条件：上游在当前执行列表中、不是自己、且还没建立过逻辑依赖
+                    if upstream and upstream in node_set and upstream != node:
+                        if upstream not in logic_upstreams_for_this_node:
+                            # 物理依赖可能已经建立了边，这里需要去重
+                            if node not in graph_deps[upstream]:
+                                graph_deps[upstream].append(node)
+                                graph_reverse_deps[node].append(upstream)
+                                in_degree[node] += 1
+                            logic_upstreams_for_this_node.add(upstream)
+
+    # 3. 内部查找连通分量的辅助函数 (保持原逻辑)
     def find_connected_components():
-        """查找所有连通分量（无向图的连通分量）"""
         visited = set()
         components = []
-
-        # 按照排序后的节点顺序遍历，确保连通分量发现的顺序固定
         for start_node in sorted_nodes:
             if start_node not in visited:
-                # BFS 查找连通分量
                 component = []
                 queue = deque([start_node])
                 visited.add(start_node)
-
                 while queue:
                     current = queue.popleft()
                     component.append(current)
-
-                    # 检查所有相邻节点（包括前驱和后继），按固定顺序处理
                     neighbors = []
                     neighbors.extend(graph_deps[current])
                     neighbors.extend(graph_reverse_deps[current])
-
-                    # 对邻居节点排序以确保处理顺序固定
-                    neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
-
+                    neighbors = sorted(list(set(neighbors)), key=lambda x: str(x.id))
                     for neighbor in neighbors:
                         if neighbor not in visited and neighbor in node_set:
                             visited.add(neighbor)
                             queue.append(neighbor)
-
-                # 对连通分量内的节点排序以确保顺序固定
-                component.sort(key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+                component.sort(key=lambda x: str(x.id))
                 components.append(component)
-
         return components
 
+    # 4. 内部拓扑排序逻辑 (保持原逻辑，但确保处理的是构建好的依赖图)
     def topological_sort_single_component(component_nodes):
-        """对单个连通分量进行拓扑排序"""
-        component_in_degree = {node: 0 for node in component_nodes}
+        comp_set = set(component_nodes)
+        # 重新计算该分量内部节点的入度（基于 graph_deps）
+        comp_in_degree = {node: 0 for node in component_nodes}
+        for u in component_nodes:
+            for v in graph_deps[u]:
+                if v in comp_set:
+                    comp_in_degree[v] += 1
 
-        # 重新计算连通分量内的入度
-        for node in component_nodes:
-            if not hasattr(node, 'input_ports'):
-                continue
-            for input_port in node.input_ports():
-                for upstream_out in input_port.connected_ports():
-                    upstream = get_port_node(upstream_out)
-                    if upstream in component_nodes:
-                        component_in_degree[node] += 1
-
-        # 从队列中获取零入度节点时也要排序以确保顺序固定
-        zero_in_degree_nodes = [n for n in component_nodes if component_in_degree[n] == 0]
-        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
+        zero_in_degree_nodes = [n for n in component_nodes if comp_in_degree[n] == 0]
+        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id)))
 
         execution_order = []
-
         while queue:
-            # 从队列中取出节点时，确保每次处理的顺序一致
             n = queue.popleft()
             execution_order.append(n)
 
-            # 获取邻居节点并排序以确保处理顺序固定
-            neighbors = []
-            for neighbor in graph_deps[n]:
-                if neighbor in component_nodes:
-                    neighbors.append(neighbor)
-
-            # 排序邻居节点
-            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
-
+            neighbors = sorted(graph_deps[n], key=lambda x: str(x.id))
             for neighbor in neighbors:
-                component_in_degree[neighbor] -= 1
-                if component_in_degree[neighbor] == 0:
-                    queue.append(neighbor)
+                if neighbor in comp_set:
+                    comp_in_degree[neighbor] -= 1
+                    if comp_in_degree[neighbor] == 0:
+                        queue.append(neighbor)
 
         if len(execution_order) != len(component_nodes):
-            return None  # 存在环
-
+            return None  # 环
         return execution_order
 
+    # 5. 执行主逻辑
     if split_components:
-        # 按连通分量分别处理
         components = find_connected_components()
         result = []
-
         for component in components:
-            component_order = topological_sort_single_component(component)
-            if component_order is None:  # 某个连通分量内存在环
-                return None
-            result.append(component_order)
-
+            order = topological_sort_single_component(component)
+            if order is None: return None
+            result.append(order)
         return result
     else:
-        # 传统拓扑排序，处理整个图
-        # 对初始零入度节点排序以确保顺序固定
+        # 整个图的拓扑排序
         zero_in_degree_nodes = [n for n in sorted_nodes if in_degree[n] == 0]
-        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
-
+        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id)))
         execution_order = []
 
         while queue:
             n = queue.popleft()
             execution_order.append(n)
 
-            # 获取邻居节点并排序以确保顺序固定
-            neighbors = []
-            for neighbor in graph_deps[n]:
+            neighbors = sorted(graph_deps[n], key=lambda x: str(x.id))
+            for neighbor in neighbors:
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
-                    neighbors.append(neighbor)
-
-            # 排序新变为零入度的节点
-            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
-
-            for neighbor in neighbors:
-                queue.append(neighbor)
+                    queue.append(neighbor)
 
         if len(execution_order) != len(sorted_nodes):
-            return None  # 存在环
-
+            return None  # 环
         return execution_order
