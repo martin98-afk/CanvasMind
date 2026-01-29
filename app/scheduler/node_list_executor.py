@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import time
 import traceback
 import concurrent.futures
@@ -85,49 +86,95 @@ class NodeListExecutor(QRunnable):
             self._execute_node_logic(node, component_map)
 
     def _run_graph_parallel(self, nodes, component_map):
-        """通用的拓扑并行执行逻辑"""
+        """
+        支持物理连线 + 逻辑变量依赖的拓扑并行执行逻辑
+        """
         node_map = {n.id: n for n in nodes}
         in_degree = {n.id: 0 for n in nodes}
-        children = {n.id: [] for n in nodes}
+        children = {n.id: set() for n in nodes}  # 使用 set 防止重复添加边
 
-        # 1. 建图
+        # --- 1. 预处理：建立逻辑依赖索引 ---
+        # 变量标识符 -> 生产节点 ID
+        var_to_producer_id = {}
         for node in nodes:
-            if not hasattr(node, "input_ports"): continue
-            for ip in node.input_ports():
-                for cp in ip.connected_ports():
-                    upstream = cp.node()
-                    if upstream.id in node_map:
-                        children[upstream.id].append(node.id)
-                        in_degree[node.id] += 1
+            safe_node_name = re.sub(r'\s+', '_', node.name())
+            if hasattr(node, 'output_ports'):
+                for port in node.output_ports():
+                    var_key = f"node_vars.{safe_node_name}__{port.name()}"
+                    var_to_producer_id[var_key] = node.id
 
-        # 2. 线程池执行 (无限线程池，但实际运行受信号量控制)
+        # --- 2. 建图 (合并物理与逻辑依赖) ---
+        for node in nodes:
+            # 记录该节点已经建立过的上游依赖，避免重复计算入度
+            upstreams_found = set()
+
+            # A. 物理依赖扫描
+            if hasattr(node, "input_ports"):
+                for ip in node.input_ports():
+                    for cp in ip.connected_ports():
+                        upstream = cp.node()
+                        if upstream.id in node_map and upstream.id != node.id:
+                            upstreams_found.add(upstream.id)
+
+            # B. 逻辑依赖扫描
+            logical_inputs = node.get_logical_inputs()
+            for input_name in logical_inputs:
+                if input_name in var_to_producer_id:
+                    upstream_id = var_to_producer_id.get(input_name)
+                    if upstream_id and upstream_id in node_map and upstream_id != node.id:
+                        upstreams_found.add(upstream_id)
+
+            # C. 填充图结构
+            for uid in upstreams_found:
+                children[uid].add(node.id)
+                in_degree[node.id] += 1
+
+        # --- 3. 线程池执行逻辑 ---
         lock = Lock()
         active_futures = set()
+        # 初始就绪队列：入度为 0 的节点
         ready_queue = [n for n in nodes if in_degree[n.id] == 0]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
             def submit(n):
-                if self.ctx.is_cancelled() or self._error_occurred: return
+                if self.ctx.is_cancelled() or getattr(self, '_error_occurred', False):
+                    return
+                # 调用原本的任务包装器
                 f = executor.submit(self._task_wrapper, n, component_map)
                 active_futures.add(f)
 
-            for n in ready_queue: submit(n)
+            for n in ready_queue:
+                submit(n)
 
             while True:
                 with lock:
-                    if not active_futures: break
+                    if not active_futures:
+                        break
                     fs = list(active_futures)
 
+                # 等待任意一个任务完成
                 done, _ = concurrent.futures.wait(fs, return_when=concurrent.futures.FIRST_COMPLETED)
+
                 for f in done:
                     with lock:
-                        active_futures.remove(f)
-                    finished_node = f.result()
-                    if self._error_occurred or self.ctx.is_cancelled(): continue
+                        if f in active_futures:
+                            active_futures.remove(f)
+
+                    try:
+                        finished_node = f.result()
+                    except Exception as e:
+                        # 错误处理逻辑（由 _task_wrapper 内部处理更好，这里做兜底）
+                        continue
+
+                    if getattr(self, '_error_occurred', False) or self.ctx.is_cancelled():
+                        continue
+
+                    # 释放下游节点
                     with lock:
                         for cid in children.get(finished_node.id, []):
                             in_degree[cid] -= 1
-                            if in_degree[cid] == 0: submit(node_map[cid])
+                            if in_degree[cid] == 0:
+                                submit(node_map[cid])
     def _task_wrapper(self, node, component_map):
         try:
             if not node.get_property("disabled"):
