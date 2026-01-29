@@ -511,12 +511,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                 time.sleep(0.1)
                 # === 后续处理结果 (通用) ===
                 # === 读取剩余日志 ===
-                with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                    lf.seek(self.last_log_pos)
-                    new_content = lf.read()
-                    if new_content:
-                        self._log_message(self.persistent_id, new_content)
-                        self.last_log_pos = lf.tell()
+                if os.path.exists(log_file_path):
+                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                        lf.seek(self.last_log_pos)
+                        new_content = lf.read()
+                        if new_content:
+                            self._log_message(self.persistent_id, new_content)
+                            self.last_log_pos = lf.tell()
                 shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ssh(self, comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path, check_cancel):
