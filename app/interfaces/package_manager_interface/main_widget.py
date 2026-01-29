@@ -886,17 +886,75 @@ class EnvManagerUI(QWidget):
         self.on_env_changed()
 
     def add_ssh_env_dialog(self):
+        """添加 SSH 环境对话框 - 修复：直接使用环境文件夹名命名"""
         d = SSHAddrDialog(self)
         if d.exec():
-            new_env = d.get_info()
-            ssh_list = []
-            if os.path.exists(self.ssh_config_file):
-                with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
-                    ssh_list = json.load(f)
-            ssh_list.append(new_env)
-            with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
-                json.dump(ssh_list, f, ensure_ascii=False, indent=4)
-            self.refresh_remote_envs()
+            info = d.get_info()
+
+            self.stateTooltip = StateToolTip(self.tr("正在深度扫描远程环境"), self.tr("请稍候..."), self)
+            self.stateTooltip.show()
+
+            # 探测命令：找 bin/python，忽略错误输出
+            cmd = f"find '{info['path']}' -maxdepth 3 -type f -executable -name 'python*' 2>/dev/null | grep -E '/bin/python[0-9.]*$'"
+
+            self.scan_worker = SSHExecThread(info, cmd)
+
+            def on_scan_finished(output):
+                print(output)
+                self.stateTooltip.close()
+
+                # 1. 提取有效路径
+                lines = output.replace('\r', '').split('\n')
+                found_paths = [p.strip() for p in lines if p.strip().startswith('/')]
+
+                if not found_paths:
+                    found_paths = [info['path']]
+
+                try:
+                    ssh_list = []
+                    if os.path.exists(self.ssh_config_file):
+                        with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+                            ssh_list = json.load(f)
+
+                    # 2. 遍历并按文件夹名命名
+                    for p in found_paths:
+                        new_entry = info.copy()
+                        new_entry["path"] = p  # 存入真实的 python 路径
+
+                        # --- 核心改进：解析文件夹名 ---
+                        # 示例 p: /data-1/miniconda3/envs/pytorch/bin/python
+                        parts = p.split('/')
+                        if len(parts) >= 3:
+                            # 如果路径里有 bin，环境名就是 bin 的上一层
+                            # 比如 pytorch/bin/python -> 环境名是 pytorch
+                            if parts[-2] == 'bin':
+                                env_name = parts[-3]
+                            else:
+                                env_name = parts[-2]
+                        else:
+                            env_name = parts[-1]
+
+                        # 只有在批量添加时才重命名，如果只加一个，保持用户填的名字
+                        if len(found_paths) > 1:
+                            new_entry["name"] = env_name
+                        else:
+                            new_entry["name"] = info["name"] if info["name"] else env_name
+
+                        # 检查排重
+                        if not any(e['path'] == new_entry['path'] and e['host'] == new_entry['host'] for e in ssh_list):
+                            ssh_list.append(new_entry)
+
+                    # 3. 落地保存
+                    with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
+                        json.dump(ssh_list, f, ensure_ascii=False, indent=4)
+
+                    self.refresh_remote_envs()
+                    InfoBar.success(self.tr("添加成功"), f"已自动识别并添加 {len(found_paths)} 个环境", parent=self)
+                except Exception as e:
+                    InfoBar.error("保存失败", str(e), parent=self)
+
+            self.scan_worker.output_signal.connect(on_scan_finished)
+            self.scan_worker.start()
 
     def edit_ssh_env_dialog(self):
         if self.remoteEnvCombo.currentIndex() == -1: return
