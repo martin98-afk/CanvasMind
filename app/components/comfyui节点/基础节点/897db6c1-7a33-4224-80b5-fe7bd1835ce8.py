@@ -19,7 +19,7 @@ class ComfyVAEEncode(BaseComponent):
     requirements = "torch,Pillow,numpy,comfy"
     description = ""
     name = "VAE编码器(图生图)"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     
     inputs = [
         PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE), # 假设平台输入是 PIL 对象
