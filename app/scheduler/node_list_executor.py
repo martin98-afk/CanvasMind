@@ -117,12 +117,13 @@ class NodeListExecutor(QRunnable):
                             upstreams_found.add(upstream.id)
 
             # B. 逻辑依赖扫描
-            logical_inputs = node.get_logical_inputs()
-            for input_name in logical_inputs:
-                if input_name in var_to_producer_id:
-                    upstream_id = var_to_producer_id.get(input_name)
-                    if upstream_id and upstream_id in node_map and upstream_id != node.id:
-                        upstreams_found.add(upstream_id)
+            if hasattr(node, "get_logical_inputs"):
+                logical_inputs = node.get_logical_inputs()
+                for input_name in logical_inputs:
+                    if input_name in var_to_producer_id:
+                        upstream_id = var_to_producer_id.get(input_name)
+                        if upstream_id and upstream_id in node_map and upstream_id != node.id:
+                            upstreams_found.add(upstream_id)
 
             # C. 填充图结构
             for uid in upstreams_found:
