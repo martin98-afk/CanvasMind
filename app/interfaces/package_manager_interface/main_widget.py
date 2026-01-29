@@ -147,6 +147,7 @@ class EnvManagerUI(QWidget):
         lpLayout = QHBoxLayout(self.localPanel)
         lpLayout.setContentsMargins(0, 0, 0, 0)
         self.envCombo = ComboBox(self)
+        self.envCombo.setMaxVisibleItemCount(12)
         self.envCombo.currentIndexChanged.connect(self.on_env_changed)
 
         self.refreshLocalBtn = TransparentToolButton(FluentIcon.SYNC, self)
@@ -886,27 +887,44 @@ class EnvManagerUI(QWidget):
         self.on_env_changed()
 
     def add_ssh_env_dialog(self):
-        """添加 SSH 环境对话框 - 修复：直接使用环境文件夹名命名"""
+        """
+        添加 SSH 环境对话框
+        功能：支持单个 Python 文件添加，或指定目录（如 envs）批量扫描并自动以环境文件夹命名
+        """
         d = SSHAddrDialog(self)
         if d.exec():
             info = d.get_info()
 
-            self.stateTooltip = StateToolTip(self.tr("正在深度扫描远程环境"), self.tr("请稍候..."), self)
+            # 1. 显示状态提示，存入 self 防止提前销毁
+            self.stateTooltip = StateToolTip(self.tr("正在扫描远程环境"), self.tr("请稍候..."), self)
             self.stateTooltip.show()
 
-            # 探测命令：找 bin/python，忽略错误输出
-            cmd = f"find '{info['path']}' -maxdepth 3 -type f -executable -name 'python*' 2>/dev/null | grep -E '/bin/python[0-9.]*$'"
+            # 2. 构造单行命令：兼容文件和目录搜索
+            # 搜索当前路径及其下 4 层目录中名为 python 或 python3.x 的可执行文件
+            search_path = info['path'].rstrip('/')
+            # 使用原生 find 的逻辑：匹配包含 bin/python 的路径，不使用管道符
+            cmd = f"find {search_path} -maxdepth 4 -type f -executable \( -name 'python' -o -name 'python3*' \)"
 
-            self.scan_worker = SSHExecThread(info, cmd)
+            # 【注意】这里必须传入 is_raw=True (需配合你修改后的 SSHExecThread 类)
+            self.scan_worker = SSHExecThread(info, cmd, is_raw=True)
 
-            def on_scan_finished(output):
-                print(output)
-                self.stateTooltip.close()
+            # 用于收集所有输出行
+            collected_outputs = []
 
-                # 1. 提取有效路径
-                lines = output.replace('\r', '').split('\n')
-                found_paths = [p.strip() for p in lines if p.strip().startswith('/')]
+            def handle_output(line):
+                if line.strip():
+                    collected_outputs.append(line.strip())
 
+            def on_process_finished():
+                if hasattr(self, 'stateTooltip'):
+                    self.stateTooltip.close()
+
+                found_paths = [
+                    p for p in collected_outputs
+                    if p.startswith('/') and not p.endswith('-config') and 'python' in p.lower()
+                ]
+
+                # 如果没有搜到有效的，兜底使用用户填的原始路径
                 if not found_paths:
                     found_paths = [info['path']]
 
@@ -916,44 +934,55 @@ class EnvManagerUI(QWidget):
                         with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
                             ssh_list = json.load(f)
 
-                    # 2. 遍历并按文件夹名命名
                     for p in found_paths:
                         new_entry = info.copy()
-                        new_entry["path"] = p  # 存入真实的 python 路径
+                        new_entry["path"] = p
 
-                        # --- 核心改进：解析文件夹名 ---
-                        # 示例 p: /data-1/miniconda3/envs/pytorch/bin/python
                         parts = p.split('/')
-                        if len(parts) >= 3:
-                            # 如果路径里有 bin，环境名就是 bin 的上一层
-                            # 比如 pytorch/bin/python -> 环境名是 pytorch
+
+                        # 命名逻辑：如果是从目录扫出来的，提取环境文件夹名
+                        # 例如: /langchain/bin/python3.8 -> 名字提取为 langchain
+                        if p != info['path'] and len(parts) >= 3:
                             if parts[-2] == 'bin':
-                                env_name = parts[-3]
+                                env_name = parts[-3]  # langchain
                             else:
                                 env_name = parts[-2]
-                        else:
-                            env_name = parts[-1]
-
-                        # 只有在批量添加时才重命名，如果只加一个，保持用户填的名字
-                        if len(found_paths) > 1:
                             new_entry["name"] = env_name
                         else:
-                            new_entry["name"] = info["name"] if info["name"] else env_name
+                            # 单文件模式或路径太短，用用户起的名字或文件名
+                            new_entry["name"] = info["name"] if info["name"] else parts[-1]
 
-                        # 检查排重
-                        if not any(e['path'] == new_entry['path'] and e['host'] == new_entry['host'] for e in ssh_list):
+                        # 排重：Host + Port + Path 唯一
+                        is_duplicate = any(
+                            e['host'] == new_entry['host'] and
+                            e['port'] == new_entry['port'] and
+                            e['path'] == new_entry['path']
+                            for e in ssh_list
+                        )
+
+                        if not is_duplicate:
                             ssh_list.append(new_entry)
 
-                    # 3. 落地保存
                     with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
                         json.dump(ssh_list, f, ensure_ascii=False, indent=4)
 
                     self.refresh_remote_envs()
-                    InfoBar.success(self.tr("添加成功"), f"已自动识别并添加 {len(found_paths)} 个环境", parent=self)
-                except Exception as e:
-                    InfoBar.error("保存失败", str(e), parent=self)
+                    InfoBar.success(self.tr("扫描完成"), f"成功添加 {len(found_paths)} 个环境", parent=self)
 
-            self.scan_worker.output_signal.connect(on_scan_finished)
+                except Exception as e:
+                    InfoBar.error(self.tr("保存失败"), str(e), parent=self)
+
+            # 信号连接
+            self.scan_worker.output_signal.connect(handle_output)
+            self.scan_worker.finished_signal.connect(on_process_finished)
+
+            # 如果 Worker 有错误信号也连上，防止连接失败导致卡死
+            if hasattr(self.scan_worker, 'error_signal'):
+                self.scan_worker.error_signal.connect(lambda err: (
+                    self.stateTooltip.get().close() if hasattr(self, 'stateTooltip') else None,
+                    InfoBar.error(self.tr("连接失败"), str(err), parent=self)
+                ))
+
             self.scan_worker.start()
 
     def edit_ssh_env_dialog(self):

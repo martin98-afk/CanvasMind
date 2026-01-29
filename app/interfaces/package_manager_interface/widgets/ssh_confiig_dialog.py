@@ -30,7 +30,7 @@ class SSHAddrDialog(MessageBoxBase):
         # 设置占位符
         self.name_edit.setPlaceholderText("例如: 生产服务器-01")
         self.h_edit.setPlaceholderText("192.168.1.100:22")
-        self.u_edit.setPlaceholderText("root")
+        self.u_edit.setText("root")
         self.p_edit.setPlaceholderText("请输入密码")
         self.path_edit.setPlaceholderText("/usr/bin/python3")
 
@@ -125,5 +125,5 @@ class SSHAddrDialog(MessageBoxBase):
             "port": port,
             "user": self.u_edit.text().strip() or "root",
             "pwd": self.p_edit.text().strip(),
-            "path": self.path_edit.text().strip() or "/usr/bin/python3"
+            "path": self.path_edit.text().strip()
         }
