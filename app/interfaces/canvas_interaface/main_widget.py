@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
 from loguru import logger
-from qfluentwidgets import FluentIcon, InfoBar
+from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -30,7 +30,6 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
-from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
@@ -663,7 +662,7 @@ class CanvasPage(QWidget):
                     drag_data = json.loads(data_bytes.decode('utf-8'))
                     node.set_icon(":/icons/变量.svg")
                     node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                    node.view.name = "\n".join(drag_data['var_name'].split("__"))
+                    node.set_name("\n".join(drag_data['var_name'].split("__")))
                     node.view.toggle_collapse()
                     self.canvas_runner.run_node(node)
                 event.accept()

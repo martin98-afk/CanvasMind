@@ -755,7 +755,8 @@ def topological_sort(
     """
     if not nodes:
         return [] if split_components else []
-
+    # 过滤注释节点
+    nodes = [node for node in nodes if not node.model.type_ == 'general.StickyNote']
     # 1. 缓存检查
     fingerprint = None
     if use_cache:
