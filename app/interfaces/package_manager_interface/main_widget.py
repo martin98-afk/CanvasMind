@@ -147,7 +147,7 @@ class EnvManagerUI(QWidget):
         lpLayout = QHBoxLayout(self.localPanel)
         lpLayout.setContentsMargins(0, 0, 0, 0)
         self.envCombo = ComboBox(self)
-        self.envCombo.setMaxVisibleItemCount(12)
+        self.envCombo.setMaxVisibleItems(12)
         self.envCombo.currentIndexChanged.connect(self.on_env_changed)
 
         self.refreshLocalBtn = TransparentToolButton(FluentIcon.SYNC, self)
