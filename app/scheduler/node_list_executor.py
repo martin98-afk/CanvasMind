@@ -128,7 +128,6 @@ class NodeListExecutor(QRunnable):
                         for cid in children.get(finished_node.id, []):
                             in_degree[cid] -= 1
                             if in_degree[cid] == 0: submit(node_map[cid])
-
     def _task_wrapper(self, node, component_map):
         try:
             if not node.get_property("disabled"):

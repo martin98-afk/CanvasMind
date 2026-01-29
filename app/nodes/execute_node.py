@@ -49,6 +49,11 @@ def create_node_class(full_path, file_path, parent_window=None):
         FULL_PATH = full_path
         FILE_PATH = file_path
         CACHE_PATH = parent_window.file_path.parent.resolve()
+        object_io = False  # 用于判断当前节点是否存在内存对象传递，内存对象传递运行模式必须是ipython
+        # 调试模式缓存
+        _debug_enabled = False
+        _debug_widget = None
+        _debug_code_content = ""
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
@@ -61,7 +66,6 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 组件ui构建
             self._generate_parms_widget()
-            self.object_io = False # 用于判断当前节点是否存在内存对象传递，内存对象传递运行模式必须是ipython
             for port_name, label, connection, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
@@ -70,10 +74,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self.add_input(port_name, True, painter_func=draw_square_port)
             QtCore.QTimer.singleShot(0, self.build_outputs)
-            # 调试模式缓存
-            self._debug_enabled = False
-            self._debug_widget = None
-            self._debug_code_content = ""
             # 调试模式信号连接
             self.view.debug_signal.connect(self._toggle_debug_mode)
             self.view.rename_signal.connect(parent_window.rename_node_vars)
