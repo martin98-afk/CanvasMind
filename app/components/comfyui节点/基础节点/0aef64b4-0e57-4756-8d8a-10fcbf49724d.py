@@ -19,7 +19,7 @@ class ComfyKSampler(BaseComponent):
     description = ""
     requirements = "nodes,comfy"
     name = "K采样器"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     
     inputs = [
         PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),

@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfyVAEDecode(BaseComponent):
     requirements = "torch,numpy,Pillow,comfy"
     name = "VAE解码器"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     description = "将潜空间数据解码为可视化图像"
     
     inputs = [
@@ -49,8 +49,6 @@ class ComfyVAEDecode(BaseComponent):
         import comfy.model_management as mm
         vae = inputs.get("vae")
         
-        # 告诉调度器我要用 VAE 了
-        mm.load_models_to_gpu([vae])
         latent = inputs.get("latent")
         
         if vae is None or latent is None:

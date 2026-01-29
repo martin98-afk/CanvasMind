@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfyKSamplerWithPreview(BaseComponent):
     requirements = "torch,comfy,nodes,Pillow,numpy"
     name = "K采样器(预览版)"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     description = "ComfyUI 采样器封装，支持实时发送 Latent 预览图"
     
     inputs = [

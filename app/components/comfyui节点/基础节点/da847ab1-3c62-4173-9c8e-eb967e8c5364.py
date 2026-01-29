@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class ComfyClipTextEncode(BaseComponent):
     name = "CLIP文本编码器"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     description = ""
     requirements = ""
     

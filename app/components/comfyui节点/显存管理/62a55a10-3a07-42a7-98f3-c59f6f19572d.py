@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class ComfyReservedVRAM(BaseComponent):
     name = "显存管理"
-    category = "comfyui节点"
+    category = "comfyui节点/显存管理"
     description = "强制设置 ComfyUI 预留的显存空间(GB)，防止显存完全溢出"
     requirements = "pynvml,torch,#comfy"
 

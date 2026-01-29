@@ -410,6 +410,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
             return None, None
 
         source_node = source_port_item.original_node
+        if not hasattr(source_node, 'uuid'):
+            return None, None
         node_uuid = source_node.uuid
         port_name = source_port_item.name
         scanner = ComponentScanner()

@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class ComfyUniversalVideoEncode(BaseComponent):
     name = "通用视频图像编码器"
-    category = "comfyui节点"
+    category = "comfyui节点/基础节点"
     description = "通用编码器：自动适配 Wan(8/16x), LTX(32x), SD(8x) 等所有模型的尺寸和维度"
     requirements = "torch,numpy,Pillow"
     

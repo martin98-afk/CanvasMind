@@ -8,6 +8,7 @@ class InternalNodeList(ListWidget):
 
     STATUS_TEXT_MAP = {
         "running": "🟡 运行中",
+        "last_success": "🟤 成功过",
         "success": "🟢 成功",
         "failed": "🔴 失败",
         "unrun": "⚪ 未运行",
