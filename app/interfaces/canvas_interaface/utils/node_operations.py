@@ -148,7 +148,6 @@ class NodeOperations:
 
             # 执行显示逻辑
             if show_custom_bg_menu:
-                # 如果你想在 Note 上右键时，能把这个 Note 的引用传给菜单（例如“在此添加文本”），可以在这里处理
                 self.graph_menu.show_at_cursor(event.globalPos())
                 event.accept()
             else:

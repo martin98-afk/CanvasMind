@@ -122,6 +122,7 @@ class CanvasUISetUp:
         label.setText("环境:")
         label.setFixedSize(50, 30)
         self.env_combo = ComboBox(self.env_container)
+        self.env_combo.setMaxVisibleItems(10)
         self.env_combo.setFixedWidth(120)
         layout.addWidget(label)
         layout.addWidget(self.env_combo)

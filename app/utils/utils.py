@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
-import tarfile
-import uuid
-
-import paramiko
-import psutil
 import base64
+import heapq  # 使用堆来实现优先级队列
+import io
 import json
 import os
 import pickle
 import re
-import sys
-import time
 import stat
+import sys
+import tarfile
+import threading
+import time
+import uuid
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
+import paramiko
+import psutil
 import pyarrow as pa
 import pyarrow.feather as feather
-import io
-
-from pathlib import Path
-from PyQt5 import QtGui, QtCore
 from PyQt5.QtGui import QIcon
 from loguru import logger
+
 try:
     from pypinyin import pinyin, Style
 except ImportError:
@@ -668,158 +668,216 @@ def _safe_load_pickle(path, timeout=5.0, retry_interval=0.05):
     raise RuntimeError(f"无法加载结果文件: {path}")
 
 
-def topological_sort(nodes: List, split_components: bool = False) -> Union[Optional[List], Optional[List[List]]]:
+def locate_node_by_name(graph, node_name):
+    """根据全局变量名定位到对应的节点"""
+    found_node = graph.get_node_by_name(node_name)
+    # 如果 base 本身就在组里，直接返回
+    if found_node:
+        return found_node.name()
+    parts = node_name.split('_')
+    n = len(parts)
+
+    # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
+    for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+        candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+        found_node = graph.get_node_by_name(candidate)
+        if found_node:
+            return found_node.name()
+
+    # 如果上面都失败，尝试直接用空格替换所有下划线
+    fallback = ' '.join(parts)
+    found_node = graph.get_node_by_name(fallback)
+    if found_node:
+        return found_node.name()
+
+
+# 全局缓存
+_TOPO_CACHE = {}
+_TOPO_CACHE_LOCK = threading.RLock()
+
+
+def get_node_visual_rank(node):
     """
-    拓扑排序
+    获取节点的视觉排序权重：从左到右，从上到下
+    NodeGraphQt 的 node.pos() 返回 [x, y]
+    """
+    if hasattr(node, 'pos'):
+        pos = node.pos()
+        return (pos[0], pos[1])  # 先比较 X (左->右)，再比较 Y (上->下)
+    return (0, 0)
 
-    Args:
-        nodes: 节点列表
-        split_components: 是否将非连通图拆分为多个连通分量，每个分量内部进行拓扑排序
 
-    Returns:
-        如果 split_components 为 False: 返回整个图的拓扑排序列表，如果存在环则返回 None
-        如果 split_components 为 True: 返回每个连通分量的拓扑排序列表组成的列表，如果存在环则返回 None
+def get_graph_fingerprint(nodes: List, use_logic: bool) -> int:
+    """
+    计算图指纹。
+    注意：现在包含了坐标，因为坐标改变会影响视觉排序结果。
+    """
+    state = []
+    # 按照 ID 排序后再计算 hash，确保指纹唯一性
+    for node in sorted(nodes, key=lambda x: x.id):
+        node_state = [
+            node.id,
+            node.name(),
+            tuple(node.pos()) if hasattr(node, 'pos') else (0, 0)
+        ]
+
+        # 物理连接
+        node_ids = {n.id for n in nodes}
+        connections = []
+        if hasattr(node, 'input_ports'):
+            for p in node.input_ports():
+                for cp in p.connected_ports():
+                    upstream = cp.node()
+                    if upstream.id in node_ids:
+                        connections.append(f"{upstream.id}->{p.name()}")
+        node_state.append(tuple(sorted(connections)))
+
+        # 逻辑依赖
+        if use_logic and hasattr(node, 'get_logical_inputs'):
+            node_state.append(tuple(node.get_logical_inputs()))
+
+        state.append(tuple(node_state))
+
+    return hash(tuple(state))
+
+
+def topological_sort(
+        nodes: List,
+        split_components: bool = False,
+        use_logic: bool = True,
+        use_cache: bool = True
+) -> Union[Optional[List], Optional[List[List]]]:
+    """
+    增强版拓扑排序
+    1. 支持物理+逻辑依赖
+    2. 支持缓存
+    3. 严格按视觉位置排序 (左->右, 上->下)
     """
     if not nodes:
         return [] if split_components else []
 
-    # 为了确保顺序固定，先对节点进行排序
-    sorted_nodes = sorted(nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+    # 1. 缓存检查
+    fingerprint = None
+    if use_cache:
+        fingerprint = get_graph_fingerprint(nodes, use_logic)
+        cache_key = (fingerprint, split_components, use_logic)
+        with _TOPO_CACHE_LOCK:
+            if cache_key in _TOPO_CACHE:
+                return _TOPO_CACHE[cache_key]
 
+    # 2. 构建依赖图
+    # 初始排序：在构建逻辑时，我们也按视觉顺序处理
+    sorted_nodes = sorted(nodes, key=get_node_visual_rank)
+    node_set = set(sorted_nodes)
     in_degree = {node: 0 for node in sorted_nodes}
     graph_deps = defaultdict(list)
-    graph_reverse_deps = defaultdict(list)  # 反向图，用于查找连通分量
+    graph_reverse_deps = defaultdict(list)
 
-    node_set = set(sorted_nodes)
+    if use_logic:
+        var_to_producer = {}
+        for node in sorted_nodes:
+            safe_node_name = re.sub(r'\s+', '_', node.name())
+            if hasattr(node, 'output_ports'):
+                for port in node.output_ports():
+                    var_key = f"node_vars.{safe_node_name}__{port.name()}"
+                    var_to_producer[var_key] = node
+
     for node in sorted_nodes:
-        if not hasattr(node, 'input_ports'):
-            continue
-        for input_port in node.input_ports():
-            for upstream_out in input_port.connected_ports():
-                upstream = get_port_node(upstream_out)
-                if upstream in node_set:
-                    graph_deps[upstream].append(node)
-                    graph_reverse_deps[node].append(upstream)  # 添加反向边
-                    in_degree[node] += 1
+        # A. 物理依赖
+        if hasattr(node, 'input_ports'):
+            for input_port in node.input_ports():
+                for upstream_out in input_port.connected_ports():
+                    upstream = upstream_out.node()
+                    if upstream in node_set:
+                        if node not in graph_deps[upstream]:
+                            graph_deps[upstream].append(node)
+                            graph_reverse_deps[node].append(upstream)
+                            in_degree[node] += 1
 
+        # B. 逻辑依赖
+        if use_logic and hasattr(node, 'get_logical_inputs'):
+            for input_name in node.get_logical_inputs():
+                upstream = var_to_producer.get(input_name)
+                if upstream and upstream in node_set and upstream != node:
+                    if node not in graph_deps[upstream]:
+                        graph_deps[upstream].append(node)
+                        graph_reverse_deps[node].append(upstream)
+                        in_degree[node] += 1
+
+    # 3. 连通分量查找 (按视觉顺序发现分量)
     def find_connected_components():
-        """查找所有连通分量（无向图的连通分量）"""
         visited = set()
         components = []
-
-        # 按照排序后的节点顺序遍历，确保连通分量发现的顺序固定
-        for start_node in sorted_nodes:
+        for start_node in sorted_nodes:  # 这里已经是按视觉排好序的
             if start_node not in visited:
-                # BFS 查找连通分量
                 component = []
                 queue = deque([start_node])
                 visited.add(start_node)
-
                 while queue:
                     current = queue.popleft()
                     component.append(current)
-
-                    # 检查所有相邻节点（包括前驱和后继），按固定顺序处理
-                    neighbors = []
-                    neighbors.extend(graph_deps[current])
-                    neighbors.extend(graph_reverse_deps[current])
-
-                    # 对邻居节点排序以确保处理顺序固定
-                    neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
-
+                    # 合并正向和反向边来找连通块
+                    neighbors = list(set(graph_deps[current] + graph_reverse_deps[current]))
+                    # 邻居也按视觉排序
+                    neighbors.sort(key=get_node_visual_rank)
                     for neighbor in neighbors:
                         if neighbor not in visited and neighbor in node_set:
                             visited.add(neighbor)
                             queue.append(neighbor)
-
-                # 对连通分量内的节点排序以确保顺序固定
-                component.sort(key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+                # 分量内部初次排序
+                component.sort(key=get_node_visual_rank)
                 components.append(component)
-
         return components
 
-    def topological_sort_single_component(component_nodes):
-        """对单个连通分量进行拓扑排序"""
-        component_in_degree = {node: 0 for node in component_nodes}
+    # 4. 拓扑排序核心算法 (使用优先级队列保证视觉顺序)
+    def topo_process(target_nodes, current_in_degrees):
+        target_set = set(target_nodes)
+        # 使用 heapq 实现优先级队列
+        # 存入格式: (visual_rank_tuple, node_object)
+        # heapq 是最小堆，坐标越小优先级越高
+        ready_queue = []
 
-        # 重新计算连通分量内的入度
-        for node in component_nodes:
-            if not hasattr(node, 'input_ports'):
-                continue
-            for input_port in node.input_ports():
-                for upstream_out in input_port.connected_ports():
-                    upstream = get_port_node(upstream_out)
-                    if upstream in component_nodes:
-                        component_in_degree[node] += 1
+        for n in target_nodes:
+            if current_in_degrees[n] == 0:
+                heapq.heappush(ready_queue, (get_node_visual_rank(n), n))
 
-        # 从队列中获取零入度节点时也要排序以确保顺序固定
-        zero_in_degree_nodes = [n for n in component_nodes if component_in_degree[n] == 0]
-        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
+        order = []
+        while ready_queue:
+            _, n = heapq.heappop(ready_queue)
+            order.append(n)
 
-        execution_order = []
-
-        while queue:
-            # 从队列中取出节点时，确保每次处理的顺序一致
-            n = queue.popleft()
-            execution_order.append(n)
-
-            # 获取邻居节点并排序以确保处理顺序固定
-            neighbors = []
+            # 释放下游，并将新就绪的节点按坐标放入堆
             for neighbor in graph_deps[n]:
-                if neighbor in component_nodes:
-                    neighbors.append(neighbor)
+                if neighbor in target_set:
+                    current_in_degrees[neighbor] -= 1
+                    if current_in_degrees[neighbor] == 0:
+                        heapq.heappush(ready_queue, (get_node_visual_rank(neighbor), neighbor))
 
-            # 排序邻居节点
-            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
+        return order if len(order) == len(target_nodes) else None
 
-            for neighbor in neighbors:
-                component_in_degree[neighbor] -= 1
-                if component_in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        if len(execution_order) != len(component_nodes):
-            return None  # 存在环
-
-        return execution_order
-
+    # 5. 执行
     if split_components:
-        # 按连通分量分别处理
         components = find_connected_components()
-        result = []
+        results = []
+        for comp in components:
+            # 为每个连通分量计算入度
+            comp_in_degree = {n: 0 for n in comp}
+            c_set = set(comp)
+            for u in comp:
+                for v in graph_deps[u]:
+                    if v in c_set: comp_in_degree[v] += 1
 
-        for component in components:
-            component_order = topological_sort_single_component(component)
-            if component_order is None:  # 某个连通分量内存在环
-                return None
-            result.append(component_order)
-
-        return result
+            sorted_comp = topo_process(comp, comp_in_degree)
+            if sorted_comp is None: return None  # 有环
+            results.append(sorted_comp)
+        final_result = results
     else:
-        # 传统拓扑排序，处理整个图
-        # 对初始零入度节点排序以确保顺序固定
-        zero_in_degree_nodes = [n for n in sorted_nodes if in_degree[n] == 0]
-        queue = deque(sorted(zero_in_degree_nodes, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x)))
+        final_result = topo_process(sorted_nodes, in_degree)
 
-        execution_order = []
+    # 6. 写入缓存
+    if use_cache and fingerprint is not None:
+        with _TOPO_CACHE_LOCK:
+            if len(_TOPO_CACHE) > 100: _TOPO_CACHE.clear()
+            _TOPO_CACHE[(fingerprint, split_components, use_logic)] = final_result
 
-        while queue:
-            n = queue.popleft()
-            execution_order.append(n)
-
-            # 获取邻居节点并排序以确保顺序固定
-            neighbors = []
-            for neighbor in graph_deps[n]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    neighbors.append(neighbor)
-
-            # 排序新变为零入度的节点
-            neighbors = sorted(neighbors, key=lambda x: str(x.id) if hasattr(x, 'id') else str(x))
-
-            for neighbor in neighbors:
-                queue.append(neighbor)
-
-        if len(execution_order) != len(sorted_nodes):
-            return None  # 存在环
-
-        return execution_order
+    return final_result

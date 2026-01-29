@@ -407,9 +407,8 @@ class PortWidget(QWidget):
             item = container.takeAt(0)
             if item.widget(): item.widget().deleteLater()
 
-        if p_type == ArgumentType.CSV and not is_output:
-            if isinstance(data, pd.DataFrame) and not data.empty:
-                self._add_column_selector_widget_to_layout(p_name, data, container)
+        if not is_output and isinstance(data, pd.DataFrame) and not data.empty:
+            self._add_column_selector_widget_to_layout(p_name, data, container)
 
     def _add_column_selector_widget_to_layout(self, port_name, data, layout):
         """CSV 列选择器组件"""

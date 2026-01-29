@@ -1413,7 +1413,6 @@ class BaseComponent(ABC):
             workflow_path: str = None
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
-        print(params)
         self.node_id = node_id
         self.data_handler = DataHandler(
             node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger, component_instance=self

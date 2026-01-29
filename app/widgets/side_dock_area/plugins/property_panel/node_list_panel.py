@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, QTimer, QMimeData
+from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
+from loguru import logger
+from qfluentwidgets import CardWidget, TransparentToolButton, FluentIcon, BodyLabel
 
 from app.utils.utils import topological_sort
 from app.widgets.side_dock_area.plugins.property_panel.draggable_container import DraggableContainer
+from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
 
 
 class NodeListPanelWidget(QWidget):
-    """
-    优化后的多节点列表面板。
-    支持拖拽排序记忆、增量更新和连通图分割。
-    """
-
     def __init__(self, main_window, parent_panel, nodes):
         super().__init__(parent_panel)
         self.main_window = main_window
         self.parent_panel = parent_panel
 
-        self._current_components = []
-        self._user_execution_order = {}
+        # 核心数据结构
+        self._current_components = []  # 存储 List[List[Node]]，且内部已排好序
+        self._component_history = []  # 记录组件指纹顺序，用于顺序记忆
+
         self._column_list_widgets = {}
         self._component_nodes_list = {}
 
@@ -29,180 +30,153 @@ class NodeListPanelWidget(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(8)
-
-        # 创建你提供的可拖拽容器
-        # 注意：现在 self 就是 panel_widget
         self.nodes_card = DraggableContainer(self)
-
-        # 将容器包装进滚动区域
         self.scroll_area = self.parent_panel.set_scrollbar(self.nodes_card)
         self.main_layout.addWidget(self.scroll_area, 1)
 
+    def _get_comp_fingerprint(self, nodes):
+        """生成连通图的唯一指纹（用于顺序记忆）"""
+        return tuple(sorted(n.id for n in nodes))
+
     def update_data(self, nodes):
-        """外部调用接口：更新数据并刷新 UI"""
-        # 1. 拓扑排序与顺序记忆逻辑 (保留你原有的逻辑)
-        new_components = topological_sort(nodes, split_components=True) or []
-        new_node_sets = [set(n.id for n in comp) for comp in new_components]
-        current_user_order = self._user_execution_order.copy()
-        final_components = []
-        processed_new_indices = set()
+        """核心逻辑：增量更新并保持用户拖拽后的顺序"""
+        # 1. 直接获取带逻辑依赖的拓扑排序分量
+        # 这里的 split_components=True 返回的是 List[List[Node]]
+        # 且每个 List[Node] 内部已经是排好序的了
+        raw_components = topological_sort(nodes, split_components=True, use_logic=True) or []
 
-        for old_key_node_ids, old_ordered_nodes in current_user_order.items():
-            old_node_set = set(old_key_node_ids)
-            matched_indices = []
-            first_match_positions = []
-            for i, new_node_set in enumerate(new_node_sets):
-                if i in processed_new_indices: continue
-                if old_node_set & new_node_set:
-                    for j, node in enumerate(old_ordered_nodes):
-                        if node.id in new_node_set:
-                            first_match_positions.append(j)
-                            matched_indices.append(i)
-                            break
-            if matched_indices:
-                sorted_pairs = sorted(zip(first_match_positions, matched_indices))
-                for _, idx in sorted_pairs:
-                    final_components.append(new_components[idx])
-                    processed_new_indices.add(idx)
+        # 2. 顺序记忆对齐逻辑
+        # 我们根据“节点成员”构建指纹，匹配历史顺序
+        new_comp_map = {self._get_comp_fingerprint(c): c for c in raw_components}
+        final_ordered_components = []
 
-        for i, comp in enumerate(new_components):
-            if i not in processed_new_indices:
-                final_components.append(comp)
+        # 先按历史记忆填充
+        still_exists_fingerprints = []
+        for fp in self._component_history:
+            if fp in new_comp_map:
+                final_ordered_components.append(new_comp_map.pop(fp))
+                still_exists_fingerprints.append(fp)
 
-        self._current_components = final_components
+        # 再补充新出现的组件
+        for fp, comp in new_comp_map.items():
+            final_ordered_components.append(comp)
+            still_exists_fingerprints.append(fp)
 
-        # 2. 调用刷新
-        self._refresh_ui_from_current_components()
+        self._current_components = final_ordered_components
+        self._component_history = still_exists_fingerprints  # 更新记忆
 
-    def update_node_list_content(self):
-        """
-        外部调用接口：增量刷新节点列表中的状态图标和名称。
-        用于在节点运行过程中实时更新 UI，而不触发重新布局。
-        """
-        if not self._component_nodes_list:
-            return
+        self._refresh_ui()
 
-        for list_id, node_list in self._component_nodes_list.items():
-            # 获取对应的 InternalNodeList 控件
-            list_widget = self._column_list_widgets.get(list_id)
-            if list_widget:
-                try:
-                    # 获取最新的状态和名称
-                    status_list = [self.main_window.get_node_status(n) for n in node_list]
-                    name_list = [n.name() for n in node_list]
-
-                    # 调用 InternalNodeList 自身的增量更新方法
-                    list_widget.update_content(status_list, name_list)
-                except Exception as e:
-                    from loguru import logger
-                    logger.error(f"刷新节点列表状态失败: {e}")
-
-    def _refresh_ui_from_current_components(self):
-        """渲染卡片列表 (供 DraggableContainer 回调)"""
-        # 记录当前滚动位置
+    def _refresh_ui(self):
+        """渲染 UI 面板"""
         v_bar = self.scroll_area.verticalScrollBar()
         scroll_pos = v_bar.value()
 
-        # 清理容器布局 (除了插入线 Indicator)
+        # 清空布局（保留插入指示线）
         layout = self.nodes_card.layout()
-        while layout.count():
+        while layout.count() > 0:
             item = layout.takeAt(0)
-            w = item.widget()
-            if w and w != self.nodes_card.insert_line:
-                w.deleteLater()
+            if item.widget() and item.widget() != self.nodes_card.insert_line:
+                item.widget().deleteLater()
 
         self._component_nodes_list.clear()
         self._column_list_widgets.clear()
 
-        # 重新创建卡片
-        # 为了保持 NodeListPanelWidget 完整，建议直接把 _create_component_card 移入此类
+        # 循环创建卡片
         for i, comp in enumerate(self._current_components):
-            self._create_component_card(layout, i)
+            self._add_component_card(layout, i, comp)
 
         layout.addStretch(1)
-
-        # 恢复滚动位置
         QTimer.singleShot(10, lambda: v_bar.setValue(scroll_pos))
 
-        # 更新顺序记忆
-        self._user_execution_order.clear()
-        for comp in self._current_components:
-            if comp:
-                key = tuple(sorted(n.id for n in comp))
-                self._user_execution_order[key] = comp.copy()
+    def _add_component_card(self, layout, index, nodes):
+        """封装单个卡片的创建逻辑"""
 
-    def _create_component_card(self, parent_layout, index):
-        """创建单个连通图卡片 (复用你之前的逻辑)"""
-        from qfluentwidgets import CardWidget, TransparentToolButton, FluentIcon, BodyLabel
-        from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
-        from PyQt5.QtGui import QDrag
+        card = CardWidget(self.nodes_card)
+        card._component_index = index
+        card_layout = QVBoxLayout(card)
 
-        component = self._current_components[index]
-        topo_sorted = topological_sort(component, split_components=False) or component
+        # 内部 ID 绑定
+        list_id = f"comp_{index}"
+        self._component_nodes_list[list_id] = nodes
 
-        component_card = CardWidget(self.nodes_card)
-        comp_layout = QVBoxLayout(component_card)
-        component_card._component_index = index
-
-        # 拖拽发起逻辑
+        # 拖拽逻辑：只需传递 index
         def mouseMoveEvent(event):
-            if not (event.buttons() & Qt.LeftButton): return
-            drag = QDrag(component_card)
+            if event.buttons() != Qt.LeftButton: return
+            drag = QDrag(card)
             mime = QMimeData()
             mime.setText(f"component_index:{index}")
             drag.setMimeData(mime)
-            drag.setPixmap(component_card.grab())
-            component_card.hide()
+            card.hide()
             drag.exec_(Qt.MoveAction)
-            component_card.show()
+            card.show()
 
-        component_card.mouseMoveEvent = mouseMoveEvent
+        card.mouseMoveEvent = mouseMoveEvent
 
-        # 标题栏
+        # Header
         header = QHBoxLayout()
-        header.addWidget(BodyLabel(f"子连通图 {index + 1} ({len(topo_sorted)} 节点)"))
-        split_btn = TransparentToolButton(FluentIcon.CUT)
-        split_btn.clicked.connect(lambda: self._split_component_at_selection(index))
+        header.addWidget(BodyLabel(f"执行分量 {index + 1} ({len(nodes)} 节点)"))
         header.addStretch()
+        split_btn = TransparentToolButton(FluentIcon.CUT)
+        split_btn.clicked.connect(lambda: self._split_at(index))
         header.addWidget(split_btn)
-        comp_layout.addLayout(header)
+        card_layout.addLayout(header)
 
-        # 节点列表
-        list_id = f"component_{index}"
-        self._component_nodes_list[list_id] = topo_sorted
-        status_list = [self.main_window.get_node_status(n) for n in topo_sorted]
-        name_list = [n.name() for n in topo_sorted]
+        # Node List
+        status_list = [self.main_window.get_node_status(n) for n in nodes]
+        name_list = [n.name() for n in nodes]
         node_list_widget = InternalNodeList(status_list, name_list, self)
-        def on_double_click(item):
-            row = node_list_widget.row(item)
-            if 0 <= row < len(topo_sorted):
-                node = topo_sorted[row]
-                self.main_window.canvas_widget.zoom_to_nodes([node._view])
 
-        node_list_widget.itemDoubleClicked.connect(on_double_click)
-        node_list_widget.setFixedHeight(max(40 * len(topo_sorted), 40))
-        comp_layout.addWidget(node_list_widget)
+        # 双击定位
+        node_list_widget.itemDoubleClicked.connect(
+            lambda item: self.main_window.canvas_widget.zoom_to_nodes(
+                [nodes[node_list_widget.row(item)]._view]
+            )
+        )
+
+        node_list_widget.setFixedHeight(max(38 * len(nodes), 40))
+        card_layout.addWidget(node_list_widget)
+
         self._column_list_widgets[list_id] = node_list_widget
+        layout.addWidget(card)
 
-        parent_layout.addWidget(component_card)
-
-    def _split_component_at_selection(self, index):
-        """连通图分割逻辑"""
+    def _split_at(self, index):
+        """在选中的位置强行打断连通图顺序"""
         comp = self._current_components[index]
-        list_id = f"component_{index}"
-        widget = self._column_list_widgets.get(list_id)
-        sel = widget.get_current_selected_row() if widget else -1
-        split_pt = sel + 1 if sel >= 0 else len(comp) // 2
-        if 0 < split_pt < len(comp):
-            self._current_components[index:index + 1] = [comp[:split_pt], comp[split_pt:]]
-            self._refresh_ui_from_current_components()
+        widget = self._column_list_widgets.get(f"comp_{index}")
+        sel_row = widget.get_current_selected_row() if widget else -1
+
+        split_idx = sel_row + 1 if sel_row >= 0 else len(comp) // 2
+        if 0 < split_idx < len(comp):
+            # 将一个 List 分裂为两个，并更新记忆指纹
+            part1, part2 = comp[:split_idx], comp[split_idx:]
+            self._current_components[index:index + 1] = [part1, part2]
+
+            # 更新历史顺序指纹列表，确保下次 update_data 依然保持这个手动分割的顺序
+            new_history = []
+            for c in self._current_components:
+                new_history.append(self._get_comp_fingerprint(c))
+            self._component_history = new_history
+
+            self._refresh_ui()
+
+    def update_node_list_content(self):
+        """增量刷新节点状态，不触发重绘"""
+        for list_id, nodes in self._component_nodes_list.items():
+            widget = self._column_list_widgets.get(list_id)
+            if widget:
+                try:
+                    stats = [self.main_window.get_node_status(n) for n in nodes]
+                    names = [n.name() for n in nodes]
+                    widget.update_content(stats, names)
+                except Exception as e:
+                    logger.error(f"UI增量更新失败: {e}")
 
     def get_current_order(self):
-        res = []
-        for c in self._current_components: res.extend(c)
-        return res
+        """获取最终执行序列"""
+        return [node for comp in self._current_components for node in comp]
 
     def reset_components(self):
         self._current_components = []
-        self._user_execution_order.clear()
-        self._refresh_ui_from_current_components()
+        self._component_history = []
+        self._refresh_ui()
