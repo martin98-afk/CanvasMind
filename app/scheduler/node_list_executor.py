@@ -6,6 +6,7 @@ import concurrent.futures
 from threading import Lock, BoundedSemaphore
 from typing import List, Optional, Any
 
+from NodeGraphQt import GroupNode
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTimer
 from loguru import logger
 
@@ -14,6 +15,7 @@ from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.scheduler.backdrop_executor import BackdropExecutor
 from app.scheduler.execution_context import ExecutionContext
+from app.scheduler.group_node_executor import GroupNodeExecutor
 from app.scheduler.single_node_executor import execute_node
 
 
@@ -161,11 +163,7 @@ class NodeListExecutor(QRunnable):
                         if f in active_futures:
                             active_futures.remove(f)
 
-                    try:
-                        finished_node = f.result()
-                    except Exception as e:
-                        # 错误处理逻辑（由 _task_wrapper 内部处理更好，这里做兜底）
-                        continue
+                    finished_node = f.result()
 
                     if getattr(self, '_error_occurred', False) or self.ctx.is_cancelled():
                         continue
@@ -207,6 +205,19 @@ class NodeListExecutor(QRunnable):
             be.log_finished.connect(self.signals.log_finished)
             be.execute()
             self.signals.backdrop_finished.emit()
+        # 组节点执行逻辑
+        elif isinstance(node, GroupNode):
+            ge = GroupNodeExecutor(
+                group_node=node, scheduler=self.scheduler, python_exe=self.python_exe,
+                kernel_manager=self.kernel_manager, global_variables=self.scheduler.global_variables,
+                execution_context=self.ctx
+            )
+            ge.log_start.connect(self.signals.log_start)
+            ge.log_message.connect(self.signals.log_message)
+            ge.log_error.connect(self.signals.log_error)
+            ge.log_finished.connect(self.signals.log_finished)
+            ge.execute()
+            # self.signals.groupnode_finished.emit()
         else:
             execute_node(
                 node=node, python_exe=self.python_exe,

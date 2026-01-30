@@ -184,7 +184,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     def node(self, node):
         self._node = node
 
-    def toggle_global_mode(self):
+    def toggle_global_mode(self, mode=None):
         group = self.widget()
         if not group: return
         # 检查是否是参数类控件，展示类控件不需要替换
@@ -194,7 +194,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
             logger.error("VarComboBoxWidget class not registered in CustomNodeBaseWidget")
             return
 
-        self._is_using_global = not self._is_using_global
+        self._is_using_global = mode or not self._is_using_global
 
         if self._is_using_global:
             if not self._global_widget:
@@ -202,7 +202,6 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
                 self._global_widget = self.VAR_WIDGET_CLASS(
                     main_window=self.get_custom_widget().main_window, type="全局变量"
                 )
-                # self._global_widget.setZValue(Z_VAL_NODE_WIDGET + 10)
                 self._global_widget.valueChanged.connect(self.on_value_changed)
 
             self._local_widget.hide()
@@ -229,7 +228,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         return self._get_local_value()
 
     def set_value(self, value):
-        if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
+        if GlobalVariableContext.is_variable_name(value):
             if not self._is_using_global:
                 self.toggle_global_mode()
             self._global_widget.set_value(value)

@@ -92,7 +92,7 @@ class RemoteIPythonKernelManager:
             self.remote_connection_file = f"/tmp/kernel_{kernel_id}.json"
             python_path = env_data.get('path', 'python')
 
-            # 2. 极其严苛的远程脚本
+            # 2.的远程脚本
             # 增加 sync 强制刷盘，增加 python 路径检测
             timeout_seconds = 300
             remote_script = (
@@ -101,7 +101,7 @@ class RemoteIPythonKernelManager:
                 f"nohup {python_path} -m ipykernel_launcher "
                 f"--f={self.remote_connection_file} "
                 f"--ip=127.0.0.1 "
-                f"--KernelApp.shutdown_no_activity_timeout={timeout_seconds} "  # 核心参数
+                f"--KernelApp.shutdown_no_activity_timeout={timeout_seconds} "  # 核心参数:控制其在一段时间内没有任何操作自动关闭
                 f"> {remote_log} 2>&1 & "
                 f"PID=$!; sleep 1; "
                 f"for i in {{1..30}}; do "
@@ -194,6 +194,11 @@ class RemoteIPythonKernelManager:
             logger.exception("连接远程内核失败")
             self.shutdown_kernel()
             raise e
+
+    def interrupt_kernel(self):
+        """强制中断内核"""
+        if self.kernel_client:
+            self.kernel_client.interrupt_kernel()
 
     def shutdown_kernel(self):
         """清理所有资源"""

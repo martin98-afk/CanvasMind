@@ -422,8 +422,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 上游节点输出端口key
                         safe_key = f"input_{safe_name}__{connected[0].name()}"
                         input_vars[safe_key] = inputs_raw[port_name]
-                    if port_name in self.column_select:
-                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
+                    if port_name in self.get_property("_column_select"):
+                        inputs_raw[f"{port_name}_column_select"] = self.get_property("_column_select").get(port_name)
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
 
@@ -493,8 +493,42 @@ def create_node_class(full_path, file_path, parent_window=None):
                 else:
                     self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
             try:
-                if os.path.exists(result_path):
-                    output = _safe_load_pickle(result_path)
+                # === 结果读取重试机制 ===
+                max_wait_time = 3.0  # 最大等待3秒
+                retry_interval = 0.2
+                elapsed_time = 0
+                output = None
+                last_error = "未发现结果或错误反馈文件。"
+
+                while elapsed_time < max_wait_time:
+                    # 1. 检查结果文件
+                    if os.path.exists(result_path):
+                        try:
+                            # 增加一层保护：有时文件存在但正在写入，内容为空或不完整
+                            if os.path.getsize(result_path) > 0:
+                                output = _safe_load_pickle(result_path)
+                                if output is not None:
+                                    break  # 成功读取，跳出循环
+                        except Exception as e:
+                            last_error = f"结果文件读取失败(可能正在写入): {str(e)}"
+
+                    # 2. 检查错误文件
+                    elif os.path.exists(error_path):
+                        try:
+                            if os.path.getsize(error_path) > 0:
+                                error_info = _safe_load_pickle(error_path)
+                                raise Exception(error_info.get('traceback', '未知进程内错误'))
+                        except Exception as e:
+                            if "未知进程内错误" in str(e) or "traceback" in str(e): raise  # 业务错误直接抛出
+                            last_error = f"错误文件读取失败: {str(e)}"
+
+                    # 3. 未就绪，等待后重试
+                    time.sleep(retry_interval)
+                    elapsed_time += retry_interval
+
+                # --- 退出循环后的处理 ---
+                if output is not None:
+                    # 填充输出端口数据
                     for port in comp_obj.outputs:
                         if port.type != ArgumentType.UPLOAD:
                             self.set_output_value(port.name, output.get(port.name))
@@ -502,22 +536,26 @@ def create_node_class(full_path, file_path, parent_window=None):
                             self.set_output_value(port.name, self.model.get_property(f"{port.name}_upload"))
                     self._sync_buffer_to_global()
                     return output
-                elif os.path.exists(error_path):
-                    error_info = _safe_load_pickle(error_path)
-                    raise Exception(error_info['traceback'])
                 else:
-                    raise Exception("节点运行结束，但未发现结果或错误反馈文件。")
+                    # 达到最大重试时间仍未获取结果
+                    raise Exception(f"节点运行结束(超时)，{last_error}")
+
             finally:
-                time.sleep(0.1)
                 # === 后续处理结果 (通用) ===
-                # === 读取剩余日志 ===
-                if os.path.exists(log_file_path):
-                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                        lf.seek(self.last_log_pos)
-                        new_content = lf.read()
-                        if new_content:
-                            self._log_message(self.persistent_id, new_content)
-                            self.last_log_pos = lf.tell()
+                # 在删除目录前，务必先处理日志，确保最后一段日志被抓取
+                try:
+                    if os.path.exists(log_file_path):
+                        with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                            lf.seek(self.last_log_pos)
+                            new_content = lf.read()
+                            if new_content:
+                                self._log_message(self.persistent_id, new_content)
+                                self.last_log_pos = lf.tell()
+                except:
+                    pass
+
+                # 最后删除临时运行目录
+                # 如果在高并发下这里报错，可以加一个小延迟
                 shutil.rmtree(run_dir, ignore_errors=True)
 
         def _execute_via_ssh(self, comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path, check_cancel):

@@ -52,7 +52,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
         # --- 核心数据存储优化 ---
         self._output_values: Dict[str, Any] = {}
         self._input_values: Dict[str, Any] = {}
-        self.column_select: Dict[str, Any] = {}
 
         # 使用 deque 限制内存中存储的日志行数（例如保留最近1000行）
         self._log_buffer = collections.deque(maxlen=1000)
@@ -74,6 +73,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.model.add_property("persistent_id", str(uuid.uuid4()))
         self.model.add_property("_collapsed", False)
         self.model.add_property("_exec_mode", "subprocess")
+        self.model.add_property("_column_select", {})
 
         # 绑定视图信号
         if hasattr(self.view, "collapsed_toggle"):

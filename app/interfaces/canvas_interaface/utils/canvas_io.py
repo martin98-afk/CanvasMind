@@ -49,7 +49,8 @@ class CanvasIO(QObject):
 
             graph_data = self.graph.serialize_session()
             for node_data in graph_data["nodes"].values():
-                node_data["custom"].pop("global_variable", None)
+                if "custom" in node_data:
+                    node_data["custom"].pop("global_variable", None)
 
             runtime = {
                 "environment": self.parent.environment_manager.env_combo.currentData(),
@@ -57,8 +58,7 @@ class CanvasIO(QObject):
                 "node_id2stable_key": {},
                 "node_states": {},
                 "node_inputs": {},
-                "node_outputs": {},
-                "column_select": {}
+                "node_outputs": {}
             }
 
             # 这一步循环通常很快，除非节点成千上万，否则不需要移出
@@ -71,7 +71,6 @@ class CanvasIO(QObject):
                 # 这里的 _input_values 可能很大，但这里只是引用传递，很快
                 runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
                 runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
-                runtime["column_select"][stable_key] = getattr(node, 'column_select', {})
 
             full_data = {
                 "version": "1.0",
@@ -286,7 +285,6 @@ class CanvasIO(QObject):
                 continue
             node._input_values = data["input_values"]
             node._output_values = data["output_values"]
-            node.column_select = data["column_select"]
             status_str = data["status_str"]
             status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
             # 每次加载时把上次成功的节点设置为枯黄色，用于区分

@@ -435,7 +435,7 @@ class PortWidget(QWidget):
         def update_view():
             selected = [list_widget.item(i).text() for i in range(list_widget.count()) if
                         list_widget.item(i).checkState() == Qt.Checked]
-            self.node.column_select[port_name] = selected
+            self.node.set_property("_column_select", self.node.get_property("_column_select") | {port_name: selected})
             if port_name in self._text_edit_widgets:
                 self._text_edit_widgets[port_name].set_data(data[selected] if selected else pd.DataFrame(), port_name)
 
@@ -467,7 +467,7 @@ class PortWidget(QWidget):
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            saved = self.node.column_select.get(port_name, columns)
+            saved = self.node.get_property("_column_select").get(port_name, columns)
             item.setCheckState(Qt.Checked if col in saved else Qt.Unchecked)
             list_widget.addItem(item)
 
@@ -476,7 +476,7 @@ class PortWidget(QWidget):
         layout.addWidget(column_card)
 
     def _get_current_input_value(self, port_name, original_data):
-        selected = self.node.column_select.get(port_name, [])
+        selected = self.node.get_property("_column_select").get(port_name, [])
         if selected and isinstance(original_data, pd.DataFrame):
             try:
                 return original_data[selected] if len(selected) > 1 else original_data[selected[0]]

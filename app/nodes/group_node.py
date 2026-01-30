@@ -1,158 +1,144 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt import GroupNode
+import uuid
+
+from NodeGraphQt import GroupNode, Port
+from NodeGraphQt.constants import PortTypeEnum
+from NodeGraphQt.errors import PortRegistrationError
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_group import GroupNodeItem
-from PyQt5 import QtCore, QtGui
-
-from app.nodes.backdrop_node import ControlFlowBackdrop
-
-
-# def create_group_node_class(graph, parent_window):
-#
-#     class CustomGroupNode(GroupNode):
-#         __identifier__ = 'general'
-#         NODE_NAME = 'GroupNode'
-#
-#         def __init__(self):
-#             super(CustomGroupNode, self).__init__(qgraphics_item=GroupNodeItem)
-#             self.set_color(50, 50, 50)  # 设置一个深色背景
-#
-#     return CustomGroupNode
+from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
+from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
+from app.nodes.status_node import StatusNode
 
 
-class CustomGroupNode(ControlFlowBackdrop):
-    """
-    仿 ComfyUI 组节点
-    - 包含 ControlFlowBackdrop 的所有自动吸附功能
-    - 增加折叠逻辑
-    - 增加端口动态管理菜单
-    """
-    __identifier__ = 'control_flow.GroupNode'
-    NODE_NAME = 'Group'
+class GroupPortInputNode(PortInputNode):
+    __identifier__ = 'group'
+    category = "组节点"
+    NODE_NAME = '输入端口'
+    FULL_PATH = f"{category}/{NODE_NAME}"
+    description = "组节点的输入端口"
 
-    # 强制指定 View 类
-    def __init__(self):
-        # 这里的 super 调用很关键，它会初始化 ControlFlowBackdrop 的逻辑
-        # 但是我们需要传入我们新的 GroupNodeItem
-        super(ControlFlowBackdrop, self).__init__(GroupNodeItem)
+    def __init__(self, qgraphics_item=None, parent_port=None):
+        super(GroupPortInputNode, self).__init__(qgraphics_item or PortInputNodeItem)
+        self.model.add_property("persistent_id", str(uuid.uuid4()))
+        self._parent_port = parent_port
+        self._output_values = {}
 
-        # 初始化 ControlFlowBackdrop 特有的属性
-        self.set_icon(":/icons/folder.png")  # 假设有个文件夹图标
-        self._is_collapsed = False
-        self._expanded_geometry = (300, 300)  # 记录展开时的宽及高
-        self._preview_path = None
+    def set_output_value(self, value):
+        self._output_values[self._outputs[0].name()] = value
 
-        # 初始化端口 (Group 默认可能有一对端口)
-        # self.add_input("in")
-        # self.add_output("out")
+    def get_output_value(self, name):
+        return self._output_values.get(name)
 
-        # 延迟初始化自动管理 (复用父类逻辑)
-        QtCore.QTimer.singleShot(0, self._setup_auto_management)
+    def add_output(self, name='output', multi_output=True, display_name=True,
+                   color=None, locked=False, painter_func=None):
+        """
+        Add output :class:`Port` to node.
 
-    def on_view_created(self):
-        """当 View 创建后，设置右键菜单"""
-        # NodeGraphQt 允许通过 context menu 添加动作
-        self.add_context_menu_action("Toggle Collapse", self.toggle_collapse)
-        self.add_context_menu_action("Add Input Port", self.add_custom_input)
-        self.add_context_menu_action("Add Output Port", self.add_custom_output)
+        Warnings:
+            Undo is NOT supported for this function.
 
-    # --- 核心状态切换 ---
+        Args:
+            name (str): name for the output port.
+            multi_output (bool): allow port to have more than one connection.
+            display_name (bool): display the port name on the node.
+            color (tuple): initial port color (r, g, b) ``0-255``.
+            locked (bool): locked state see :meth:`Port.set_locked`
+            painter_func (function or None): custom function to override the drawing
+                of the port shape see example: :ref:`Creating Custom Shapes`
 
-    def toggle_collapse(self):
-        """切换折叠/展开状态"""
-        self._is_collapsed = not self._is_collapsed
+        Returns:
+            NodeGraphQt.Port: the created port object.
+        """
+        if name in self.outputs().keys():
+            raise PortRegistrationError(
+                'port name "{}" already registered.'.format(name))
 
-        # 1. 获取 View
-        if not self.view: return
+        port_args = [name, multi_output, display_name, locked]
+        if painter_func and callable(painter_func):
+            port_args.append(painter_func)
+        view = self.view.add_output(*port_args)
 
-        scene = self.graph.scene()
+        if color:
+            view.color = color
+            view.border_color = [min([255, max([0, i + 80])]) for i in color]
+        port = Port(self, view)
+        port.model.type_ = PortTypeEnum.OUT.value
+        port.model.name = name
+        port.model.display_name = display_name
+        port.model.multi_connection = multi_output
+        port.model.locked = locked
+        self._outputs.append(port)
+        self.model.outputs[port.name()] = port.model
+        return port
 
-        if self._is_collapsed:
-            # === 执行折叠 ===
-            # 记录当前尺寸
-            self._expanded_geometry = (self.view.width, self.view.height)
 
-            # 隐藏内部节点
-            self._set_inner_nodes_visible(False)
+class GroupPortOutputNode(PortOutputNode):
+    __identifier__ = 'group'
+    category = "组节点"
+    NODE_NAME = '输出端口'
+    FULL_PATH = f"{category}/{NODE_NAME}"
+    description = "组节点的输出端口"
 
-            # 缩小自身 (设置为标准节点大小)
-            self.view.width = 220
-            self.view.height = 180
+    def __init__(self, qgraphics_item=None, parent_port=None):
+        super(GroupPortOutputNode, self).__init__(qgraphics_item or PortOutputNodeItem)
+        self.model.add_property("persistent_id", str(uuid.uuid4()))
+        self._parent_port = parent_port
+        self._input_values = {}
 
-            # 强制更新 Item 状态 (显示预览图)
-            pixmap = QtGui.QPixmap(self._preview_path) if self._preview_path else None
-            self.view.set_collapsed_state(True, pixmap)
+    def add_input(self, name='input', multi_input=False, display_name=True,
+                  color=None, locked=False, painter_func=None):
+        """
+        Add input :class:`Port` to node.
 
-        else:
-            # === 执行展开 ===
-            # 恢复尺寸
-            w, h = self._expanded_geometry
-            self.view.width = w
-            self.view.height = h
+        Warnings:
+            Undo is NOT supported for this function.
 
-            # 显示内部节点
-            self._set_inner_nodes_visible(True)
+        Args:
+            name (str): name for the input port.
+            multi_input (bool): allow port to have more than one connection.
+            display_name (bool): display the port name on the node.
+            color (tuple): initial port color (r, g, b) ``0-255``.
+            locked (bool): locked state see :meth:`Port.set_locked`
+            painter_func (function or None): custom function to override the drawing
+                of the port shape see example: :ref:`Creating Custom Shapes`
 
-            # 更新 Item 状态
-            self.view.set_collapsed_state(False)
+        Returns:
+            NodeGraphQt.Port: the created port object.
+        """
+        if name in self.inputs().keys():
+            raise PortRegistrationError(
+                'port name "{}" already registered.'.format(name))
 
-            # 触发一次自动对齐以确保包含完整
-            self._perform_auto_resize_with_undo()
+        port_args = [name, multi_input, display_name, locked]
+        if painter_func and callable(painter_func):
+            port_args.append(painter_func)
+        view = self.view.add_input(*port_args)
 
-    def _set_inner_nodes_visible(self, visible):
-        """批量设置内部节点的可见性"""
-        for node_id in self._contained_nodes:
-            node = self.graph.get_node_by_id(node_id)
-            if node:
-                node.set_property('visible', visible)
-                # 处理连接线：NodeGraphQt 会自动处理节点隐藏时的连线显示
-                # 但如果为了视觉更完美，可以遍历 pipe 强制更新
-                for port in node.input_ports() + node.output_ports():
-                    for pipe in port.connected_pipes():
-                        if visible:
-                            pipe.show()
-                        else:
-                            # 只有当连接的目标也在组内时才完全隐藏？
-                            # 通常隐藏节点后，Pipe 会自动隐藏或变淡
-                            pass
+        if color:
+            view.color = color
+            view.border_color = [min([255, max([0, i + 80])]) for i in color]
 
-    def set_preview_image(self, file_path):
-        """设置预览图路径"""
-        self._preview_path = file_path
-        if self._is_collapsed and self.view:
-            self.view.set_collapsed_state(True, QtGui.QPixmap(file_path))
+        port = Port(self, view)
+        port.model.type_ = PortTypeEnum.IN.value
+        port.model.name = name
+        port.model.display_name = display_name
+        port.model.multi_connection = multi_input
+        port.model.locked = locked
+        self._inputs.append(port)
+        self.model.inputs[port.name()] = port.model
+        return port
 
-    # --- 覆盖父类逻辑以保护折叠状态 ---
 
-    def _perform_auto_resize_with_undo(self, padding=40, min_width=150, min_height=100):
-        """覆写：如果处于折叠状态，禁止自动调整大小"""
-        if self._is_collapsed:
-            return
-        super(GroupNode, self)._perform_auto_resize_with_undo(padding, min_width, min_height)
+def create_group_node_class(graph, parent_window):
 
-    def _check_for_removals(self):
-        """覆写：如果处于折叠状态，禁止检测节点移除"""
-        if self._is_collapsed:
-            return
-        super(GroupNode, self)._check_for_removals()
+    class CustomGroupNode(GroupNode, StatusNode):
+        __identifier__ = 'general'
+        NODE_NAME = 'GroupNode'
 
-    def _on_scene_changed(self, region=None):
-        """覆写：折叠时不响应场景变化"""
-        if self._is_collapsed:
-            return
-        super(GroupNode, self)._on_scene_changed(region)
+        def __init__(self):
+            super(CustomGroupNode, self).__init__(qgraphics_item=GroupNodeItem)
+            self.model.port_deletion_allowed = True
+            self.set_color(50, 50, 50)  # 设置一个深色背景
 
-    # --- 端口动态添加 (ComfyUI 风格) ---
-
-    def add_custom_input(self):
-        """菜单回调：添加输入"""
-        # 简单的弹窗让用户输入名称，或者自动命名
-        # 这里简化为自动命名
-        idx = len(self.input_ports())
-        name = f"in_{idx}"
-        self.add_input(name, multi_input=True)
-
-    def add_custom_output(self):
-        """菜单回调：添加输出"""
-        idx = len(self.output_ports())
-        name = f"out_{idx}"
-        self.add_output(name, multi_output=True)
+    return CustomGroupNode
