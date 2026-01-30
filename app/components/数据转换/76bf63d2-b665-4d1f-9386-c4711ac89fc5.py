@@ -43,7 +43,7 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         # 在这里编写你的组件逻辑
-        
+        print(inputs)
         return {
             "output": inputs.input.values[:params.number, :],
             "columns": [column for column in inputs.input.columns],

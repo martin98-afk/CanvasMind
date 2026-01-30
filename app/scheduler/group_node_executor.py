@@ -112,7 +112,7 @@ class GroupNodeExecutor(QObject):
                     data = external_input_data[port_name]
                     # PortInputNode 在子图内部扮演“源头”角色，设置其输出值
                     # 根据你的 SubGraph 源码，输出端口名通常也是 port_name
-                    node.set_output_value({port_name: data})
+                    node.set_output_value(data)
                     logger.debug(f"同步输入: 组端口[{port_name}] -> 内部节点[{node.name()}] 数据: {data}")
 
     def _sync_internal_to_external(self, internal_nodes):
@@ -128,9 +128,7 @@ class GroupNodeExecutor(QObject):
                 val = self._get_node_input_value(node, port_name)
                 results[port_name] = val
                 logger.debug(f"同步输出: 内部节点[{node.name()}] -> 组端口[{port_name}] 数据: {val}")
-
-        # 将结果写回组节点的输出缓存供下游节点使用
-        self.group_node.set_output_value(results)
+                self.group_node.set_output_value(port_name, val)
 
     def _get_node_input_value(self, node, port_name):
         """从节点指定输入端口获取其上游传递来的值"""

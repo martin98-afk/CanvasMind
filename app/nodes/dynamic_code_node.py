@@ -504,8 +504,8 @@ def create_dynamic_code_node(parent_window=None):
                             # 上游节点输出端口key
                             safe_key = f"input_{safe_name}__{connected[0].name()}"
                             input_vars[safe_key] = inputs_raw[port_name]
-                        if port_name in self.column_select:
-                            inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
+                        if port_name in self.get_property("_column_select"):
+                            inputs_raw[f"{port_name}_column_select"] = self.get_property("_column_select").get(port_name)
 
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 

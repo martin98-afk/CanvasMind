@@ -90,7 +90,6 @@ class FinishLoadingTask(QRunnable):
                 ns = self.node_status_data.get(stable_key, {})
                 node_inputs = ns.get("node_inputs", {}) or {}
                 node_outputs = ns.get("node_outputs", {}) or {}
-                column_select = ns.get("column_select", {}) or {}
                 status_str = ns.get("node_states", "unrun") or "unrun"
 
                 input_vals = deserialize_from_json(node_inputs)
@@ -99,7 +98,6 @@ class FinishLoadingTask(QRunnable):
                 restored[node.id] = {
                     "input_values": input_vals,
                     "output_values": output_vals,
-                    "column_select": column_select,
                     "status_str": status_str,
                 }
 
