@@ -41,7 +41,7 @@ class Component(BaseComponent):
             method="clear_global_variable",
             params={
                 "type": "node_vars",
-                "value": params.prop1
+                "value": params.prop1[0]
             }
         )
 

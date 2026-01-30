@@ -1345,7 +1345,7 @@ class BaseComponent(ABC):
         self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 变量解析逻辑 ----------------
-    def _resolve_value(self, value: Any) -> Any:
+    def _resolve_value(self, value: Any, prop_type: PropertyType) -> Any:
         """解析单个值：如果是变量引用，则返回全局变量中的实际值"""
         if isinstance(value, str):
             # 定义需要拦截的前缀
@@ -1353,54 +1353,22 @@ class BaseComponent(ABC):
                 try:
                     # 直接调用 global_variable 的 __getitem__ 解析路径
                     resolved = self.global_variable.get(value)
-                    # self.logger.debug(f"解析变量: {value} -> {resolved}")
-                    return resolved
+                    if prop_type in [PropertyType.INT]:
+                        # 尝试转 int，考虑到可能传入 "1.0" 这种字符串，先转 float 再转 int
+                        return int(float(resolved.strip()))
+                    elif prop_type in [PropertyType.FLOAT, PropertyType.RANGE]:
+                        return float(resolved.strip())
+                    elif prop_type in [PropertyType.BOOL]:
+                        return bool(resolved.strip())
+                    elif prop_type in [PropertyType.DYNAMICFORM, PropertyType.DYNAMICTREE]:
+                        return json.loads(resolved.strip())
+                    elif prop_type != PropertyType.VARIABLE:
+                        return resolved
+                    else:
+                        return [value, resolved]
                 except KeyError:
                     # 如果全局变量里没找到，保留原样，交给后续校验（可能会报错）
                     return value
-        return value
-
-    def _resolve_recursive(self, data: Any) -> Any:
-        """递归解析字典或列表中的所有变量引用"""
-        if isinstance(data, dict):
-            return {k: self._resolve_recursive(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [self._resolve_recursive(v) for v in data]
-        else:
-            return self._resolve_value(data)
-
-    def _smart_cast(self, value: Any, prop_type: PropertyType) -> Any:
-        """
-        数值类软解析逻辑：
-        如果目标类型是数值，且当前值是字符串，尝试进行类型转换。主要用于兼容可变参数，当切换为全局变量时传的字符串数据
-        """
-        if not isinstance(value, str):
-            return value
-
-        # 去除首尾空格，处理可能的空字符串
-        clean_val = value.strip()
-        if clean_val == "":
-            return None  # 交给 Pydantic 处理默认值或报错
-
-        try:
-            if prop_type in [PropertyType.INT]:
-                # 尝试转 int，考虑到可能传入 "1.0" 这种字符串，先转 float 再转 int
-                return int(float(clean_val))
-
-            elif prop_type in [PropertyType.FLOAT, PropertyType.RANGE]:
-                return float(clean_val)
-
-            elif prop_type in [PropertyType.BOOL]:
-                return bool(clean_val)
-
-            elif prop_type in [PropertyType.DYNAMICFORM, PropertyType.DYNAMICTREE]:
-                return json.loads(clean_val)
-
-        except (ValueError, TypeError):
-            # 如果转换失败，保留原样。
-            # 这样 Pydantic 校验时会抛出清晰的类型错误（例如：'abc' is not a valid float）
-            return value
-
         return value
 
     # ---------------- 执行包装器 ----------------
@@ -1421,16 +1389,10 @@ class BaseComponent(ABC):
             if global_vars is not None:
                 self.global_variable.deserialize(global_vars)
             # 在校验前解析 params 中的动态变量引用
-            # 这样如果 params['threshold'] 是 "custom.val"，会被替换为实际的数字/对象
-            params = self._resolve_recursive(params)
             # 遍历 params，根据定义尝试将字符串转为数值
             for key, val in params.items():
                 if key in self.properties:
-                    prop_def = self.properties[key]
-                    # 只有数值类型才进行尝试转换
-                    if prop_def.type in [PropertyType.INT, PropertyType.FLOAT, PropertyType.RANGE]:
-                        params[key] = self._smart_cast(val, prop_def.type)
-
+                    params[key] = self._resolve_value(val, self.properties[key].type)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

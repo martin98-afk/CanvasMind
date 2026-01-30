@@ -627,7 +627,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     start_time = time.time()
                     remote_res_file = f"{remote_run_dir}/result.pkl"
                     remote_err_file = f"{remote_run_dir}/error.pkl"
-                    log_pos = 0
                     while True:
                         # 1. 检查取消信号
                         if check_cancel and check_cancel():
@@ -637,7 +636,14 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 2. 检查远程结果文件是否存在 (ls 比 stat 在某些 SSH 环境下更稳定)
                         _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
                         found_files = stdout.read().decode()
-
+                        with sftp.open(log_path, 'r') as f:
+                            f.seek(self.last_log_pos)
+                            new_data = f.read().decode('utf-8', errors='ignore')
+                            if new_data:
+                                self._log_message(self.persistent_id, new_data)
+                                with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                    lf.write(new_data)
+                                self.last_log_pos += len(new_data)
                         if remote_res_file in found_files or remote_err_file in found_files:
                             # 如果文件生成了，跳出轮询准备下载
                             break
@@ -655,7 +661,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     stdout.channel.setblocking(0)
                     # 轮询直到进程结束
                     start_time = time.time()
-                    log_pos = 0
                     while not stdout.channel.exit_status_ready():
                         if check_cancel and check_cancel():
                             ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
@@ -663,36 +668,23 @@ def create_node_class(full_path, file_path, parent_window=None):
                             raise Exception("远程执行被用户取消")
 
                         # 只有当远程日志文件产生时才尝试读取
-                        # try:
-                        #     with sftp.open(log_path, 'r') as f:
-                        #         f.seek(log_pos)  # 跳到上次读取的位置
-                        #         new_data = f.read().decode('utf-8', errors='ignore')
-                        #         if new_data:
-                        #             self._log_message(self.persistent_id, new_data)
-                        #             # 增量写入本地日志文件
-                        #             with open(log_file_path, 'a', encoding='utf-8') as lf:
-                        #                 lf.write(new_data)
-                        #             log_pos += len(new_data)  # 更新偏移量
-                        # except IOError:
-                        #     # 脚本可能还没开始写日志，忽略
-                        #     pass
+                        try:
+                            with sftp.open(log_path, 'r') as f:
+                                f.seek(self.last_log_pos)
+                                new_data = f.read().decode('utf-8', errors='ignore')
+                                if new_data:
+                                    self._log_message(self.persistent_id, new_data)
+                                    with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                        lf.write(new_data)
+                                    self.last_log_pos += len(new_data)
+                        except IOError:
+                            # 脚本可能还没开始写日志，忽略
+                            pass
                         if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                             ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                             ssh.close()
                             raise Exception(f"节点执行超时{self.timeout_seconds}秒")
                         time.sleep(0.5)  # 适当降低轮询频率，减少 IO 开销
-
-                # 3. 实时同步远程日志 (复用你 Subprocess 分支的日志读取逻辑)
-                try:
-                    with sftp.open(log_path, 'r') as f:
-                        new_data = f.read().decode('utf-8', errors='ignore')
-                        if new_data:
-                            self._log_message(self.persistent_id, new_data)
-                            with open(log_file_path, 'a', encoding='utf-8') as lf:
-                                lf.write(new_data)
-                            log_pos += len(new_data)
-                except IOError:
-                    pass
 
                 # 下载并处理 result.pkl
                 remote_pkl = f"{remote_run_dir}/result.pkl"
@@ -720,7 +712,6 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 6. 清理
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
-                self.last_log_pos += log_pos
                 self._log_message(self.persistent_id, "✅ 节点在ssh远程环境执行完成")
             except Exception as e:
                 raise Exception(f"远程执行失败: {str(e)}")

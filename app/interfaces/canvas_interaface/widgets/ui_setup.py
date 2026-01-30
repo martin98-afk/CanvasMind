@@ -274,7 +274,7 @@ class CanvasUISetUp:
         font_metrics = line_edit.fontMetrics()
         text_width = font_metrics.horizontalAdvance(text)
         total_width = text_width
-        line_edit.setFixedWidth(max(total_width, 80))
+        line_edit.setFixedWidth(max(total_width + 5, 80))
         self.name_container.setFixedWidth(line_edit.width())
 
     def create_name_label(self):
