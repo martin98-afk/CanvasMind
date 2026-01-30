@@ -161,11 +161,7 @@ class NodeListExecutor(QRunnable):
                         if f in active_futures:
                             active_futures.remove(f)
 
-                    try:
-                        finished_node = f.result()
-                    except Exception as e:
-                        # 错误处理逻辑（由 _task_wrapper 内部处理更好，这里做兜底）
-                        continue
+                    finished_node = f.result()
 
                     if getattr(self, '_error_occurred', False) or self.ctx.is_cancelled():
                         continue

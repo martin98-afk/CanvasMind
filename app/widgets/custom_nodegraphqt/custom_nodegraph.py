@@ -15,6 +15,7 @@ from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
+from PyQt5.QtCore import QTimer
 from Qt import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
@@ -778,6 +779,7 @@ class CustomNodeGraph(NodeGraph):
             node_width, node_height = n_data.get('width'), n_data.get('height')
             node = self._node_factory.create_node_instance(identifier)
             if node:
+                # 避免复制时触发重命名信号
                 if hasattr(node, "block_rename_signals"):
                     node.block_rename_signals(True)
                 node.NODE_NAME = n_data.get('name', node.NODE_NAME)
@@ -801,8 +803,10 @@ class CustomNodeGraph(NodeGraph):
                     if isinstance(node, BaseNode):
                         if prop in node.view.widgets:
                             if GlobalVariableContext.is_variable_name(val):
-                                node.view.widgets[prop].toggle_global_mode()
-                            node.view.widgets[prop].set_value(val)
+                                node.view.widgets[prop].toggle_global_mode(True)
+                                node.view.widgets[prop]._global_widget.set_value(val)
+                            else:
+                                node.view.widgets[prop].set_value(val)
                     elif node.type_ == "general.StickyNote":
                         node.set_property(prop, val)
                 # 决定是否还原节点最后保存时缩放大小

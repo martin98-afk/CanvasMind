@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import re
 
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame
 from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolButton,
                             StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea,
-                            IconWidget, FluentIcon, CaptionLabel)
+                            IconWidget, FluentIcon, CaptionLabel, Slider)
 
 from app.utils.utils import get_icon, get_port_node
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
@@ -66,6 +66,7 @@ class FlowControlPanelWidget(QWidget):
 
         # 初始化：循环配置卡片
         self._init_loop_config_section()
+        self._init_parallel_section()
         # 初始化：内部成员监控卡片
         self._init_internal_nodes_section(node)
         # 初始化：端口管理区域
@@ -202,6 +203,79 @@ class FlowControlPanelWidget(QWidget):
         self._update_nodes_card_height()
         self.scroll_layout.addWidget(self.nodes_card)
 
+    def _init_parallel_section(self):
+        """新增：并行度配置区域"""
+        self.parallel_card = CardWidget(self)
+        layout = QVBoxLayout(self.parallel_card)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        # 标题和数值显示
+        head_lay = QHBoxLayout()
+        head_lay.addWidget(BodyLabel("并行设置"))
+        self.parallel_val_label = StrongBodyLabel("1")
+        self.parallel_val_label.setStyleSheet("color: #00a2ff;")
+        head_lay.addStretch()
+        head_lay.addWidget(CaptionLabel("并发进程数: "))
+        head_lay.addWidget(self.parallel_val_label)
+        layout.addLayout(head_lay)
+
+        # 并行度滑动条
+        self.parallel_slider = Slider(Qt.Horizontal, self)
+        self.parallel_slider.setRange(1, 16)  # 根据需求设置最大并发数
+        self.parallel_slider.valueChanged.connect(self._on_parallel_changed)
+        reminder = CaptionLabel("注意：1.总并行数受设置影响; 2.并行模式下节点间的数据竞争需自行处理")
+        reminder.setWordWrap(True)
+        layout.addWidget(reminder)
+        layout.addWidget(self.parallel_slider)
+
+        self.scroll_layout.addWidget(self.parallel_card)
+
+    def _on_parallel_changed(self, value):
+        """并行度改变回调"""
+        self.parallel_val_label.setText(str(value))
+        if self.current_node:
+            self.current_node.model.set_property('parallel_count', value)
+
+    def update_data(self, node):
+        """增量刷新逻辑"""
+        self.current_node = node
+        # 获取节点类型 (假设迭代组件的 TYPE 是 'iteration'，循环是 'loop')
+        flow_type = getattr(node, 'TYPE', 'unknown')
+
+        # 1. 刷新 Dashboard (运行状态)
+        current = node.model.get_property('current_index') or 0
+        total = self._calculate_total(node, flow_type)
+        self.progress_label.setText(f"{current} / {total}")
+        self.progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
+
+        # 2. 刷新【循环配置】卡片显隐 (仅 loop 类型显示)
+        self.config_card.setVisible(flow_type == "loop")
+        if flow_type == "loop":
+            self._update_loop_config_ui(node)
+
+        # 3. 刷新【并行配置】卡片显隐 (仅 iteration 类型显示)
+        is_iteration = (flow_type != "loop")
+        self.parallel_card.setVisible(is_iteration)
+        if is_iteration:
+            p_count = node.model.get_property("parallel_count") or 1
+            self.parallel_slider.blockSignals(True)
+            self.parallel_slider.setValue(p_count)
+            self.parallel_val_label.setText(str(p_count))
+            self.parallel_slider.blockSignals(False)
+
+        # 4. 内部列表更新 (保持不变)
+        _, _, internal_nodes = node.get_nodes()
+        if self._backdrop_internal_nodes_list:
+            status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
+            name_list = [n.name() for n in internal_nodes]
+            self._backdrop_internal_nodes_list.update_content(status_list, name_list)
+            self._update_nodes_card_height()
+
+        # 5. 端口刷新 (保持不变)
+        if self._port_widget:
+            self._port_widget.refresh(node)
+
     def _update_nodes_card_height(self):
         """核心：计算并设置内部节点卡片的高度"""
         if not self._backdrop_internal_nodes_list:
@@ -235,36 +309,6 @@ class FlowControlPanelWidget(QWidget):
         self._port_widget.setMinimumHeight(350)
         self._port_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.scroll_layout.addWidget(self._port_widget, 1)
-
-    def update_data(self, node):
-        """增量刷新"""
-        self.current_node = node
-        flow_type = getattr(node, 'TYPE', 'unknown')
-
-        # 1. 刷新 Dashboard
-        current = node.model.get_property('current_index') or 0
-        total = self._calculate_total(node, flow_type)
-        self.progress_label.setText(f"{current} / {total}")
-        self.progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
-
-        # 2. 刷新配置
-        self.config_card.setVisible(flow_type == "loop")
-        if flow_type == "loop":
-            self._update_loop_config_ui(node)
-
-        # 3. 内部列表更新并同步高度
-        _, _, internal_nodes = node.get_nodes()
-        if self._backdrop_internal_nodes_list:
-            status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
-            name_list = [n.name() for n in internal_nodes]
-            self._backdrop_internal_nodes_list.update_content(status_list, name_list)
-            self._update_nodes_card_height()  # 数量变化时刷新高度
-
-        self._current_internal_nodes = internal_nodes
-
-        # 4. 端口刷新
-        if self._port_widget:
-            self._port_widget.refresh(node)
 
     def _update_loop_config_ui(self, node):
         mode = node.model.get_property("loop_mode")

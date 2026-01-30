@@ -272,7 +272,7 @@ def create_branch_node(parent_window):
                 input_port = self.get_input(cond_input_name)
                 if input_port and input_port.connected_ports():
                     # 1. 优先使用端口值
-                    port_val = inputs_raw.get(cond_input_name, [False])[0]
+                    port_val = inputs_raw.get(cond_input_name, False)
                     result = bool(port_val)
                 else:
                     # 2. 如果没连接，使用属性里的表达式
@@ -331,8 +331,6 @@ def create_branch_node(parent_window):
                     node.set_disabled(False)
                 else:
                     node.set_disabled(True)
-                #     if hasattr(node, '_output_values'):
-                #         node._output_values = {}
 
             # 设置输出
             self.clear_output_value()

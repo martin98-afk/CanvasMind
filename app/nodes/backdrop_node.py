@@ -86,6 +86,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self.model.add_property("max_iterations", 1000)
         self.model.add_property("loop_condition", "")
         self.model.add_property("loop_mode", "count")  # count, condition, while
+        self.model.add_property("parallel_count", 1)
 
         # 延迟初始化自动管理
         QtCore.QTimer.singleShot(0, self._setup_auto_management)
