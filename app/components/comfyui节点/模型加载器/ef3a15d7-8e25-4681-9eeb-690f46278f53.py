@@ -63,7 +63,10 @@ class ComfyLoraLoader(BaseComponent):
 
     def run(self, params, inputs):
         self.ensure_comfy_exist()
+        import os
+        import comfy
         import nodes
+        import folder_paths
         
         model = inputs.get("model")
         clip = inputs.get("clip")
@@ -72,10 +75,18 @@ class ComfyLoraLoader(BaseComponent):
         strength_model = float(params.get("strength_model", 1.0))
         strength_clip = float(params.get("strength_clip", 1.0))
 
-        loader = nodes.LoraLoader()
-        new_model, new_clip = loader.load_lora(model, clip, lora_name, strength_model, strength_clip)
+        if strength_model == 0 and strength_clip == 0:
+            return {
+            "model": model,
+            "clip": clip
+        }
 
+        folder_paths.add_model_folder_path("loras", os.path.dirname(lora_name))
+        lora = comfy.utils.load_torch_file(lora_name, safe_load=True)
+        model_lora, clip_lora = comfy.sd.load_lora_for_models(
+            model, clip, lora, strength_model, strength_clip
+        )
         return {
-            "model": new_model,
-            "clip": new_clip
+            "model": model_lora,
+            "clip": clip_lora
         }

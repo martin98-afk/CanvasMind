@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -58,7 +58,7 @@ class LongTextQA(BaseComponent):
         import json
         from typing import List, Dict, Any
         import httpx
-        model_config = self.global_variable.get(params.model_configs)
+        model_config = params.model_configs[1]
         instruction = inputs.instruction
         file_text = inputs.file_text
         # ==================== 内部工具函数 ====================

@@ -61,7 +61,7 @@ class QuickStartCardView(SimpleCardWidget):
 
         for wf_path in sorted_paths[:30]:
             card_info = file_info_map.get(str(wf_path), {})
-            card_title = card_info.get('title', wf_path.stem.split(".")[0])
+            card_title = card_info.get('title', ".".join(wf_path.stem.split(".")[:-1]))
             time_str = datetime.fromtimestamp(card_info.get('mtime_ts', 0)).strftime('%m-%d %H:%M')
             card_content = f"{self.tr('修改于')}: {time_str}"
 

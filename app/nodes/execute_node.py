@@ -517,6 +517,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         try:
                             if os.path.getsize(error_path) > 0:
                                 error_info = _safe_load_pickle(error_path)
+                                self._log_message(self.persistent_id, error_info.get('traceback'))
                                 raise Exception(error_info.get('traceback', '未知进程内错误'))
                         except Exception as e:
                             if "未知进程内错误" in str(e) or "traceback" in str(e): raise  # 业务错误直接抛出
@@ -589,7 +590,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 1. 准备远程目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-
+                ssh.exec_command(f"rm -f {log_path}")  # 强制删除远程旧日志
                 # 2. 生成执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name=comp_obj.__name__,
@@ -610,11 +611,9 @@ def create_node_class(full_path, file_path, parent_window=None):
                 if local_upload_dir.exists():
                     sftp_upload_dir(sftp, local_upload_dir, upload_dir)
                 # 将本地运行目录上传至ssh服务器
-                sftp_upload_dir(sftp, resource_path(f"app/component_extensions/{self.uuid}"), upload_dir)
+                sftp_upload_dir(sftp, resource_path(f"app/component_extensions/{self.uuid}"), f"{remote_root}/{self.persistent_id}")
                 sftp_upload_dir(sftp, run_dir, remote_run_dir)
                 sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
-                if os.path.exists(log_file_path):
-                    sftp.put(log_file_path, log_path)
 
                 # 4. 执行
                 if self.view.current_mode == "ipython" or self.object_io:
@@ -628,7 +627,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     start_time = time.time()
                     remote_res_file = f"{remote_run_dir}/result.pkl"
                     remote_err_file = f"{remote_run_dir}/error.pkl"
-
                     while True:
                         # 1. 检查取消信号
                         if check_cancel and check_cancel():
@@ -638,23 +636,17 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 2. 检查远程结果文件是否存在 (ls 比 stat 在某些 SSH 环境下更稳定)
                         _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
                         found_files = stdout.read().decode()
-
+                        with sftp.open(log_path, 'r') as f:
+                            f.seek(self.last_log_pos)
+                            new_data = f.read().decode('utf-8', errors='ignore')
+                            if new_data:
+                                self._log_message(self.persistent_id, new_data)
+                                with open(log_file_path, 'a', encoding='utf-8') as lf:
+                                    lf.write(new_data)
+                                self.last_log_pos += len(new_data)
                         if remote_res_file in found_files or remote_err_file in found_files:
                             # 如果文件生成了，跳出轮询准备下载
                             break
-
-                        # 3. 实时同步远程日志 (复用你 Subprocess 分支的日志读取逻辑)
-                        try:
-                            with sftp.open(log_path, 'r') as f:
-                                f.seek(self.last_log_pos)
-                                new_data = f.read().decode('utf-8', errors='ignore')
-                                if new_data:
-                                    self._log_message(self.persistent_id, new_data)
-                                    with open(log_file_path, 'a', encoding='utf-8') as lf:
-                                        lf.write(new_data)
-                                    self.last_log_pos += len(new_data)
-                        except IOError:
-                            pass
 
                         # 4. 检查超时
                         if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
@@ -678,14 +670,13 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 只有当远程日志文件产生时才尝试读取
                         try:
                             with sftp.open(log_path, 'r') as f:
-                                f.seek(self.last_log_pos)  # 跳到上次读取的位置
+                                f.seek(self.last_log_pos)
                                 new_data = f.read().decode('utf-8', errors='ignore')
                                 if new_data:
                                     self._log_message(self.persistent_id, new_data)
-                                    # 增量写入本地日志文件
                                     with open(log_file_path, 'a', encoding='utf-8') as lf:
                                         lf.write(new_data)
-                                    self.last_log_pos += len(new_data)  # 更新偏移量
+                                    self.last_log_pos += len(new_data)
                         except IOError:
                             # 脚本可能还没开始写日志，忽略
                             pass
@@ -705,11 +696,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     )
                 except:
                     os.remove(local_result_path)
-                # 下载日志文件
-                try:
-                    sftp.get(log_path, log_file_path)
-                except:
-                    pass
                 # 下载错误文件
                 try:
                     sftp.get(f"{remote_run_dir}/error.pkl", str(error_path))

@@ -101,8 +101,7 @@ class Component(BaseComponent):
             except:
                 history = []
         # 获取参数
-        model_config_key = params.model
-        model_config = self.global_variable.get(model_config_key)
+        model_config = params.model[1]
         model_name = model_config.get("模型名称", "").strip()
         api_url = model_config.get("API_URL", "").strip()
         api_key = model_config.get("API_KEY", "").strip()

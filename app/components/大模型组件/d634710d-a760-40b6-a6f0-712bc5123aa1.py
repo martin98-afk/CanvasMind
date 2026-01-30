@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -135,15 +135,15 @@ class Component(BaseComponent):
     
         try:
             # 初始化客户端
-            if self.global_variable.get(params.model).get("API_KEY"):
+            if self.global_variable.get(params.model[1]).get("API_KEY"):
                 client = OpenAI(
-                    api_key=self.global_variable.get(params.model).get("API_KEY"),
-                    base_url=self.global_variable.get(params.model).get("API_URL")
+                    api_key=params.model[1].get("API_KEY"),
+                    base_url=params.model[1].get("API_URL")
                 )
             else:
                 client = OpenAI(
                     api_key="",
-                    base_url=self.global_variable.get(params.model).get("API_URL")
+                    base_url=params.model[1].get("API_URL")
                 )
     
             messages = [
@@ -151,10 +151,10 @@ class Component(BaseComponent):
             ]
     
             response = client.chat.completions.create(
-                model=self.global_variable.get(params.model).get("模型名称"),
+                model=params.model[1].get("模型名称"),
                 messages=messages,
-                temperature=self.global_variable.get(params.model).get("温度"),
-                max_tokens=self.global_variable.get(params.model).get("最大Token"),
+                temperature=params.model[1].get("温度"),
+                max_tokens=params.model[1].get("最大Token"),
             )
     
             # 解析模型返回的 JSON 内容

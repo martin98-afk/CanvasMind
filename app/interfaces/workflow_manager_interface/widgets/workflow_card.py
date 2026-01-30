@@ -207,8 +207,7 @@ class WorkflowCard(CardWidget):
         self.image_label.setFixedSize(300, 180)  # ✅ 统一占位尺寸
 
     def _get_preview_path(self) -> Path:
-        base_name = self.file_path.parent / self.workflow_name
-        return base_name.with_suffix(".png")
+        return self.file_path.parent / f"{self.workflow_name}.png"
 
     def refresh_preview(self):
         preview_path = self._get_preview_path()
