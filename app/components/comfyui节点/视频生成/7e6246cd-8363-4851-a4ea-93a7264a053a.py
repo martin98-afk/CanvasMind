@@ -90,73 +90,23 @@ class ComfyWanImageToVideo(BaseComponent):
         if positive is None or negative is None:
             raise ValueError("必须连接正向和负向条件")
 
-        device = comfy.model_management.intermediate_device()
-
-        # 2. 初始化空 Latent
-        # Wan 2.0/2.1 特定参数：
-        # 通道数: 16
-        # 时间压缩: ((length - 1) // 4) + 1
-        # 空间压缩: height // 8
-        latent_shape = [batch_size, 16, ((length - 1) // 4) + 1, height // 8, width // 8]
-        latent = torch.zeros(latent_shape, device=device)
-
-        # 3. 处理起始图像 (图生视频逻辑)
+        atent = torch.zeros([batch_size, 16, ((length - 1) // 4) + 1, height // 8, width // 8], device=comfy.model_management.intermediate_device())
         if start_image is not None:
-            self.logger.info(f"处理起始图像... 目标尺寸: {width}x{height}")
-            
-            # 图像调整尺寸
-            # 输入 start_image 通常为 [Batch, H, W, C]
-            # movedim(-1, 1) -> [Batch, C, H, W] 用于 interpolation
-            resized_image = comfy.utils.common_upscale(
-                start_image[:length].movedim(-1, 1), 
-                width, 
-                height, 
-                "bilinear", 
-                "center"
-            ).movedim(1, -1) # 变回 [Batch, H, W, C]
+            start_image = comfy.utils.common_upscale(start_image[:length].movedim(-1, 1), width, height, "bilinear", "center").movedim(1, -1)
+            image = torch.ones((length, height, width, start_image.shape[-1]), device=start_image.device, dtype=start_image.dtype) * 0.5
+            image[:start_image.shape[0]] = start_image
 
-            # 创建全长视频容器 (灰色填充)
-            # 保持与 start_image 相同的 dtype 和 device
-            image = torch.ones((length, height, width, resized_image.shape[-1]), 
-                               device=resized_image.device, 
-                               dtype=resized_image.dtype) * 0.5
-            
-            # 填入首帧
-            image[:resized_image.shape[0]] = resized_image
-
-            # VAE 编码
-            # 只取前3个通道(RGB)，忽略可能的 Alpha 通道
             concat_latent_image = vae.encode(image[:, :, :, :3])
+            mask = torch.ones((1, 1, latent.shape[2], concat_latent_image.shape[-2], concat_latent_image.shape[-1]), device=start_image.device, dtype=start_image.dtype)
+            mask[:, :, :((start_image.shape[0] - 1) // 4) + 1] = 0.0
 
-            # 创建 Mask
-            # 维度对应: [Batch, Channel, Time, Height, Width]
-            # Mask 1.0 = 生成/去噪, 0.0 = 保持/条件
-            mask = torch.ones(
-                (1, 1, latent.shape[2], concat_latent_image.shape[-2], concat_latent_image.shape[-1]), 
-                device=resized_image.device, 
-                dtype=resized_image.dtype
-            )
-            
-            # 计算起始帧对应的时间步数
-            # ((frames - 1) // 4) + 1 是 Wan 的时间下采样公式
-            start_frame_count = resized_image.shape[0]
-            mask_time_steps = ((start_frame_count - 1) // 4) + 1
-            
-            # 将起始帧区域的 Mask 设为 0
-            mask[:, :, :mask_time_steps] = 0.0
-
-            # 注入到 Conditioning
-            # "concat_latent_image" 和 "concat_mask" 是 Wan 模型识别 I2V 条件的特定 Key
             positive = node_helpers.conditioning_set_values(positive, {"concat_latent_image": concat_latent_image, "concat_mask": mask})
             negative = node_helpers.conditioning_set_values(negative, {"concat_latent_image": concat_latent_image, "concat_mask": mask})
 
-        # 4. 处理 CLIP Vision 特征
         if clip_vision_output is not None:
-            self.logger.info("注入 CLIP Vision 特征")
             positive = node_helpers.conditioning_set_values(positive, {"clip_vision_output": clip_vision_output})
             negative = node_helpers.conditioning_set_values(negative, {"clip_vision_output": clip_vision_output})
 
-        # 5. 封装返回
         out_latent = {}
         out_latent["samples"] = latent
 

@@ -302,7 +302,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         target_dir, req_type = self._get_connection_filter()
         curr_mode = self._current_mode
         sel_cats = self._selected_categories
-        upload_type = ArgumentType.UPLOAD
+        ignore_types = [ArgumentType.UPLOAD, ArgumentType.FILE]
 
         for data in self._cached_data:
             if curr_mode == MenuMode.CREATE:
@@ -312,11 +312,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 if target_dir:
                     if target_dir == 'in':
                         if data["in_port_count"] == 0: continue
-                        if req_type and req_type not in data["in_port_types"] and req_type != upload_type:
+                        if req_type and req_type not in data["in_port_types"] and req_type not in ignore_types:
                             continue
                     else:
                         if data["out_port_count"] == 0: continue
-                        if req_type and req_type not in data["out_port_types"] and req_type != upload_type:
+                        if req_type and req_type not in data["out_port_types"] and req_type not in ignore_types:
                             continue
 
             if search_text in data["search_keys"]:
