@@ -49,7 +49,8 @@ class CanvasIO(QObject):
 
             graph_data = self.graph.serialize_session()
             for node_data in graph_data["nodes"].values():
-                node_data["custom"].pop("global_variable", None)
+                if "custom" in node_data:
+                    node_data["custom"].pop("global_variable", None)
 
             runtime = {
                 "environment": self.parent.environment_manager.env_combo.currentData(),

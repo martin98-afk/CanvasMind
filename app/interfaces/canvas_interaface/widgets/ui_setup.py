@@ -56,7 +56,7 @@ class CanvasUISetUp:
         # 3. 分割器
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
-        self.splitter.addWidget(self.parent.canvas_widget)
+        self.splitter.addWidget(self.parent.graph.widget)
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.last_right_width = DEFAULT_SPLITTER_SIZES[2]

@@ -451,7 +451,7 @@ class PlayControlBar(QWidget):
         self.lbl_frames.setText(f"{current} / {total}")
 
 
-# --- 5. 主视频播放控件 (自适应版) ---
+# --- 5. 主视频播放控件  ---
 class VideoPlayWidget(QFrame):
     sizeHintChanged = pyqtSignal()
     valueChanged = pyqtSignal(object)
