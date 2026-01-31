@@ -99,10 +99,6 @@ class CustomNodeViewer(NodeViewer):
         # --- 性能优化：微调 View 参数 ---
         # 视口更新模式：BoundingRect 是最安全的，SmartViewportUpdate 有时会闪烁
         self.setViewportUpdateMode(QtWidgets.QGraphicsView.BoundingRectViewportUpdate)
-
-        # 背景是动态网格（随视口移动），CacheBackground 反而会降低性能（因为每次移动都要重绘缓存）。
-        self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
-
         # 优化拖动时的重绘策略
         self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
 
@@ -385,9 +381,6 @@ class CustomNodeViewer(NodeViewer):
             self.RMB_state = True
         elif event.button() == QtCore.Qt.MiddleButton:
             self.MMB_state = True
-        if self._panning:
-            # 这会让拖动帧率显著提升，而不会改变渲染架构
-            self.setRenderHint(QtGui.QPainter.Antialiasing, False)
 
         self._origin_pos = event.pos()
         self._previous_pos = event.pos()
@@ -572,8 +565,6 @@ class CustomNodeViewer(NodeViewer):
         elif event.button() == QtCore.Qt.MiddleButton:
             self.MMB_state = False
             self._panning = False
-        if was_panning:
-            self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         if self._SLICER_PIPE.isVisible():
             self._on_pipes_sliced(self._SLICER_PIPE.path())
             p = QtCore.QPointF(0.0, 0.0)
