@@ -323,8 +323,6 @@ class ExecutionEnvironment(BaseModel):
 
 class CustomVariable(BaseModel):
     value: Any = None
-    description: Optional[str] = None
-    read_only: bool = False
 
 
 class NodeVariable(BaseModel):

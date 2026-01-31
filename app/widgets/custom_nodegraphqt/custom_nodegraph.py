@@ -835,11 +835,7 @@ class CustomNodeGraph(NodeGraph):
             node = self._node_factory.create_node_instance(identifier)
             if node:
                 # 避免复制时触发重命名信号
-                if hasattr(node, "block_rename_signals"):
-                    node.block_rename_signals(True)
                 node.NODE_NAME = n_data.get('name', node.NODE_NAME)
-                if hasattr(node, "block_rename_signals"):
-                    node.block_rename_signals(False)
                 # set properties.
                 for prop in node.model.properties.keys():
                     if prop in n_data.keys():
