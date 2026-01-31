@@ -57,7 +57,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             # 输入框容器
             input_row = QtWidgets.QHBoxLayout()
             input_row.setContentsMargins(0, 0, 0, 0)
-
+            gv = getattr(self.home, 'global_variables', None)
             # 根据类型创建控件
             if field_type == PropertyType.LONGTEXT.name:
                 widget = LongTextWidget(parent=self.home, default_text=default, get_port_func=get_port_func)
@@ -65,7 +65,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.set_value(default)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
-            elif field_type == PropertyType.MULTILINE.name:   #  多行文本
+            elif field_type == PropertyType.MULTILINE.name:  # 多行文本
                 widget = VariableCompletionTextEdit(
                     lambda func=get_port_func: gv.get_vars(func()) if gv else [], use_qcursor=True, parent=self
                 )
@@ -107,7 +107,6 @@ class FormFieldWidget(QtWidgets.QWidget):
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
             else:
-                gv = getattr(self.home, 'global_variables', None)
                 widget = VariableCompletionLineEdit(
                     get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
                     use_qcursor=True, parent=self.home

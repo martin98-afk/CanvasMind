@@ -1,4 +1,5 @@
 # -- coding: utf-8 --
+import copy
 import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
@@ -62,8 +63,12 @@ class CanvasUISetUp:
         self.nav_view = self.nav_panel.draggable_tree.tree
         # 立即初始化图表视图，否则 load_full_workflow 会没地方渲染
         # --- 使用 StackedWidget 管理画布 ---
+        self.graph_widget = QWidget(self.parent)
+        self.graph_layout = QVBoxLayout(self.graph_widget)
+        self.graph_layout.setContentsMargins(0, 0, 0, 0)
+        self.graph_layout.setSpacing(0)
         self.canvas_stack = QStackedWidget(self.parent)
-
+        self.graph_layout.addWidget(self.canvas_stack)
         # 创建主图并加入 Stack
         self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self.parent)
         self.canvas_stack.addWidget(self.graph.widget)
@@ -75,7 +80,7 @@ class CanvasUISetUp:
 
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
-        self.splitter.addWidget(self.canvas_stack)
+        self.splitter.addWidget(self.graph_widget)
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.last_right_width = DEFAULT_SPLITTER_SIZES[2]
@@ -89,7 +94,6 @@ class CanvasUISetUp:
         self._create_env_and_buttons()  # 右上：环境+运行控制
         self._create_floating_nodes_base()  # 左侧：快捷工具
         self._create_canvas_controls_base()  # 右下：画布控制
-
         self._setup_pipeline_style()
         self._init_unified_font()
 
@@ -122,7 +126,7 @@ class CanvasUISetUp:
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         self.btn_zoom_fit.clicked.connect(
-            lambda: self.canvas_stack.zoom_to_nodes([n.view for n in self.parent.graph.all_nodes()])
+            lambda: self.canvas_stack.zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
         self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
@@ -151,9 +155,10 @@ class CanvasUISetUp:
     def create_new_subgraph(self, name="未命名子图"):
         """【核心功能】创建一个新的子图并切换过去"""
         # 1. 创建全新的画布实例
-        # 这里的 CustomNodeGraph 需要和你主图的初始化配置保持一致
-        from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
-        new_graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self.parent)
+        new_graph = CustomNodeGraph(
+            viewer=CustomNodeViewer(), parent=self.parent,
+            # node_factory=copy.deepcopy(self.graph_instances[0].node_factory)
+        )
 
         # 2. 将新图添加到 UI 栈中
         self.canvas_stack.addWidget(new_graph.widget)
@@ -170,7 +175,7 @@ class CanvasUISetUp:
     def create_name_label(self):
         """左上角面板：核心修复 BreadcrumbBar 的显示"""
         if self.name_container: return
-        self.name_container = QFrame(self.canvas_stack)
+        self.name_container = QFrame(self.graph_widget)
         self.name_container.setObjectName("FrostedPanel")
         self.name_container.setStyleSheet(self._get_frosted_style())
 
@@ -193,7 +198,7 @@ class CanvasUISetUp:
 
     def _create_env_and_buttons(self):
         """右上角面板：[环境 ComboBox] | [运行按钮组]"""
-        self.buttons_container = QFrame(self.canvas_stack)
+        self.buttons_container = QFrame(self.graph_widget)
         self.buttons_container.setStyleSheet(self._get_frosted_style())
 
         layout = QHBoxLayout(self.buttons_container)
@@ -234,7 +239,7 @@ class CanvasUISetUp:
 
     def _create_floating_nodes_base(self):
         """左侧面板：垂直节点按钮"""
-        self.nodes_container = QFrame(self.canvas_stack)
+        self.nodes_container = QFrame(self.graph_widget)
         self.nodes_container.setStyleSheet(self._get_frosted_style())
 
         self.node_layout = QVBoxLayout(self.nodes_container)
@@ -271,7 +276,7 @@ class CanvasUISetUp:
 
     def _create_canvas_controls_base(self):
         """右下面板：视图控制"""
-        self.canvas_controls_container = QFrame(self.canvas_stack)
+        self.canvas_controls_container = QFrame(self.graph_widget)
         self.canvas_controls_container.setStyleSheet(self._get_frosted_style())
 
         layout = QHBoxLayout(self.canvas_controls_container)
@@ -378,7 +383,7 @@ class CanvasUISetUp:
 
         # 3. 更新当前的 graph 引用，确保后续创建节点等操作是在当前图上
         self.graph = target_graph
-        self.parent.graph = target_graph  # 同步给主类
+        self.graph = target_graph  # 同步给主类
 
         # 4. 裁剪 graph_instances 和 面包屑
         # 移除 index 之后的所有图实例
@@ -395,10 +400,10 @@ class CanvasUISetUp:
     def _on_breadcrumb_clicked(self, route_key):
         """点击面包屑项，返回对应的图层"""
         # 调用主类的切换逻辑
-        self.parent.switch_to_graph_level(int(route_key))
+        self.switch_to_graph_level(int(route_key))
 
     def _toggle_viewer_mode(self):
-        viewer = self.parent.graph.viewer()
+        viewer = self.graph.viewer()
         if self.btn_mode_toggle.isChecked():
             viewer.set_navigation_mode(False);
             self.btn_mode_toggle.setIcon(get_icon("框选"))
@@ -457,9 +462,9 @@ class CanvasUISetUp:
 
     def _setup_pipeline_style(self):
         config = self.parent.config
-        self.parent.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
-        self.parent.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))
-        self.parent.graph.set_layout_direction(PIPELINE_DIRECTION.get(config.canvas_direction.value))
+        self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
+        self.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))
+        self.graph.set_layout_direction(PIPELINE_DIRECTION.get(config.canvas_direction.value))
 
     def _init_unified_font(self):
         font_name = getattr(self.parent.config.canvas_font_type, 'value', "Microsoft YaHei")

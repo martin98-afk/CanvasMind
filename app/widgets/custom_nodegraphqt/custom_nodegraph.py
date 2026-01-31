@@ -2,7 +2,7 @@
 import copy
 import json
 
-from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode
+from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.base.commands import PortConnectedCmd
 from NodeGraphQt.base.menu import BaseMenu
 from NodeGraphQt.constants import (
@@ -745,7 +745,7 @@ class CustomNodeGraph(NodeGraph):
             'layout_direction': self.layout_direction(),
             'pipe_style': self.pipe_style(),
         }
-        sub_graph = CustomSubGraph(self,
+        sub_graph = SubGraph(self,
                              node=node,
                              node_factory=node_factory,
                              **kwargs)
