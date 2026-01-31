@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
-
 from NodeGraphQt import BackdropNode, Port
 from NodeGraphQt.base.commands import NodeVisibleCmd
 from NodeGraphQt.constants import PortTypeEnum
@@ -41,7 +40,6 @@ class ResizeBackdropCommand(QUndoCommand):
 
 
 # ──────────────── Backdrop Node ────────────────
-
 class ControlFlowBackdrop(BackdropNode, StatusNode):
     """
     支持控制流的增强型 Backdrop
@@ -59,6 +57,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
     def __init__(self):
         BackdropNode.__init__(self, ControlFlowBackdropNodeItem)
         self.set_icon(self.ICON_PATH)
+        self.view.node = self
         self._inputs = []
         self._outputs = []
         self._output_values = {}
@@ -69,11 +68,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self._confirm_delay_ms = 300  # 延迟 300ms 确认
         self._remove_threshold = 0.1  # <10% 视为“脱离”
 
-        # === 优化新增内部变量 (不影响原有逻辑调用) ===
-        self._is_manually_resizing = False  # 标记是否处于手动调整中
-        self._resize_timer = QtCore.QTimer()  # 性能防抖定时器
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.timeout.connect(self._perform_auto_resize_with_undo)
+        # === 自动调整大小逻辑已移除 ===
 
         # === 初始化端口 ===
         self.add_input("inputs", multi_input=True, display_name=True)
@@ -88,7 +83,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         self.model.add_property("loop_mode", "count")  # count, condition, while
         self.model.add_property("parallel_count", 1)
 
-        # 延迟初始化自动管理
+        # 延迟初始化归属管理
         QtCore.QTimer.singleShot(0, self._setup_auto_management)
 
     def _setup_auto_management(self):
@@ -109,23 +104,15 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
             except (TypeError, RuntimeError):
                 pass
 
-        self._perform_auto_resize_with_undo()
-
     def _on_view_destroyed(self):
         """清理所有 pending timers"""
         for timer in self._pending_nodes.values():
             timer.stop()
         self._pending_nodes.clear()
-        if hasattr(self, '_resize_timer'):
-            self._resize_timer.stop()
 
     def _on_scene_changed(self, region=None):
-        """场景变化时动态管理节点归属"""
+        """场景变化时动态管理节点归属（仅更新包含关系，不触发缩放）"""
         if not self.graph:
-            return
-
-        # 优化：检查当前是否正在手动拉伸该 Backdrop，若是则跳过自动调整以免冲突
-        if self.view.itemChange(self.view.ItemPositionChange, None) and self.view.isSelected():
             return
 
         # 清理已销毁节点的 pending timer
@@ -134,8 +121,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                 timer = self._pending_nodes.pop(nid)
                 timer.stop()
 
-        # 检查所有节点
-        nodes_changed = False
+        # 检查所有节点，维护 _contained_nodes 列表（用于折叠功能）
         for node in self.graph.all_nodes():
             if node is self:
                 continue
@@ -149,19 +135,10 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
                     timer.timeout.connect(lambda nid=node.id: self._confirm_node_inclusion(nid))
                     self._pending_nodes[node.id] = timer
                     self._pending_nodes[node.id].start(self._confirm_delay_ms)
-                    nodes_changed = True
-                elif node.id in self._contained_nodes:
-                    # 已经在内部的节点移动，也需要触发 resize 检查，但使用防抖
-                    nodes_changed = True
             else:
                 if node.id in self._pending_nodes:
                     self._pending_nodes[node.id].stop()
                     del self._pending_nodes[node.id]
-                    nodes_changed = True
-
-        # 如果有节点变动或在内部移动，启动防抖计时器
-        if nodes_changed:
-            self._resize_timer.start(50)  # 50ms 防抖，避免拖拽时卡顿
 
         # 检查是否需要移除已脱离的节点
         self._check_for_removals()
@@ -209,72 +186,18 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
 
         if self._is_node_significantly_inside(node, self._overlap_threshold):
             self._contained_nodes.add(node_id)
-            self._perform_auto_resize_with_undo()
 
     def _check_for_removals(self):
         """检查并移除已脱离的节点"""
         current_contained = set()
-        removed_any = False
         for node in self._get_currently_contained_nodes():
             if (not self._is_node_significantly_inside(node, self._remove_threshold)
                     and node.id not in self._pending_nodes):
                 self._remove_node_and_cleanup(node)
-                removed_any = True
             else:
                 current_contained.add(node)
 
         self._contained_nodes = {n.id for n in current_contained}
-        if removed_any:
-            self._resize_timer.start(50)
-
-    def _perform_auto_resize_with_undo(self, padding=40, min_width=150, min_height=100):
-        """执行带 undo 支持的自动 resize"""
-        if not self.graph:
-            return
-
-        # 过滤有效节点
-        nodes_to_include = []
-        for node in self.graph.all_nodes():
-            if node is self: continue
-            if node.type_ in ("control_flow.CustomPortInputNode", "control_flow.CustomPortOutputNode"):
-                continue
-            if node.id in self._contained_nodes or self._is_node_significantly_inside(node, self._overlap_threshold):
-                nodes_to_include.append(node)
-
-        if not nodes_to_include:
-            # 如果没有节点，保持最小尺寸或当前尺寸，不强行缩放
-            return
-
-        # 计算包围盒
-        try:
-            min_x = min(n.view.scenePos().x() for n in nodes_to_include)
-            min_y = min(n.view.scenePos().y() for n in nodes_to_include)
-            max_x = max(n.view.scenePos().x() + n.view.width for n in nodes_to_include)
-            max_y = max(n.view.scenePos().y() + n.view.height for n in nodes_to_include)
-        except (RuntimeError, AttributeError):
-            return
-
-        new_width = max(max_x - min_x + 2 * padding, min_width)
-        new_height = max(max_y - min_y + 2 * padding, min_height)
-        new_pos = (min_x - padding, min_y - padding)
-
-        # 获取旧状态
-        old_pos = (self.view.scenePos().x(), self.view.scenePos().y())
-        old_size = (self.view.width, self.view.height)
-
-        # 容差检查：变化小于2像素不触发撤销栈，防止噪音
-        pos_changed = abs(old_pos[0] - new_pos[0]) > 2 or abs(old_pos[1] - new_pos[1]) > 2
-        size_changed = abs(old_size[0] - new_width) > 2 or abs(old_size[1] - new_height) > 2
-
-        if pos_changed or size_changed:
-            command = ResizeBackdropCommand(
-                self, old_pos, old_size, new_pos, (new_width, new_height)
-            )
-            self.graph.undo_stack().push(command)
-            self.graph.viewer().force_update()
-
-        # 同步 ID 记录
-        self._contained_nodes = {n.id for n in nodes_to_include}
 
     # ──────────────── 几何辅助方法 ────────────────
 
@@ -355,8 +278,7 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
     def nodes(self):
         return self._get_currently_contained_nodes()
 
-    # ──────────────── 以下业务逻辑保持完全不变 ────────────────
-
+    # ──────────────── 业务逻辑 ────────────────
     def get_nodes(self):
         execute_nodes = []
         input_proxy, output_proxy = None, None
