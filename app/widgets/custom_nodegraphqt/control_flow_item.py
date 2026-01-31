@@ -1,41 +1,8 @@
-# --- 仅在你的类中添加/覆盖以下两个方法，其余代码保持原封不动 ---
-
-def shape(self):
-    """定义点击碰撞区域：仅限标题栏和缩放手柄"""
-    path = QtGui.QPainterPath()
-    # 1. 标题栏区域 (高度26.0)
-    path.addRect(0, 0, self._width, 26.0)
-
-    # 2. 缩放手柄区域 (必须包含，否则无法通过右下角 resize)
-    if self._sizer:
-        # 将 sizer 的形状映射到当前 node 的坐标系中
-        sizer_rect = self._sizer.boundingRect().translated(self._sizer.pos())
-        path.addRect(sizer_rect)
-
-    return path
-
-
-def mousePressEvent(self, event):
-    """处理点击事件"""
-    # 如果点击的是标题栏或缩放手柄，执行默认逻辑（选中/拖动/缩放）
-    # 否则忽略事件，使其穿透到下方的节点
-    header_height = 26.0
-    if event.pos().y() <= header_height:
-        super(ControlFlowBackdropNodeItem, self).mousePressEvent(event)
-    elif self._sizer and self._sizer.boundingRect().translated(self._sizer.pos()).contains(event.pos()):
-        super(ControlFlowBackdropNodeItem, self).mousePressEvent(event)
-    else:
-        event.ignore()  # 穿透
-
-
-# --- 以下是你原始代码的完整还原，仅植入了上述逻辑 ---
-
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
 
 from NodeGraphQt.constants import (
-    ITEM_CACHE_MODE, PortTypeEnum, Z_VAL_NODE,
-    ICON_NODE_BASE, NodeEnum, Z_VAL_BACKDROP
+    ITEM_CACHE_MODE, PortTypeEnum, ICON_NODE_BASE, NodeEnum, Z_VAL_BACKDROP
 )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -56,34 +23,45 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self._input_items = OrderedDict()
         self._output_items = OrderedDict()
 
+        # --- 风格定义：在此处统一定义参数，方便后期微调 ---
+        self._header_height = 42.0  # 显著增加标题栏高度
+        self._header_font_size = 28  # 字体加大
+        self._corner_radius = 16.0  # 圆角加大，更具现代感
+        self._icon_size = 35.0  # 图标同步加大
+
         super(ControlFlowBackdropNodeItem, self).__init__(name=name, text=text, parent=parent)
 
+        # 字体加粗加大
         self._text_item = NodeTextItem(self.name, self)
-        font = QtGui.QFont()
-        font.setPointSize(16)
-        font.setBold(True)
+        font = QtGui.QFont("Segoe UI" if QtCore.QSysInfo.productType() == "windows" else "Arial")
+        font.setPixelSize(self._header_font_size)
+        font.setWeight(QtGui.QFont.Black)  # 使用极致加粗
         self._text_item.setFont(font)
-        self._text_item.setDefaultTextColor(QtGui.QColor("white"))
+        self._text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 240))
 
+        # 图标适配高度
         pixmap = QtGui.QPixmap(ICON_NODE_BASE)
         if not pixmap.isNull():
-            pixmap = pixmap.scaled(28, 28, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            pixmap = pixmap.scaled(int(self._icon_size), int(self._icon_size),
+                                   QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self._icon_item = QtWidgets.QGraphicsPixmapItem(pixmap, self)
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
 
         self.setZValue(Z_VAL_BACKDROP)
         self.update_layout()
 
-    # --- 新增：实现标题选中与穿透，同时保留 Resize 功能 ---
+    # --- 交互区域适配：确保点击新的标题栏高度能拖动 ---
     def shape(self):
         path = QtGui.QPainterPath()
-        path.addRect(0, 0, self._width, 26.0)  # 标题栏
+        # 匹配新的 header 高度
+        path.addRect(0, 0, self._width, self._header_height)
         if self._sizer:
-            path.addRect(self._sizer.boundingRect().translated(self._sizer.pos()))  # 缩放手柄
+            path.addRect(self._sizer.boundingRect().translated(self._sizer.pos()))
         return path
 
     def mousePressEvent(self, event):
-        if event.pos().y() <= 26.0:
+        # 匹配新的 header 高度
+        if event.pos().y() <= self._header_height:
             super(ControlFlowBackdropNodeItem, self).mousePressEvent(event)
         elif self._sizer and self._sizer.boundingRect().translated(self._sizer.pos()).contains(event.pos()):
             super(ControlFlowBackdropNodeItem, self).mousePressEvent(event)
@@ -120,43 +98,31 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         port.locked = locked
         return self._add_port(port)
 
-    # --- 原始属性与布局 (完全未改动) ---
-    @property
-    def icon(self):
-        return self._properties.get("icon")
-
-    @icon.setter
-    def icon(self, value=None):
-        self._properties['icon'] = value
-        if isinstance(value, QtGui.QIcon):
-            pixmap = value.pixmap(28, 28)
-        elif isinstance(value, str):
-            pixmap = QtGui.QPixmap(value)
-        else:
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
-        if pixmap.isNull():
-            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
-        if pixmap.height() > 28 or pixmap.width() > 28:
-            pixmap = pixmap.scaled(28, 28, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        if self._icon_item:
-            self._icon_item.setPixmap(pixmap)
-        self.update_layout()
-
+    # --- 布局优化 ---
     def update_layout(self):
         if not self._text_item or not self._icon_item:
             return
+
         rect = self.boundingRect()
-        header_height = 26.0
+
+        # 文字垂直居中于 header
         text_rect = self._text_item.boundingRect()
         tx = rect.center().x() - (text_rect.width() / 2)
-        self._text_item.setPos(tx, rect.y())
-        self._icon_item.setPos(rect.left() + 10.0, rect.top() + (header_height - self._icon_item.pixmap().height()) / 2)
-        self.align_ports(v_offset=header_height + 5.0)
+        ty = rect.top() + (self._header_height - text_rect.height()) / 2
+        self._text_item.setPos(tx, ty)
+
+        # 图标垂直居中于 header
+        ix = rect.left() + 15.0  # 稍微增加左间距
+        iy = rect.top() + (self._header_height - self._icon_item.pixmap().height()) / 2
+        self._icon_item.setPos(ix, iy)
+
+        # 端口对齐位置下移，避免重叠标题栏
+        self.align_ports(v_offset=self._header_height + 10.0)
 
     def align_ports(self, v_offset=0.0):
         width = self._width
         txt_offset = 4
-        spacing = 2
+        spacing = 4  # 增加端口间距
         inputs = [p for p in self.inputs if p.isVisible()]
         for i, port in enumerate(inputs):
             port_width = port.boundingRect().width()
@@ -165,6 +131,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
             port.setPos(-(port_width / 2), py)
             text = self._input_items.get(port)
             if text: text.setPos(port_width / 2 - txt_offset, py - 1.5)
+
         outputs = [p for p in self.outputs if p.isVisible()]
         for i, port in enumerate(outputs):
             port_width = port.boundingRect().width()
@@ -177,6 +144,29 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
                 text.setPos(port.x() - txt_width, py - 1.5)
 
     @property
+    def icon(self):
+        return self._properties.get("icon")
+
+    @icon.setter
+    def icon(self, value=None):
+        self._properties['icon'] = value
+        size = int(self._icon_size)
+        if isinstance(value, QtGui.QIcon):
+            pixmap = value.pixmap(size, size)
+        elif isinstance(value, str):
+            pixmap = QtGui.QPixmap(value)
+        else:
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+        if pixmap.isNull():
+            pixmap = QtGui.QPixmap(ICON_NODE_BASE)
+
+        if pixmap.height() > size or pixmap.width() > size:
+            pixmap = pixmap.scaled(size, size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        if self._icon_item:
+            self._icon_item.setPixmap(pixmap)
+        self.update_layout()
+
+    @property
     def inputs(self):
         return list(self._input_items.keys())
 
@@ -184,40 +174,62 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
     def outputs(self):
         return list(self._output_items.keys())
 
+    # --- 绘制优化：提升设计感 ---
     def paint(self, painter, option, widget):
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
         margin = 1.0
         rect = self.boundingRect().adjusted(margin, margin, -margin, -margin)
-        radius = 2.6
+        radius = self._corner_radius
+
+        # 1. 绘制整体半透明背景
         c = self.color
-        painter.setBrush(QtGui.QColor(c[0], c[1], c[2], 50))
+        body_color = QtGui.QColor(c[0], c[1], c[2], 30)  # 降低主体透明度，增加高级感
+        painter.setBrush(body_color)
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(rect, radius, radius)
-        top_rect = QtCore.QRectF(rect.x(), rect.y(), rect.width(), 26.0)
-        painter.setBrush(QtGui.QColor(*self.color))
-        painter.drawRoundedRect(top_rect, radius, radius)
-        for pos in [top_rect.left(), top_rect.right() - 5.0]:
-            painter.drawRect(QtCore.QRectF(pos, top_rect.bottom() - 5.0, 5.0, 5.0))
+
+        # 2. 绘制标题栏背景 (Header)
+        header_rect = QtCore.QRectF(rect.x(), rect.y(), rect.width(), self._header_height)
+        header_color = QtGui.QColor(*self.color)
+        painter.setBrush(header_color)
+
+        # 绘制带圆角的顶部区域（仅上方两角圆润）
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(header_rect, radius, radius)
+        # 将下方多出的圆角补平
+        painter.drawPath(path)
+        flat_rect = QtCore.QRectF(header_rect.x(), header_rect.y() + self._header_height - radius,
+                                  header_rect.width(), radius)
+        painter.drawRect(flat_rect)
+
+        # 3. 绘制内部说明文字 (如果有)
         if self.backdrop_text:
             painter.setPen(QtGui.QColor(*self.text_color))
-            txt_rect = QtCore.QRectF(top_rect.x() + 5.0, top_rect.bottom() + 3.0,
-                                     rect.width() - 10.0, rect.height() - 30.0)
+            # 距离标题栏留出更多呼吸空间
+            txt_rect = QtCore.QRectF(header_rect.x() + 10.0, header_rect.bottom() + 10.0,
+                                     rect.width() - 20.0, rect.height() - self._header_height - 20.0)
             painter.drawText(txt_rect, QtCore.Qt.AlignLeft | QtCore.Qt.TextWordWrap, self.backdrop_text)
-        border_color = self.color
-        border_width = 0.8
+
+        # 4. 绘制边框
+        border_color = QtGui.QColor(*self.color)
+        border_width = 1.5  # 稍微加粗边框
+
         if self.selected:
-            sel_color = list(NodeEnum.SELECTED_COLOR.value)
-            sel_color[-1] = 15
-            painter.setBrush(QtGui.QColor(*sel_color))
+            # 选中状态：使用较亮的发光效果
+            border_color = QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value)
+            border_width = 2.0
+            # 绘制一个微弱的整体选中遮罩
+            painter.setBrush(QtGui.QColor(255, 255, 255, 10))
             painter.drawRoundedRect(rect, radius, radius)
-            border_color = NodeEnum.SELECTED_BORDER_COLOR.value
-            border_width = 1.2
+
         painter.setBrush(QtCore.Qt.NoBrush)
-        pen = QtGui.QPen(QtGui.QColor(*border_color), border_width)
+        pen = QtGui.QPen(border_color, border_width)
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.drawRoundedRect(rect, radius, radius)
+
         painter.restore()
 
     def on_backdrop_updated(self, update_prop, value):
