@@ -512,7 +512,7 @@ class CustomNodeViewer(NodeViewer):
                 not self.ALT_state and
                 not self.SHIFT_state and
                 not self._rubber_band.isActive and
-                not self._navigation_mode  # <--- 新增：导航模式下屏蔽节点对齐/拖拽
+                not self._navigation_mode
         )
 
         if is_dragging_nodes:

@@ -110,11 +110,15 @@ class CanvasUISetUp:
         # 立即刷一次坐标
         QTimer.singleShot(50, self.update_position)
 
-    # ================= UI 基础构建 (无坐标偏移计算) =================
+    # ================= UI 基础构建 (解决背景不透明问题) =================
 
     def _create_environment_selector_base(self):
         self.env_container = QWidget(self.parent.canvas_widget)
         self.env_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 核心修复：透明背景支持
+        self.env_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.env_container.setStyleSheet("background: transparent; border: none;")
+
         layout = QHBoxLayout(self.env_container)
         layout.setSpacing(5)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -127,22 +131,26 @@ class CanvasUISetUp:
         layout.addWidget(label)
         layout.addWidget(self.env_combo)
         self.env_container.show()
+        self.env_container.raise_()
 
     def _create_floating_buttons_base(self):
-        # 必须 parent 到 viewer 才能浮动在画布上
-        self.buttons_container = QWidget(self.parent.graph.viewer())
+        # 必须 parent 到 canvas_widget 才能浮动在画布上
+        self.buttons_container = QWidget(self.parent.canvas_widget)
         self.buttons_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 核心修复：透明背景支持
+        self.buttons_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.buttons_container.setStyleSheet("background: transparent; border: none;")
 
         btn_layout = QHBoxLayout(self.buttons_container)
         btn_layout.setSpacing(0)
         btn_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self.parent.canvas_widget)
-        self.pause_btn = TransparentToolButton(FluentIcon.PAUSE, parent=self.parent.canvas_widget)
-        self.stop_btn = TransparentToolButton(get_icon("停止"), parent=self.parent.canvas_widget)
-        self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.parent.canvas_widget)
-        self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, parent=self.parent.canvas_widget)
-        self.close_btn = TransparentToolButton(FluentIcon.CLOSE, parent=self.parent.canvas_widget)
+        self.run_btn = TransparentToolButton(FluentIcon.PLAY, parent=self.buttons_container)
+        self.pause_btn = TransparentToolButton(FluentIcon.PAUSE, parent=self.buttons_container)
+        self.stop_btn = TransparentToolButton(get_icon("停止"), parent=self.buttons_container)
+        self.save_btn = TransparentToolButton(FluentIcon.SAVE, parent=self.buttons_container)
+        self.export_model_btn = TransparentToolButton(FluentIcon.SHARE, parent=self.buttons_container)
+        self.close_btn = TransparentToolButton(FluentIcon.CLOSE, parent=self.buttons_container)
 
         for btn in [self.run_btn, self.pause_btn, self.stop_btn, self.save_btn, self.export_model_btn, self.close_btn]:
             btn_layout.addWidget(btn)
@@ -150,10 +158,15 @@ class CanvasUISetUp:
         self.pause_btn.hide()
         self.stop_btn.hide()
         self.buttons_container.show()
+        self.buttons_container.raise_()
 
     def _create_floating_nodes_base(self):
         self.nodes_container = QWidget(self.parent.canvas_widget)
         self.nodes_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 核心修复：透明背景支持
+        self.nodes_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.nodes_container.setStyleSheet("background: transparent; border: none;")
+
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setSpacing(5)
         self.node_layout.setContentsMargins(0, 0, 0, 0)
@@ -174,6 +187,7 @@ class CanvasUISetUp:
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
 
         self.visible_quick_container = QWidget(self.nodes_container)
+        self.visible_quick_container.setStyleSheet("background: transparent;")
         self.visible_quick_layout = QVBoxLayout(self.visible_quick_container)
         self.visible_quick_layout.setSpacing(3)
         self.visible_quick_layout.setContentsMargins(0, 0, 0, 0)
@@ -186,18 +200,21 @@ class CanvasUISetUp:
         self.node_layout.addWidget(self.more_quick_button)
         self.node_layout.addWidget(self.add_quick_btn)
         self.nodes_container.show()
+        self.nodes_container.raise_()
 
     def _create_canvas_controls_base(self):
         """创建右下角画布控制栏"""
-        self.canvas_controls_container = QWidget(self.parent.graph.viewer())
+        self.canvas_controls_container = QWidget(self.parent.canvas_widget)
         self.canvas_controls_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 核心修复：透明背景支持
+        self.canvas_controls_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.canvas_controls_container.setStyleSheet("background: transparent; border: none;")
 
         layout = QHBoxLayout(self.canvas_controls_container)
         layout.setSpacing(8)
         layout.setContentsMargins(10, 5, 10, 5)
 
         # 1. 模式切换按钮 (框选 vs 拖拽)
-        # NodeGraphQt 默认左键是框选，按住 Alt 是拖拽。我们要实现点击切换默认行为
         self.btn_mode_toggle = self._build_tool_btn(get_icon("框选"), "当前模式: 框选 (点击切换为拖拽)")
         self.btn_mode_toggle.setCheckable(True)
         self.btn_mode_toggle.setChecked(True)  # 默认拖拽
@@ -212,8 +229,8 @@ class CanvasUISetUp:
         layout.addWidget(self.btn_zoom_fit)
         layout.addWidget(self.btn_zen_mode)
         layout.addWidget(self.btn_canvas_setting)
-        # 设置容器背景样式（毛玻璃或半透明）
         self.canvas_controls_container.show()
+        self.canvas_controls_container.raise_()
 
     def _build_tool_btn(self, icon, tooltip):
         btn = TransparentToolButton(icon, parent=self.parent.canvas_widget)
@@ -222,7 +239,7 @@ class CanvasUISetUp:
         btn.setToolTip(tooltip)
         return btn
 
-    # ================= 动态定位逻辑 (核心修正点) =================
+    # ================= 动态定位逻辑 =================
 
     def update_position(self):
         """统一计算所有悬浮组件的坐标，解决缩放和初始化错位问题"""
@@ -236,10 +253,8 @@ class CanvasUISetUp:
         if hasattr(self, 'env_container') and self.env_container:
             self.env_container.move(0, 5)
 
-        # 2. 功能按钮组 (右上角 - 严格对齐原逻辑)
+        # 2. 功能按钮组 (右上角)
         if self.buttons_container:
-            # 原逻辑：viewer().width() - BUTTONS_CONTAINER_X_OFFSET
-            # 注意：此处确保 offset 减去的是容器自身的宽度，或者使用你的固定常量
             target_x = canvas_w - BUTTONS_CONTAINER_X_OFFSET
             self.buttons_container.move(max(0, target_x), 5)
 
@@ -282,6 +297,9 @@ class CanvasUISetUp:
         if self.name_container: return
         self.name_container = QWidget(self.parent.canvas_widget)
         self.name_container.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        # 核心修复：透明背景支持
+        self.name_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.name_container.setStyleSheet("background: transparent; border: none;")
 
         self.name_label = LineEdit(self.name_container)
         self.name_label.setStyleSheet(
@@ -293,6 +311,7 @@ class CanvasUISetUp:
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.name_label)
         self.name_container.show()
+        self.name_container.raise_()
         self.update_position()
 
     def _refresh_quick_buttons(self):
@@ -424,24 +443,19 @@ class CanvasUISetUp:
         """切换纯净模式：隐藏/显示左右侧边栏"""
         if not self.is_zen_mode:
             # --- 进入纯净模式 ---
-            # 记录当前各部分宽度，以便还原
             current_sizes = self.splitter.sizes()
-            # 如果当前不是全屏状态（中间宽度不占满），才记录
             if current_sizes[0] > 0 or current_sizes[2] > 0:
                 self.saved_splitter_sizes = current_sizes
 
-            # 计算总宽度并设置：[左, 中, 右] -> [0, 总计, 0]
             total_width = sum(current_sizes)
             self.splitter.setSizes([0, total_width, 0])
 
-            # 更新图标为“还原”
             self.btn_zen_mode.setIcon(get_icon("画布2"))
             self.is_zen_mode = True
         else:
             # --- 还原状态 ---
             self.splitter.setSizes(self.saved_splitter_sizes)
 
-            # 更新图标为“全屏”
             self.btn_zen_mode.setIcon(get_icon("三图居中"))
             self.is_zen_mode = False
 
