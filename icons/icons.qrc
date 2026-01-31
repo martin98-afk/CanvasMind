@@ -88,6 +88,7 @@
     <file>日志.svg</file>
     <file>智能体.svg</file>
     <file>智能视频.svg</file>
+    <file>暂停.svg</file>
     <file>更多.svg</file>
     <file>更新.svg</file>
     <file>条件分支.png</file>
@@ -106,6 +107,8 @@
     <file>线性回归.svg</file>
     <file>组件.png</file>
     <file>组节点.svg</file>
+    <file>结束.svg</file>
+    <file>绿色运行.svg</file>
     <file>缩小.svg</file>
     <file>缩放.svg</file>
     <file>自动保存.svg</file>

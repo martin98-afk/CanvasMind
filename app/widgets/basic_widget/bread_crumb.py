@@ -101,6 +101,12 @@ class Breadcrumb(QFrame):
         # 触发尺寸更新
         self.adjustSize()
 
+    def itemAt(self, index: int):
+        if 0 <= index < len(self.items_data):
+            return self.items_data[index]
+
+        return None
+
     def _handle_click(self, key):
         """点击处理：发送信号"""
         self.currentItemChanged.emit(key)

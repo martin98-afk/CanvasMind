@@ -12,7 +12,7 @@ from app.nodes.status_node import StatusNode
 
 
 class GroupPortInputNode(PortInputNode):
-    __identifier__ = 'group'
+    __identifier__ = 'general'
     category = "组节点"
     NODE_NAME = '输入端口'
     FULL_PATH = f"{category}/{NODE_NAME}"
@@ -74,7 +74,7 @@ class GroupPortInputNode(PortInputNode):
 
 
 class GroupPortOutputNode(PortOutputNode):
-    __identifier__ = 'group'
+    __identifier__ = 'general'
     category = "组节点"
     NODE_NAME = '输出端口'
     FULL_PATH = f"{category}/{NODE_NAME}"

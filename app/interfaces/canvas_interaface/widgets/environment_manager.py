@@ -36,6 +36,7 @@ class EnvironmentManager:
         self.parent.ipython_kernel.start_kernel(self.env_data)
         self.parent.env_changed.emit(self.env_data.get("path"))
         self.parent.dependency_checker.run_check()
+        self.parent.ui_manager.reset_env_buttons_state()
         MessageManager.info("环境切换", f"当前运行环境: {current_text}", self.parent)
 
     def get_current_python_exe(self):
