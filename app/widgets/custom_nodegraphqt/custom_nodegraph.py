@@ -559,6 +559,7 @@ class CustomNodeViewer(NodeViewer):
                 # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
                 self.LMB_state = False
                 super(CustomNodeViewer, self).mouseReleaseEvent(event)
+                self._temp_connection_source = None
                 return
         # 处理平移
         was_panning = self._panning

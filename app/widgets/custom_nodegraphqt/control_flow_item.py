@@ -75,9 +75,16 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self._nodes_to_restore = []  # 新增：用于缓存折叠时包含的节点
 
         self._header_height = 42.0
-        self._header_font_size = 32
+        self._header_font_size = 35
         self._corner_radius = 16.0
         self._icon_size = 35
+
+        # Resize 辅助变量
+        self._resize_margin = 10.0
+        self._resize_direction = None
+        self._initial_pos = QtCore.QPointF()
+        self._initial_scene_pos = QtCore.QPointF()
+        self._initial_size = (0.0, 0.0)
 
         super(ControlFlowBackdropNodeItem, self).__init__(name=name, text=text, parent=parent)
 
@@ -99,6 +106,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self._collapse_btn.clicked_func = self.toggle_collapse
 
         self.setZValue(Z_VAL_BACKDROP)
+        self.setAcceptHoverEvents(True)  # 显式开启 Hover
         self.update_layout()
 
     # ================= 端口管理接口 =================
@@ -209,9 +217,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
 
     def shape(self):
         path = QtGui.QPainterPath()
-        path.addRect(0, 0, self._width, self._header_height)
-        if not self._is_collapsed and self._sizer:
-            path.addRect(self._sizer.boundingRect().translated(self._sizer.pos()))
+        path.addRect(0, 0, self._width, self._height)  # 修复Shape范围，使其包含全区域以便检测Hover
         return path
 
     def update_layout(self):
@@ -302,10 +308,99 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.drawRoundedRect(rect, radius, radius)
-
         painter.restore()
 
-    # ================= 原始事件兼容 =================
+    # ================= 交互与 Resize 核心优化 =================
+
+    def _get_resize_direction(self, pos):
+        if self._is_collapsed: return None
+
+        w, h = self._width, self._height
+        m = self._resize_margin
+
+        left = pos.x() < m
+        right = pos.x() > w - m
+        top = pos.y() < m
+        bottom = pos.y() > h - m
+
+        if left and top: return 'top_left'
+        if right and top: return 'top_right'
+        if left and bottom: return 'bottom_left'
+        if right and bottom: return 'bottom_right'
+        if left: return 'left'
+        if right: return 'right'
+        if top: return 'top'
+        if bottom: return 'bottom'
+        return None
+
+    def hoverMoveEvent(self, event):
+        if not self._is_collapsed:
+            direction = self._get_resize_direction(event.pos())
+            cursors = {
+                'top': QtCore.Qt.SizeVerCursor,
+                'bottom': QtCore.Qt.SizeVerCursor,
+                'left': QtCore.Qt.SizeHorCursor,
+                'right': QtCore.Qt.SizeHorCursor,
+                'top_left': QtCore.Qt.SizeFDiagCursor,
+                'bottom_right': QtCore.Qt.SizeFDiagCursor,
+                'top_right': QtCore.Qt.SizeBDiagCursor,
+                'bottom_left': QtCore.Qt.SizeBDiagCursor,
+            }
+            if direction:
+                self.setCursor(cursors.get(direction, QtCore.Qt.ArrowCursor))
+            else:
+                self.setCursor(QtCore.Qt.ArrowCursor)
+        super(ControlFlowBackdropNodeItem, self).hoverMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            direction = self._get_resize_direction(event.pos())
+            if direction:
+                self._resize_direction = direction
+                self._initial_pos = self.pos()
+                self._initial_scene_pos = event.scenePos()
+                self._initial_size = (self._width, self._height)
+                event.accept()
+                return
+        super(ControlFlowBackdropNodeItem, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._resize_direction:
+            delta = event.scenePos() - self._initial_scene_pos
+            new_x, new_y = self._initial_pos.x(), self._initial_pos.y()
+            new_w, new_h = self._initial_size
+
+            min_w, min_h = 120.0, 80.0
+
+            # 计算新的尺寸和坐标
+            if 'left' in self._resize_direction:
+                max_delta_x = self._initial_size[0] - min_w
+                dx = min(delta.x(), max_delta_x)
+                new_w = self._initial_size[0] - dx
+                new_x = self._initial_pos.x() + dx
+            elif 'right' in self._resize_direction:
+                new_w = max(min_w, self._initial_size[0] + delta.x())
+
+            if 'top' in self._resize_direction:
+                max_delta_y = self._initial_size[1] - min_h
+                dy = min(delta.y(), max_delta_y)
+                new_h = self._initial_size[1] - dy
+                new_y = self._initial_pos.y() + dy
+            elif 'bottom' in self._resize_direction:
+                new_h = max(min_h, self._initial_size[1] + delta.y())
+
+            # 核心：先更新位置，再更新宽高，防止坐标抖动
+            self.setPos(new_x, new_y)
+            self.width = new_w
+            self.height = new_h
+            event.accept()
+            return
+        super(ControlFlowBackdropNodeItem, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._resize_direction = None
+        self.setCursor(QtCore.Qt.ArrowCursor)
+        super(ControlFlowBackdropNodeItem, self).mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:

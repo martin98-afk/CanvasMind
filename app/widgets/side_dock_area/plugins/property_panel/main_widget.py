@@ -28,6 +28,9 @@ class PropertyToolWindow(ToolWindow):
         self.property_panel._delete_output_from_global_variable(node, port_name)
 
     # --- 工具对外暴露的方法 ---
+    def pop_node_layout(self, key):
+        self.property_panel.pop_node_layout(key)
+
     def update_properties(self, node, node_changed=False):
         self.property_panel.update_properties(node, node_changed)
 
