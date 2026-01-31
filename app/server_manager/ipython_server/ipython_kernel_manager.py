@@ -32,6 +32,30 @@ class LocalConnectWorker(QThread):
             self.finished.emit(False, str(e))
 
 
+class KernelShutdownWorker(QThread):
+    """
+    后台关闭工人：负责在不阻塞 UI 的情况下关闭内核。
+    """
+    finished = pyqtSignal()
+
+    def __init__(self, kernel_manager, kernel_client):
+        super().__init__()
+        self.km = kernel_manager
+        self.kc = kernel_client
+
+    def run(self):
+        try:
+            if self.kc:
+                self.kc.stop_channels()
+            if self.km:
+                # now=True 表示立即发送 SIGKILL，不等待内核优雅退出
+                self.km.shutdown_kernel(now=True)
+        except Exception as e:
+            logger.error(f"后台关闭内核失败: {e}")
+        finally:
+            self.finished.emit()
+
+
 class IPythonKernelManager:
     """纯IPython内核管理器，不依赖GUI组件"""
 
@@ -40,12 +64,13 @@ class IPythonKernelManager:
         self.kernel_manager = None
         self.kernel_client = None
         self.connection_file = None
+        self._shutdown_worker = None  # 保持引用防止被销毁
 
     def start_kernel(self, python_exe_path=None):
         import os
         # 如果已经启动，健康且pythonexe 路径一致，则不重新启动，重新启动必须先手动调用shutdown_kernel，再start_kernel方便管理
         if python_exe_path and (self.python_exe_path != python_exe_path or not self.is_alive()):
-            self.shutdown_kernel()
+            self.shutdown_kernel(async_mode=False)
         else:
             return True
         if python_exe_path:
@@ -121,20 +146,34 @@ class IPythonKernelManager:
                 logger.error(f"中断 kernel 失败: {e}")
         return False
 
-    def shutdown_kernel(self):
-        """关闭内核"""
-        if self.kernel_client:
-            try:
-                self.kernel_client.stop_channels()
-            except Exception:
-                pass
-        if self.kernel_manager:
-            try:
-                self.kernel_manager.shutdown_kernel(now=True)
-            except Exception:
-                pass
-        self.kernel_client = None
+    def shutdown_kernel(self, async_mode=True):
+        """
+        关闭内核
+        :param async_mode: 是否使用线程异步关闭。UI 调用时务必设为 True。
+        """
+        km = self.kernel_manager
+        kc = self.kernel_client
+
+        # 清空当前引用，防止重复操作
         self.kernel_manager = None
+        self.kernel_client = None
+
+        if not km:
+            return
+
+        if async_mode:
+            # 开启后台线程处理
+            self._shutdown_worker = KernelShutdownWorker(km, kc)
+            # 线程结束后自动清理引用
+            self._shutdown_worker.finished.connect(lambda: setattr(self, '_shutdown_worker', None))
+            self._shutdown_worker.start()
+        else:
+            # 同步模式（仅在非 UI 线程中使用）
+            try:
+                if kc: kc.stop_channels()
+                km.shutdown_kernel(now=True)
+            except:
+                pass
 
     def is_alive(self):
         """内核是否存活"""
@@ -151,7 +190,13 @@ class IPythonKernelManager:
         return {"is_alive": False}
 
     def __del__(self):
-        self.shutdown_kernel()
+        """析构时需谨慎，不能启动 QThread"""
+        if self.kernel_manager:
+            try:
+                # 最后的防线：如果还在运行，尝试快速杀掉
+                self.kernel_manager.shutdown_kernel(now=True)
+            except:
+                pass
 
 
 class MultiKernelManager:

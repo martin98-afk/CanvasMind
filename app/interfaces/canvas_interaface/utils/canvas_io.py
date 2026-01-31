@@ -296,6 +296,5 @@ class CanvasIO(QObject):
 
         self.parent._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
         self.parent._node_id_cache_valid = True
-        self.parent.create_name_label()
         self.parent._delayed_fit_view()
         MessageManager.success("加载成功", "工作流加载成功！", self.parent)

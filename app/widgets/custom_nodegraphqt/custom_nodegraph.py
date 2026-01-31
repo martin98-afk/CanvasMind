@@ -732,11 +732,11 @@ class CustomNodeGraph(NodeGraph):
         self.viewer().clear_key_state()
         self.viewer().clearFocus()
 
-        if node.id in self._sub_graphs:
-            sub_graph = self._sub_graphs[node.id]
-            tab_index = self._widget.indexOf(sub_graph.widget)
-            self._widget.setCurrentIndex(tab_index)
-            return sub_graph
+        # if node.id in self._sub_graphs:
+        #     sub_graph = self._sub_graphs[node.id]
+        #     tab_index = self._widget.indexOf(sub_graph.widget)
+        #     self._widget.setCurrentIndex(tab_index)
+        #     return sub_graph
 
         # build new sub graph.
         node_factory = copy.deepcopy(self.node_factory)

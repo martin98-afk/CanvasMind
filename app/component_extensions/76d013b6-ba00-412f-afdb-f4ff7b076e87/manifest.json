@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "基于参考音频克隆声音 (需 Base 模型)",
   "category": "comfyui节点/Qwen-TTS",
-  "main": "main.py",
-  "updated_at": "2026-01-26 08:57:08",
+  "updated_at": "2026-01-31 20:40:18",
   "author": "black"
 }
