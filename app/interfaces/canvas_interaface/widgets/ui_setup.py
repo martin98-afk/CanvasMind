@@ -9,6 +9,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
 from app.utils.utils import get_icon
+from app.widgets.basic_widget.bread_crumb import Breadcrumb
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from .canvas_left_panel import LeftPanel
@@ -148,9 +149,7 @@ class CanvasUISetUp:
 
         self.btn_toggle_nav = self._build_tool_btn(FluentIcon.MENU, "展开/收起节点库")
 
-        self.breadcrumb = BreadcrumbBar(self.name_container)
-        self.breadcrumb.setMinimumWidth(200)  # 核心修复1：设置最小宽度
-        # 按照官网例子：addItem(routeKey, text)
+        self.breadcrumb = Breadcrumb(self.name_container)
         self.breadcrumb.addItem("workflow", self.parent.workflow_name)
 
         setFont(self.breadcrumb, 16)
@@ -180,9 +179,6 @@ class CanvasUISetUp:
         layout.addSpacing(3)
         layout.addWidget(self.env_combo)
         layout.addSpacing(23)
-        sep = CardSeparator(self.buttons_container)
-        sep.setFixedHeight(16)
-        layout.addWidget(sep)
 
         # 控制按钮
         self.run_btn = self._build_tool_btn(FluentIcon.PLAY, "运行")
