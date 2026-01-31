@@ -493,7 +493,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
     def _get_connection_filter(self):
         viewer = self._graph.viewer()
         self.source_port_item = getattr(viewer, '_temp_connection_source', None)
-        if not self.source_port_item:
+        if not self.source_port_item or not hasattr(self.source_port_item, 'original_node'):
             return None, None
 
         source_node = self.source_port_item.original_node

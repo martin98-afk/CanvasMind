@@ -30,8 +30,8 @@ from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
+from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
-from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 
 
 class CanvasPage(QWidget):
@@ -55,8 +55,10 @@ class CanvasPage(QWidget):
         # 线程池
         self.thread_pool = QThreadPool.globalInstance()
         # --- 第二阶段：UI 框架搭建 (视觉先行) ---
-        # 立即初始化图表视图，否则 load_full_workflow 会没地方渲染
-        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self)
+        # 初始化 UI 管理器并构建布局
+        self.ui_manager = CanvasUISetUp(self)
+        self.ui_manager.setup_ui()
+
         # 节点注册
         # 1. 节点操作与注册 (扫描组件是耗时的)
         self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine,
@@ -65,10 +67,6 @@ class CanvasPage(QWidget):
         self.node_operations.register_components()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.setStyleSheet("QWidget {border: none;}")
-
-        # 初始化 UI 管理器并构建布局
-        self.ui_manager = CanvasUISetUp(self)
-        self.ui_manager.setup_ui()
 
         # 全局变量与基础 IO 工具（加载文件必须）
         self.global_variables = GlobalVariableContext() # 画布全局变量
@@ -111,6 +109,10 @@ class CanvasPage(QWidget):
 
         # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
         self.ui_manager.update_position()
+
+    @property
+    def graph(self):
+        return self.ui_manager.graph
 
     @property
     def node_created(self):
@@ -318,9 +320,6 @@ class CanvasPage(QWidget):
         self.canvas_io.load_full_workflow(file_path)
         QTimer.singleShot(0, self._deferred_initialization)
 
-    def create_name_label(self):
-        self.ui_manager.create_name_label()
-
     def create_next_node(self, key, icon_path=None):
         self.node_operations.create_next_node(key, icon_path)
 
@@ -357,17 +356,18 @@ class CanvasPage(QWidget):
         self.run_btn.hide()
         self.pause_btn.show()
         self.stop_btn.show()
-        self.pause_btn.setIcon(FluentIcon.PAUSE)
+        self.pause_btn.setIcon(get_icon("暂停"))
+        self.ui_manager.update_position()
         self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_paused(self):
         """进入暂停：pause 按钮变为 resume"""
-        self.pause_btn.setIcon(FluentIcon.PLAY)
+        self.pause_btn.setIcon(get_icon("绿色运行"))
         self.pause_btn.setToolTip(self.tr("继续工作流"))
 
     def _on_workflow_resumed(self):
         """恢复执行：pause 按钮变回 pause"""
-        self.pause_btn.setIcon(FluentIcon.PAUSE)
+        self.pause_btn.setIcon(get_icon("暂停"))
         self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_cancelled(self):
@@ -375,17 +375,20 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
+        self.ui_manager.update_position()
 
     def _on_workflow_finished(self):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
         MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
+        self.ui_manager.update_position()
 
     def _on_workflow_error(self, msg=""):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
+        self.ui_manager.update_position()
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -400,6 +403,7 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
+        self.ui_manager.update_position()
 
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)

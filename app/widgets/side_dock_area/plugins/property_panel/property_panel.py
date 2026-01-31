@@ -191,7 +191,8 @@ class PropertyPanel(QWidget):
             target_card = self._node_panel_cache[cache_key]
         else:
             target_card = self._create_card_widget(node, cache_key)
-            if not target_card: return
+            if not target_card:
+                return
             self._node_panel_cache[cache_key] = target_card
             target_card.installEventFilter(self)
             target_card.closed.connect(self._close_card)
@@ -357,7 +358,7 @@ class PropertyPanel(QWidget):
         if key == "MULTI_LIST_VIEW": return f"连通图列表", FluentIcon.IOT
         if isinstance(node, ControlFlowBackdrop):
             return node.NODE_NAME, FluentIcon.SYNC
-        return node.name(), node.view.icon
+        return node.name(), getattr(node.view, "icon", FluentIcon.INFO)
 
     def set_scrollbar(self, widget):
         scroll = SmoothScrollArea()
