@@ -42,5 +42,5 @@ class Component(BaseComponent):
         """
         self.logger.info(params)
         return {
-            "output1": inputs.input1 + self.global_variable.get(params.prop1)
+            "output1": inputs.input1 + params.prop1[1]
         }

@@ -512,7 +512,7 @@ class CustomNodeViewer(NodeViewer):
                 not self.ALT_state and
                 not self.SHIFT_state and
                 not self._rubber_band.isActive and
-                not self._navigation_mode  # <--- 新增：导航模式下屏蔽节点对齐/拖拽
+                not self._navigation_mode
         )
 
         if is_dragging_nodes:
@@ -559,6 +559,7 @@ class CustomNodeViewer(NodeViewer):
                 # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
                 self.LMB_state = False
                 super(CustomNodeViewer, self).mouseReleaseEvent(event)
+                self._temp_connection_source = None
                 return
         # 处理平移
         was_panning = self._panning
@@ -834,11 +835,7 @@ class CustomNodeGraph(NodeGraph):
             node = self._node_factory.create_node_instance(identifier)
             if node:
                 # 避免复制时触发重命名信号
-                if hasattr(node, "block_rename_signals"):
-                    node.block_rename_signals(True)
                 node.NODE_NAME = n_data.get('name', node.NODE_NAME)
-                if hasattr(node, "block_rename_signals"):
-                    node.block_rename_signals(False)
                 # set properties.
                 for prop in node.model.properties.keys():
                     if prop in n_data.keys():

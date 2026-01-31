@@ -170,6 +170,7 @@ class SyncUItoCode(QObject):
                             prop_type = prop_def.get('type', PropertyType.TEXT)
                             default_value = prop_def.get('default', '')
                             label = prop_def.get('label', prop_name)
+                            description = prop_def.get('description', '')  # 1. 提取 description (dict)
                             choices = prop_def.get('choices', [])
                             schema = prop_def.get('schema', {})
                             min_val = prop_def.get('min', 0)
@@ -179,6 +180,7 @@ class SyncUItoCode(QObject):
                             prop_type = getattr(prop_def, 'type', PropertyType.TEXT)
                             default_value = getattr(prop_def, 'default', '')
                             label = getattr(prop_def, 'label', prop_name)
+                            description = getattr(prop_def, 'description', '')
                             choices = getattr(prop_def, 'choices', [])
                             schema = getattr(prop_def, 'schema', {})
                             min_val = getattr(prop_def, 'min', 0)
@@ -188,6 +190,8 @@ class SyncUItoCode(QObject):
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.DYNAMICFORM,')
                             new_lines.append(f'            label="{label}",')
+                            if description:  # 2. 写入 description (DYNAMICFORM)
+                                new_lines.append(f'            description="{description}",')
                             if schema:
                                 new_lines.append('            schema={')
                                 for field_name, field_def in schema.items():
@@ -196,6 +200,7 @@ class SyncUItoCode(QObject):
                                     field_type = field_def.get('type', PropertyType.TEXT)
                                     field_default = field_def.get('default', '')
                                     field_label = field_def.get('label', field_name)
+                                    field_description = field_def.get('description', '')  # 3. 提取子表单 description
                                     field_choices = field_def.get('choices', [])
                                     new_lines.append(f'                "{field_name}": PropertyDefinition(')
                                     new_lines.append(f'                    type=PropertyType.{field_type.name},')
@@ -215,6 +220,8 @@ class SyncUItoCode(QObject):
                                         fv = f'"{field_default}"'
                                     new_lines.append(f'                    default={fv},')
                                     new_lines.append(f'                    label="{field_label}",')
+                                    if field_description:  # 4. 写入子表单 description
+                                        new_lines.append(f'                    description="{field_description}",')
                                     if field_type == PropertyType.CHOICE and field_choices:
                                         choices_str = ', '.join([f'"{c}"' for c in field_choices])
                                         new_lines.append(f'                    choices=[{choices_str}]')
@@ -244,6 +251,8 @@ class SyncUItoCode(QObject):
                             new_lines.append(f'            type=PropertyType.{prop_type.name},')
                             new_lines.append(f'            default={dv},')
                             new_lines.append(f'            label="{label}",')
+                            if description:  # 5. 写入普通属性 description
+                                new_lines.append(f'            description="{description}",')
                             if prop_type == PropertyType.CHOICE and choices:
                                 choices_str = ', '.join([f'"{c}"' for c in choices])
                                 new_lines.append(f'            choices=[{choices_str}]')

@@ -528,8 +528,10 @@ class NodeOperations:
         self._delete_node_workspace_async([node_id])
 
         # 3. 图表操作
+        node_name = node.name()
         self._invalidate_node_cache()
         self.graph.delete_node(node)
+        self.parent.property_panel.pop_node_layout(node_name)
         self.parent.property_panel.update_properties(None)
 
     def delete_selected_nodes(self, graph):

@@ -656,9 +656,6 @@ class CustomNodeItem(NodeItem):
             if self.scene(): self.scene().clearSelection(); self.setSelected(True); event.accept()
         super(CustomNodeItem, self).mousePressEvent(event)
 
-    def block_rename_signals(self, block):
-        self._rename_signal_block = block
-
     @AbstractNodeItem.name.setter
     def name(self, name=''):
         if self.name == name: return
@@ -669,6 +666,30 @@ class CustomNodeItem(NodeItem):
         self._proxy_text_item.setPlainText(name)
         self._draw_node_horizontal()
         self.update()
+        self._rename_signal_block = True
+
+    def mouseDoubleClickEvent(self, event):
+        """
+        Re-implemented to emit "node_double_clicked" signal.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent): mouse event.
+        """
+        if event.button() == QtCore.Qt.LeftButton:
+            if not self.disabled:
+                # enable text item edit mode.
+                items = self.scene().items(event.scenePos())
+                if self._text_item in items:
+                    self._text_item.set_editable(True)
+                    self._rename_signal_block = False   # 只有双击手动编辑时触发信号传递，创建节点时跳过
+                    self._text_item.setFocus()
+                    event.ignore()
+                    return
+
+            viewer = self.viewer()
+            if viewer:
+                viewer.node_double_clicked.emit(self.id)
+        super(NodeItem, self).mouseDoubleClickEvent(event)
 
     def _set_text_color(self, color=None):
         muted = QtGui.QColor(225, 225, 225)

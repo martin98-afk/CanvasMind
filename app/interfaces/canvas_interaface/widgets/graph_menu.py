@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.components.base import ArgumentType
@@ -13,6 +13,50 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 class MenuMode:
     CREATE = 0
     NAVIGATE = 1
+
+
+# --- 胶囊筛选小部件 ---
+class FilterCapsule(QtWidgets.QFrame):
+    closed = pyqtSignal()
+
+    def __init__(self, text, color="#007ACC", parent=None):
+        super().__init__(parent)
+        self.setObjectName("FilterCapsule")
+        self.setFixedHeight(26)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(8, 0, 4, 0)
+        layout.setSpacing(4)
+
+        self.label = QtWidgets.QLabel(text)
+        self.label.setStyleSheet("color: white; font-size: 11px; font-weight: bold; border: none;")
+
+        self.close_btn = QtWidgets.QPushButton("×")
+        self.close_btn.setFixedSize(16, 16)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
+        self.close_btn.setStyleSheet("""
+            QPushButton {
+                color: rgba(255, 255, 255, 0.8);
+                background: transparent;
+                border: none;
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 1px;
+            }
+            QPushButton:hover { color: white; background: rgba(255,255,255,0.2); border-radius: 8px; }
+        """)
+        self.close_btn.clicked.connect(self.closed.emit)
+
+        layout.addWidget(self.label)
+        layout.addWidget(self.close_btn)
+
+        self.setStyleSheet(f"""
+            #FilterCapsule {{
+                background-color: {color};
+                border-radius: 13px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+        """)
 
 
 class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -75,24 +119,27 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class CustomGraphMenu(QtWidgets.QWidget):
+    source_port_item = None
+
     def __init__(self, graph, left_panel, parent):
         super(CustomGraphMenu, self).__init__(parent)
         self._graph = graph
         self._left_panel = left_panel
         self.parent = parent
         self._cached_data = []
-        self._static_create_cache = None  # 库节点静态缓存
+        self._static_create_cache = None
         self._selected_categories = set()
         self._current_mode = MenuMode.CREATE
         self._is_upward_mode = False
         self._spawn_pos = QtCore.QPoint(0, 0)
         self._visible_items = []
+        self._ignore_connection_filter = False  # 是否手动取消了连线筛选
 
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setContentsMargins(6, 6, 6, 6)
 
         self.container = QtWidgets.QFrame()
         self.container.setObjectName("SearchContainer")
@@ -112,20 +159,29 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.container.setGraphicsEffect(self.shadow)
 
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
-        self.container_layout.setContentsMargins(10, 10, 10, 10)
-        self.container_layout.setSpacing(8)
+        self.container_layout.setContentsMargins(6, 6, 6, 6)
+        self.container_layout.setSpacing(4)
 
+        # --- Header 布局优化 ---
         self.header_widget = QtWidgets.QWidget()
         self.header_layout = QtWidgets.QHBoxLayout(self.header_widget)
         self.header_layout.setContentsMargins(0, 0, 0, 0)
-        self.header_layout.setSpacing(6)
-
-        self.filter_button = TransparentToolButton(FluentIcon.FILTER, self)
-        self.filter_button.clicked.connect(self.show_category_filter)
+        self.header_layout.setSpacing(4)
 
         self.mode_button = TransparentToolButton(get_icon("节点库"), self)
+        self.mode_button.setFixedSize(35, 35)
         self.mode_button.setToolTip("切换搜索模式 (Tab)")
         self.mode_button.clicked.connect(self.toggle_mode)
+
+        self.filter_button = TransparentToolButton(FluentIcon.FILTER, self)
+        self.filter_button.setFixedSize(35, 35)
+        self.filter_button.clicked.connect(self.show_category_filter)
+
+        # 胶囊存放区域
+        self.capsule_container = QtWidgets.QWidget()
+        self.capsule_layout = QtWidgets.QHBoxLayout(self.capsule_container)
+        self.capsule_layout.setContentsMargins(0, 0, 0, 0)
+        self.capsule_layout.setSpacing(4)
 
         self.search_line = QtWidgets.QLineEdit()
         self.search_line.setPlaceholderText("🔍 搜索库节点...")
@@ -140,7 +196,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         self.header_layout.addWidget(self.mode_button)
         self.header_layout.addWidget(self.filter_button)
-        self.header_layout.addWidget(self.search_line)
+        self.header_layout.addWidget(self.capsule_container)  # 插入胶囊容器
+        self.header_layout.addWidget(self.search_line, 1)  # 占据剩余空间
 
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.setItemDelegate(NodeItemDelegate())
@@ -158,7 +215,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.search_line.returnPressed.connect(self.on_return_pressed)
         self.search_line.installEventFilter(self)
 
-        self.setFixedSize(440, 480)
+        self.setFixedSize(460, 480)  # 宽度稍微增加一点以容纳胶囊
 
     def toggle_mode(self):
         self._current_mode = MenuMode.NAVIGATE if self._current_mode == MenuMode.CREATE else MenuMode.CREATE
@@ -166,14 +223,46 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self.search_line.setPlaceholderText("📍 定位当前图中节点...")
             self.filter_button.setEnabled(False)
             self.mode_button.setIcon(get_icon("location"))
+            self.capsule_container.hide()  # 定位模式不显示胶囊
         else:
             self.search_line.setPlaceholderText("🔍 搜索库节点...")
             self.filter_button.setEnabled(True)
             self.mode_button.setIcon(get_icon("节点库"))
+            self._update_filter_capsule()  # 恢复显示
+
         self.update_cache()
         self.populate_ui()
         self.search_line.setText("")
         self.search_line.setFocus()
+
+    def _update_filter_capsule(self):
+        """更新胶囊显示"""
+        # 清除旧胶囊
+        while self.capsule_layout.count():
+            item = self.capsule_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if self._current_mode == MenuMode.NAVIGATE or self._ignore_connection_filter:
+            self.capsule_container.hide()
+            return
+
+        target_dir, req_type = self._get_connection_filter()
+        if req_type:
+            # 根据类型可以定义不同颜色，这里暂时用蓝色
+            capsule = FilterCapsule(f"{req_type.upper()}", color="#007ACC")
+            capsule.closed.connect(self._clear_extra_filter)
+            self.capsule_layout.addWidget(capsule)
+            self.capsule_container.show()
+        else:
+            self.capsule_container.hide()
+
+    def _clear_extra_filter(self):
+        """点击胶囊x的操作"""
+        self._ignore_connection_filter = True
+        self.capsule_container.hide()
+        self.source_port_item = None
+        self.filter_list(self.search_line.text())  # 重新刷新列表
 
     def update_cache(self):
         if self._current_mode == MenuMode.CREATE:
@@ -197,10 +286,6 @@ class CustomGraphMenu(QtWidgets.QWidget):
             })
 
     def _update_create_cache(self):
-        if self._static_create_cache is not None:
-            self._cached_data = self._static_create_cache
-            return
-
         self._cached_data = []
         tree_widget = self._left_panel.draggable_tree.tree
         root = tree_widget.invisibleRootItem()
@@ -292,14 +377,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self.update_cache()
             self.populate_ui()
 
-    def set_graph(self, graph):
-        self._graph = graph
-
     def filter_list(self, text):
         search_text = text.lower().strip()
         self._visible_items = []
 
-        target_dir, req_type = self._get_connection_filter()
+        # 连线筛选逻辑优化：如果手动取消了筛选，则 target_dir 为空
+        target_dir, req_type = (None, None) if self._ignore_connection_filter else self._get_connection_filter()
+
         curr_mode = self._current_mode
         sel_cats = self._selected_categories
         ignore_types = [ArgumentType.UPLOAD, ArgumentType.FILE]
@@ -336,20 +420,20 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self._graph.begin_undo("Create Node")
             new_node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
 
-            if hasattr(viewer, '_temp_connection_source') and viewer._temp_connection_source:
-                source_port_item = viewer._temp_connection_source
-                source_node = source_port_item.original_node
-                viewer._temp_connection_source = None
+            if self.source_port_item:
+                source_node = self.source_port_item.original_node
 
-                if source_port_item.port_type == 'out':
-                    source_port = source_node._outputs[
-                        [p.name() for p in source_node._outputs].index(source_port_item.name)
-                    ]
-                    QTimer.singleShot(0, lambda: new_node.set_input(0, source_port))
-                else:
-                    port_index = [p.name() for p in source_node._inputs].index(source_port_item.name)
-                    QTimer.singleShot(0, lambda: source_node.set_input(port_index, new_node.output_ports()[0]))
-
+                # 如果没被忽略，则尝试自动连接
+                if not self._ignore_connection_filter:
+                    if self.source_port_item.port_type == 'out':
+                        source_port = source_node._outputs[
+                            [p.name() for p in source_node._outputs].index(self.source_port_item.name)
+                        ]
+                        QTimer.singleShot(0, lambda: new_node.set_input(0, source_port))
+                    else:
+                        port_index = [p.name() for p in source_node._inputs].index(self.source_port_item.name)
+                        QTimer.singleShot(0, lambda: source_node.set_input(port_index, new_node.output_ports()[0]))
+                self.source_port_item = None
             self.parent.on_selection_changed()
             self._graph.end_undo()
         else:
@@ -361,7 +445,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.close()
 
     def show_at_cursor(self, pos):
+        self._ignore_connection_filter = False  # 每次开启重置
         self.update_cache()
+        self._update_filter_capsule()  # 根据连线状态显示/隐藏胶囊
+
         screen_rect = QtWidgets.QApplication.desktop().availableGeometry(pos)
         menu_width, menu_height = self.width(), self.height()
         target_x, target_y = pos.x() - 20, pos.y() + 10
@@ -405,18 +492,18 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
     def _get_connection_filter(self):
         viewer = self._graph.viewer()
-        source_port_item = getattr(viewer, '_temp_connection_source', None)
-        if not source_port_item:
+        self.source_port_item = getattr(viewer, '_temp_connection_source', None)
+        if not self.source_port_item:
             return None, None
 
-        source_node = source_port_item.original_node
+        source_node = self.source_port_item.original_node
         if not hasattr(source_node, 'uuid'):
             return None, None
         node_uuid = source_node.uuid
-        port_name = source_port_item.name
+        port_name = self.source_port_item.name
         scanner = ComponentScanner()
 
-        if source_port_item.port_type == 'out':
+        if self.source_port_item.port_type == 'out':
             node_outputs = scanner.get_component_by_uuid(node_uuid).get_outputs()
             for pname, _, port_type in node_outputs:
                 if pname == port_name:
