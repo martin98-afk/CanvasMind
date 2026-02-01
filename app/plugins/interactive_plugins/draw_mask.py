@@ -12,10 +12,11 @@ from PyQt5.QtGui import (
     QImage, QPixmap, QPainter, QPen, QColor
 )
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QDialog
 )
 from loguru import logger
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon, StrongBodyLabel
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon, StrongBodyLabel, \
+    PrimaryPushButton
 
 from app.plugins.base import InteractivePlugin
 from app.utils.utils import get_icon, ssh_send_file
@@ -396,25 +397,52 @@ class ComfyEditor(QWidget):
         super().resizeEvent(e)
 
 
-class MaskDrawDialog(MessageBoxBase):
+class MaskDrawDialog(QDialog):
     def __init__(self, title, image, parent=None):
         super().__init__(parent)
-        self.titleLabel = SubtitleLabel(title)
-        self.viewLayout.addWidget(self.titleLabel)
+        self.setWindowTitle(title)
+        self.resize(1200, 800)
+        # 设置窗口标志：去掉帮助按钮，增加最大化最小化
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; }
+            QLabel { color: white; }
+            QFrame#Toolbar { 
+                background-color: rgba(45, 45, 45, 230); 
+                border-radius: 10px;
+            }
+        """)
 
-        self.editor = ComfyEditor(image)
-        self.editor.setMinimumSize(1100, 600)
-        self.viewLayout.addWidget(self.editor)
+        self.main_lyt = QVBoxLayout(self)
+        self.main_lyt.setContentsMargins(0, 0, 0, 0)
+        self.main_lyt.setSpacing(0)
 
-        self.widget.setMinimumWidth(1150)
+        # 标题栏区域
+        self.head_panel = QFrame()
+        self.head_panel.setFixedHeight(50)
+        self.head_panel.setStyleSheet("background-color: #252525; border-bottom: 1px solid #333;")
+        head_lyt = QHBoxLayout(self.head_panel)
+        self.title_label = StrongBodyLabel(title)
+        head_lyt.addWidget(self.title_label)
+        head_lyt.addStretch()
+        self.main_lyt.addWidget(self.head_panel)
 
-        # 底部按钮只留确认
-        self.cancelButton.hide()
-        self.yesButton.setText("完成并保存蒙版")
+        # 中间内容区
+        self.content_container = ComfyEditor(image, parent)
+        self.main_lyt.addWidget(self.content_container)
+
+        self.bottom_panel = QFrame()
+        self.bottom_panel.setFixedHeight(60)
+        self.bottom_panel.setStyleSheet("background-color: #252525; border-top: 1px solid #333;")
+        bot_lyt = QHBoxLayout(self.bottom_panel)
+        self.btn_save = PrimaryPushButton("保存蒙版并退出")
+        self.btn_save.setFixedWidth(180)
+        self.btn_save.clicked.connect(self.accept)
+        bot_lyt.addWidget(self.btn_save, 1)
+        self.main_lyt.addWidget(self.bottom_panel)
 
     def get_result(self):
-        # 处理结果并转为 Base64
-        mask = self.editor.canvas.mask_image.convertToFormat(QImage.Format_Grayscale8)
+        mask = self.content_container.canvas.mask_image.convertToFormat(QImage.Format_Grayscale8)
         ba = QByteArray()
         buf = QBuffer(ba)
         mask.save(buf, "PNG")

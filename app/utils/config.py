@@ -185,3 +185,6 @@ class Settings(QConfig):
     # ========== 云组件库API ==========
     STEIN_URL = ConfigItem("CloudAPI", "Stein", "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1")
     SHEETY_URL = ConfigItem("CloudAPI", "Sheety", "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1")
+    GITEE_REPO = ConfigItem("Patch", "Gitee/Repo", "canvas-mind-components")
+    GITEE_TOKEN = ConfigItem("Patch", "Gitee/Token", "a5dcb6e2e7776143b7a7e7685a1f33a3")
+    GITEE_OWNER = ConfigItem("Patch", "Gitee/Owner", "dingmama123141")

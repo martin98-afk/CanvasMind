@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import webbrowser
-import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -22,7 +21,8 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 
 # --- 主界面 ---
 class PluginManagerCenter(QWidget):
-    """ 组件云存储管理主界面 """
+    """ 组件云存储管理主界面 (Gitee 完全重构版) """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("MarketCenter")
@@ -148,41 +148,33 @@ class PluginManagerCenter(QWidget):
         layout.setContentsMargins(0, 0, 10, 30)
         layout.setSpacing(25)
 
-        title = TitleLabel("服务配置")
+        title = TitleLabel("Gitee 存储配置")
         title.setStyleSheet("color: white; margin-bottom: 10px;")
         layout.addWidget(title)
 
-        stein_card = CardWidget(container)
-        stein_lay = QVBoxLayout(stein_card)
-        h1 = QHBoxLayout()
-        h1.addWidget(SubtitleLabel("Stein 存储配置"))
-        h1.addStretch()
-        btn_stein_web = PushButton(FluentIcon.LINK, "前往官网")
-        btn_stein_web.clicked.connect(lambda: webbrowser.open("https://steinhq.com/"))
-        h1.addWidget(btn_stein_web)
-        stein_lay.addLayout(h1)
-        stein_lay.addWidget(BodyLabel("主用 API 接口地址，支持批量上传与条件修改。"))
-        self.stein_url_edit = LineEdit()
-        self.stein_url_edit.setText(self.cloud_mgr.config.STEIN_URL.value)
-        self.stein_url_edit.setPlaceholderText("请输入 Stein API URL...")
-        stein_lay.addWidget(self.stein_url_edit)
-        layout.addWidget(stein_card)
+        gitee_card = CardWidget(container)
+        gitee_lay = QVBoxLayout(gitee_card)
+        gitee_lay.addWidget(SubtitleLabel("Gitee 仓库信息"))
+        gitee_lay.addWidget(BodyLabel("配置用于备份组件 ZIP 资源的仓库。"))
 
-        sheety_card = CardWidget(container)
-        sheety_lay = QVBoxLayout(sheety_card)
-        h2 = QHBoxLayout()
-        h2.addWidget(SubtitleLabel("Sheety 备份配置"))
-        h2.addStretch()
-        btn_sheety_web = PushButton(FluentIcon.LINK, "前往官网")
-        btn_sheety_web.clicked.connect(lambda: webbrowser.open("https://sheety.co/"))
-        h2.addWidget(btn_sheety_web)
-        sheety_lay.addLayout(h2)
-        sheety_lay.addWidget(BodyLabel("备用 API 接口地址，当 Stein 无法连接时自动切换。"))
-        self.sheety_url_edit = LineEdit()
-        self.sheety_url_edit.setText(self.cloud_mgr.config.SHEETY_URL.value)
-        self.sheety_url_edit.setPlaceholderText("请输入 Sheety API URL...")
-        sheety_lay.addWidget(self.sheety_url_edit)
-        layout.addWidget(sheety_card)
+        self.token_edit = LineEdit()
+        self.token_edit.setText(self.cloud_mgr.config.GITEE_TOKEN.value)
+        self.token_edit.setPlaceholderText("Gitee Access Token...")
+        gitee_lay.addWidget(QLabel("Access Token:"))
+        gitee_lay.addWidget(self.token_edit)
+
+        self.owner_edit = LineEdit()
+        self.owner_edit.setText(self.cloud_mgr.config.GITEE_OWNER.value)
+        self.owner_edit.setPlaceholderText("仓库所有者 (Owner)...")
+        gitee_lay.addWidget(QLabel("Owner:"))
+        gitee_lay.addWidget(self.owner_edit)
+
+        self.repo_edit = LineEdit()
+        self.repo_edit.setText(self.cloud_mgr.config.GITEE_REPO.value)
+        self.repo_edit.setPlaceholderText("仓库名 (Repo Name)...")
+        gitee_lay.addWidget(QLabel("Repo:"))
+        gitee_lay.addWidget(self.repo_edit)
+        layout.addWidget(gitee_card)
 
         user_card = CardWidget(container)
         user_lay = QHBoxLayout(user_card)
@@ -205,13 +197,18 @@ class PluginManagerCenter(QWidget):
         return page
 
     def on_save_settings(self):
-        new_stein = self.stein_url_edit.text().strip()
-        new_sheety = self.sheety_url_edit.text().strip()
-        if not new_stein or not new_sheety:
-            InfoBar.warning("格式错误", "API 地址不能为空", parent=self)
+        token = self.token_edit.text().strip()
+        owner = self.owner_edit.text().strip()
+        repo = self.repo_edit.text().strip()
+        if not token or not owner or not repo:
+            InfoBar.warning("格式错误", "配置信息不能为空", parent=self)
             return
-        self.cloud_mgr.update_adapter(new_stein, new_sheety)
-        InfoBar.success("配置已应用", "云端适配器地址已成功更新", parent=self)
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_TOKEN, token)
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_OWNER, owner)
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_REPO, repo)
+        self.cloud_mgr.config.save_config()
+        self.cloud_mgr.__init__()
+        InfoBar.success("配置已更新", "Gitee 适配器重连成功", parent=self)
 
     def on_select_all_changed(self, state):
         is_checked = (state == Qt.Checked)
@@ -300,19 +297,21 @@ class PluginManagerCenter(QWidget):
         user_name = self.cloud_mgr.config.user_name.value
         now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         for p, cls in comp_map.items():
+            cid = str(getattr(cls, 'uuid', Path(p).stem))
+            res_dir = Path(resource_path("app/component_extensions")) / cid
             self._local_cache.append({
-                "组件id": str(getattr(cls, 'uuid', Path(p).stem)),
+                "组件id": cid,
                 "组件名称": getattr(cls, 'name', '未命名'),
                 "组件类别": getattr(cls, 'category', '常规'),
                 "组件描述": getattr(cls, 'description', ''),
-                "工具包需求": getattr(cls, 'requirements', "无需求"),
+                "工具包需求": getattr(cls, 'requirements', "[]"),
                 "版本号": getattr(cls, '_version', '1.0.0'),
                 "最后修改人": user_name, "最后修改时间": now_time,
-                "创建人": user_name, "组件源码": getattr(cls, '_source_code', ''),
-                "path": str(getattr(cls, '_source_file', p))
+                "创建人": user_name,
+                "entry_file": str(getattr(cls, '_source_file', p)),
+                "resource_dir": str(res_dir) if res_dir.exists() else ""
             })
         if not silent: self.loading_ring.hide()
-
         idx = self.stack.currentIndex()
         if idx == 0:
             self.render_market()
@@ -320,17 +319,12 @@ class PluginManagerCenter(QWidget):
             self.render_local()
 
     def _get_comparison_status(self, cloud_item):
-        """核心比对逻辑：增加对 None 值的防御"""
         if not cloud_item: return "new", False
-        cid = str(cloud_item.get('组件id') or cloud_item.get('uuid') or "")
-        cloud_code = cloud_item.get('组件源码') or cloud_item.get('source_code') or ""
-
+        cid = str(cloud_item.get('组件id') or cloud_item.get('unique_id'))
+        cloud_ver = cloud_item.get('版本号') or cloud_item.get('version')
         local_item = next((i for i in (self._local_cache or []) if str(i.get('组件id')) == cid), None)
         if not local_item: return "new", False
-
-        if calculate_md5(cloud_code) == calculate_md5(local_item.get('组件源码')):
-            return "match", True
-        return "diff", True
+        return ("match", True) if str(cloud_ver) == str(local_item.get('版本号')) else ("diff", True)
 
     def render_market(self):
         page_widget = self.pages[0].widget()
@@ -364,64 +358,34 @@ class PluginManagerCenter(QWidget):
         view = QWidget(parent_container)
         v_lay = QVBoxLayout(view)
         v_lay.setContentsMargins(0, 10, 0, 10)
-
         h_lay = QHBoxLayout()
         cat_check = CheckBox(str(name))
         cat_check.setStyleSheet("color: white; font-weight: bold; font-size: 15px;")
         h_lay.addWidget(cat_check)
         h_lay.addStretch()
         v_lay.addLayout(h_lay)
-
         grid = QGridLayout()
         grid.setSpacing(15)
         user_name = self.cloud_mgr.config.user_name.value
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         is_admin = (user_name == "martin98-afk")
-
         cards = []
         for i, item in enumerate(items):
             if not item: continue
-            uuid = str(item.get('组件id') or item.get('uuid') or "")
-            status_code, is_linked = "new", False
-
+            uuid = str(item.get('组件id') or item.get('unique_id'))
+            status_code, is_linked = ("new", False)
             if mode == "market":
                 status_code, is_linked = self._get_comparison_status(item)
             else:
-                is_linked = any(str(c.get('组件id') or c.get('uuid')) == uuid for c in (self._cloud_cache or []))
-
-            # 统一数据构造
-            c_data = {
-                "组件id": uuid,
-                "组件名称": item.get('组件名称') or item.get('name') or "未命名",
-                "组件类别": name,
-                "组件描述": item.get('组件描述') or item.get('desc') or "暂无组件描述。",
-                "工具包需求": item.get('工具包需求') or item.get('requirements') or "无需求",
-                "最后修改人": item.get('最后修改人') or user_name,
-                "最后修改时间": item.get('最后修改时间', now_str),
-                "创建人": item.get('创建人') or user_name,
-                "版本号": item.get('版本号') or item.get('version') or "1.0.0",
-                "组件源码": item.get('组件源码') or item.get("source_code") or "",
-                "path": item.get('path') or item.get('real_path') or ""
-            }
-            card = ComponentCard(c_data, mode, is_linked, is_admin, status_code, view)
+                is_linked = any(str(c.get('组件id') or c.get('unique_id')) == uuid for c in (self._cloud_cache or []))
+            card = ComponentCard(item, mode, is_linked, is_admin, status_code, view)
             card.action_signal.connect(self.on_card_action)
             card.check_changed.connect(lambda v=view: self._update_category_check_state(v))
             if mode == "market": card.delete_signal.connect(self.on_delete_cloud_component)
             grid.addWidget(card, i // 2, i % 2)
             cards.append(card)
-
         cat_check.stateChanged.connect(lambda st, cs=cards: self._on_category_select_all(st, cs))
         v_lay.addLayout(grid)
         return view
-
-    def _on_category_select_all(self, state, cards):
-        if state == Qt.PartiallyChecked: return
-        is_checked = (state == Qt.Checked)
-        for card in cards:
-            if card.isVisible():
-                card.check_box.blockSignals(True)
-                card.check_box.setChecked(is_checked)
-                card.check_box.blockSignals(False)
 
     def _update_category_check_state(self, cat_widget):
         title_lay = cat_widget.layout().itemAt(0).layout()
@@ -440,6 +404,15 @@ class PluginManagerCenter(QWidget):
             cat_check.setCheckState(Qt.PartiallyChecked)
         cat_check.blockSignals(False)
 
+    def _on_category_select_all(self, state, cards):
+        if state == Qt.PartiallyChecked: return
+        is_checked = (state == Qt.Checked)
+        for card in cards:
+            if card.isVisible():
+                card.check_box.blockSignals(True)
+                card.check_box.setChecked(is_checked)
+                card.check_box.blockSignals(False)
+
     def on_card_action(self, data, mode):
         if mode == "market":
             self.install_component(data)
@@ -448,43 +421,47 @@ class PluginManagerCenter(QWidget):
 
     def upload_component(self, data):
         self.loading_ring.show()
-        try:
-            p = Path(data['path'])
-            source = p.read_text(encoding="utf-8")
-            self.active_worker = GenericWorker(
-                self.cloud_mgr.add_component,
-                data['组件id'], data['组件名称'], data['组件类别'],
-                data['组件描述'], data["工具包需求"], data['版本号'], source
-            )
-            self.active_worker.finished.connect(lambda: self.on_single_sync_done(data['组件名称']))
-            self.active_worker.error.connect(self.on_worker_error)
-            self.active_worker.start()
-        except Exception as e:
-            self.on_worker_error(str(e))
-
-    def on_single_sync_done(self, name):
-        self.loading_ring.hide()
-        InfoBar.success("同步成功", f"组件 [{name}] 已推送到云端", parent=self)
-        self._cloud_cache = []
-        self.force_refresh()
-
-    def on_worker_error(self, msg):
-        self.loading_ring.hide()
-        InfoBar.error("操作异常", msg, parent=self)
+        self.active_worker = GenericWorker(
+            self.cloud_mgr.add_component,
+            comp_id=data['组件id'], name=data['组件名称'], category=data['组件类别'],
+            description=data['组件描述'], requirements=data['工具包需求'],
+            version=data['版本号'], entry_file=data['entry_file'], resource_dir=data['resource_dir']
+        )
+        self.active_worker.finished.connect(lambda: self.on_single_sync_done(data['组件名称']))
+        self.active_worker.error.connect(self.on_worker_error)
+        self.active_worker.start()
 
     def install_component(self, data, silent=False):
-        source = data.get('组件源码')
-        if not source: return
-        target = Path(resource_path("app/components")) / data['组件类别'] / f"{data['组件id']}.py"
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source, encoding="utf-8")
+        """ 修正后的安装逻辑 """
+        if not silent:
+            self.loading_ring.show()
+
+        # 获取 UUID
+        cid = data.get('组件id') or data.get('unique_id')
+        if not cid:
+            self.on_error("无法识别组件 ID")
+            return
+
+        # 调用上面修正后的精准还原逻辑，传入程序根目录
+        self.active_worker = GenericWorker(
+            self.cloud_mgr.download_component,
+            cid,
+            resource_path("")
+        )
+
+        def on_install_finished():
             if not silent:
-                InfoBar.success("安装成功", f"{data['组件名称']} 就绪", parent=self)
-                self._local_cache = []
-                self.force_refresh()
-        except Exception as e:
-            if not silent: InfoBar.error("安装失败", str(e), parent=self)
+                self.loading_ring.hide()
+                InfoBar.success(
+                    "安装成功",
+                    f"组件 [{data.get('组件名称', '未命名')}] 已还原至本地目录",
+                    parent=self
+                )
+            self.force_refresh()
+
+        self.active_worker.finished.connect(on_install_finished)
+        self.active_worker.error.connect(self.on_error)
+        self.active_worker.start()
 
     def on_batch_install(self):
         page = self.pages[0].widget()
@@ -492,9 +469,9 @@ class PluginManagerCenter(QWidget):
         for i in range(page.layout().count()):
             group = page.layout().itemAt(i).widget()
             if not group: continue
-            layout_item = group.layout().itemAt(1)
-            if layout_item and layout_item.layout():
-                grid = layout_item.layout()
+            grid_item = group.layout().itemAt(1)
+            if grid_item and grid_item.layout():
+                grid = grid_item.layout()
                 for j in range(grid.count()):
                     card = grid.itemAt(j).widget()
                     if isinstance(card, ComponentCard) and card.check_box.isChecked():
@@ -503,8 +480,7 @@ class PluginManagerCenter(QWidget):
             InfoBar.warning("提示", "请勾选组件", parent=self)
             return
         for d in selected: self.install_component(d, True)
-        InfoBar.success("批量成功", f"处理了 {len(selected)} 个组件", parent=self)
-        self.force_refresh()
+        InfoBar.success("批量成功", f"正在后台处理 {len(selected)} 个组件", parent=self)
 
     def on_sync_all(self):
         page = self.pages[1].widget()
@@ -512,9 +488,9 @@ class PluginManagerCenter(QWidget):
         for i in range(page.layout().count()):
             group = page.layout().itemAt(i).widget()
             if not group: continue
-            layout_item = group.layout().itemAt(1)
-            if layout_item and layout_item.layout():
-                grid = layout_item.layout()
+            grid_item = group.layout().itemAt(1)
+            if grid_item and grid_item.layout():
+                grid = grid_item.layout()
                 for j in range(grid.count()):
                     card = grid.itemAt(j).widget()
                     if isinstance(card, ComponentCard) and card.check_box.isChecked():
@@ -523,37 +499,28 @@ class PluginManagerCenter(QWidget):
         if not sync_target:
             InfoBar.warning("提示", "无组件可同步", parent=self)
             return
-        msg = MessageBox("确认备份同步", f"确认要同步选中的组件到云端吗？", self)
+        msg = MessageBox("确认备份同步", f"确认要将选中的组件同步至 Gitee 仓库吗？", self)
         if msg.exec():
             self.loading_ring.show()
             self.active_worker = GenericWorker(self.cloud_mgr.sync_local_to_cloud, sync_target)
-            self.active_worker.finished.connect(lambda: [self.loading_ring.hide(), self.force_refresh(),
-                                                         InfoBar.success("同步完成", "组件已同步", parent=self)])
+            self.active_worker.finished.connect(lambda: [
+                self.loading_ring.hide(), self.force_refresh(),
+                InfoBar.success("同步完成", "组件已全部处理并上传", parent=self)
+            ])
             self.active_worker.error.connect(self.on_error)
             self.active_worker.start()
 
-    def on_error(self, msg):
-        self.loading_ring.hide()
-        InfoBar.error("异常", msg, parent=self)
-
     def on_delete_cloud_component(self, data):
-        comp_name = data.get('组件名称') or data.get('name') or '未知'
-        msg = MessageBox("危险操作", f"确认从云端删除 [{comp_name}] 吗？", self)
+        cid = data.get('组件id') or data.get('unique_id')
+        comp_name = data.get('组件名称') or '未知'
+        msg = MessageBox("危险操作", f"确认从 Gitee 云端彻底删除 [{comp_name}] 吗？", self)
         if msg.exec():
             self.loading_ring.show()
-            self.active_worker = GenericWorker(self.cloud_mgr.delete_component, data.get('组件id'))
+            self.active_worker = GenericWorker(self.cloud_mgr.delete_component, cid)
             self.active_worker.finished.connect(lambda: [self.loading_ring.hide(), self.force_refresh(),
                                                          InfoBar.success("已删除", comp_name, parent=self)])
             self.active_worker.error.connect(self.on_error)
             self.active_worker.start()
-
-    def clear_layout(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)
-            elif item.layout():
-                self.clear_layout(item.layout())
 
     def on_filter_changed(self):
         search_text = self.search_bar.text().strip().lower()
@@ -588,3 +555,25 @@ class PluginManagerCenter(QWidget):
                 if vis: any_vis = True
             cat_widget.setVisible(any_vis)
             if any_vis: self._update_category_check_state(cat_widget)
+
+    def clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
+            elif item.layout():
+                self.clear_layout(item.layout())
+
+    def on_error(self, msg):
+        self.loading_ring.hide()
+        InfoBar.error("异常", msg, parent=self)
+
+    def on_worker_error(self, msg):
+        self.loading_ring.hide()
+        InfoBar.error("操作异常", msg, parent=self)
+
+    def on_single_sync_done(self, name):
+        self.loading_ring.hide()
+        InfoBar.success("同步成功", f"组件 [{name}] 已推送至 Gitee", parent=self)
+        self._cloud_cache = []
+        self.force_refresh()

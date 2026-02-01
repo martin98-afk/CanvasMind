@@ -15,42 +15,53 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
+from io import BytesIO
+import base64
+from PIL import Image, ImageOps
+
 class DynamicComponent(BaseComponent):
     name = "遮罩绘制"
     category = "生成模型/图像重绘"
-    description = "运行时会弹出ui提示框，显示图像，供用户进行蒙版绘制，绘制完返回alpha通道图像"
+    description = "运行时弹出交互窗口，供用户绘制蒙版。返回包含Alpha通道的RGBA图像和单独的Mask。"
     requirements = "Pillow"
 
     inputs = [
         PortDefinition(name="input_image", label="输入图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="masked_image", label="结果图像", type=ArgumentType.IMAGE),
+        PortDefinition(name="masked_image", label="结果图像(RGBA)", type=ArgumentType.IMAGE),
         PortDefinition(name="image_mask", label="图像蒙版", type=ArgumentType.IMAGE),
     ]
     properties = {
         "show_image": PropertyDefinition(
             type=PropertyType.BOOL,
             default=True,
-            label="是否展示绘制完图像",
+            label="展示结果预览",
+        ),
+        "mask_behavior": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="移除绘制内容",
+            label="蒙版行为",
+            choices=["保留绘制内容", "移除绘制内容"]
         ),
     }
 
-    def run(self, params, inputs):
-        # 逻辑处理...
-        import base64
-        from io import BytesIO
-        from PIL import Image, ImageOps
-        img = inputs.input_image
+    def _image_to_base64(self, image, fmt="PNG"):
         buffered = BytesIO()
-        # 自动处理 RGBA 模式保存为 PNG（避免 JPEG 无法保存 alpha）
-        format = "PNG"  # 强制含透明通道的图用 PNG
-        img.save(buffered, format=format)
+        image.save(buffered, format=fmt)
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        mime = "image/jpeg" if format.upper() in ("JPG", "JPEG") else "image/png"
-        base64_image = f"data:{mime};base64,{img_str}"
-        # 触发ui出现遮罩绘制窗口
-        result = self.emit_interactive_message(
+        mime = "image/png" if fmt.upper() == "PNG" else "image/jpeg"
+        return f"data:{mime};base64,{img_str}"
+
+    def run(self, params, inputs):
+        img = inputs.input_image
+        
+        # 1. 准备发送给前端的图片 (转为 Base64)
+        # 强制使用 PNG 以保留原图可能存在的 Alpha 通道，防止叠加变黑
+        base64_image = self._image_to_base64(img, fmt="PNG")
+
+        # 2. 触发交互式 UI
+        result_data = self.emit_interactive_message(
             method="draw_mask",
             params={
                 "title": "请绘制图像遮罩",
@@ -58,31 +69,59 @@ class DynamicComponent(BaseComponent):
                     "image": base64_image,
                 }
             }
-        )["mask"]
-        
-        if result.startswith("data:"):
-            result = result.split(",", 1)[1]
-        img_data = base64.b64decode(result)
-        mask_img = Image.open(BytesIO(img_data)).convert("L")  # 灰度图，0=透明，255=绘制
-        mask_img = mask_img.point(lambda x: 255 if x > 0 else 0)
-        # 将原图 RGBA 拆分为 RGB + A
-        rgb_img = img.convert("RGB")
-        # 使用 inverted_mask 作为 alpha 通道合成（或直接乘）
-        preview_img = Image.composite(
-            Image.new("RGB", rgb_img.size, (0, 0, 0)),  # 黑色背景
-            rgb_img,
-            mask_img  # 未绘制区域保留原图，绘制区域用黑色覆盖
         )
+        
+        # 获取回传的 mask 字符串
+        mask_b64 = result_data.get("mask")
+        if not mask_b64:
+            raise ValueError("未接收到有效的蒙版数据")
+
+        if mask_b64.startswith("data:"):
+            mask_b64 = mask_b64.split(",", 1)[1]
+        
+        # 3. 处理回传的 Mask
+        mask_bytes = base64.b64decode(mask_b64)
+        # 前端通常回传的是一张背景透明、笔触有颜色的 PNG
+        raw_mask = Image.open(BytesIO(mask_bytes))
+        
+        # 【关键步骤】强制将 Mask 缩放到原图尺寸，防止前端缩放导致的尺寸不匹配
+        if raw_mask.size != img.size:
+            raw_mask = raw_mask.resize(img.size, Image.LANCZOS)
+
+        # 提取 Alpha 通道作为 Mask (假设笔触是不透明的)
+        # 如果回传的是单纯的黑白图，则用 convert("L")
+        if 'A' in raw_mask.getbands():
+            mask_img = raw_mask.getchannel('A')
+        else:
+            mask_img = raw_mask.convert("L")
+
+        # 二值化处理，确保蒙版边缘清晰（可选，根据需求调整阈值）
+        mask_img = mask_img.point(lambda x: 255 if x > 0 else 0)
+
+        # 4. 构建输出的 RGBA 图像
+        # 确保原图是 RGB 模式
+        rgb_img = img.convert("RGB")
+        
+        # 根据参数决定 Alpha 行为
+        final_alpha = mask_img
+        if params.mask_behavior == "移除绘制内容":
+            # 如果选择"移除绘制区域"，则反转 Mask (255 -> 0)
+            final_alpha = ImageOps.invert(mask_img)
+        
+        # 合成 RGBA：原图色彩 + 蒙版透明度
+        masked_image_rgba = rgb_img.copy()
+        masked_image_rgba.putalpha(final_alpha)
+
+        # 5. 展示预览
         if params.show_image:
-            # 转为 base64 并 emit
-            preview_buffer = BytesIO()
-            preview_img.save(preview_buffer, format="JPEG", quality=85)
-            preview_b64 = base64.b64encode(preview_buffer.getvalue()).decode()
+            # 预览必须用 PNG，否则 JPEG 会把透明背景变成黑色
+            preview_b64 = self._image_to_base64(masked_image_rgba, fmt="PNG")
             self.emit_message(
                 method="display_image",
-                params={"output": {"data": f"data:image/jpeg;base64,{preview_b64}", "data_type": "image"}},
+                params={"output": {"data": preview_b64, "data_type": "image"}},
             )
+
         return {
-            "masked_image": preview_img,
-            "image_mask": mask_img
+            "masked_image": masked_image_rgba, # 这是一个真正的 RGBA 图像
+            "image_mask": mask_img             # 这是一个灰度图 Mask (L模式)
         }
