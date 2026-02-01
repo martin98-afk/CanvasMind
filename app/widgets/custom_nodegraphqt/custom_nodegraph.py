@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import json
+import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.base.commands import PortConnectedCmd
@@ -20,12 +21,15 @@ from NodeGraphQt.widgets.node_graph import SubGraphWidget
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
 from Qt import QtGui, QtCore, QtWidgets
+from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
 from app.nodes.group_node import GroupPortInputNode, GroupPortOutputNode
+from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
@@ -87,7 +91,9 @@ class CustomNodeViewer(NodeViewer):
 
     def __init__(self, parent=None, undo_stack=None):
         super(CustomNodeViewer, self).__init__(parent)
+        self.home_window = parent
         self._navigation_mode = False
+        self._last_drag_target = None  # 记录当前正在高亮的代理控件
         self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
         self._temp_connection_source = None  # 用于存放拉线的起始端口
         self.setScene(CustomNodeScene(self))
@@ -619,7 +625,178 @@ class CustomNodeViewer(NodeViewer):
 
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 
-        super(NodeViewer, self).mouseReleaseEvent(event)
+        super(CustomNodeViewer, self).mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        focused_widget = QApplication.focusWidget()
+        if focused_widget:
+            if hasattr(focused_widget, 'code_editor'):
+                QApplication.sendEvent(focused_widget.code_editor, event)
+                return
+            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
+                QApplication.sendEvent(focused_widget, event)
+                return
+
+        self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
+        self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
+        self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
+        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
+            self.ALT_state = True
+            self.SHIFT_state = True
+        if self._LIVE_PIPE.isVisible():
+            super(CustomNodeViewer, self).keyPressEvent(event)
+            return
+
+        # 国际化悬浮提示文字
+        overlay_text = None
+        self._cursor_text.setVisible(False)
+        if not self.ALT_state:
+            if self.SHIFT_state:
+                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
+            elif self.CTRL_state:
+                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
+        elif self.ALT_state and self.SHIFT_state:
+            if self.pipe_slicing:
+                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
+
+        if overlay_text:
+            self._cursor_text.setPlainText(overlay_text)
+            self._cursor_text.setFont(QtGui.QFont('Arial', 10))
+            self._cursor_text.setDefaultTextColor(Qt.white)
+            self._cursor_text.setPos(self.mapToScene(self._previous_pos))
+            self._cursor_text.setVisible(True)
+
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            if event.key() == QtCore.Qt.Key_C:
+                self.home_window.node_operations._copy_selected_nodes()
+            elif event.key() == QtCore.Qt.Key_V:
+                self.home_window.node_operations._paste_nodes()
+
+        super(CustomNodeViewer, self).keyPressEvent(event)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        # 只有在拖拽全局变量时才触发高亮逻辑
+        if event.mimeData().hasFormat("application/x-global-variable"):
+            # 1. 查找鼠标下的项
+            pos = event.pos()
+            items = self.items(pos)
+
+            target_widget = None
+            from app.widgets.node_widget.base import CustomNodeBaseWidget
+            for item in items:
+                if isinstance(item, CustomNodeBaseWidget):
+                    target_widget = item
+                    break
+
+            # 2. 状态切换逻辑
+            if target_widget != self._last_drag_target:
+                # 移出旧控件，重置样式
+                if self._last_drag_target:
+                    group_box = self._last_drag_target.widget()
+                    if hasattr(group_box, 'reset'):
+                        group_box.reset()
+
+                # 进入新控件，高亮样式
+                if target_widget:
+                    group_box = target_widget.widget()
+                    if hasattr(group_box, 'highlight'):
+                        group_box.highlight()
+
+                self._last_drag_target = target_widget
+
+            event.accept()
+        else:
+            # 处理普通的节点创建拖拽
+            is_acceptable = any([
+                event.mimeData().hasFormat(i) for i in
+                ['nodegraphqt/nodes', 'text/plain']
+            ])
+            if is_acceptable:
+                event.accept()
+            else:
+                event.ignore()
+
+    def dragLeaveEvent(self, event):
+        """当拖拽彻底离开画布区域时，重置所有高亮"""
+        if self._last_drag_target:
+            group_box = self._last_drag_target.widget()
+            if hasattr(group_box, 'reset'):
+                group_box.reset()
+            self._last_drag_target = None
+        event.accept()
+
+    def dropEvent(self, event):
+        try:
+            mime_data = event.mimeData()
+            if not mime_data.hasText():
+                event.ignore()
+                return
+
+            if self._last_drag_target:
+                group_box = self._last_drag_target.widget()
+                if hasattr(group_box, 'reset'):
+                    group_box.reset()
+                self._last_drag_target = None
+
+            full_path = mime_data.text()
+            pos = event.pos()
+
+            # 查找鼠标点击位置下的所有图形项
+            items = self.items(pos)
+            target_widget = None
+            for item in items:
+                # 寻找我们的 CustomNodeBaseWidget 代理
+                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
+                if isinstance(item, CustomNodeBaseWidget):
+                    target_widget = item
+                    break
+
+            # --- 情况 A：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
+            if mime_data.hasFormat("application/x-global-variable") and target_widget:
+                data_bytes = bytes(mime_data.data("application/x-global-variable"))
+                drag_data = json.loads(data_bytes.decode('utf-8'))
+                # 调用我们之前写好的完美版 set_value
+                if not target_widget._is_using_global:
+                    target_widget.toggle_global_mode()
+                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
+                event.accept()
+                return
+            node_type = self.home_window.node_type_map.get(full_path)
+            if node_type:
+                pos = event.pos()
+                scene_pos = self.mapToScene(pos)
+                node = self.home_window.graph.create_node(node_type)
+                self.home_window.nav_view.record_usage(full_path)
+                node.set_pos(scene_pos.x(), scene_pos.y())
+                QtCore.QTimer.singleShot(0, lambda: self.home_window.property_panel.update_properties(node))
+                self.home_window.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
+                if hasattr(node, 'status'):
+                    node.status = NodeStatus.NODE_STATUS_UNRUN
+
+                # 变量节点自动设置部分属性，便于与普通节点区分
+                if mime_data.hasFormat("application/x-global-variable"):
+                    data_bytes = bytes(mime_data.data("application/x-global-variable"))
+                    drag_data = json.loads(data_bytes.decode('utf-8'))
+                    node.set_icon(":/icons/变量.svg")
+                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
+                    node.set_name("\n".join(drag_data['var_name'].split("__")))
+                    node.view.toggle_collapse()
+                    self.home_window.canvas_runner.run_node(node)
+                event.accept()
+            else:
+                event.ignore()
+        except Exception as e:
+            logger.error(traceback.format_exc())
+
+    def resizeEvent(self, event):
+        self.home_window.ui_manager.update_position()
+        return super().resizeEvent(event)
 
 
 class CustomNodeGraph(NodeGraph):

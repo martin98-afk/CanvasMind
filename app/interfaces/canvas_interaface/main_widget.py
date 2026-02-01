@@ -46,7 +46,6 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
-        self._last_drag_target = None  # 记录当前正在高亮的代理控件
         # 国际化工作流名称
         self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
@@ -95,15 +94,6 @@ class CanvasPage(QWidget):
             select_node_callback=self.select_node_by_name,
             parent=self
         )
-        # 5. 最后连接信号
-        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        # 启用画布拖拽
-        self.canvas_widget.setAcceptDrops(True)
-        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
-        self.canvas_widget.dragMoveEvent = self.canvas_drag_move_event  # 确保这行存在
-        self.canvas_widget.dragLeaveEvent = self.canvas_drag_leave_event  # 确保这行存在
-        self.canvas_widget.dropEvent = self.canvas_drop_event
-        self.canvas_widget.installEventFilter(self)
         self._connect_signals()
         self.node_operations.setup_context_menu()
 
@@ -492,57 +482,6 @@ class CanvasPage(QWidget):
             pass
 
     # --- 画布按键信号 ---
-    def _canvas_key_press_event(self, event):
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            if hasattr(focused_widget, 'code_editor'):
-                QApplication.sendEvent(focused_widget.code_editor, event)
-                return
-            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
-                QApplication.sendEvent(focused_widget, event)
-                return
-
-        self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
-        self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
-        self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
-            self.canvas_widget.ALT_state = True
-            self.canvas_widget.SHIFT_state = True
-        if self.canvas_widget._LIVE_PIPE.isVisible():
-            super(NodeViewer, self.canvas_widget).keyPressEvent(event)
-            return
-
-        # 国际化悬浮提示文字
-        overlay_text = None
-        self.canvas_widget._cursor_text.setVisible(False)
-        if not self.canvas_widget.ALT_state:
-            if self.canvas_widget.SHIFT_state:
-                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
-            elif self.canvas_widget.CTRL_state:
-                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
-        elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
-            if self.canvas_widget.pipe_slicing:
-                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
-
-        if overlay_text:
-            self.canvas_widget._cursor_text.setPlainText(overlay_text)
-            self.canvas_widget._cursor_text.setFont(QtGui.QFont('Arial', 10))
-            self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
-            self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
-            self.canvas_widget._cursor_text.setVisible(True)
-
-        if event.modifiers() == QtCore.Qt.ControlModifier:
-            if event.key() == QtCore.Qt.Key_C:
-                self.node_operations._copy_selected_nodes()
-            elif event.key() == QtCore.Qt.Key_V:
-                self.node_operations._paste_nodes()
-
-        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
-
-    def eventFilter(self, obj, event):
-        if obj is self.graph.viewer() and event.type() == event.Resize:
-            self.ui_manager.update_position()
-        return super().eventFilter(obj, event)
 
     def center_to(self, nodes):
         if not isinstance(nodes, list):
@@ -554,126 +493,6 @@ class CanvasPage(QWidget):
                 return
             node.set_selected(True)
         self.graph.fit_to_selection()
-
-    def canvas_drag_enter_event(self, event):
-        if event.mimeData().hasText():
-            event.accept()
-        else:
-            event.ignore()
-
-    def canvas_drag_move_event(self, event):
-        # 只有在拖拽全局变量时才触发高亮逻辑
-        if event.mimeData().hasFormat("application/x-global-variable"):
-            # 1. 查找鼠标下的项
-            pos = event.pos()
-            items = self.canvas_widget.items(pos)
-
-            target_widget = None
-            from app.widgets.node_widget.base import CustomNodeBaseWidget
-            for item in items:
-                if isinstance(item, CustomNodeBaseWidget):
-                    target_widget = item
-                    break
-
-            # 2. 状态切换逻辑
-            if target_widget != self._last_drag_target:
-                # 移出旧控件，重置样式
-                if self._last_drag_target:
-                    group_box = self._last_drag_target.widget()
-                    if hasattr(group_box, 'reset'):
-                        group_box.reset()
-
-                # 进入新控件，高亮样式
-                if target_widget:
-                    group_box = target_widget.widget()
-                    if hasattr(group_box, 'highlight'):
-                        group_box.highlight()
-
-                self._last_drag_target = target_widget
-
-            event.accept()
-        else:
-            # 处理普通的节点创建拖拽
-            is_acceptable = any([
-                event.mimeData().hasFormat(i) for i in
-                ['nodegraphqt/nodes', 'text/plain']
-            ])
-            if is_acceptable:
-                event.accept()
-            else:
-                event.ignore()
-
-    def canvas_drag_leave_event(self, event):
-        """当拖拽彻底离开画布区域时，重置所有高亮"""
-        if self._last_drag_target:
-            group_box = self._last_drag_target.widget()
-            if hasattr(group_box, 'reset'):
-                group_box.reset()
-            self._last_drag_target = None
-        event.accept()
-
-    def canvas_drop_event(self, event):
-        try:
-            mime_data = event.mimeData()
-            if not mime_data.hasText():
-                event.ignore()
-                return
-
-            if self._last_drag_target:
-                group_box = self._last_drag_target.widget()
-                if hasattr(group_box, 'reset'):
-                    group_box.reset()
-                self._last_drag_target = None
-
-            full_path = mime_data.text()
-            pos = event.pos()
-
-            # 查找鼠标点击位置下的所有图形项
-            items = self.canvas_widget.items(pos)
-            target_widget = None
-            for item in items:
-                # 寻找我们的 CustomNodeBaseWidget 代理
-                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
-                if isinstance(item, CustomNodeBaseWidget):
-                    target_widget = item
-                    break
-
-            # --- 情况 A：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
-            if mime_data.hasFormat("application/x-global-variable") and target_widget:
-                data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                drag_data = json.loads(data_bytes.decode('utf-8'))
-                # 调用我们之前写好的完美版 set_value
-                if not target_widget._is_using_global:
-                    target_widget.toggle_global_mode()
-                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
-                event.accept()
-                return
-            node_type = self.node_type_map.get(full_path)
-            if node_type:
-                pos = event.pos()
-                scene_pos = self.canvas_widget.mapToScene(pos)
-                node = self.graph.create_node(node_type)
-                self.nav_view.record_usage(full_path)
-                node.set_pos(scene_pos.x(), scene_pos.y())
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-                self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
-                if hasattr(node, 'status'):
-                    node.status = NodeStatus.NODE_STATUS_UNRUN
-
-                # 变量节点自动设置部分属性，便于与普通节点区分
-                if mime_data.hasFormat("application/x-global-variable"):
-                    data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                    drag_data = json.loads(data_bytes.decode('utf-8'))
-                    node.set_icon(":/icons/变量.svg")
-                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                    node.set_name("\n".join(drag_data['var_name'].split("__")))
-                    node.view.toggle_collapse()
-                    self.canvas_runner.run_node(node)
-                event.accept()
-            else:
-                event.ignore()
-        except Exception as e:
-            logger.error(traceback.format_exc())
 
     def get_node_status(self, node):
         return self.node_status.get(node.id, NodeStatus.NODE_STATUS_UNRUN)

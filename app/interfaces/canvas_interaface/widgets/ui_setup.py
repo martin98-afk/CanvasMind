@@ -70,7 +70,7 @@ class CanvasUISetUp:
         self.canvas_stack = QStackedWidget(self.parent)
         self.graph_layout.addWidget(self.canvas_stack)
         # 创建主图并加入 Stack
-        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self.parent)
+        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(parent=self.parent), parent=self.parent)
         self.canvas_stack.addWidget(self.graph.widget)
 
         # 存储图实例的列表，用于面包屑跳转定位 [main_graph, sub_graph1, ...]
@@ -126,7 +126,7 @@ class CanvasUISetUp:
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         self.btn_zoom_fit.clicked.connect(
-            lambda: self.canvas_stack.zoom_to_nodes([n.view for n in self.graph.all_nodes()])
+            lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
         self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
@@ -156,10 +156,11 @@ class CanvasUISetUp:
         """【核心功能】创建一个新的子图并切换过去"""
         # 1. 创建全新的画布实例
         new_graph = CustomNodeGraph(
-            viewer=CustomNodeViewer(), parent=self.parent,
+            viewer=CustomNodeViewer(parent=self.parent), parent=self.parent,
             # node_factory=copy.deepcopy(self.graph_instances[0].node_factory)
         )
-
+        self.parent.node_operations.register_components()
+        self.parent.node_operations.setup_context_menu()
         # 2. 将新图添加到 UI 栈中
         self.canvas_stack.addWidget(new_graph.widget)
         self.graph_instances.append(new_graph)
@@ -393,9 +394,10 @@ class CanvasUISetUp:
             instance.widget.deleteLater()  # 如果不再需要，则释放内存
 
         # 5. 同步裁剪面包屑 UI
-        while self.breadcrumb.count() > index + 1:
-            last_item = self.breadcrumb.items[-1]
+        while len(self.breadcrumb.items_data) > index + 1:
+            last_item = self.breadcrumb.items_data[-1]
             self.breadcrumb.removeItem(last_item)
+        self.update_position()
 
     def _on_breadcrumb_clicked(self, route_key):
         """点击面包屑项，返回对应的图层"""
@@ -405,10 +407,10 @@ class CanvasUISetUp:
     def _toggle_viewer_mode(self):
         viewer = self.graph.viewer()
         if self.btn_mode_toggle.isChecked():
-            viewer.set_navigation_mode(False);
+            viewer.set_navigation_mode(False)
             self.btn_mode_toggle.setIcon(get_icon("框选"))
         else:
-            viewer.set_navigation_mode(True);
+            viewer.set_navigation_mode(True)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
 
     def toggle_zen_mode(self):
@@ -416,11 +418,11 @@ class CanvasUISetUp:
             self.saved_splitter_sizes = self.splitter.sizes()
             total_width = sum(self.saved_splitter_sizes)
             self.splitter.setSizes([0, total_width, 0])
-            self.btn_zen_mode.setIcon(get_icon("画布2"));
+            self.btn_zen_mode.setIcon(get_icon("画布2"))
             self.is_zen_mode = True
         else:
             self.splitter.setSizes(self.saved_splitter_sizes)
-            self.btn_zen_mode.setIcon(get_icon("三图居中"));
+            self.btn_zen_mode.setIcon(get_icon("三图居中"))
             self.is_zen_mode = False
 
     def _show_canvas_settings(self):
@@ -437,8 +439,8 @@ class CanvasUISetUp:
         for i, qc in enumerate(all_quick_components):
             fp, idat = qc["full_path"], qc.get("icon_path")
             if i >= MAX_VISIBLE_QUICK_BUTTONS:
-                self._hidden_quick_components.append((fp, idat));
-                self.more_quick_button.show();
+                self._hidden_quick_components.append((fp, idat))
+                self.more_quick_button.show()
                 continue
             btn = self._build_tool_btn(self._get_qc_icon(idat), f"创建 {os.path.basename(fp)}")
             btn.clicked.connect(lambda _, f=fp, d=idat: self.parent.create_next_node(f, d))
@@ -475,7 +477,9 @@ class CanvasUISetUp:
             for attr in ['splitter', 'buttons_container', 'nodes_container', 'name_container',
                          'canvas_controls_container']:
                 obj = getattr(self, attr, None)
-                if obj: obj.setParent(None); obj.deleteLater()
+                if obj:
+                    obj.setParent(None)
+                    obj.deleteLater()
             self.parent = None
         except:
             pass
