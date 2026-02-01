@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
-import json
 import re
 import shutil
-import traceback
 from pathlib import Path
 
-from NodeGraphQt.widgets.viewer import NodeViewer
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
+from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal, QThreadPool, QPoint, QTimer
+from PyQt5.QtWidgets import QWidget
 from loguru import logger
-from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -96,9 +92,6 @@ class CanvasPage(QWidget):
         )
         self._connect_signals()
         self.node_operations.setup_context_menu()
-
-        # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
-        self.ui_manager.update_position()
 
     @property
     def graph(self):
@@ -347,7 +340,7 @@ class CanvasPage(QWidget):
         self.pause_btn.show()
         self.stop_btn.show()
         self.pause_btn.setIcon(get_icon("暂停"))
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
         self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_paused(self):
@@ -365,20 +358,20 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def _on_workflow_finished(self):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
         MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def _on_workflow_error(self, msg=""):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -393,7 +386,7 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -563,30 +556,76 @@ class CanvasPage(QWidget):
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
-        if selected_nodes:
-            backdrop_internal_nodes = []
-            for node in selected_nodes:
-                if isinstance(node, ControlFlowBackdrop):
-                    internal_nodes = [n for n in node.nodes()]
-                    backdrop_internal_nodes.extend(internal_nodes)
-                    only_backdrop = all(n in internal_nodes for n in selected_nodes if n != node)
-                    if only_backdrop:
-                        self.nav_view.clear_recommendations()
-                        self._schedule_property_update(node)
-                        self.property_panel.reset_current_components()
-                        return
-            if len(selected_nodes) > 1:
-                top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
-                self._schedule_property_update(top_level_nodes)
-            elif isinstance(selected_nodes[0], BasicNodeWithGlobalProperty):
-                self._schedule_property_update(selected_nodes[0])
+
+        # 1. 快速退出：无选中
+        if not selected_nodes:
+            self.nav_view.clear_recommendations()
+            self.property_panel.reset_current_components()
+            self._schedule_property_update(None)
+            return
+
+        # 2. 分类节点：找出 Backdrop 和其他节点
+        # 使用 set 提高后续查找速度
+        selected_set = set(selected_nodes)
+        backdrops = [n for n in selected_nodes if isinstance(n, ControlFlowBackdrop)]
+
+        # 3. 收集所有被选中 Backdrop 的内部节点
+        # 使用 set 存储内部节点，查找复杂度从 O(N) 降为 O(1)
+        all_backdrop_internals = set()
+        for bd in backdrops:
+            # 假设 bd.nodes() 返回的是列表或迭代器
+            all_backdrop_internals.update(bd.nodes())
+
+        # 4. 判断 "仅选中 Backdrop 模式"
+        target_backdrop_update = None
+
+        if backdrops:
+            # 只有当选中了 Backdrop 时才进行此复杂判断
+            for bd in backdrops:
+                bd_internals = set(bd.nodes())
+                # 检查：是否所有非当前Backdrop的选中节点，实际上都是这个Backdrop的子节点
+                remaining_selection = selected_set - {bd}
+                if remaining_selection and remaining_selection.issubset(bd_internals):
+                    target_backdrop_update = bd
+                    break
+
+        if target_backdrop_update:
+            # 命中特殊逻辑：只显示 Backdrop 属性
+            self.nav_view.clear_recommendations()
+            self._schedule_property_update(target_backdrop_update)
+            self.property_panel.reset_current_components()
+            return
+
+        # 5. 常规逻辑：过滤掉作为"内部节点"被连带选中的节点
+        # 使用集合差集高效过滤：保留那些 "不是任何选中Backdrop的子节点" 的节点
+        top_level_nodes = [n for n in selected_nodes if n not in all_backdrop_internals]
+
+        # 6. 根据过滤后的顶层节点数量处理
+        if len(top_level_nodes) > 1:
+            self.nav_view.clear_recommendations()  # 多选时不显示推荐
+            self._schedule_property_update(top_level_nodes)
+
+        elif len(top_level_nodes) == 1:
+            node = top_level_nodes[0]
+            if isinstance(node, BasicNodeWithGlobalProperty):
+                self._schedule_property_update(node)
                 self.property_panel.reset_current_components()
-                QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
+                # 避免框选过程中快速划过节点时频繁触发 IO/LLM 计算
+                if hasattr(self, "_recommendation_timer"):
+                    self._recommendation_timer.stop()
+                else:
+                    self._recommendation_timer = QTimer()
+                    self._recommendation_timer.setSingleShot(True)
+                    self._recommendation_timer.timeout.connect(
+                        lambda: self.node_operations._request_recommendations(node))
+
+                self._recommendation_timer.start(50)  # 50ms 延迟
             else:
                 self.nav_view.clear_recommendations()
                 self.property_panel.reset_current_components()
                 self._schedule_property_update(None)
         else:
+            # 这种情况可能是只选了内部节点但没选父 Backdrop，或者被全部过滤了
             self.nav_view.clear_recommendations()
             self.property_panel.reset_current_components()
             self._schedule_property_update(None)

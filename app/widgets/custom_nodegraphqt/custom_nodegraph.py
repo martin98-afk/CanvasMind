@@ -599,7 +599,8 @@ class CustomNodeViewer(NodeViewer):
                         if not n.selected
                     ]
                     self.node_selected.emit(node_ids[0])
-                    self.node_selection_changed.emit(node_ids, prev_ids)
+                    if prev_ids != node_ids:
+                        self.node_selection_changed.emit(node_ids, prev_ids)
 
                 self.scene().update(map_rect)
                 return
@@ -621,7 +622,8 @@ class CustomNodeViewer(NodeViewer):
             prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
             nodes, _ = self.selected_items()
             node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-            self.node_selection_changed.emit(node_ids, prev_ids)
+            if prev_ids != node_ids:
+                self.node_selection_changed.emit(node_ids, prev_ids)
 
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 

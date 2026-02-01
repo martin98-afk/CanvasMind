@@ -132,7 +132,7 @@ class CanvasUISetUp:
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
 
         # 强制刷新位置
-        QTimer.singleShot(100, self.update_position)
+        QTimer.singleShot(100, lambda: self.update_position(True))
 
     # ================= UI 磨砂面板构建 =================
 
@@ -331,27 +331,47 @@ class CanvasUISetUp:
 
     # ================= 动态定位控制 =================
 
-    def update_position(self):
-        if not self.canvas_stack or not self.canvas_stack.isVisible(): return
+    def update_position(self, recalculate_size=False):
+        """
+        [同步执行] 必须在 resizeEvent 中同步调用，否则右侧控件会产生视觉“掉帧”或抖动。
+
+        :param recalculate_size: 是否重新计算控件大小。
+                                 在 resizeEvent 中设为 False (只移动，不计算，极其高效)。
+                                 在添加/删除按钮时设为 True。
+        """
+        # 安全检查
+        if not self.canvas_stack or not self.canvas_stack.isVisible():
+            return
+
         w, h = self.canvas_stack.width(), self.canvas_stack.height()
         padding = 5
 
+        # --- 1. 左上角 (名称) ---
         if self.name_container:
-            self.name_container.adjustSize()
+            if recalculate_size: self.name_container.adjustSize()
             self.name_container.move(padding, padding)
 
+        # --- 2. 右上角 (环境 & 按钮) ---
         if self.buttons_container:
-            self.buttons_container.adjustSize()
-            self.buttons_container.move(w - self.buttons_container.width() - padding, padding)
+            if recalculate_size: self.buttons_container.adjustSize()
+            # 【关键】同步计算 X 坐标，紧贴右侧
+            new_x = w - self.buttons_container.width() - padding
+            self.buttons_container.move(new_x, padding)
 
+        # --- 3. 左侧 (节点栏) ---
         if self.nodes_container:
-            self.nodes_container.adjustSize()
-            self.nodes_container.move(padding, (h - self.nodes_container.height()) // 2)
+            if recalculate_size: self.nodes_container.adjustSize()
+            # 垂直居中
+            new_y = (h - self.nodes_container.height()) // 2
+            self.nodes_container.move(padding, new_y)
 
+        # --- 4. 右下角 (画布控制) ---
         if self.canvas_controls_container:
-            self.canvas_controls_container.adjustSize()
-            self.canvas_controls_container.move(w - self.canvas_controls_container.width() - padding,
-                                                h - self.canvas_controls_container.height() - padding)
+            if recalculate_size: self.canvas_controls_container.adjustSize()
+            # 【关键】同步计算 X, Y 坐标，紧贴右下
+            new_x = w - self.canvas_controls_container.width() - padding
+            new_y = h - self.canvas_controls_container.height() - padding
+            self.canvas_controls_container.move(new_x, new_y)
 
     def _toggle_nav_panel(self):
         visible = self.nav_panel.isVisible()
@@ -397,7 +417,7 @@ class CanvasUISetUp:
         while len(self.breadcrumb.items_data) > index + 1:
             last_item = self.breadcrumb.items_data[-1]
             self.breadcrumb.removeItem(last_item)
-        self.update_position()
+        self.update_position(recalculate_size=True)
 
     def _on_breadcrumb_clicked(self, route_key):
         """点击面包屑项，返回对应的图层"""
@@ -446,7 +466,7 @@ class CanvasUISetUp:
             btn.clicked.connect(lambda _, f=fp, d=idat: self.parent.create_next_node(f, d))
             self.visible_quick_layout.addWidget(btn)
         if not self._hidden_quick_components: self.more_quick_button.hide()
-        QTimer.singleShot(0, self.update_position)
+        QTimer.singleShot(0, lambda: self.update_position(True))
 
     def _get_qc_icon(self, icon_path):
         if not icon_path: return FluentIcon.APPLICATION
