@@ -677,14 +677,13 @@ class CustomNodeViewer(NodeViewer):
         super(CustomNodeViewer, self).keyPressEvent(event)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasText():
-            event.accept()
-        else:
-            event.ignore()
+        event.accept()
 
     def dragMoveEvent(self, event):
+        mime_data = event.mimeData()
+
         # 只有在拖拽全局变量时才触发高亮逻辑
-        if event.mimeData().hasFormat("application/x-global-variable"):
+        if mime_data.hasFormat("application/x-global-variable"):
             # 1. 查找鼠标下的项
             pos = event.pos()
             items = self.items(pos)
@@ -713,12 +712,15 @@ class CustomNodeViewer(NodeViewer):
                 self._last_drag_target = target_widget
 
             event.accept()
+
         else:
-            # 处理普通的节点创建拖拽
+            # 处理普通的节点创建拖拽 以及 我们的子图模板拖拽
+            # 在列表里增加 'application/x-subgraph-template'
             is_acceptable = any([
-                event.mimeData().hasFormat(i) for i in
-                ['nodegraphqt/nodes', 'text/plain']
+                mime_data.hasFormat(i) for i in
+                ['nodegraphqt/nodes', 'text/plain', 'application/x-subgraph-template']
             ])
+
             if is_acceptable:
                 event.accept()
             else:
@@ -736,9 +738,17 @@ class CustomNodeViewer(NodeViewer):
     def dropEvent(self, event):
         try:
             mime_data = event.mimeData()
-            if not mime_data.hasText():
-                event.ignore()
-                return
+            pos = event.pos()
+            scene_pos = self.mapToScene(pos)
+            # --- 情况 A：如果是画布模板，且鼠标下有属性控件 -> 创建节点组 ---
+            if mime_data.hasFormat("application/x-subgraph-template"):
+                tid = bytes(mime_data.data("application/x-subgraph-template")).decode('utf-8')
+                # 找到 template_panel 实例（假设它在 home_window 下）
+                template_panel = getattr(self.home_window, 'template_manager', None)
+                if template_panel:
+                    template_panel.apply_template(tid, pos=scene_pos)
+                    event.accept()
+                    return
 
             if self._last_drag_target:
                 group_box = self._last_drag_target.widget()
@@ -759,7 +769,7 @@ class CustomNodeViewer(NodeViewer):
                     target_widget = item
                     break
 
-            # --- 情况 A：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
+            # --- 情况 B：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
             if mime_data.hasFormat("application/x-global-variable") and target_widget:
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
                 drag_data = json.loads(data_bytes.decode('utf-8'))
@@ -769,10 +779,9 @@ class CustomNodeViewer(NodeViewer):
                 target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
                 event.accept()
                 return
+
             node_type = self.home_window.node_type_map.get(full_path)
             if node_type:
-                pos = event.pos()
-                scene_pos = self.mapToScene(pos)
                 node = self.home_window.graph.create_node(node_type)
                 self.home_window.nav_view.record_usage(full_path)
                 node.set_pos(scene_pos.x(), scene_pos.y())

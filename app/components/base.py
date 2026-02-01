@@ -621,8 +621,10 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
             ft = bool
         elif field_def.type == PropertyType.RANGE:
             ft = Union[int, float]
+        elif field_def.type == PropertyType.VARIABLE:
+            ft = Union[dict, list, str]
         else:
-            ft = str
+            ft = any
         default_val = _parse_default_value(field_def.default, ft)
         # 修改这里：使用 Field 包装默认值
         fields[field_name] = (ft, Field(default=default_val))
@@ -1364,29 +1366,52 @@ class BaseComponent(ABC):
 
     # ---------------- 变量解析逻辑 ----------------
     def _resolve_value(self, value: Any, prop_type: PropertyType) -> Any:
-        """解析单个值：如果是变量引用，则返回全局变量中的实际值"""
-        if isinstance(value, str):
-            # 定义需要拦截的前缀
-            if GlobalVariableContext.is_variable_name(value):
-                try:
-                    # 直接调用 global_variable 的 __getitem__ 解析路径
-                    resolved = self.global_variable.get(value)
-                    if prop_type in [PropertyType.INT]:
-                        # 尝试转 int，考虑到可能传入 "1.0" 这种字符串，先转 float 再转 int
-                        return int(float(resolved.strip()))
-                    elif prop_type in [PropertyType.FLOAT, PropertyType.RANGE]:
-                        return float(resolved.strip())
-                    elif prop_type in [PropertyType.BOOL]:
-                        return bool(resolved.strip())
-                    elif prop_type in [PropertyType.DYNAMICFORM, PropertyType.DYNAMICTREE]:
-                        return json.loads(resolved.strip())
-                    elif prop_type != PropertyType.VARIABLE:
-                        return resolved
-                    else:
-                        return [value, resolved]
-                except KeyError:
-                    # 如果全局变量里没找到，保留原样，交给后续校验（可能会报错）
-                    return value
+        """解析值：支持普通变量解析和 DYNAMICFORM 内部变量解析"""
+
+        # 1. 处理 DYNAMICFORM (数据结构为 List[Dict])
+        if prop_type == PropertyType.DYNAMICFORM and isinstance(value, list):
+            resolved_list = []
+            for item in value:
+                if isinstance(item, dict):
+                    # 遍历表单每一行的所有字段
+                    # 这里使用 PropertyType.TEXT 作为临时类型解析，因为 Pydantic 模型后续会自动处理类型转换
+                    new_item = {
+                        k: self._resolve_value(v, PropertyType.TEXT)
+                        for k, v in item.items()
+                    }
+                    resolved_list.append(new_item)
+                else:
+                    resolved_list.append(item)
+            return resolved_list
+
+        # 2. 处理普通变量引用 (例如 "custom.my_var" 或 "node_vars.node1__out")
+        if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
+            try:
+                # 获取原始值
+                resolved = self.global_variable.get(value)
+
+                # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
+                if prop_type == PropertyType.INT:
+                    # 先转 float 再转 int，处理变量里存了 "1.0" 的情况
+                    return int(float(str(resolved).strip()))
+                elif prop_type in [PropertyType.FLOAT, PropertyType.RANGE]:
+                    return float(str(resolved).strip())
+                elif prop_type == PropertyType.BOOL:
+                    if isinstance(resolved, str):
+                        return resolved.lower() in ("true", "1", "yes", "on")
+                    return bool(resolved)
+                elif prop_type == PropertyType.DYNAMICTREE:
+                    return json.loads(resolved) if isinstance(resolved, str) else resolved
+                elif prop_type == PropertyType.VARIABLE:
+                    # VARIABLE 类型特殊，通常返回 [变量名, 实际值]
+                    return [value, resolved]
+                else:
+                    # 文本或其他类型直接返回解析后的对象
+                    return resolved
+            except (KeyError, ValueError, TypeError) as e:
+                self.logger.warning(f"变量 {value} 解析失败，将使用原值。错误: {e}")
+                return value
+
         return value
 
     # ---------------- 执行包装器 ----------------

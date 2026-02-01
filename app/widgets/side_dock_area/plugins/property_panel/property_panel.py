@@ -156,6 +156,33 @@ class FuturisticCard(QFrame):
         p.drawLine(QtCore.QPointF(0, r), QtCore.QPointF(0, h_f))
         p.drawLine(QtCore.QPointF(w_f, r), QtCore.QPointF(w_f, h_f))
 
+    def cleanup(self):
+        """主动断开所有引用，辅助 GC 回收"""
+        # 1. 尝试调用内部逻辑控件的清理方法（如果有线程需要停止）
+        if self._logic and hasattr(self._logic, 'cleanup'):
+            try:
+                self._logic.cleanup()
+            except Exception:
+                pass
+
+        # 2. 断开所有信号连接
+        try:
+            self.closed.disconnect()
+        except TypeError:
+            pass  # 可能已经断开了
+
+        # 3. 移除内容控件
+        if self._logic:
+            self.content_layout.removeWidget(self._logic)
+            self._logic.deleteLater()
+            self._logic = None
+
+        # 4. 断开对业务对象（Node）的引用
+        self._node_ref = None
+
+        # 5. 清理缓存的大对象
+        self._cached_scan_lines = []
+
 
 class PropertyPanel(QWidget):
     def __init__(self, main_window, parent=None, max_history=3, header_height=40):
@@ -199,6 +226,20 @@ class PropertyPanel(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         QTimer.singleShot(300, lambda: self._sync_stack_layout(animate=False))
+
+    def closeEvent(self, event):
+        """面板关闭时，清理所有资源"""
+        self._clear_node_layout()
+        # 即使是全局变量面板，在整个 App 关闭或 Panel 销毁时也应该清理
+        if self.global_panel_widget:
+            # 如果 GlobalPanel 有线程或特定资源，这里也应该调用清理
+            if hasattr(self.global_panel_widget, 'close'):
+                self.global_panel_widget.close()
+            self.global_panel_widget = None
+
+        self.anim_group.stop()
+        self.anim_group.clear()
+        super().closeEvent(event)
 
     def update_properties(self, node, node_changed=False):
         if not self._allowed_update:
