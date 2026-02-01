@@ -181,6 +181,10 @@ class CanvasPage(QWidget):
         return self.ui_manager.nav_view
 
     @property
+    def template_manager(self):
+        return self.ui_manager.nav_panel.template_container
+
+    @property
     def ipython_kernel(self):
         return self.ui_manager.ipython_console
 

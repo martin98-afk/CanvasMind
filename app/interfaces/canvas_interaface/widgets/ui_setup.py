@@ -11,7 +11,6 @@ from qtpy import QtGui
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.bread_crumb import Breadcrumb
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from .canvas_left_panel import LeftPanel
 from .canvas_setting_popup import CanvasSettingPopup
@@ -67,13 +66,10 @@ class CanvasUISetUp:
 
         # --- 使用 CanvasManager 替代原来的 Widget ---
         self.canvas_manager = WorkflowCanvasManager(self.parent)
-        # 为了兼容代码，如果不希望改动其他地方的引用，可以保留 self.graph_widget 别名
         self.graph_widget = self.canvas_manager
 
         # 初始化主图
-        # 如果你想在这里显式创建，可以传参；否则 Manager 会自己创建
-        root_graph = CustomNodeGraph(viewer=CustomNodeViewer(parent=self.parent), parent=self.parent)
-        self.canvas_manager.init_root_graph(root_graph)
+        self.canvas_manager.init_root_graph()
 
         # 初始引用
         self.graph = self.canvas_manager.current_graph()
@@ -102,7 +98,7 @@ class CanvasUISetUp:
     def connect_signals(self):
         """第二阶段：绑定业务逻辑信号"""
 
-        # --- 连接管理器信号 (关键) ---
+        # --- 连接管理器信号 ---
         self.canvas_manager.current_graph_changed.connect(self._on_graph_changed)
         self.canvas_manager.navigation_changed.connect(self._update_breadcrumb_ui)
 
@@ -116,7 +112,7 @@ class CanvasUISetUp:
             self.parent.switch_to_parent()
         ))
 
-        # --- 左侧功能按钮 (注意: self.graph 会自动更新，所以 create_next_node 会作用于当前图) ---
+        # --- 左侧功能按钮 ---
         self.iterate_node.clicked.connect(
             lambda: self.parent.create_backdrop_node("control_flow.ControlFlowIterateNode"))
         self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("control_flow.ControlFlowLoopNode"))
@@ -127,12 +123,11 @@ class CanvasUISetUp:
         self.group_node.clicked.connect(lambda: self.parent.create_group_node())
 
         if hasattr(self.parent, 'quick_manager'):
-            self.add_quick_btn.clicked.connect(self.parent.quick_manager.open_add_dialog)
+            self.add_quick_btn.clicked.connect(lambda: self.parent.quick_manager.open_add_dialog(self.add_quick_btn))
             self.more_quick_button.clicked.connect(self._show_more_quick_menu)
             self._refresh_quick_buttons()
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
-        # 注意：这里需要动态获取当前的 viewer，不能闭包旧的
         self.btn_zoom_fit.clicked.connect(
             lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
@@ -232,7 +227,6 @@ class CanvasUISetUp:
     def _create_env_and_buttons(self):
         self.buttons_container = QFrame(self.canvas_manager)
         self.buttons_container.setStyleSheet(self._get_frosted_style())
-        # ... (内部代码保持不变，省略以节省空间) ...
         # 注意: 内部布局代码完全相同
         layout = QHBoxLayout(self.buttons_container)
         layout.setContentsMargins(6, 2, 3, 2)
@@ -325,12 +319,19 @@ class CanvasUISetUp:
         self.canvas_controls_container.show()
 
     def _build_tool_btn(self, icon, tooltip):
-        # 必须 ensure parent 是 canvas_manager，否则悬浮会出错
         btn = TransparentToolButton(icon, parent=self.canvas_manager)
         btn.setIconSize(QSize(16, 16))
         btn.setFixedSize(28, 28)
         btn.setToolTip(tooltip)
         return btn
+
+    def _show_quick_button_menu(self, button, full_path, pos):
+        menu = RoundMenu()
+        menu.addAction(
+            Action("从快捷栏移除", triggered=lambda: self.parent.quick_manager.remove_component(full_path),
+                   parent=self.parent.canvas_widget)
+        )
+        menu.exec_(button.mapToGlobal(pos))
 
     # ================= 属性代理代理 =================
     @property
@@ -391,7 +392,6 @@ class CanvasUISetUp:
             self.canvas_controls_container.move(w - self.canvas_controls_container.width() - padding,
                                                 h - self.canvas_controls_container.height() - padding)
 
-    # ... (其他辅助方法 _toggle_nav_panel, show_splitter, toggle_zen_mode 等保持不变) ...
     def _toggle_nav_panel(self):
         visible = self.nav_panel.isVisible()
         self.nav_panel.setVisible(not visible)
@@ -450,13 +450,19 @@ class CanvasUISetUp:
                 continue
             btn = self._build_tool_btn(self._get_qc_icon(idat), f"创建 {os.path.basename(fp)}")
             btn.clicked.connect(lambda _, f=fp, d=idat: self.parent.create_next_node(f, d))
+            btn.setContextMenuPolicy(Qt.CustomContextMenu)
+            btn.customContextMenuRequested.connect(
+                lambda pos, b=btn, fp=fp: self._show_quick_button_menu(b, fp, pos)
+            )
             self.visible_quick_layout.addWidget(btn)
         if not self._hidden_quick_components: self.more_quick_button.hide()
         QTimer.singleShot(0, lambda: self.update_position(True))
 
     def _get_qc_icon(self, icon_path):
-        if not icon_path: return FluentIcon.APPLICATION
-        if icon_path.startswith("builtin:\\"): return FluentIcon[icon_path.split("\\")[-1]]
+        if not icon_path:
+            return FluentIcon.APPLICATION
+        if icon_path.startswith("builtin:\\"):
+            return FluentIcon[icon_path.split("\\")[-1]]
         return QtGui.QIcon(icon_path)
 
     def _show_more_quick_menu(self):
@@ -483,7 +489,7 @@ class CanvasUISetUp:
     def destroy_all(self):
         try:
             for attr in ['splitter', 'buttons_container', 'nodes_container', 'name_container',
-                         'canvas_controls_container']:
+                         'canvas_controls_container', 'side_dock_area']:
                 obj = getattr(self, attr, None)
                 if obj:
                     obj.setParent(None)

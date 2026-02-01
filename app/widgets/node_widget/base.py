@@ -101,6 +101,8 @@ class _NodeGroupBox(QtWidgets.QWidget):
         for child in widget.findChildren(QtWidgets.QWidget):
             child_font = child.font()
             child_font.setFamily(font_name)
+            child_font.setPointSize(10)
+            child_font.setBold(True)
             child.setFont(child_font)
 
     def add_node_widget(self, widget):

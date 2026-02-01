@@ -6,6 +6,8 @@ from NodeGraphQt import GroupNode, BaseNode, constants
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
+from markdown.extensions.attr_list import get_attrs
+from qfluentwidgets import Theme, getIconColor, FluentIcon
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
@@ -296,6 +298,10 @@ class NodeOperations:
             node_type = self.parent.node_type_map.get(key)
             node = self.graph.create_node(node_type)
         QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(node))
+        if icon_path.startswith("builtin:\\"):
+            icon_name = icon_path.split('\\')[-1]
+            icon_value = getattr(FluentIcon, icon_name).value
+            icon_path = f":/qfluentwidgets/images/icons/{icon_value}_{getIconColor(Theme.AUTO)}.svg"
         if icon_path and isinstance(icon_path, str):
             node.set_icon(icon_path)
         if selected_nodes:
