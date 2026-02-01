@@ -95,7 +95,7 @@ class CanvasPage(QWidget):
 
     @property
     def graph(self):
-        return self.ui_manager.graph
+        return self.ui_manager.canvas_manager.current_graph()
 
     @property
     def node_created(self):
