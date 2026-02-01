@@ -34,7 +34,7 @@ class LazyIconLoader:
                 if isinstance(icon_enum, Enum):
                     self.builtin_icons_cache.append({
                         "icon": icon_enum.icon(),
-                        "name": icon_enum.name,
+                        "name": icon_enum.value,
                         "path": f"builtin:\\{icon_enum.name}",
                         "is_builtin": True
                     })
@@ -379,32 +379,37 @@ class AddQuickComponentPopup(QWidget):
 
     def show_at_button(self, button):
         """
-        在指定按钮附近显示弹窗。
-        逻辑参考了 CanvasSettingPopup，确保不超出屏幕边界。
+        在按钮右侧显示弹窗（自动判断屏幕边界）
         """
-        # 计算位置
+        # 1. 获取按钮在屏幕上的绝对位置和尺寸
         btn_pos = button.mapToGlobal(QPoint(0, 0))
+        btn_w = button.width()
+        btn_h = button.height()
 
-        # 默认尝试对齐到按钮的右下角
-        # x: 按钮右边 - 弹窗宽度
-        # y: 按钮底边
-        x = btn_pos.x() + button.width() - self.width()
-        y = btn_pos.y() + button.height() + 5  # 留一点间隙
-
-        # 获取屏幕尺寸进行边界修正
+        # 2. 获取屏幕尺寸（用于边界检测）
         screen = QApplication.primaryScreen().availableGeometry()
 
-        # 如果右侧超出屏幕，往左移
+        # 3. 计算默认位置：在按钮右侧，顶部对齐
+        margin = 5  # 间距 5px
+        x = btn_pos.x() + btn_w + margin
+        y = btn_pos.y()  # 顶部对齐
+
+        # 4. --- 水平方向边界检测 ---
+        # 如果右侧超出屏幕，改为显示在按钮左侧
         if x + self.width() > screen.right():
-            x = screen.right() - self.width() - 10
-        # 如果左侧超出屏幕，贴左边
-        if x < screen.left():
-            x = screen.left() + 10
+            x = btn_pos.x() - self.width() - margin
 
-        # 如果底部超出屏幕，往上移（显示在按钮上方）
+        # 5. --- 垂直方向边界检测 ---
+        # 如果底部超出屏幕，改为底部对齐（即往上移）
         if y + self.height() > screen.bottom():
-            y = btn_pos.y() - self.height() - 5
+            # 弹窗底部与按钮底部对齐
+            y = btn_pos.y() + btn_h - self.height()
 
+        # 如果顶部超出屏幕（太高了），强制顶住屏幕上边缘
+        if y < screen.top():
+            y = screen.top() + 5
+
+        # 6. 移动并显示
         self.move(x, y)
         self.show()
         self.raise_()
