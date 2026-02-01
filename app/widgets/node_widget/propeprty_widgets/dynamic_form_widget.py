@@ -4,6 +4,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton
 
 from app.components.base import PropertyType
+from app.utils.config import Settings
 from app.utils.utils import str_to_bool
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
@@ -52,6 +53,11 @@ class FormFieldWidget(QtWidgets.QWidget):
 
             # 标签
             label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:", self)
+            child_font = label_widget.font()
+            child_font.setFamily(Settings().get_instance().canvas_font_type.value)
+            child_font.setPointSize(9)
+            child_font.setBold(True)
+            label_widget.setFont(child_font)
             sub_layout.addWidget(label_widget)
 
             # 输入框容器

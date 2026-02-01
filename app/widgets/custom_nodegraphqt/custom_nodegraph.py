@@ -599,7 +599,7 @@ class CustomNodeViewer(NodeViewer):
                         if not n.selected
                     ]
                     self.node_selected.emit(node_ids[0])
-                    if prev_ids != node_ids:
+                    if prev_ids != node_ids and event.button() != QtCore.Qt.MiddleButton and not self._navigation_mode:
                         self.node_selection_changed.emit(node_ids, prev_ids)
 
                 self.scene().update(map_rect)
@@ -622,7 +622,7 @@ class CustomNodeViewer(NodeViewer):
             prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
             nodes, _ = self.selected_items()
             node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-            if prev_ids != node_ids:
+            if prev_ids != node_ids and event.button() != QtCore.Qt.MiddleButton and not self._navigation_mode:
                 self.node_selection_changed.emit(node_ids, prev_ids)
 
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]

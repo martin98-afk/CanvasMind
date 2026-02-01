@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 from collections import OrderedDict
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty, \
-    pyqtSignal, QTimer, QRectF
+from PyQt5.QtCore import (Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty,
+                          pyqtSignal, QTimer, QRectF, QLineF)
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
@@ -27,6 +27,8 @@ class FuturisticCard(QFrame):
         self._custom_opacity = 1.0
         self._last_rect = QRect()
         self._border_path = QPainterPath()
+        # 缓存扫描线，避免每帧重复创建对象
+        self._cached_scan_lines = []
 
         self.COLOR_ACTIVE_TOP = QColor("#00a2ff")
         self.COLOR_INACTIVE_TOP = QColor("#666666")
@@ -39,6 +41,9 @@ class FuturisticCard(QFrame):
         self.SCAN_LINE_PEN = QPen(QColor(255, 255, 255, 5), 1)
 
         self.setAttribute(Qt.WA_StyledBackground, True)
+        # 性能优化：禁用系统自动背景清除，因为paintEvent会处理，减少重绘闪烁
+        self.setAttribute(Qt.WA_NoSystemBackground, True)
+
         self.setObjectName("PropertyCard")
         self.setStyleSheet("QWidget#PropertyCard { background: transparent; border: none; }")
 
@@ -98,39 +103,58 @@ class FuturisticCard(QFrame):
         self.update()
 
     def paintEvent(self, event):
+        # 性能优化：大幅优化绘图逻辑
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
-        rect = QRectF(self.rect())
+        current_rect = self.rect()
+        rect_f = QRectF(current_rect)
         r = 14.0
 
-        if self._last_rect != self.rect():
+        # 仅当尺寸发生变化时重新计算路径和线条，避免每帧重复计算
+        if self._last_rect != current_rect:
+            w, h = current_rect.width(), current_rect.height()
+
+            # 1. 重新生成边框路径
             self._border_path = QPainterPath()
             self._border_path.moveTo(0, r)
             self._border_path.arcTo(0, 0, r * 2, r * 2, 180, -90)
-            self._border_path.lineTo(rect.width() - r, 0)
-            self._border_path.arcTo(rect.width() - r * 2, 0, r * 2, r * 2, 90, -90)
-            self._border_path.lineTo(rect.width(), rect.height())
-            self._border_path.lineTo(0, rect.height())
+            self._border_path.lineTo(w - r, 0)
+            self._border_path.arcTo(w - r * 2, 0, r * 2, r * 2, 90, -90)
+            self._border_path.lineTo(w, h)
+            self._border_path.lineTo(0, h)
             self._border_path.closeSubpath()
-            self._last_rect = self.rect()
 
+            # 2. 重新生成扫描线缓存 (性能关键点：避免在循环中调用 drawLine)
+            self._cached_scan_lines = [
+                QLineF(0, y, w, y)
+                for y in range(0, h, 10)
+            ]
+
+            self._last_rect = current_rect
+
+        # 绘制背景
         p.fillPath(self._border_path, QBrush(self.BG_ACTIVE if self.is_active else self.BG_INACTIVE))
 
+        # 批量绘制扫描线 (比循环调用快得多)
         p.setPen(self.SCAN_LINE_PEN)
-        for i in range(0, self.height(), 10):
-            p.drawLine(0, i, self.width(), i)
+        p.drawLines(self._cached_scan_lines)
 
+        # 绘制顶部高亮装饰
         top_pen = QPen(self.COLOR_ACTIVE_TOP if self.is_active else self.COLOR_INACTIVE_TOP, 2)
         p.setPen(top_pen)
-        p.drawArc(QtCore.QRectF(0, 0, r * 2, r * 2), 90 * 16, 90 * 16)
-        p.drawLine(QtCore.QPointF(r, 0), QtCore.QPointF(rect.width() - r, 0))
-        p.drawArc(QtCore.QRectF(rect.width() - r * 2, 0, r * 2, r * 2), 0 * 16, 90 * 16)
+        # 注意：这里直接使用计算好的数值，减少对象创建
+        w_f = rect_f.width()
+        p.drawArc(QtCore.QRectF(0, 0, r * 2, r * 2), 1440, 1440)  # 90*16, 90*16
+        p.drawLine(QtCore.QPointF(r, 0), QtCore.QPointF(w_f - r, 0))
+        p.drawArc(QtCore.QRectF(w_f - r * 2, 0, r * 2, r * 2), 0, 1440)  # 0*16, 90*16
 
+        # 绘制侧边装饰
         side_pen = QPen(self.COLOR_SIDE, 1)
         p.setPen(side_pen)
-        p.drawLine(QtCore.QPointF(0, r), QtCore.QPointF(0, rect.height()))
-        p.drawLine(QtCore.QPointF(rect.width(), r), QtCore.QPointF(rect.width(), rect.height()))
+        h_f = rect_f.height()
+        p.drawLine(QtCore.QPointF(0, r), QtCore.QPointF(0, h_f))
+        p.drawLine(QtCore.QPointF(w_f, r), QtCore.QPointF(w_f, h_f))
 
 
 class PropertyPanel(QWidget):
