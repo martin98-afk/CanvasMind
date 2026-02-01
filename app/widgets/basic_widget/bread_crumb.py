@@ -69,6 +69,11 @@ class Breadcrumb(QFrame):
         self.items_data.append((text, routeKey))
         self._refresh_ui()
 
+    def removeItem(self, target_item):
+        """删除一个层级"""
+        self.items_data = [item for item in self.items_data if item[1] != target_item[1]]
+        self._refresh_ui()
+
     def setPath(self, path_list):
         """
         批量设置路径

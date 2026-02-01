@@ -28,7 +28,7 @@ class Component(BaseComponent):
     properties = {
         "file_select": PropertyDefinition(
             type=PropertyType.FILE,
-            default="folder",
+            default="",
             label="文件选择",
         ),
     }

@@ -1,9 +1,8 @@
 # -- coding: utf-8 --
-import copy
 import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame, QStackedWidget
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame
 from qfluentwidgets import (TransparentToolButton, FluentIcon, RoundMenu, Action,
                             ComboBox, setFont, IconWidget)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
@@ -16,8 +15,9 @@ from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, Cus
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from .canvas_left_panel import LeftPanel
 from .canvas_setting_popup import CanvasSettingPopup
-from ..constants import (DEFAULT_SPLITTER_SIZES,
-                         PIPELINE_STYLE, PIPELINE_DIRECTION, MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE)
+from .workflow_graph_manager import WorkflowCanvasManager
+from ..constants import (DEFAULT_SPLITTER_SIZES, MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE, PIPELINE_STYLE,
+                         PIPELINE_DIRECTION)
 
 
 class CanvasUISetUp:
@@ -39,7 +39,7 @@ class CanvasUISetUp:
 
         self.name_container = None
         self.buttons_container = None
-        self.env_container = None  # 环境选择容器
+        self.env_container = None
         self.canvas_controls_container = None
 
         self.btn_mode_toggle = None
@@ -52,6 +52,9 @@ class CanvasUISetUp:
         self.btn_toggle_nav = None
         self.breadcrumb = None
 
+        # 管理器
+        self.canvas_manager = None
+
     def setup_ui(self):
         """第一阶段：构建纯 UI 框架"""
         main_layout = QHBoxLayout(self.parent)
@@ -61,26 +64,25 @@ class CanvasUISetUp:
         # 1. 核心布局组件
         self.nav_panel = LeftPanel(self.parent)
         self.nav_view = self.nav_panel.draggable_tree.tree
-        # 立即初始化图表视图，否则 load_full_workflow 会没地方渲染
-        # --- 使用 StackedWidget 管理画布 ---
-        self.graph_widget = QWidget(self.parent)
-        self.graph_layout = QVBoxLayout(self.graph_widget)
-        self.graph_layout.setContentsMargins(0, 0, 0, 0)
-        self.graph_layout.setSpacing(0)
-        self.canvas_stack = QStackedWidget(self.parent)
-        self.graph_layout.addWidget(self.canvas_stack)
-        # 创建主图并加入 Stack
-        self.graph = CustomNodeGraph(viewer=CustomNodeViewer(), parent=self.parent)
-        self.canvas_stack.addWidget(self.graph.widget)
 
-        # 存储图实例的列表，用于面包屑跳转定位 [main_graph, sub_graph1, ...]
-        self.graph_instances = [self.graph]
+        # --- 使用 CanvasManager 替代原来的 Widget ---
+        self.canvas_manager = WorkflowCanvasManager(self.parent)
+        # 为了兼容代码，如果不希望改动其他地方的引用，可以保留 self.graph_widget 别名
+        self.graph_widget = self.canvas_manager
+
+        # 初始化主图
+        # 如果你想在这里显式创建，可以传参；否则 Manager 会自己创建
+        root_graph = CustomNodeGraph(viewer=CustomNodeViewer(parent=self.parent), parent=self.parent)
+        self.canvas_manager.init_root_graph(root_graph)
+
+        # 初始引用
+        self.graph = self.canvas_manager.current_graph()
 
         self.side_dock_area = SideDockArea(self.parent, "运行画布")
 
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
-        self.splitter.addWidget(self.graph_widget)
+        self.splitter.addWidget(self.canvas_manager)  # 直接添加 Manager Widget
         self.splitter.addWidget(self.side_dock_area)
         self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.last_right_width = DEFAULT_SPLITTER_SIZES[2]
@@ -89,16 +91,21 @@ class CanvasUISetUp:
         main_layout.addWidget(self.splitter)
         main_layout.addWidget(self.side_dock_area.tool_panel)
         self.nav_panel.setVisible(False)
-        # 2. 初始化悬浮磨砂面板 (必须先实例化对象，connect_signals 才能绑定)
+
+        # 2. 初始化悬浮磨砂面板
         self.create_name_label()
         self._create_env_and_buttons()  # 右上：环境+运行控制
         self._create_floating_nodes_base()  # 左侧：快捷工具
         self._create_canvas_controls_base()  # 右下：画布控制
-        self._setup_pipeline_style()
         self._init_unified_font()
 
     def connect_signals(self):
         """第二阶段：绑定业务逻辑信号"""
+
+        # --- 连接管理器信号 (关键) ---
+        self.canvas_manager.current_graph_changed.connect(self._on_graph_changed)
+        self.canvas_manager.navigation_changed.connect(self._update_breadcrumb_ui)
+
         # --- 顶部导航开关 ---
         if self.btn_toggle_nav:
             self.btn_toggle_nav.clicked.connect(self._toggle_nav_panel)
@@ -109,7 +116,7 @@ class CanvasUISetUp:
             self.parent.switch_to_parent()
         ))
 
-        # --- 左侧功能按钮 ---
+        # --- 左侧功能按钮 (注意: self.graph 会自动更新，所以 create_next_node 会作用于当前图) ---
         self.iterate_node.clicked.connect(
             lambda: self.parent.create_backdrop_node("control_flow.ControlFlowIterateNode"))
         self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("control_flow.ControlFlowLoopNode"))
@@ -125,16 +132,58 @@ class CanvasUISetUp:
             self._refresh_quick_buttons()
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
+        # 注意：这里需要动态获取当前的 viewer，不能闭包旧的
         self.btn_zoom_fit.clicked.connect(
-            lambda: self.canvas_stack.zoom_to_nodes([n.view for n in self.graph.all_nodes()])
+            lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
         self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
 
-        # 强制刷新位置
-        QTimer.singleShot(100, self.update_position)
+        # 强制刷新位置 (recalculate_size=True)
+        QTimer.singleShot(100, lambda: self.update_position(recalculate_size=True))
 
-    # ================= UI 磨砂面板构建 =================
+    # ================= 信号响应 (新增) =================
+
+    def _on_graph_changed(self, new_graph):
+        """当底层 CanvasManager 切换了画布"""
+        self.graph = new_graph
+        self.update_position(recalculate_size=True)
+
+    def _update_breadcrumb_ui(self, nav_list):
+        """
+        根据 Manager 发来的导航列表更新面包屑
+        nav_list: [('0', 'Main'), ('1', 'Sub')...]
+        """
+        current_count = len(self.breadcrumb.items_data)
+        target_count = len(nav_list)
+
+        # 1. 增加 (进入子图)
+        if target_count > current_count:
+            for i in range(current_count, target_count):
+                id_str, name = nav_list[i]
+                self.breadcrumb.addItem(id_str, name)
+
+        # 2. 减少 (返回上级)
+        elif target_count < current_count:
+            while len(self.breadcrumb.items_data) > target_count:
+                self.breadcrumb.removeItem(self.breadcrumb.items_data[-1])
+
+    # ================= 业务接口 =================
+
+    def create_new_subgraph(self, name="未命名子图"):
+        """【外部调用入口】创建子图"""
+        # 委托给 Manager，Manager 会处理创建、同步环境、发射信号
+        self.canvas_manager.create_sub_graph(name)
+
+    def switch_to_graph_level(self, index):
+        """保留此方法名以兼容旧调用，实际转发给 Manager"""
+        self.canvas_manager.switch_to_level(index)
+
+    def _on_breadcrumb_clicked(self, route_key):
+        """点击面包屑项"""
+        self.switch_to_graph_level(int(route_key))
+
+    # ================= UI 磨砂面板构建 (保持原有样式) =================
 
     def _get_frosted_style(self):
         """统一磨砂质感样式"""
@@ -152,30 +201,9 @@ class CanvasUISetUp:
             }
         """
 
-    def create_new_subgraph(self, name="未命名子图"):
-        """【核心功能】创建一个新的子图并切换过去"""
-        # 1. 创建全新的画布实例
-        new_graph = CustomNodeGraph(
-            viewer=CustomNodeViewer(), parent=self.parent,
-            # node_factory=copy.deepcopy(self.graph_instances[0].node_factory)
-        )
-
-        # 2. 将新图添加到 UI 栈中
-        self.canvas_stack.addWidget(new_graph.widget)
-        self.graph_instances.append(new_graph)
-
-        # 3. 更新面包屑
-        # 假设 addItem 的第一个参数是 ID，第二个是显示文字
-        self.breadcrumb.addItem(str(len(self.graph_instances) - 1), name)
-
-        # 4. 切换当前活跃的 graph 引用，并更新视图
-        self.graph = new_graph  # 业务逻辑层指向新图
-        self.canvas_stack.setCurrentWidget(new_graph.widget)
-
     def create_name_label(self):
-        """左上角面板：核心修复 BreadcrumbBar 的显示"""
         if self.name_container: return
-        self.name_container = QFrame(self.graph_widget)
+        self.name_container = QFrame(self.canvas_manager)  # Parent 设为 canvas_manager
         self.name_container.setObjectName("FrostedPanel")
         self.name_container.setStyleSheet(self._get_frosted_style())
 
@@ -186,26 +214,30 @@ class CanvasUISetUp:
         self.btn_toggle_nav = self._build_tool_btn(FluentIcon.MENU, "展开/收起节点库")
 
         self.breadcrumb = Breadcrumb(self.name_container)
-        self.breadcrumb.addItem("0", self.parent.workflow_name)
+        # 初始化只加个空的，数据由 Manager 信号填充，或者手动加根节点
+        # 由于 Manager init_root_graph 后会发射信号，这里可以只实例化对象
+        # 为了保险起见，如果信号没触发，手动加根:
+        if not self.breadcrumb.items_data:
+            self.breadcrumb.addItem("0", self.parent.workflow_name)
+
         self.breadcrumb.currentItemChanged.connect(self._on_breadcrumb_clicked)
         setFont(self.breadcrumb, 16)
 
         layout.addWidget(self.btn_toggle_nav)
         layout.addWidget(self.breadcrumb)
-        layout.setStretchFactor(self.breadcrumb, 1)  # 核心修复2：设置拉伸系数
+        layout.setStretchFactor(self.breadcrumb, 1)
 
         self.name_container.show()
 
     def _create_env_and_buttons(self):
-        """右上角面板：[环境 ComboBox] | [运行按钮组]"""
-        self.buttons_container = QFrame(self.graph_widget)
+        self.buttons_container = QFrame(self.canvas_manager)
         self.buttons_container.setStyleSheet(self._get_frosted_style())
-
+        # ... (内部代码保持不变，省略以节省空间) ...
+        # 注意: 内部布局代码完全相同
         layout = QHBoxLayout(self.buttons_container)
         layout.setContentsMargins(6, 2, 3, 2)
         layout.setSpacing(2)
 
-        # 环境选择
         label = IconWidget(get_icon("运行环境"), self.buttons_container)
         label.setFixedSize(16, 16)
         self.env_combo = ComboBox(self.buttons_container)
@@ -216,7 +248,6 @@ class CanvasUISetUp:
         layout.addWidget(self.env_combo)
         layout.addSpacing(3)
 
-        # 控制按钮
         self.run_btn = self._build_tool_btn(get_icon("绿色运行"), "运行")
         self.pause_btn = self._build_tool_btn(get_icon("暂停"), "暂停")
         self.stop_btn = self._build_tool_btn(get_icon("结束"), "停止")
@@ -232,16 +263,14 @@ class CanvasUISetUp:
         self.buttons_container.show()
 
     def reset_env_buttons_state(self):
-        """重置运行按钮状态"""
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
 
     def _create_floating_nodes_base(self):
-        """左侧面板：垂直节点按钮"""
-        self.nodes_container = QFrame(self.graph_widget)
+        self.nodes_container = QFrame(self.canvas_manager)
         self.nodes_container.setStyleSheet(self._get_frosted_style())
-
+        # ... (内部代码保持不变) ...
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setContentsMargins(4, 8, 4, 8)
         self.node_layout.setSpacing(6)
@@ -267,7 +296,7 @@ class CanvasUISetUp:
         self.node_layout.addWidget(self.visible_quick_container)
 
         self.more_quick_button = self._build_tool_btn(FluentIcon.MORE, "更多快捷组件")
-        self.more_quick_menu = RoundMenu(parent=self.canvas_stack)
+        self.more_quick_menu = RoundMenu(parent=self.canvas_manager)
         self.add_quick_btn = self._build_tool_btn(FluentIcon.ADD, "添加快捷组件")
 
         self.node_layout.addWidget(self.more_quick_button)
@@ -275,8 +304,7 @@ class CanvasUISetUp:
         self.nodes_container.show()
 
     def _create_canvas_controls_base(self):
-        """右下面板：视图控制"""
-        self.canvas_controls_container = QFrame(self.graph_widget)
+        self.canvas_controls_container = QFrame(self.canvas_manager)
         self.canvas_controls_container.setStyleSheet(self._get_frosted_style())
 
         layout = QHBoxLayout(self.canvas_controls_container)
@@ -297,13 +325,14 @@ class CanvasUISetUp:
         self.canvas_controls_container.show()
 
     def _build_tool_btn(self, icon, tooltip):
-        btn = TransparentToolButton(icon, parent=self.canvas_stack)
+        # 必须 ensure parent 是 canvas_manager，否则悬浮会出错
+        btn = TransparentToolButton(icon, parent=self.canvas_manager)
         btn.setIconSize(QSize(16, 16))
         btn.setFixedSize(28, 28)
         btn.setToolTip(tooltip)
         return btn
 
-    # ================= 属性代理代理 (保持引用完整) =================
+    # ================= 属性代理代理 =================
     @property
     def node_doc(self):
         return self.side_dock_area.get_tool_instance("节点说明")
@@ -328,30 +357,41 @@ class CanvasUISetUp:
     def log_window(self):
         return self.side_dock_area.get_tool_instance("模型日志")
 
-    # ================= 动态定位控制 =================
+    # ================= 动态定位控制 (优化版) =================
 
-    def update_position(self):
-        if not self.canvas_stack or not self.canvas_stack.isVisible(): return
-        w, h = self.canvas_stack.width(), self.canvas_stack.height()
+    def update_position(self, recalculate_size=False):
+        """
+        [同步执行] 必须在 resizeEvent 中同步调用，避免右侧/底部控件抖动。
+        :param recalculate_size: resizeEvent 中设为 False; 添加按钮/切图时设为 True
+        """
+        if not self.canvas_manager or not self.canvas_manager.isVisible():
+            return
+
+        w, h = self.canvas_manager.width(), self.canvas_manager.height()
         padding = 5
 
+        # 1. 左上角 (名称)
         if self.name_container:
-            self.name_container.adjustSize()
+            if recalculate_size: self.name_container.adjustSize()
             self.name_container.move(padding, padding)
 
+        # 2. 右上角 (环境 & 按钮) -> 必须实时计算 X
         if self.buttons_container:
-            self.buttons_container.adjustSize()
+            if recalculate_size: self.buttons_container.adjustSize()
             self.buttons_container.move(w - self.buttons_container.width() - padding, padding)
 
+        # 3. 左侧 (节点栏) -> 垂直居中
         if self.nodes_container:
-            self.nodes_container.adjustSize()
+            if recalculate_size: self.nodes_container.adjustSize()
             self.nodes_container.move(padding, (h - self.nodes_container.height()) // 2)
 
+        # 4. 右下角 (画布控制) -> 必须实时计算 X, Y
         if self.canvas_controls_container:
-            self.canvas_controls_container.adjustSize()
+            if recalculate_size: self.canvas_controls_container.adjustSize()
             self.canvas_controls_container.move(w - self.canvas_controls_container.width() - padding,
                                                 h - self.canvas_controls_container.height() - padding)
 
+    # ... (其他辅助方法 _toggle_nav_panel, show_splitter, toggle_zen_mode 等保持不变) ...
     def _toggle_nav_panel(self):
         visible = self.nav_panel.isVisible()
         self.nav_panel.setVisible(not visible)
@@ -370,45 +410,13 @@ class CanvasUISetUp:
         self.splitter.setSizes(sizes)
         self.side_dock_area.hide()
 
-    def switch_to_graph_level(self, index):
-        """【核心功能】根据索引返回对应的图"""
-        if index >= len(self.graph_instances):
-            return
-
-        # 1. 找到目标图实例
-        target_graph = self.graph_instances[index]
-
-        # 2. 切换 Stack 界面
-        self.canvas_stack.setCurrentWidget(target_graph.widget)
-
-        # 3. 更新当前的 graph 引用，确保后续创建节点等操作是在当前图上
-        self.graph = target_graph
-        self.graph = target_graph  # 同步给主类
-
-        # 4. 裁剪 graph_instances 和 面包屑
-        # 移除 index 之后的所有图实例
-        while len(self.graph_instances) > index + 1:
-            instance = self.graph_instances.pop()
-            self.canvas_stack.removeWidget(instance.widget)
-            instance.widget.deleteLater()  # 如果不再需要，则释放内存
-
-        # 5. 同步裁剪面包屑 UI
-        while self.breadcrumb.count() > index + 1:
-            last_item = self.breadcrumb.items[-1]
-            self.breadcrumb.removeItem(last_item)
-
-    def _on_breadcrumb_clicked(self, route_key):
-        """点击面包屑项，返回对应的图层"""
-        # 调用主类的切换逻辑
-        self.switch_to_graph_level(int(route_key))
-
     def _toggle_viewer_mode(self):
         viewer = self.graph.viewer()
         if self.btn_mode_toggle.isChecked():
-            viewer.set_navigation_mode(False);
+            viewer.set_navigation_mode(False)
             self.btn_mode_toggle.setIcon(get_icon("框选"))
         else:
-            viewer.set_navigation_mode(True);
+            viewer.set_navigation_mode(True)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
 
     def toggle_zen_mode(self):
@@ -416,11 +424,11 @@ class CanvasUISetUp:
             self.saved_splitter_sizes = self.splitter.sizes()
             total_width = sum(self.saved_splitter_sizes)
             self.splitter.setSizes([0, total_width, 0])
-            self.btn_zen_mode.setIcon(get_icon("画布2"));
+            self.btn_zen_mode.setIcon(get_icon("画布2"))
             self.is_zen_mode = True
         else:
             self.splitter.setSizes(self.saved_splitter_sizes)
-            self.btn_zen_mode.setIcon(get_icon("三图居中"));
+            self.btn_zen_mode.setIcon(get_icon("三图居中"))
             self.is_zen_mode = False
 
     def _show_canvas_settings(self):
@@ -437,14 +445,14 @@ class CanvasUISetUp:
         for i, qc in enumerate(all_quick_components):
             fp, idat = qc["full_path"], qc.get("icon_path")
             if i >= MAX_VISIBLE_QUICK_BUTTONS:
-                self._hidden_quick_components.append((fp, idat));
-                self.more_quick_button.show();
+                self._hidden_quick_components.append((fp, idat))
+                self.more_quick_button.show()
                 continue
             btn = self._build_tool_btn(self._get_qc_icon(idat), f"创建 {os.path.basename(fp)}")
             btn.clicked.connect(lambda _, f=fp, d=idat: self.parent.create_next_node(f, d))
             self.visible_quick_layout.addWidget(btn)
         if not self._hidden_quick_components: self.more_quick_button.hide()
-        QTimer.singleShot(0, self.update_position)
+        QTimer.singleShot(0, lambda: self.update_position(True))
 
     def _get_qc_icon(self, icon_path):
         if not icon_path: return FluentIcon.APPLICATION
@@ -455,16 +463,18 @@ class CanvasUISetUp:
         self.more_quick_menu.clear()
         for fp, ip in self._hidden_quick_components:
             action = Action(self._get_qc_icon(ip), os.path.basename(fp).replace('.py', ''),
-                            parent=self.canvas_stack)
+                            parent=self.canvas_manager)
             action.triggered.connect(lambda _, p=fp, i=ip: self.parent.create_next_node(p, i))
             self.more_quick_menu.addAction(action)
         self.more_quick_menu.exec_(self.more_quick_button.mapToGlobal(QPoint(0, self.more_quick_button.height())))
 
     def _setup_pipeline_style(self):
+        # 仅用于初始化，后续由 Manager 接管
         config = self.parent.config
-        self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
-        self.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))
-        self.graph.set_layout_direction(PIPELINE_DIRECTION.get(config.canvas_direction.value))
+        if self.graph:
+            self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
+            self.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))
+            self.graph.set_layout_direction(PIPELINE_DIRECTION.get(config.canvas_direction.value))
 
     def _init_unified_font(self):
         font_name = getattr(self.parent.config.canvas_font_type, 'value', "Microsoft YaHei")
@@ -475,7 +485,9 @@ class CanvasUISetUp:
             for attr in ['splitter', 'buttons_container', 'nodes_container', 'name_container',
                          'canvas_controls_container']:
                 obj = getattr(self, attr, None)
-                if obj: obj.setParent(None); obj.deleteLater()
+                if obj:
+                    obj.setParent(None)
+                    obj.deleteLater()
             self.parent = None
         except:
             pass

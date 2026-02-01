@@ -790,9 +790,23 @@ class DataHandler:
         return data
 
     def _read_csv_data(self, data: Any) -> pd.DataFrame:
-        if isinstance(data, (pd.DataFrame, pd.Series)): return data
+        if isinstance(data, (pd.DataFrame, pd.Series)):
+            return data
+
         path = Path(data)
-        if path.is_file(): return pd.read_csv(str(path))
+        if path.is_file():
+            try:
+                # 尝试使用 PyArrow 读取，速度通常快 5-10 倍
+                from pyarrow import csv as pa_csv
+                return pa_csv.read_csv(str(path)).to_pandas()
+            except ImportError:
+                self.logger.warning("未检测到 pyarrow，回退至 Pandas 原生读取")
+                return pd.read_csv(str(path))
+            except Exception as e:
+                # 处理格式不兼容等问题（例如某些特殊的编码或分隔符）
+                self.logger.warning(f"PyArrow 读取 CSV 失败 ({e})，回退至 Pandas 原生读取")
+                return pd.read_csv(str(path))
+
         raise ComponentError(f"CSV 文件不存在: {path}")
 
     def _read_json_data(self, data: Any) -> Union[dict, list, str]:
@@ -846,7 +860,7 @@ class DataHandler:
     def _read_file_data(self, data: Any) -> Path:
         """返回文件路径，如果是内容则存入临时文件"""
         if isinstance(data, (str, Path)) and os.path.exists(data):
-            return Path(data)
+            return str(data)
         dst = self.result_dir / f"input_file_{datetime.now().strftime('%H%M%S')}.bin"
         if isinstance(data, bytes):
             dst.write_bytes(data)
@@ -951,7 +965,13 @@ class DataHandler:
             return data
         elif isinstance(data, (str, Path)):
             if os.path.exists(data):
-                return pd.read_csv(data)
+                try:
+                    # 尝试使用 PyArrow 读取，速度通常快 5-10 倍
+                    from pyarrow import csv as pa_csv
+                    return pa_csv.read_csv(str(data)).to_pandas()
+                except ImportError:
+                    self.logger.warning("未检测到 pyarrow，回退至 Pandas 原生读取")
+                    return pd.read_csv(str(data))
             else:
                 # 如果是CSV字符串
                 import io

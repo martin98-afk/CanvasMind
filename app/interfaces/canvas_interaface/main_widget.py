@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
-import json
 import re
 import shutil
-import traceback
 from pathlib import Path
 
-from NodeGraphQt.widgets.viewer import NodeViewer
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QApplication, QTextEdit, QLineEdit
+from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal, QThreadPool, QPoint, QTimer
+from PyQt5.QtWidgets import QWidget
 from loguru import logger
-from qfluentwidgets import FluentIcon
 
 from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
@@ -46,7 +42,6 @@ class CanvasPage(QWidget):
         self.parent = parent
         self.manager = manager
         self.file_path = object_name
-        self._last_drag_target = None  # 记录当前正在高亮的代理控件
         # 国际化工作流名称
         self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
         self.setObjectName('canvas_page' if object_name is None else str(object_name))
@@ -95,24 +90,12 @@ class CanvasPage(QWidget):
             select_node_callback=self.select_node_by_name,
             parent=self
         )
-        # 5. 最后连接信号
-        self.canvas_widget.keyPressEvent = self._canvas_key_press_event
-        # 启用画布拖拽
-        self.canvas_widget.setAcceptDrops(True)
-        self.canvas_widget.dragEnterEvent = self.canvas_drag_enter_event
-        self.canvas_widget.dragMoveEvent = self.canvas_drag_move_event  # 确保这行存在
-        self.canvas_widget.dragLeaveEvent = self.canvas_drag_leave_event  # 确保这行存在
-        self.canvas_widget.dropEvent = self.canvas_drop_event
-        self.canvas_widget.installEventFilter(self)
         self._connect_signals()
         self.node_operations.setup_context_menu()
 
-        # 6. 延迟启动内核 (内核启动最慢，建议按需启动或延迟500ms)
-        self.ui_manager.update_position()
-
     @property
     def graph(self):
-        return self.ui_manager.graph
+        return self.ui_manager.canvas_manager.current_graph()
 
     @property
     def node_created(self):
@@ -357,7 +340,7 @@ class CanvasPage(QWidget):
         self.pause_btn.show()
         self.stop_btn.show()
         self.pause_btn.setIcon(get_icon("暂停"))
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
         self.pause_btn.setToolTip(self.tr("暂停工作流"))
 
     def _on_workflow_paused(self):
@@ -375,20 +358,20 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def _on_workflow_finished(self):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
         MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def _on_workflow_error(self, msg=""):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def on_node_error_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -403,7 +386,7 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        self.ui_manager.update_position()
+        self.ui_manager.update_position(True)
 
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
@@ -492,57 +475,6 @@ class CanvasPage(QWidget):
             pass
 
     # --- 画布按键信号 ---
-    def _canvas_key_press_event(self, event):
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            if hasattr(focused_widget, 'code_editor'):
-                QApplication.sendEvent(focused_widget.code_editor, event)
-                return
-            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
-                QApplication.sendEvent(focused_widget, event)
-                return
-
-        self.canvas_widget.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
-        self.canvas_widget.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
-        self.canvas_widget.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
-            self.canvas_widget.ALT_state = True
-            self.canvas_widget.SHIFT_state = True
-        if self.canvas_widget._LIVE_PIPE.isVisible():
-            super(NodeViewer, self.canvas_widget).keyPressEvent(event)
-            return
-
-        # 国际化悬浮提示文字
-        overlay_text = None
-        self.canvas_widget._cursor_text.setVisible(False)
-        if not self.canvas_widget.ALT_state:
-            if self.canvas_widget.SHIFT_state:
-                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
-            elif self.canvas_widget.CTRL_state:
-                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
-        elif self.canvas_widget.ALT_state and self.canvas_widget.SHIFT_state:
-            if self.canvas_widget.pipe_slicing:
-                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
-
-        if overlay_text:
-            self.canvas_widget._cursor_text.setPlainText(overlay_text)
-            self.canvas_widget._cursor_text.setFont(QtGui.QFont('Arial', 10))
-            self.canvas_widget._cursor_text.setDefaultTextColor(Qt.white)
-            self.canvas_widget._cursor_text.setPos(self.canvas_widget.mapToScene(self.canvas_widget._previous_pos))
-            self.canvas_widget._cursor_text.setVisible(True)
-
-        if event.modifiers() == QtCore.Qt.ControlModifier:
-            if event.key() == QtCore.Qt.Key_C:
-                self.node_operations._copy_selected_nodes()
-            elif event.key() == QtCore.Qt.Key_V:
-                self.node_operations._paste_nodes()
-
-        super(NodeViewer, self.canvas_widget).keyPressEvent(event)
-
-    def eventFilter(self, obj, event):
-        if obj is self.graph.viewer() and event.type() == event.Resize:
-            self.ui_manager.update_position()
-        return super().eventFilter(obj, event)
 
     def center_to(self, nodes):
         if not isinstance(nodes, list):
@@ -554,126 +486,6 @@ class CanvasPage(QWidget):
                 return
             node.set_selected(True)
         self.graph.fit_to_selection()
-
-    def canvas_drag_enter_event(self, event):
-        if event.mimeData().hasText():
-            event.accept()
-        else:
-            event.ignore()
-
-    def canvas_drag_move_event(self, event):
-        # 只有在拖拽全局变量时才触发高亮逻辑
-        if event.mimeData().hasFormat("application/x-global-variable"):
-            # 1. 查找鼠标下的项
-            pos = event.pos()
-            items = self.canvas_widget.items(pos)
-
-            target_widget = None
-            from app.widgets.node_widget.base import CustomNodeBaseWidget
-            for item in items:
-                if isinstance(item, CustomNodeBaseWidget):
-                    target_widget = item
-                    break
-
-            # 2. 状态切换逻辑
-            if target_widget != self._last_drag_target:
-                # 移出旧控件，重置样式
-                if self._last_drag_target:
-                    group_box = self._last_drag_target.widget()
-                    if hasattr(group_box, 'reset'):
-                        group_box.reset()
-
-                # 进入新控件，高亮样式
-                if target_widget:
-                    group_box = target_widget.widget()
-                    if hasattr(group_box, 'highlight'):
-                        group_box.highlight()
-
-                self._last_drag_target = target_widget
-
-            event.accept()
-        else:
-            # 处理普通的节点创建拖拽
-            is_acceptable = any([
-                event.mimeData().hasFormat(i) for i in
-                ['nodegraphqt/nodes', 'text/plain']
-            ])
-            if is_acceptable:
-                event.accept()
-            else:
-                event.ignore()
-
-    def canvas_drag_leave_event(self, event):
-        """当拖拽彻底离开画布区域时，重置所有高亮"""
-        if self._last_drag_target:
-            group_box = self._last_drag_target.widget()
-            if hasattr(group_box, 'reset'):
-                group_box.reset()
-            self._last_drag_target = None
-        event.accept()
-
-    def canvas_drop_event(self, event):
-        try:
-            mime_data = event.mimeData()
-            if not mime_data.hasText():
-                event.ignore()
-                return
-
-            if self._last_drag_target:
-                group_box = self._last_drag_target.widget()
-                if hasattr(group_box, 'reset'):
-                    group_box.reset()
-                self._last_drag_target = None
-
-            full_path = mime_data.text()
-            pos = event.pos()
-
-            # 查找鼠标点击位置下的所有图形项
-            items = self.canvas_widget.items(pos)
-            target_widget = None
-            for item in items:
-                # 寻找我们的 CustomNodeBaseWidget 代理
-                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
-                if isinstance(item, CustomNodeBaseWidget):
-                    target_widget = item
-                    break
-
-            # --- 情况 A：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
-            if mime_data.hasFormat("application/x-global-variable") and target_widget:
-                data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                drag_data = json.loads(data_bytes.decode('utf-8'))
-                # 调用我们之前写好的完美版 set_value
-                if not target_widget._is_using_global:
-                    target_widget.toggle_global_mode()
-                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
-                event.accept()
-                return
-            node_type = self.node_type_map.get(full_path)
-            if node_type:
-                pos = event.pos()
-                scene_pos = self.canvas_widget.mapToScene(pos)
-                node = self.graph.create_node(node_type)
-                self.nav_view.record_usage(full_path)
-                node.set_pos(scene_pos.x(), scene_pos.y())
-                QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
-                self.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
-                if hasattr(node, 'status'):
-                    node.status = NodeStatus.NODE_STATUS_UNRUN
-
-                # 变量节点自动设置部分属性，便于与普通节点区分
-                if mime_data.hasFormat("application/x-global-variable"):
-                    data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                    drag_data = json.loads(data_bytes.decode('utf-8'))
-                    node.set_icon(":/icons/变量.svg")
-                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                    node.set_name("\n".join(drag_data['var_name'].split("__")))
-                    node.view.toggle_collapse()
-                    self.canvas_runner.run_node(node)
-                event.accept()
-            else:
-                event.ignore()
-        except Exception as e:
-            logger.error(traceback.format_exc())
 
     def get_node_status(self, node):
         return self.node_status.get(node.id, NodeStatus.NODE_STATUS_UNRUN)
@@ -744,30 +556,76 @@ class CanvasPage(QWidget):
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
-        if selected_nodes:
-            backdrop_internal_nodes = []
-            for node in selected_nodes:
-                if isinstance(node, ControlFlowBackdrop):
-                    internal_nodes = [n for n in node.nodes()]
-                    backdrop_internal_nodes.extend(internal_nodes)
-                    only_backdrop = all(n in internal_nodes for n in selected_nodes if n != node)
-                    if only_backdrop:
-                        self.nav_view.clear_recommendations()
-                        self._schedule_property_update(node)
-                        self.property_panel.reset_current_components()
-                        return
-            if len(selected_nodes) > 1:
-                top_level_nodes = [n for n in selected_nodes if n not in backdrop_internal_nodes]
-                self._schedule_property_update(top_level_nodes)
-            elif isinstance(selected_nodes[0], BasicNodeWithGlobalProperty):
-                self._schedule_property_update(selected_nodes[0])
+
+        # 1. 快速退出：无选中
+        if not selected_nodes:
+            self.nav_view.clear_recommendations()
+            self.property_panel.reset_current_components()
+            self._schedule_property_update(None)
+            return
+
+        # 2. 分类节点：找出 Backdrop 和其他节点
+        # 使用 set 提高后续查找速度
+        selected_set = set(selected_nodes)
+        backdrops = [n for n in selected_nodes if isinstance(n, ControlFlowBackdrop)]
+
+        # 3. 收集所有被选中 Backdrop 的内部节点
+        # 使用 set 存储内部节点，查找复杂度从 O(N) 降为 O(1)
+        all_backdrop_internals = set()
+        for bd in backdrops:
+            # 假设 bd.nodes() 返回的是列表或迭代器
+            all_backdrop_internals.update(bd.nodes())
+
+        # 4. 判断 "仅选中 Backdrop 模式"
+        target_backdrop_update = None
+
+        if backdrops:
+            # 只有当选中了 Backdrop 时才进行此复杂判断
+            for bd in backdrops:
+                bd_internals = set(bd.nodes())
+                # 检查：是否所有非当前Backdrop的选中节点，实际上都是这个Backdrop的子节点
+                remaining_selection = selected_set - {bd}
+                if remaining_selection and remaining_selection.issubset(bd_internals):
+                    target_backdrop_update = bd
+                    break
+
+        if target_backdrop_update:
+            # 命中特殊逻辑：只显示 Backdrop 属性
+            self.nav_view.clear_recommendations()
+            self._schedule_property_update(target_backdrop_update)
+            self.property_panel.reset_current_components()
+            return
+
+        # 5. 常规逻辑：过滤掉作为"内部节点"被连带选中的节点
+        # 使用集合差集高效过滤：保留那些 "不是任何选中Backdrop的子节点" 的节点
+        top_level_nodes = [n for n in selected_nodes if n not in all_backdrop_internals]
+
+        # 6. 根据过滤后的顶层节点数量处理
+        if len(top_level_nodes) > 1:
+            self.nav_view.clear_recommendations()  # 多选时不显示推荐
+            self._schedule_property_update(top_level_nodes)
+
+        elif len(top_level_nodes) == 1:
+            node = top_level_nodes[0]
+            if isinstance(node, BasicNodeWithGlobalProperty):
+                self._schedule_property_update(node)
                 self.property_panel.reset_current_components()
-                QtCore.QTimer.singleShot(0, lambda: self.node_operations._request_recommendations(selected_nodes[0]))
+                # 避免框选过程中快速划过节点时频繁触发 IO/LLM 计算
+                if hasattr(self, "_recommendation_timer"):
+                    self._recommendation_timer.stop()
+                else:
+                    self._recommendation_timer = QTimer()
+                    self._recommendation_timer.setSingleShot(True)
+                    self._recommendation_timer.timeout.connect(
+                        lambda: self.node_operations._request_recommendations(node))
+
+                self._recommendation_timer.start(50)  # 50ms 延迟
             else:
                 self.nav_view.clear_recommendations()
                 self.property_panel.reset_current_components()
                 self._schedule_property_update(None)
         else:
+            # 这种情况可能是只选了内部节点但没选父 Backdrop，或者被全部过滤了
             self.nav_view.clear_recommendations()
             self.property_panel.reset_current_components()
             self._schedule_property_update(None)
