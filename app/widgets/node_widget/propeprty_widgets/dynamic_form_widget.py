@@ -25,7 +25,8 @@ class FormFieldWidget(QtWidgets.QWidget):
     changed = QtCore.Signal()
 
     def __init__(self, schema, home=None, parent=None, get_port_func=lambda: [], index=1):
-        super(FormFieldWidget, self).__init__(parent)
+        super(FormFieldWidget, self).__init__()
+        self.parent = parent
         self.schema = schema
         self.home = home
         self.fields = {}
@@ -89,7 +90,7 @@ class FormFieldWidget(QtWidgets.QWidget):
                 input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.VARIABLE.name:
-                widget = VarComboBoxWidget(main_window=self.home, type=default, parent=self)
+                widget = VarComboBoxWidget(main_window=self.home, type=default, parent=self.parent)
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
@@ -171,9 +172,10 @@ class DynamicFormWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
     fixed_height = True
 
-    def __init__(self, schema, parent=None, label=None, get_port_func=lambda: []):
+    def __init__(self, schema, window=None, parent=None, label=None, get_port_func=lambda: []):
         super(DynamicFormWidget, self).__init__()
-        self.main_window = parent
+        self.parent=parent
+        self.main_window = window
         self.schema = schema
         self.label = label or "项"
         self.get_port_func = get_port_func
@@ -199,7 +201,7 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def add_field(self, data=None):
         field = FormFieldWidget(
-            self.schema, home=self.main_window, parent=self,
+            self.schema, home=self.main_window, parent=self.parent,
             get_port_func=self.get_port_func, index=len(self.field_widgets) + 1
         )
         if data:
@@ -287,7 +289,7 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         self.window = window
         self._name = name
         self.set_label(f"{label}({name})")
-        widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
+        widget = DynamicFormWidget(schema or {}, window=window, parent=self, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
 
         widget.sizeHintChanged.connect(self._sync_node_geometry)

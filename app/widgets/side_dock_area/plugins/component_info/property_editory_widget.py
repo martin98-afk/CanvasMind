@@ -198,7 +198,7 @@ class PropertyEditorWidget(ConfigTableSpace):
             combo = ComboBox()
             combo.setFixedHeight(28)
             combo.setStyleSheet("color: white; background: transparent; border: none;")
-            combo.addItems(["全局变量", "画布节点", "导出项目", "MCP工具", "HTTP服务"])
+            combo.addItems(["全局变量", "节点输入变量", "画布节点", "导出项目", "MCP工具", "HTTP服务"])
             combo.setCurrentText(default_value)
             combo.currentTextChanged.connect(self.properties_changed.emit)
             self.table.setCellWidget(row, 3, combo)
