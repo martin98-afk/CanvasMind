@@ -235,6 +235,7 @@ class CanvasUISetUp:
         label = IconWidget(get_icon("运行环境"), self.buttons_container)
         label.setFixedSize(16, 16)
         self.env_combo = ComboBox(self.buttons_container)
+        self.env_combo.setMaxVisibleItems(15)
         self.env_combo.setFixedWidth(130)
         self.env_combo.setFixedHeight(28)
         layout.addWidget(label)
