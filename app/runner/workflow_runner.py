@@ -640,7 +640,8 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
                     file_path=n["file_path"],
                     params=node_params_evaluated,
                     inputs=node_inputs_evaluated,
-                    global_variable=global_variable
+                    global_variable=global_variable,
+                    exec_mode=n.get("exec_mode"),
                 )
                 update_global_variable(n, output)
                 logger.info(f"输出: {output}")
@@ -699,10 +700,10 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         is_branch_node = (node_data.get("type_") == "control_flow.ControlFlowBranchNode")
         params = node_data["custom"].get("params", {})
         input_values = node_data["custom"].get("input_values", {})
-        persistent_id = params.get("persistent_id")
         nodes[node_id] = {
             "node_id": node_id,
-            "persistent_id": persistent_id,
+            "persistent_id": params.get("persistent_id"),
+            "exec_mode": params.get("_exec_mode"),
             "class": comp_cls,
             "file_path": file_path_comp,
             "name": node_data["name"],
@@ -903,7 +904,8 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                         params=node_params_evaluated,
                         inputs=node_inputs_evaluated,
                         global_variable=global_variable,
-                        logger=logger
+                        logger=logger,
+                        exec_mode=node.get("exec_mode"),
                     )
                     update_global_variable(node, output)
                     logger.info(f"输出: {output}")

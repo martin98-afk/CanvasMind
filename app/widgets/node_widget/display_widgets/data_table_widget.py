@@ -52,7 +52,7 @@ class ModernTableModel(QtCore.QAbstractTableModel):
 class DataTableWidget(QtWidgets.QTableView):
     sizeHintChanged = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         # 1. 基础性能与行为设置

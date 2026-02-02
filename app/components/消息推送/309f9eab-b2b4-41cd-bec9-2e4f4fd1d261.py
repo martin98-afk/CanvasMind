@@ -22,8 +22,8 @@ class MessagePusher(BaseComponent):
     requirements = "numpy,pillow,requests"
 
     inputs = [
-        # 必须使用 ANY 类型才能接收 Tensor/Image 对象，否则会被转成字符串
-        PortDefinition(name="trigger", label="触发源/内容 (Any)", type=ArgumentType.TEXT),
+        PortDefinition(name="image", label="推送base64图像", type=ArgumentType.TEXT, connection=ConnectionType.MULTIPLE),
+        PortDefinition(name="message", label="推送消息内容", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
 
     outputs = [
@@ -194,9 +194,13 @@ class MessagePusher(BaseComponent):
             return f"Error: {e}"
 
     def run(self, params, inputs=None):
-        trigger = inputs.get("trigger")
+        import json
+        trigger = inputs.get("image")
+        message_content = inputs.get("message")
         title = params.get("title", "通知")
-        content = params.get("content", "")
+        if isinstance(message_content, dict) or isinstance(message_content, list):
+            message_content = json.dumps(message_content, indent=2, ensure_ascii=False)
+        content = params.get("content", "") + "\n\n" + message_content
         
         # 1. 检查触发源
         if not self._has_value(trigger):
@@ -233,15 +237,16 @@ class MessagePusher(BaseComponent):
         image_bytes_list = []
         img_urls = []
 
-        if gitee_conf:
-            self.logger.info(f"Uploading images to Gitee...")
-            url, err = self._upload_gitee(trigger, gitee_conf)
-            if url: 
-                img_urls.append(url)
-            else: 
-                logs.append(f"Gitee Upload Fail: {err}")
-        else:
-            logs.append("Skipped Upload (Images found but no Gitee Config)")
+        for img in trigger:
+            if gitee_conf:
+                self.logger.info(f"Uploading images to Gitee...")
+                url, err = self._upload_gitee(img, gitee_conf)
+                if url: 
+                    img_urls.append(url)
+                else: 
+                    logs.append(f"Gitee Upload Fail: {err}")
+            else:
+                logs.append("Skipped Upload (Images found but no Gitee Config)")
 
         # 6. 遍历所有推送目标进行推送
         if not push_targets:

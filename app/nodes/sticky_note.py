@@ -33,4 +33,20 @@ def create_sticky_note_node(graph, parent_window):
         def nodes(self):
             return []  # 保持独立
 
+        def wrap_nodes(self, nodes):
+            """
+            Set the backdrop size to fit around specified nodes.
+
+            Args:
+                nodes (list[NodeGraphQt.NodeObject]): list of nodes.
+            """
+            if not nodes:
+                return
+            self.graph.begin_undo('"{}" wrap nodes'.format(self.name()))
+            size = self.view.calc_backdrop_size([n.view for n in nodes])
+            self.set_property('wwidth', size['width'])
+            self.set_property('hheight', size['height'])
+            self.set_pos(*size['pos'])
+            self.graph.end_undo()
+
     return StickyNoteNode

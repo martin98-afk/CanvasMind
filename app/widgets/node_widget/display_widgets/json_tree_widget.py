@@ -5,7 +5,7 @@ from Qt import QtWidgets, QtCore, QtGui
 class JsonTreeWidget(QtWidgets.QTreeWidget):
     sizeHintChanged = QtCore.Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
 
         # 1. 基础配置

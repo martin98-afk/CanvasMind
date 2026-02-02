@@ -20,6 +20,7 @@ def run_component_in_subprocess(
         file_path: str,
         params: dict,
         inputs: dict,
+        exec_mode: str = "subprocess",
         global_variable: dict = None,
         log_file_path: str = None,
         logger: logger = logger
@@ -63,21 +64,34 @@ def run_component_in_subprocess(
 
     ERROR_PATH = temp_script_path / 'run.error'
     NODE_ID = node_id
+    UNIQUE_MODULE_KEY = f"dynamic_mod_{NODE_ID}"
+    UNIQUE_INSTANCE_NAME = f"INSTANCE_{NODE_ID}"
+    module = None
+    comp_instance = None
     try:
+        # 判断是否将该实例驻留内存
+        if exec_mode == "ipython":
+            module = sys.modules.get(UNIQUE_MODULE_KEY)
+
         # === 1. 加载组件类（不变）===
-        spec = importlib.util.spec_from_file_location(CLASS_NAME, FILE_PATH)
-        if spec is None:
-            raise ImportError(f"无法加载模块: {{FILE_PATH}}")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        if not module:
+            spec = importlib.util.spec_from_file_location(CLASS_NAME, FILE_PATH)
+            if spec is None:
+                raise ImportError(f"无法加载模块: {{FILE_PATH}}")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
         comp_class = getattr(module, CLASS_NAME, None)
         if comp_class is None:
             raise AttributeError(f"模块中未找到类: {{CLASS_NAME}}")
 
         # === 3. 执行组件 ===
-        comp_instance = comp_class()
+        if hasattr(module, UNIQUE_INSTANCE_NAME):
+            comp_instance = getattr(module, UNIQUE_INSTANCE_NAME)
+        else:
+            comp_instance = comp_class()
         comp_instance.logger = logger
         output = comp_instance.execute(params, inputs, global_variable, NODE_ID, ".")
+
     except ImportError as e:
         error_info = {
             "error": str(e),
