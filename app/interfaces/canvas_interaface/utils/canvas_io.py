@@ -82,7 +82,7 @@ class CanvasIO(QObject):
         except Exception as e:
             if self._save_progress:
                 self._save_progress.close()
-            logger.error(f"保存前数据准备失败: {e}")
+            logger.exception(f"保存前数据准备失败: {e}")
             MessageManager.error("保存失败", f"数据准备错误: {e}", self.parent)
             return
 
@@ -107,7 +107,7 @@ class CanvasIO(QObject):
                 MessageManager.success("保存成功", "工作流保存成功！", self.parent)
 
         except Exception as e:
-            logger.error(f"保存后处理失败: {e}")
+            logger.execption(f"保存后处理失败: {e}")
         finally:
             if self._save_progress:
                 self._save_progress.close()
@@ -166,7 +166,7 @@ class CanvasIO(QObject):
             self._on_thumbnail_generated(png_path)
 
         except Exception as e:
-            logger.error(f"缩略图生成失败: {e}")
+            logger.execption(f"缩略图生成失败: {e}")
         finally:
             # 恢复原始控件
             for proxy, original_widget in chart_widgets_backup.items():
@@ -249,7 +249,7 @@ class CanvasIO(QObject):
             self._start_finish_loading(runtime_data, node_status_data)
 
         except Exception as e:
-            logger.error(f"❌ 加载失败: {traceback.format_exc()}")
+            logger.execption(f"❌ 加载失败: {traceback.format_exc()}")
             MessageManager.error("加载失败", f"工作流加载失败: {str(e)}", self.parent)
             # 确保异常时进度条也能关掉
             if 'progress' in locals():

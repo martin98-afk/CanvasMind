@@ -427,6 +427,8 @@ class CustomNodeItem(NodeItem):
             if float(width) > 0 and float(height) > 0:
                 self._user_width = float(width)
                 self._user_height = float(height)
+                self._properties['width'] = self._user_width
+                self._properties['height'] = self._user_height
                 self._size_initialized = True
                 self._draw_node_horizontal()
 

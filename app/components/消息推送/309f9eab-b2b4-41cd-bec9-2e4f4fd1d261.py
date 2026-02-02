@@ -234,7 +234,7 @@ class MessagePusher(BaseComponent):
         # 4. 处理内容与图片 (转换为 Bytes)
         extra_text = []
         image_bytes_list = []
-
+        img_urls = []
 
         if gitee_conf:
             self.logger.info(f"Uploading images to Gitee...")
@@ -249,19 +249,19 @@ class MessagePusher(BaseComponent):
         # 6. 遍历所有推送目标进行推送
         if not push_targets:
             logs.append("No valid DingTalk or Feishu configs found.")
-        
+            
         for idx, target in enumerate(push_targets):
             t_type = target["type"]
             t_conf = target["config"]
             res = "Unknown"
             
             if t_type == "dingtalk":
-                res = self._send_dingtalk(t_conf, title, final_content, img_urls)
+                res = self._send_dingtalk(t_conf, title, content, img_urls)
                 logs.append(f"DingTalk[{idx}]: {res}")
             elif t_type == "feishu":
-                res = self._send_feishu(t_conf, title, final_content, img_urls)
+                res = self._send_feishu(t_conf, title, content, img_urls)
                 logs.append(f"Feishu[{idx}]: {res}")
 
-        log_str = " | ".join(logs)
+        log_str = "\n".join(logs)
         self.logger.info(f"Push Result: {log_str}")
         return {"log": log_str}

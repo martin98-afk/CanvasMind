@@ -136,12 +136,26 @@ def patched_height_setter(self, height=0.0):
         self._sizer.set_pos(self._width, self._height)
 
 
+def set_property(self, name, value):
+    """
+    Args:
+        name (str): property name.
+        value (object): property value.
+    """
+    if name in self.properties.keys():
+        setattr(self, name, value)
+    elif name in self._custom_prop.keys():
+        self._custom_prop[name] = value
+    else:
+        self.add_property(name, value)
+
+
 def patch_nodegraphqt():
     """解决nodegraphqt内部函数问题"""
     # 动态替换掉库里的原始函数
     NodeNavigationWidget.add_label_item = add_label_item
     NodeModel.add_property = add_property
-
+    NodeModel.set_property = set_property
     # --- 2. 为类注入新的 Property ---
     # 注意：必须在类级别（AbstractNodeItem）赋值，而不是实例级别
     AbstractNodeItem.wwidth = property(get_wwidth, set_wwidth)
