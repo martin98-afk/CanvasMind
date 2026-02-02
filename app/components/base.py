@@ -624,7 +624,7 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
         elif field_def.type == PropertyType.VARIABLE:
             ft = Union[dict, list, str]
         else:
-            ft = any
+            ft = Any
         default_val = _parse_default_value(field_def.default, ft)
         # 修改这里：使用 Field 包装默认值
         fields[field_name] = (ft, Field(default=default_val))
@@ -1302,7 +1302,6 @@ class BaseComponent(ABC):
         msg = ComponentMessage(
             method=method,
             params=params,
-            level=level,
             extra=extra
         )
         # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰

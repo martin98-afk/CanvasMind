@@ -31,6 +31,8 @@ class DingTalkConfig(BaseComponent):
             default="",
             label="完整的 Webhook 地址",
         ),
+        "app_id": PropertyDefinition(type=PropertyType.TEXT, label="App ID", description="飞书自建应用的 App ID"),
+        "app_secret": PropertyDefinition(type=PropertyType.TEXT, label="App Secret", description="飞书自建应用的 App Secret"),
         "secret": PropertyDefinition(
             type=PropertyType.TEXT,
             default="",
@@ -43,11 +45,10 @@ class DingTalkConfig(BaseComponent):
         webhook = params.get("webhook", "").strip()
         secret = params.get("secret", "").strip()
 
-        if not webhook:
-            return {"status": "Skipped (No Token)"}
-
         config_data = {
             "fs_webhook": webhook,
+            "app_id": params.get("app_id", "").strip(),
+            "app_secret": params.get("app_secret", "").strip(),
             "secret": secret
         }
 
