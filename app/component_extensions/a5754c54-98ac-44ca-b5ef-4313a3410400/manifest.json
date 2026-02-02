@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.a5754c54-98ac-44ca-b5ef-4313a3410400",
+  "uuid": "a5754c54-98ac-44ca-b5ef-4313a3410400",
+  "name": "大型文件选择",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "与文件上传相比不会复制源文件，只会输出选择文件的地址",
+  "category": "数据集成",
+  "updated_at": "2026-02-01 12:30:36",
+  "author": "black"
+}

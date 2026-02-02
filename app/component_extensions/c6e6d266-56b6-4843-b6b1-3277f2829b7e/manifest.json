@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.c6e6d266-56b6-4843-b6b1-3277f2829b7e",
+  "uuid": "c6e6d266-56b6-4843-b6b1-3277f2829b7e",
+  "name": "大模型对话测试",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "调用大语言模型（支持 OpenAI 或本地兼容 API 的模型）",
+  "category": "大模型组件",
+  "updated_at": "2026-01-30 19:21:21",
+  "author": "black"
+}

@@ -350,7 +350,7 @@ class GlobalVariableContext(BaseModel):
     def is_variable_name(cls, name: str) -> bool:
         """判断 name 是否为变量名"""
         if isinstance(name, str):
-            return name.startswith("custom.") or name.startswith("node_vars.") or name.startswith("env.")
+            return name.startswith("custom.") or name.startswith("node_vars.") or name.startswith("env.") or name.startswith("input.")
         else:
             return False
 
@@ -624,7 +624,7 @@ def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition'
         elif field_def.type == PropertyType.VARIABLE:
             ft = Union[dict, list, str]
         else:
-            ft = any
+            ft = Any
         default_val = _parse_default_value(field_def.default, ft)
         # 修改这里：使用 Field 包装默认值
         fields[field_name] = (ft, Field(default=default_val))
@@ -1176,12 +1176,12 @@ class BaseComponent(ABC):
     @classmethod
     def get_inputs(cls) -> List[Tuple[str, str, str, ArgumentType]]:
         """返回输入端口定义：[('port_name', 'Port Label')]"""
-        return [(port.name, port.label, port.connection, port.type) for port in cls.inputs]
+        return [(port.name, port.label, port.connection, port.type, port.description) for port in cls.inputs]
 
     @classmethod
     def get_outputs(cls) -> List[Tuple[str, str, ArgumentType]]:
         """返回输出端口定义：[('port_name', 'Port Label')]"""
-        return [(port.name, port.label, port.type) for port in cls.outputs]
+        return [(port.name, port.label, port.type, port.description) for port in cls.outputs]
 
     @classmethod
     def get_output_type(cls):
@@ -1302,7 +1302,6 @@ class BaseComponent(ABC):
         msg = ComponentMessage(
             method=method,
             params=params,
-            level=level,
             extra=extra
         )
         # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰
@@ -1365,7 +1364,7 @@ class BaseComponent(ABC):
         self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 变量解析逻辑 ----------------
-    def _resolve_value(self, value: Any, prop_type: PropertyType) -> Any:
+    def _resolve_value(self, key, value: Any, prop_type: PropertyType, global_vars) -> Any:
         """解析值：支持普通变量解析和 DYNAMICFORM 内部变量解析"""
 
         # 1. 处理 DYNAMICFORM (数据结构为 List[Dict])
@@ -1373,10 +1372,9 @@ class BaseComponent(ABC):
             resolved_list = []
             for item in value:
                 if isinstance(item, dict):
-                    # 遍历表单每一行的所有字段
-                    # 这里使用 PropertyType.TEXT 作为临时类型解析，因为 Pydantic 模型后续会自动处理类型转换
+                    schema = self.properties.get(key).schema
                     new_item = {
-                        k: self._resolve_value(v, PropertyType.TEXT)
+                        k: self._resolve_value(k, v, schema.get(k).type, global_vars)
                         for k, v in item.items()
                     }
                     resolved_list.append(new_item)
@@ -1388,8 +1386,9 @@ class BaseComponent(ABC):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             try:
                 # 获取原始值
-                resolved = self.global_variable.get(value)
-
+                if value.startswith("input."):
+                    value = value.replace("input.", "input_")
+                resolved = global_vars.get(value)
                 # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
                 if prop_type == PropertyType.INT:
                     # 先转 float 再转 int，处理变量里存了 "1.0" 的情况
@@ -1435,7 +1434,7 @@ class BaseComponent(ABC):
             # 遍历 params，根据定义尝试将字符串转为数值
             for key, val in params.items():
                 if key in self.properties:
-                    params[key] = self._resolve_value(val, self.properties[key].type)
+                    params[key] = self._resolve_value(key, val, self.properties[key].type, global_vars)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

@@ -177,13 +177,13 @@ class CustomBaseNode(BaseNode):
         port_args = [name, multi_input, display_name, locked]
         if painter_func and callable(painter_func):
             port_args.append(painter_func)
-        view = self.view.add_input(*port_args)
-        view.original_node = self
+        port_view = self.view.add_input(*port_args)
+        port_view.original_node = self
         if color:
-            view.color = color
-            view.border_color = [min([255, max([0, i + 80])]) for i in color]
+            port_view.color = color
+            port_view.border_color = [min([255, max([0, i + 80])]) for i in color]
 
-        port = Port(self, view)
+        port = Port(self, port_view)
         port.model.type_ = PortTypeEnum.IN.value
         port.model.name = name
         port.model.display_name = display_name
@@ -191,7 +191,7 @@ class CustomBaseNode(BaseNode):
         port.model.locked = locked
         self._inputs.append(port)
         self.model.inputs[port.name()] = port.model
-        return port
+        return port, port_view
 
     def add_output(self, name='output', multi_output=True, display_name=True,
                    color=None, locked=False, painter_func=None):
@@ -220,12 +220,12 @@ class CustomBaseNode(BaseNode):
         port_args = [name, multi_output, display_name, locked]
         if painter_func and callable(painter_func):
             port_args.append(painter_func)
-        view = self.view.add_output(*port_args)
-        view.original_node = self
+        port_view = self.view.add_output(*port_args)
+        port_view.original_node = self
         if color:
-            view.color = color
-            view.border_color = [min([255, max([0, i + 80])]) for i in color]
-        port = Port(self, view)
+            port_view.color = color
+            port_view.border_color = [min([255, max([0, i + 80])]) for i in color]
+        port = Port(self, port_view)
         port.model.type_ = PortTypeEnum.OUT.value
         port.model.name = name
         port.model.display_name = display_name
@@ -233,4 +233,4 @@ class CustomBaseNode(BaseNode):
         port.model.locked = locked
         self._outputs.append(port)
         self.model.outputs[port.name()] = port.model
-        return port
+        return port, port_view

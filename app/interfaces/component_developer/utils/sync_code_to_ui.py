@@ -2,7 +2,7 @@
 import ast
 import re
 
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtCore import QObject, QTimer
 from loguru import logger
 
 # 导入业务基础组件

@@ -23,13 +23,14 @@ class Component(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON),
+        PortDefinition(name="output1", label="输出1", type=ArgumentType.JSON, description="测试添加端口描述",),
     ]
     properties = {
         "prop1": PropertyDefinition(
             type=PropertyType.DYNAMICTREE,
             default="",
             label="属性1",
+            description="测试添加属性描述",
         ),
     }
     def run(self, params, inputs=None):

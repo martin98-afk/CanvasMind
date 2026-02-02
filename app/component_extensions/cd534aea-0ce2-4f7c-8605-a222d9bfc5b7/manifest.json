@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.cd534aea-0ce2-4f7c-8605-a222d9bfc5b7",
+  "uuid": "cd534aea-0ce2-4f7c-8605-a222d9bfc5b7",
+  "name": "VAE加载器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 VAE 模型，支持标准 VAE、TAESD (SD1/SDXL/SD3/Flux) 以及 Pixel Space",
+  "category": "comfyui节点/模型加载器",
+  "updated_at": "2026-01-31 11:00:31",
+  "author": "black"
+}

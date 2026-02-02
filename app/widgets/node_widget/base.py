@@ -186,6 +186,11 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     def node(self, node):
         self._node = node
 
+    def setToolTip(self, tooltip):
+        tooltip = tooltip.replace('\n', '<br/>')
+        tooltip = '<b>{}</b><br/>{}'.format(self.get_name(), tooltip)
+        super(CustomNodeBaseWidget, self).setToolTip(tooltip)
+
     def toggle_global_mode(self, mode=None):
         group = self.widget()
         if not group: return

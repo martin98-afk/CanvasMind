@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.ee0224df-fe3c-40c1-9412-1b6c69a59d91",
+  "uuid": "ee0224df-fe3c-40c1-9412-1b6c69a59d91",
+  "name": "获取全局变量",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "用于获取当前画布全局变量的具体数值",
+  "category": "数据集成",
+  "updated_at": "2026-01-30 19:24:17",
+  "author": "black"
+}

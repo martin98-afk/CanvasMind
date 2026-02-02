@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.f13c4253-72a2-459c-9993-be98bd06018d",
+  "uuid": "f13c4253-72a2-459c-9993-be98bd06018d",
+  "name": "视频拼接",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "从视频文件中读取指定索引的帧并输出为图像",
+  "category": "图像处理",
+  "updated_at": "2026-01-30 21:10:16",
+  "author": "black"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.d634710d-a760-40b6-a6f0-712bc5123aa1",
+  "uuid": "d634710d-a760-40b6-a6f0-712bc5123aa1",
+  "name": "类别分类器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "根据输入文本使用大模型判断其类别",
+  "category": "大模型组件",
+  "updated_at": "2026-01-30 19:21:55",
+  "author": "black"
+}

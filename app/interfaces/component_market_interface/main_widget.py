@@ -434,6 +434,7 @@ class PluginManagerCenter(QWidget):
         worker = GenericWorker(
             self.cloud_mgr.add_component,
             comp_id=data['组件id'], name=data['组件名称'], category=data['组件类别'],
+            description=data['组件描述'], requirements=data['工具包需求'],
             version=data['版本号'], entry_file=data['entry_file'], resource_dir=data['resource_dir'],
             extra_data={'MD5': data.get('MD5', '')}
         )

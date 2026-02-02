@@ -327,6 +327,7 @@ class DynamicTreeWidgetWrapper(CustomNodeBaseWidget):
     def __init__(self, parent=None, name="", label="", window=None, z_value=1):
         super(DynamicTreeWidgetWrapper, self).__init__(parent, name, label)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
+        self.set_label(f"{label}({name})")
         self.tree_widget = JsonTreeWidget(window)
         self.set_custom_widget(self.tree_widget)
 

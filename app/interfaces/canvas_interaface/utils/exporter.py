@@ -144,11 +144,13 @@ class CanvasExporter:
             new_nodes_data = {}
             for node in nodes_to_export:
                 params = node.model.custom_properties
+                reserved_keys = node.model.properties.keys()
                 if node.FULL_PATH.startswith("代码执行/"):
                     params["run_script"] = node.format_code()
                 exported_params = {
-                    k: self._process_value_for_export(v, inputs_dir) for k, v in params.items()
-                    if k not in ("global_variable")
+                    self._process_key_for_export(k, reserved_keys): self._process_value_for_export(v, inputs_dir)
+                    for k, v in params.items()
+                    if k not in ("global_variable", "_collapse", "version")
                 }
                 current_inputs = self._collect_node_inputs(node, inputs_dir)
                 node_data = {
@@ -358,6 +360,11 @@ class CanvasExporter:
                     "format_desc": out_type_desc
                 })
         return outputs
+
+    def _process_key_for_export(self, key, reserved_keys):
+        if key.startswith("_") and key[1:] in reserved_keys:
+            key = key[1:]
+        return key
 
     def _process_value_for_export(self, value, inputs_dir: Path):
         if isinstance(value, str):

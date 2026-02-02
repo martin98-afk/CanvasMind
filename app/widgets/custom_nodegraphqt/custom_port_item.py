@@ -10,6 +10,11 @@ class GlowPortItem(PortItem):
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self._port_painter = None
 
+    def setToolTip(self, tooltip):
+        tooltip = tooltip.replace('\n', '<br/>')
+        tooltip = '<b>{}</b><br/>{}'.format(self._name, tooltip)
+        super(GlowPortItem, self).setToolTip(tooltip)
+
     def set_painter(self, func=None):
         self._port_painter = func
         self.update()
