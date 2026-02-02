@@ -424,15 +424,15 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
     def node(self, node):
         self._node = node
 
-    @AbstractNodeItem.wwidth.setter
-    def wwidth(self, width=0.0):
-        AbstractNodeItem.wwidth.fset(self, width)
+    @AbstractNodeItem.width.setter
+    def width(self, width=0.0):
+        AbstractNodeItem.width.fset(self, width)
         if self._sizer: self._sizer.set_pos(self._width, self._height)
         self.update_layout()
 
-    @AbstractNodeItem.hheight.setter
-    def hheight(self, height=0.0):
-        AbstractNodeItem.hheight.fset(self, height)
+    @AbstractNodeItem.height.setter
+    def height(self, height=0.0):
+        AbstractNodeItem.height.fset(self, height)
         if self._sizer: self._sizer.set_pos(self._width, self._height)
         self.update_layout()
 

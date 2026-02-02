@@ -96,8 +96,8 @@ def patched_properties(self):
     """
     # 注意：你源码中写的是 self.width，这里建议指向 patch 后的 self.wwidth
     props = {
-        'wwidth': self.wwidth,
-        'hheight': self.hheight,
+        'wwidth': self.width,
+        'hheight': self.height,
         'pos': self.xy_pos
     }
     props.update(self._properties)
@@ -114,6 +114,10 @@ def patched_from_dict(self, node_dict):
         if name in node_attrs:
             if name == 'pos':
                 name = 'xy_pos'
+            elif name == "wwidth":
+                name = "width"
+            elif name == "hheight":
+                name = "height"
             setattr(self, name, value)
 
 
@@ -158,15 +162,15 @@ def patch_nodegraphqt():
     NodeModel.set_property = set_property
     # --- 2. 为类注入新的 Property ---
     # 注意：必须在类级别（AbstractNodeItem）赋值，而不是实例级别
-    AbstractNodeItem.wwidth = property(get_wwidth, set_wwidth)
-    AbstractNodeItem.hheight = property(get_hheight, set_hheight)
-    AbstractNodeItem.properties = property(patched_properties)
-    AbstractNodeItem.from_dict = patched_from_dict
-    width_getter = AbstractNodeItem.wwidth.fget
-    height_getter = AbstractNodeItem.hheight.fget
+    # AbstractNodeItem.wwidth = property(get_wwidth, set_wwidth)
+    # AbstractNodeItem.hheight = property(get_hheight, set_hheight)
+    # AbstractNodeItem.properties = property(patched_properties)
+    # AbstractNodeItem.from_dict = patched_from_dict
+    # width_getter = AbstractNodeItem.width.fget
+    # height_getter = AbstractNodeItem.height.fget
 
     # 重新定义 width 和 height 属性
-    BackdropNodeItem.width = property(fget=width_getter, fset=patched_width_setter)
-    BackdropNodeItem.height = property(fget=height_getter, fset=patched_height_setter)
-    NodeItem.width = property(fget=width_getter, fset=patched_width_setter)
-    NodeItem.height = property(fget=height_getter, fset=patched_height_setter)
+    # BackdropNodeItem.width = property(fget=width_getter, fset=patched_width_setter)
+    # BackdropNodeItem.height = property(fget=height_getter, fset=patched_height_setter)
+    # NodeItem.width = property(fget=width_getter, fset=patched_width_setter)
+    # NodeItem.height = property(fget=height_getter, fset=patched_height_setter)
