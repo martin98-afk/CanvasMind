@@ -258,6 +258,8 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         self.value_changed.emit(self.get_name(), self.get_value())
 
     def get_name(self):
+        if self.node and self._name in self.node.model.properties.keys():
+            self._name = f"_{self._name}"
         return self._name
 
     def set_name(self, name):

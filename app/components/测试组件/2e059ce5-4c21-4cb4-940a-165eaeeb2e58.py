@@ -31,6 +31,11 @@ class Component(BaseComponent):
             default="",
             label="属性1",
         ),
+        "width": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="",
+            label="属性2",
+        ),
     }
     def run(self, params, inputs=None):
         """
@@ -38,6 +43,7 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        print(params)
         return {
             "output1": params.prop1
         }

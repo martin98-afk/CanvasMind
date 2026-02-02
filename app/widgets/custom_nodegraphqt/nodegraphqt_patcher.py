@@ -26,6 +26,8 @@ def add_property(self, name, value, items=None, range=None,
     widget_type = widget_type or NodePropWidgetEnum.HIDDEN.value
     tab = tab or 'Properties'
 
+    if name in self.properties.keys():
+        name = f"_{name}"
     if name in self._custom_prop.keys():
         raise NodePropertyError(
             '"{}" property already exists.'.format(name))
