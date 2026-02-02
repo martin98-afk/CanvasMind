@@ -636,6 +636,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
                 logger.info(f"参数: {node_params_evaluated}")
                 output = run_component_in_subprocess(
                     comp_class=n["class"],
+                    node_id=n["persistent_id"],
                     file_path=n["file_path"],
                     params=node_params_evaluated,
                     inputs=node_inputs_evaluated,
@@ -698,8 +699,10 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         is_branch_node = (node_data.get("type_") == "control_flow.ControlFlowBranchNode")
         params = node_data["custom"].get("params", {})
         input_values = node_data["custom"].get("input_values", {})
+        persistent_id = params.get("persistent_id")
         nodes[node_id] = {
             "node_id": node_id,
+            "persistent_id": persistent_id,
             "class": comp_cls,
             "file_path": file_path_comp,
             "name": node_data["name"],
@@ -895,6 +898,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
                     logger.info(f"参数: {node_params_evaluated}")
                     output = run_component_in_subprocess(
                         comp_class=node["class"],
+                        node_id=node["persistent_id"],
                         file_path=node["file_path"],
                         params=node_params_evaluated,
                         inputs=node_inputs_evaluated,

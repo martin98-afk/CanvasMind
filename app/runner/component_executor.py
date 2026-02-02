@@ -16,6 +16,7 @@ from wcwidth import wcswidth
 
 def run_component_in_subprocess(
         comp_class,
+        node_id: str,
         file_path: str,
         params: dict,
         inputs: dict,
@@ -61,7 +62,7 @@ def run_component_in_subprocess(
             sys.path.insert(0, str(dir_path / "component_extensions" / comp_uuid))
 
     ERROR_PATH = temp_script_path / 'run.error'
-    NODE_ID = str(uuid.uuid4())
+    NODE_ID = node_id
     try:
         # === 1. 加载组件类（不变）===
         spec = importlib.util.spec_from_file_location(CLASS_NAME, FILE_PATH)

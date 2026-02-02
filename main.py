@@ -87,7 +87,7 @@ if __name__ == '__main__':
     patch_nodegraphqt()
 
     from app.main_window import LowCodeWindow
-
+    sys.path.append(".")
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
     # load_localization(app)

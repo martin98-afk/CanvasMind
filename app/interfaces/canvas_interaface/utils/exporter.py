@@ -362,7 +362,7 @@ class CanvasExporter:
     def _process_value_for_export(self, value, inputs_dir: Path):
         if isinstance(value, str):
             p = Path(value)
-            if p.is_file():
+            if p.exists():
                 dst = inputs_dir / p.name
                 if not dst.exists():
                     shutil.copy2(p, dst)

@@ -131,11 +131,10 @@ class MessagePusher(BaseComponent):
         import time
         import hmac
         
-        token = config.get("token")
+        webhook = config.get("dd_webhook")
         secret = config.get("secret")
-        if not token: return "Skipped (No Token)"
         
-        url = token if token.startswith("http") else f"https://oapi.dingtalk.com/robot/send?access_token={token}"
+        url = webhook
         if secret:
             ts = str(round(time.time() * 1000))
             string_to_sign = '{}\n{}'.format(ts, secret).encode('utf-8')
@@ -165,10 +164,8 @@ class MessagePusher(BaseComponent):
         import time
         import hmac
         
-        webhook = config.get("webhook")
+        webhook = config.get("fs_webhook")
         secret = config.get("secret")
-        if not webhook: return "Skipped (No Webhook)"
-        
         data = {}
         if img_urls:
             actions = [{"tag": "button", "text": {"tag": "plain_text", "content": f"查看图片 {i+1}"}, "url": u, "type": "primary"} for i, u in enumerate(img_urls) if u]
@@ -227,9 +224,9 @@ class MessagePusher(BaseComponent):
             # 根据字典的 key 特征识别配置类型
             if "owner" in conf and "repo" in conf and "token" in conf:
                 gitee_conf = conf # 找到 Gitee 配置
-            elif "webhook" in conf:
+            elif "fs_webhook" in conf:
                 push_targets.append({"type": "feishu", "config": conf})
-            elif "token" in conf:
+            elif "dd_webhook" in conf:
                 push_targets.append({"type": "dingtalk", "config": conf})
         # 4. 处理内容与图片 (转换为 Bytes)
         extra_text = []
