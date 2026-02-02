@@ -37,14 +37,14 @@ class GalleryImageItem(QtWidgets.QWidget):
 
 
 class ImageGalleryWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
-
+        self.node = node
         # 1. 设置自适应策略 (关键点)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
         self._items = []
-        self._item_w = 150
+        self._item_w = (node and node.get_property("_item_w")) or 150
         self._spacing = 10
 
         # 主布局
@@ -89,6 +89,8 @@ class ImageGalleryWidget(QtWidgets.QWidget):
 
     def _on_slider_changed(self, value):
         self._item_w = value
+        if self.node:
+            self.node.set_property("_item_w", self._item_w)
         self._relayout_gallery()
 
     def resizeEvent(self, event):

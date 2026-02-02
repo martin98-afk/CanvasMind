@@ -21,6 +21,7 @@ class EnvironmentSelector(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.combo = ComboBox()
+        self.combo.setMaxVisibleItems(15)
         self.package_manager = package_manager
         self._env_list = []  # 缓存环境数据
 

@@ -22,8 +22,8 @@ class MessagePusher(BaseComponent):
     requirements = "numpy,pillow,requests"
 
     inputs = [
-        # 必须使用 ANY 类型才能接收 Tensor/Image 对象，否则会被转成字符串
-        PortDefinition(name="trigger", label="触发源/内容 (Any)", type=ArgumentType.TEXT),
+        PortDefinition(name="image", label="推送base64图像", type=ArgumentType.TEXT, connection=ConnectionType.MULTIPLE),
+        PortDefinition(name="message", label="推送消息内容", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
 
     outputs = [
@@ -131,11 +131,10 @@ class MessagePusher(BaseComponent):
         import time
         import hmac
         
-        token = config.get("token")
+        webhook = config.get("dd_webhook")
         secret = config.get("secret")
-        if not token: return "Skipped (No Token)"
         
-        url = token if token.startswith("http") else f"https://oapi.dingtalk.com/robot/send?access_token={token}"
+        url = webhook
         if secret:
             ts = str(round(time.time() * 1000))
             string_to_sign = '{}\n{}'.format(ts, secret).encode('utf-8')
@@ -165,10 +164,8 @@ class MessagePusher(BaseComponent):
         import time
         import hmac
         
-        webhook = config.get("webhook")
+        webhook = config.get("fs_webhook")
         secret = config.get("secret")
-        if not webhook: return "Skipped (No Webhook)"
-        
         data = {}
         if img_urls:
             actions = [{"tag": "button", "text": {"tag": "plain_text", "content": f"查看图片 {i+1}"}, "url": u, "type": "primary"} for i, u in enumerate(img_urls) if u]
@@ -197,9 +194,13 @@ class MessagePusher(BaseComponent):
             return f"Error: {e}"
 
     def run(self, params, inputs=None):
-        trigger = inputs.get("trigger")
+        import json
+        trigger = inputs.get("image")
+        message_content = inputs.get("message")
         title = params.get("title", "通知")
-        content = params.get("content", "")
+        if isinstance(message_content, dict) or isinstance(message_content, list):
+            message_content = json.dumps(message_content, indent=2, ensure_ascii=False)
+        content = params.get("content", "") + "\n\n" + message_content
         
         # 1. 检查触发源
         if not self._has_value(trigger):
@@ -227,41 +228,42 @@ class MessagePusher(BaseComponent):
             # 根据字典的 key 特征识别配置类型
             if "owner" in conf and "repo" in conf and "token" in conf:
                 gitee_conf = conf # 找到 Gitee 配置
-            elif "webhook" in conf:
+            elif "fs_webhook" in conf:
                 push_targets.append({"type": "feishu", "config": conf})
-            elif "token" in conf:
+            elif "dd_webhook" in conf:
                 push_targets.append({"type": "dingtalk", "config": conf})
         # 4. 处理内容与图片 (转换为 Bytes)
         extra_text = []
         image_bytes_list = []
+        img_urls = []
 
-
-        if gitee_conf:
-            self.logger.info(f"Uploading images to Gitee...")
-            url, err = self._upload_gitee(trigger, gitee_conf)
-            if url: 
-                img_urls.append(url)
-            else: 
-                logs.append(f"Gitee Upload Fail: {err}")
-        else:
-            logs.append("Skipped Upload (Images found but no Gitee Config)")
+        for img in trigger:
+            if gitee_conf:
+                self.logger.info(f"Uploading images to Gitee...")
+                url, err = self._upload_gitee(img, gitee_conf)
+                if url: 
+                    img_urls.append(url)
+                else: 
+                    logs.append(f"Gitee Upload Fail: {err}")
+            else:
+                logs.append("Skipped Upload (Images found but no Gitee Config)")
 
         # 6. 遍历所有推送目标进行推送
         if not push_targets:
             logs.append("No valid DingTalk or Feishu configs found.")
-        
+            
         for idx, target in enumerate(push_targets):
             t_type = target["type"]
             t_conf = target["config"]
             res = "Unknown"
             
             if t_type == "dingtalk":
-                res = self._send_dingtalk(t_conf, title, final_content, img_urls)
+                res = self._send_dingtalk(t_conf, title, content, img_urls)
                 logs.append(f"DingTalk[{idx}]: {res}")
             elif t_type == "feishu":
-                res = self._send_feishu(t_conf, title, final_content, img_urls)
+                res = self._send_feishu(t_conf, title, content, img_urls)
                 logs.append(f"Feishu[{idx}]: {res}")
 
-        log_str = " | ".join(logs)
+        log_str = "\n".join(logs)
         self.logger.info(f"Push Result: {log_str}")
         return {"log": log_str}

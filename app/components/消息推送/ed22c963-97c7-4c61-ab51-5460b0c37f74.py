@@ -47,7 +47,7 @@ class DingTalkConfig(BaseComponent):
             return {"status": "Skipped (No Token)"}
 
         config_data = {
-            "webhook": webhook,
+            "fs_webhook": webhook,
             "secret": secret
         }
 

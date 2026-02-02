@@ -490,7 +490,9 @@ class PropertyPanel(QWidget):
         self._allowed_update = allowed
 
     def pop_node_layout(self, key):
-        self._close_card(self._node_panel_cache.pop(key))
+        if key in self._node_panel_cache:
+            self._node_panel_cache[key].closed.disconnect()
+            self._close_card(self._node_panel_cache.pop(key))
 
     def _clear_node_layout(self):
         # 优化销毁逻辑，确保无内存残留，但保留全局变量卡片

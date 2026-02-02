@@ -26,10 +26,10 @@ class DingTalkConfig(BaseComponent):
             default="CM_DINGTALK_CONF",
             label="配置名",
         ),
-        "token": PropertyDefinition(
+        "webhook": PropertyDefinition(
             type=PropertyType.TEXT,
             default="",
-            label="Token/Webhook",
+            label="钉钉机器人Webhook",
         ),
         "secret": PropertyDefinition(
             type=PropertyType.TEXT,
@@ -40,14 +40,14 @@ class DingTalkConfig(BaseComponent):
 
     def run(self, params, inputs=None):
 
-        token = params.get("token", "").strip()
+        token = params.get("webhook", "").strip()
         secret = params.get("secret", "").strip()
 
         if not token:
-            return {"status": "Skipped (No Token)"}
+            return
 
         config_data = {
-            "token": token,
+            "dd_webhook": token,
             "secret": secret
         }
 

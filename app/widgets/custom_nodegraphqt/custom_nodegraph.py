@@ -4,31 +4,25 @@ import json
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
-from NodeGraphQt.base.commands import PortConnectedCmd
 from NodeGraphQt.base.menu import BaseMenu
 from NodeGraphQt.constants import (
     PipeLayoutEnum,
     ViewerEnum,
-    Z_VAL_PIPE, LayoutDirectionEnum, PortTypeEnum,
-)
-from NodeGraphQt.errors import NodeDeletionError
-from NodeGraphQt.nodes.port_node import PortOutputNode, PortInputNode
+    Z_VAL_PIPE, )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
-from NodeGraphQt.widgets.node_graph import SubGraphWidget
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
 from Qt import QtGui, QtCore, QtWidgets
 from loguru import logger
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
-from app.nodes.group_node import GroupPortInputNode, GroupPortOutputNode
 from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json

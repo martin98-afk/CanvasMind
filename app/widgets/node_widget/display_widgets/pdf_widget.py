@@ -17,7 +17,7 @@ except ImportError:
 class PdfWidget(QtWidgets.QWidget):
     sizeHintChanged = QtCore.Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)

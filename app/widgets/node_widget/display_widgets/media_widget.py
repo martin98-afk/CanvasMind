@@ -205,7 +205,7 @@ class AudioPlayWidget(QtWidgets.QWidget):
     EXTS = ['.mp3', '.wav', '.flac', '.m4a', '.ogg']
     fixed_height = True
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
         self._file_path = None
 
@@ -456,7 +456,7 @@ class VideoPlayWidget(QFrame):
     sizeHintChanged = pyqtSignal()
     valueChanged = pyqtSignal(object)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
         # 1. 关键策略：允许在垂直和水平方向无限扩展
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

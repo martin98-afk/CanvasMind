@@ -385,16 +385,20 @@ def create_node_class(full_path, file_path, parent_window=None):
 
             # === 收集参数与输入 (保持原有逻辑) ===
             params = serialize_for_json(self.model._custom_prop)
+            reserved_properties_name = self.model.properties.keys()
             properties = comp_obj.get_properties()
             for prop_name, prop_def in properties.items():
+                prop_ori_name = prop_name
+                if prop_name in reserved_properties_name:
+                    prop_name = f"_{prop_name}"
+                    params.pop(prpo_name)
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 if prop_type == PropertyType.DYNAMICFORM:
                     widget = self.get_widget(prop_name)
-                    params[prop_name] = widget.get_value() if widget else (default or [])
+                    params[prop_ori_name] = widget.get_value() if widget else (default or [])
                 else:
-                    params[prop_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
-
+                    params[prop_ori_name] = self.get_property(prop_name) if self.has_property(prop_name) else default
             gv = GlobalVariableContext()
             gv.deserialize(global_variable)
             inputs_raw = {}

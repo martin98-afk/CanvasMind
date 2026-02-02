@@ -173,7 +173,6 @@ class NodeOperations:
         graph_menu = self.graph.get_context_menu('graph')
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
         graph_menu.add_command('保存工作流', self.parent.save_full_workflow, 'Ctrl+S')
-        graph_menu.add_command("添加注释", lambda: self.create_next_node("general.StickyNote"))
         graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
         graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')
@@ -298,7 +297,7 @@ class NodeOperations:
             node_type = self.parent.node_type_map.get(key)
             node = self.graph.create_node(node_type)
         QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(node))
-        if icon_path.startswith("builtin:\\"):
+        if isinstance(icon_path, str) and icon_path.startswith("builtin:\\"):
             icon_name = icon_path.split('\\')[-1]
             icon_value = getattr(FluentIcon, icon_name).value
             icon_path = f":/qfluentwidgets/images/icons/{icon_value}_{getIconColor(Theme.AUTO)}.svg"

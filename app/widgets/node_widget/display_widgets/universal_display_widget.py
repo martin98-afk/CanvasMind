@@ -22,8 +22,9 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, widget_base=None):
         super().__init__(parent)
+        self.widget_base = widget_base
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
@@ -101,7 +102,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
     def _get_or_create_view(self, strategy_id, widget_class):
         """根据 ID 延迟实例化控件"""
         if strategy_id not in self._view_cache:
-            widget = widget_class(self.parent())
+            widget = widget_class(self.parent(), self.widget_base.node)
             self.stack.addWidget(widget)
             # 统一绑定尺寸变化信号
             if hasattr(widget, 'sizeHintChanged'):
@@ -161,7 +162,7 @@ class UniversalWidgetWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET)
         self.set_name(name)
         self.set_label_visible(False)
-        widget = UniversalDisplayWidget(window)
+        widget = UniversalDisplayWidget(window, self)
         self.set_custom_widget(widget)
 
         widget.valueChanged.connect(self.on_value_changed)

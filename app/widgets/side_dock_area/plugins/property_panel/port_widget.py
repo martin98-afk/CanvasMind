@@ -359,7 +359,7 @@ class PortWidget(QWidget):
         worker = FileCopyWorker(src, dst)
         worker.moveToThread(thread)
 
-        # 【关键代码】：将 worker 显式绑定到 thread 上，防止被垃圾回收
+        # 将 worker 显式绑定到 thread 上，防止被垃圾回收
         thread.worker = worker
 
         # 3. 关联信号

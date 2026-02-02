@@ -111,7 +111,7 @@ class ImageCompareWidget(QtWidgets.QWidget):
     valueChanged = QtCore.pyqtSignal(object)
     sizeHintChanged = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, node=None):
         super().__init__(parent)
         self._image_a = None
         self._image_b = None
