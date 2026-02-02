@@ -412,7 +412,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             new_node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
 
             # 自动连接逻辑：使用缓存的 source_port_item
-            if self.source_port_item:
+            if self.source_port_item and hasattr(self.source_port_item, 'original_node'):
                 source_node = self.source_port_item.original_node
                 if not self._ignore_connection_filter:
                     if self.source_port_item.port_type == 'out':
