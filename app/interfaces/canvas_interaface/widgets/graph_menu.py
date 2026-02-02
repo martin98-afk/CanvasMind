@@ -501,12 +501,12 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         if self.source_port_item.port_type == 'out':
             node_outputs = scanner.get_component_by_uuid(node_uuid).get_outputs()
-            for pname, _, port_type in node_outputs:
+            for pname, _, port_type, _ in node_outputs:
                 if pname == port_name:
                     return 'in', port_type
         else:
             node_inputs = scanner.get_component_by_uuid(node_uuid).get_inputs()
-            for pname, _, _, port_type in node_inputs:
+            for pname, _, _, port_type, _ in node_inputs:
                 if pname == port_name:
                     return 'out', port_type
         return None, None

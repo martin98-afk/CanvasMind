@@ -13,7 +13,7 @@ class ImageWidget(QtWidgets.QWidget):
     valueChanged = QtCore.pyqtSignal(object)
     sizeHintChanged = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None, node=None):
+    def __init__(self, parent=None, node=None, default_image=None):
         super().__init__(parent)
         self._image_data = None
         self._q_image = None
@@ -26,6 +26,8 @@ class ImageWidget(QtWidgets.QWidget):
         self._hint_size = QSize(200, 150)
 
         self.setAttribute(Qt.WA_TranslucentBackground)
+        if default_image:
+            self.set_value(default_image)
 
     def _convert_to_qimage(self, data):
         """保持高质量转换逻辑"""

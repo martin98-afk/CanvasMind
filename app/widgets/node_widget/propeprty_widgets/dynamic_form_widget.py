@@ -286,7 +286,7 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.window = window
         self._name = name
-
+        self.set_label(f"{label}({name})")
         widget = DynamicFormWidget(schema or {}, parent=window, label=label, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
 

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.52b8b645-c29b-46f8-9f34-053b10baa3e0",
+  "uuid": "52b8b645-c29b-46f8-9f34-053b10baa3e0",
+  "name": "ModelSampling SD3",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "基于 DiscreteFlow 针对 SD3/Flux 等模型调整采样 Shift 和 Multiplier 参数。",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-01-30 23:19:05",
+  "author": "black"
+}

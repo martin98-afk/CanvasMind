@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.dd65e537-397e-4947-8de6-4d092fe426ac",
+  "uuid": "dd65e537-397e-4947-8de6-4d092fe426ac",
+  "name": "视频指定帧获取",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "从视频文件中读取指定索引的帧并输出为图像",
+  "category": "图像处理",
+  "updated_at": "2026-01-30 20:58:02",
+  "author": "black"
+}

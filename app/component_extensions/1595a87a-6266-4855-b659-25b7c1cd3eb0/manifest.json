@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.1595a87a-6266-4855-b659-25b7c1cd3eb0",
+  "uuid": "1595a87a-6266-4855-b659-25b7c1cd3eb0",
+  "name": "飞书表格写入",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "向飞书多维表格写入数据，支持自动创建列和上传图片",
+  "category": "消息推送",
+  "updated_at": "2026-02-02 20:37:29",
+  "author": "black"
+}

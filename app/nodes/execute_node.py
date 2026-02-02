@@ -61,12 +61,15 @@ def create_node_class(full_path, file_path, parent_window=None):
             self._set_icon()
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
-            if hasattr(ComponentScanner().get_component_by_uuid(self.uuid), "icon"):
+            comp_class = ComponentScanner().get_component_by_uuid(self.uuid)
+            if hasattr(comp_class, "icon"):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
+
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 组件ui构建
             self._generate_parms_widget()
-            for port_name, label, connection, port_type, description in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
+            for port_name, label, connection, port_type, description in (
+                    ComponentScanner().get_component_by_uuid(self.uuid).get_inputs()):
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 if connection == ConnectionType.SINGLE:
@@ -94,7 +97,8 @@ def create_node_class(full_path, file_path, parent_window=None):
             return self.model.type_.split("StatusDynamicNode_")[1]
 
         def build_outputs(self):
-            for port_name, label, port_type, description in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
+            for port_name, label, port_type, description in (
+                    ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()):
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 self.delete_output(port_name)

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.ed22c963-97c7-4c61-ab51-5460b0c37f74",
+  "uuid": "ed22c963-97c7-4c61-ab51-5460b0c37f74",
+  "name": "飞书配置",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "设置飞书机器人凭证到全局环境",
+  "category": "消息推送",
+  "updated_at": "2026-02-01 15:36:08",
+  "author": "black"
+}

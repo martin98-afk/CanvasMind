@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.1c88d62a-b3b7-4b0f-93b2-395d30418465",
+  "uuid": "1c88d62a-b3b7-4b0f-93b2-395d30418465",
+  "name": "获取导出项目",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "用于获取导出项目",
+  "category": "项目执行",
+  "updated_at": "2026-01-30 19:22:51",
+  "author": "black"
+}

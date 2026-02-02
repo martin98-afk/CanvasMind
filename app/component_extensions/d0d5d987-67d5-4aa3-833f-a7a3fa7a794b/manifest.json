@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
+  "uuid": "d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
+  "name": "图片转base64编码",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将图像对象转换为Base64字符串，支持设置输出格式及压缩质量。",
+  "category": "图像处理",
+  "updated_at": "2026-02-01 16:28:50",
+  "author": "black"
+}

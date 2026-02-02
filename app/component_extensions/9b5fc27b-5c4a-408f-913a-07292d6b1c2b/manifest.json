@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.9b5fc27b-5c4a-408f-913a-07292d6b1c2b",
+  "uuid": "9b5fc27b-5c4a-408f-913a-07292d6b1c2b",
+  "name": "大模型输出解析",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "从大模型输出中提取并解析结构化数据（JSON/Python/XML）",
+  "category": "大模型组件",
+  "updated_at": "2026-01-30 19:13:45",
+  "author": "black"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.ef3a15d7-8e25-4681-9eeb-690f46278f53",
+  "uuid": "ef3a15d7-8e25-4681-9eeb-690f46278f53",
+  "name": "Lora加载器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "加载 Lora 并应用到 Model 和 CLIP",
+  "category": "comfyui节点/模型加载器",
+  "updated_at": "2026-01-31 10:19:42",
+  "author": "black"
+}
