@@ -49,9 +49,9 @@ class Qwen3TTSRoleBank(BaseComponent):
 
     def run(self, params, inputs=None):
         bank = {}
-        for i in range(1, 4):
-            v = inputs.get(f"voice_{i}")
-            name = params.get(f"name_{i}")
-            if v and name:
-                bank[name] = v
+        for role in params.names:
+            var = inputs.voices[role.var[1]]
+            name = role.name
+            if var and name:
+                bank[name] = var
         return {"role_bank": bank}
