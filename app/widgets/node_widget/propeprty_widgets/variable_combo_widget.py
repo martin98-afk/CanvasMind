@@ -147,7 +147,7 @@ class VarComboBoxWidget(QtWidgets.QWidget):
     def _get_node_input_vars(self):
         if not self.main_window or not hasattr(self.parent, "node"): return []
         node = self.parent.node
-        vars_path = [f"input.{p.name()}" for p in node.input_ports()]
+        vars_path = []
         for p in node.input_ports():
             for connected in p.connected_ports():
                 safe_name = connected.node().name().replace(" ", "_")
