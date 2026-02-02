@@ -37,7 +37,7 @@ class ComponentCloudManager:
             logger.error(f"Gitee 获取列表失败: {e}")
             return []
 
-    def add_component(self, comp_id, name, category, description, requirements, version, entry_file, resource_dir):
+    def add_component(self, comp_id, name, category, description, requirements, version, entry_file, resource_dir, extra_data = {}):
         """
         单条添加/备份组件
         :param entry_file: 本地 Python 入口文件路径
@@ -61,7 +61,7 @@ class ComponentCloudManager:
             # 以下是 Adapter 打包 ZIP 必须的文件路径
             "entry_file": entry_file,
             "resource_dir": resource_dir
-        }
+        } | extra_data
 
         try:
             return self.adapter.add(data)

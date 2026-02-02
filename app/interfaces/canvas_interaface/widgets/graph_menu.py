@@ -321,8 +321,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
                         "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower(),
                         "in_port_count": len(node_inputs),
                         "out_port_count": len(node_outputs),
-                        "in_port_types": {port_type for _, _, _, port_type in node_inputs},
-                        "out_port_types": {port_type for _, _, port_type in node_outputs},
+                        "in_port_types": {port_type for _, _, _, port_type, _ in node_inputs},
+                        "out_port_types": {port_type for _, _, port_type, _ in node_outputs},
                     })
                 else:
                     collect_nodes(item)

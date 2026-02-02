@@ -10,6 +10,7 @@ from app.widgets.side_dock_area.plugins.component_info.config_table import Confi
 class PortEditorWidget(ConfigTableSpace):
     def __init__(self, port_type="input", parent=None):
         self.port_type = port_type
+        self.port_description = {}
         labels = ["端口名称", "端口标签", "端口类型", "连接方式"] if port_type == "input" else ["端口名称", "端口标签", "端口类型"]
         super().__init__(column_labels=labels, parent=parent)
 
@@ -76,7 +77,9 @@ class PortEditorWidget(ConfigTableSpace):
         type_val = port_type.value if hasattr(port_type, 'value') else port_type
         type_combo.setCurrentText(type_val)
         self.table.setCellWidget(row, 2, type_combo)
-
+        description = row_data.get("description", "")
+        if description:
+            self.port_description[name] = description
         if self.port_type == "input":
             conn_combo = ComboBox()
             conn_combo.setStyleSheet("border: none; background: transparent; color: white;")
@@ -138,16 +141,19 @@ class PortEditorWidget(ConfigTableSpace):
                 # 确保 serialize 时是字符串
                 port_type = port_type.value if hasattr(port_type, 'value') else port_type
                 connection = connection.value if hasattr(connection, 'value') else connection
-
-            ports.append({
+            port_info = {
                 "name": name,
                 "label": label,
-                "type": port_type,    # ← 这里是 ArgumentType 枚举！
+                "type": port_type,
                 "connection": connection,
-            })
+            }
+            if label in self.port_description:
+                port_info["description"] = self.port_description[label]
+            ports.append(port_info)
         return ports
 
     def set_ports(self, ports):
+        self.port_description.clear()
         self.table.setRowCount(0)
         for port in ports:
             self._add_row_with_data(port)

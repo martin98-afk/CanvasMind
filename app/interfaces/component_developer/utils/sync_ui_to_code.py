@@ -73,7 +73,7 @@ class SyncUItoCode(QObject):
                 finally:
                     self.editor.resume_sync()
         except Exception as e:
-            MessageManager.error(f"同步属性到代码失败: {e}", "", self)
+            MessageManager.error(f"同步属性到代码失败: {e}", "", self.parent)
             
     def _sync_ports_to_code(self):
         try:
@@ -94,7 +94,7 @@ class SyncUItoCode(QObject):
                     self.editor.resume_sync()
         except Exception as e:
             traceback.print_exc()
-            MessageManager.error(f"同步端口到代码失败: {e}", "", self)
+            MessageManager.error(f"同步端口到代码失败: {e}", "", self.parent)
 
     def _update_ports_in_code(self, code, input_ports, output_ports):
         lines = code.split('\n')

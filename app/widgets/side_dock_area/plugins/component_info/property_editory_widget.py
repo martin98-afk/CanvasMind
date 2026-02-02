@@ -21,6 +21,7 @@ class PropertyEditorWidget(ConfigTableSpace):
 
     def __init__(self, parent=None):
         self.parent = parent
+        self.property_descriptions = {}
         self._dynamic_form_schemas = {}
         self._choice_configs = {}
         self._range_configs = {}
@@ -478,10 +479,13 @@ class PropertyEditorWidget(ConfigTableSpace):
                     prop_dict["schema"] = self._dynamic_form_schemas[prop_name]
             if serialize:
                 prop_dict["type"] = prop_type.value
+            if prop_name in self.property_descriptions:
+                prop_dict["description"] = self.property_descriptions[prop_name]
             properties[prop_name] = prop_dict
         return properties
 
     def set_properties(self, properties):
+        self.property_descriptions.clear()
         self.table.setRowCount(0)
         self._dynamic_form_schemas.clear()
         self._range_configs.clear()
@@ -500,6 +504,8 @@ class PropertyEditorWidget(ConfigTableSpace):
                 }
             elif prop_type == PropertyType.CHOICE:
                 self._choice_configs[prop_name] = getattr(prop_def, 'choices', [])
+            if getattr(prop_def, 'description', ""):
+                self.property_descriptions[prop_name] = getattr(prop_def, 'description', 0)
             self._add_property(prop_name, prop_def)
 
     def add_property(self):

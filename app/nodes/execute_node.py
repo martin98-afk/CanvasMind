@@ -66,13 +66,15 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             # 组件ui构建
             self._generate_parms_widget()
-            for port_name, label, connection, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
+            for port_name, label, connection, port_type, description in ComponentScanner().get_component_by_uuid(self.uuid).get_inputs():
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 if connection == ConnectionType.SINGLE:
-                    self.add_input(port_name)
+                    _, port = self.add_input(port_name)
                 else:
-                    self.add_input(port_name, True, painter_func=draw_square_port)
+                    _, port = self.add_input(port_name, True, painter_func=draw_square_port)
+                if description:
+                    port.setToolTip(description)
             QtCore.QTimer.singleShot(0, self.build_outputs)
             # 调试模式信号连接
             self.view.debug_signal.connect(self._toggle_debug_mode)
@@ -92,15 +94,17 @@ def create_node_class(full_path, file_path, parent_window=None):
             return self.model.type_.split("StatusDynamicNode_")[1]
 
         def build_outputs(self):
-            for port_name, label, port_type in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
+            for port_name, label, port_type, description in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs():
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 self.delete_output(port_name)
                 name = re.sub(r'\s+', '_', self.name())
                 if f"{name}__{port_name}" in parent_window.global_variables.node_vars:
-                    self.add_output(port_name, painter_func=draw_special_outputport)
+                    _, port = self.add_output(port_name, painter_func=draw_special_outputport)
                 else:
-                    self.add_output(port_name)
+                    _, port = self.add_output(port_name)
+                if description:
+                    port.setToolTip(description)
 
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)
@@ -216,68 +220,68 @@ def create_node_class(full_path, file_path, parent_window=None):
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 label = prop_def.get("label", prop_name)
+                description = prop_def.get("description", "")
                 if prop_type == PropertyType.BOOL:
-                    self.add_custom_widget(
-                        CheckBoxWidgetWrapper(
-                            parent=self.view, name=prop_name, text=label, state=default, window=parent_window,
-                            z_value=custom_widgets_num - i
-                        ),
-                        tab="properties"
+                    widget = CheckBoxWidgetWrapper(
+                        parent=self.view, name=prop_name, text=label, state=default, window=parent_window,
+                        z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab="properties")
+
                 elif prop_type in (PropertyType.INT, PropertyType.FLOAT):
-                    self.add_custom_widget(
-                        NumberWidgetWrapper(
-                            parent=self.view, name=prop_name, label=label, default=default, window=parent_window,
-                            type=prop_type.name.lower(), z_value=custom_widgets_num - i
-                        ),
-                        tab="properties"
+                    widget = NumberWidgetWrapper(
+                        parent=self.view, name=prop_name, label=label, default=default, window=parent_window,
+                        type=prop_type.name.lower(), z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab="properties")
+
                 elif prop_type == PropertyType.CHOICE:
                     choices = prop_def.get("choices", [])
                     if choices:
-                        self.add_custom_widget(
-                            ComboBoxWidgetWrapper(
-                                parent=self.view, name=prop_name, label=label, items=choices, window=parent_window,
-                                z_value=custom_widgets_num - i
-                            ),
-                            tab="properties"
+                        widget = ComboBoxWidgetWrapper(
+                            parent=self.view, name=prop_name, label=label, items=choices, window=parent_window,
+                            z_value=custom_widgets_num - i
                         )
+                        if description:
+                            widget.setToolTip(description)
+                        self.add_custom_widget(widget, tab="properties")
                         self.set_property(prop_name, default if default in choices else choices[0])
+
                 elif prop_type == PropertyType.LONGTEXT:
                     widget = LongTextWidgetWrapper(
-                        parent=self.view,
-                        name=prop_name,
-                        label=label,
-                        default=default,
-                        window=parent_window,
+                        parent=self.view, name=prop_name, label=label, default=default, window=parent_window,
                         z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
                     self.add_custom_widget(widget, tab='Properties')
+
                 elif prop_type == PropertyType.RANGE:
                     min_val = prop_def.get("min", 0)
                     max_val = prop_def.get("max", 100)
                     step_val = prop_def.get("step", 1)
                     default_val = prop_def.get("default", min_val)
                     widget = RangeWidgetWrapper(
-                        parent=self.view,
-                        name=prop_name,
-                        label=label,
-                        min_val=min_val,
-                        max_val=max_val,
-                        step=step_val,
-                        default=default_val,
-                        window=parent_window,
+                        parent=self.view, name=prop_name, label=label, min_val=min_val, max_val=max_val,
+                        step=step_val, default=default_val, window=parent_window,
                         z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
                     self.add_custom_widget(widget, tab='Properties')
+
                 elif prop_type == PropertyType.DYNAMICTREE:
-                    self.add_custom_widget(
-                        DynamicTreeWidgetWrapper(
-                            parent=self.view, name=prop_name, label=label,window=parent_window,
-                            z_value=custom_widgets_num - i
-                        ),
-                        tab="properties"
+                    widget = DynamicTreeWidgetWrapper(
+                        parent=self.view, name=prop_name, label=label, window=parent_window,
+                        z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab="properties")
 
                 elif prop_type == PropertyType.DYNAMICFORM:
                     raw_schema = prop_def.get("schema", {})
@@ -295,51 +299,41 @@ def create_node_class(full_path, file_path, parent_window=None):
                             "step": field_def.get("step", 1)
                         }
                     widget = DynamicFormWidgetWrapper(
-                        parent=self.view,
-                        name=prop_name,
-                        label=label,
-                        schema=processed_schema,
-                        window=parent_window,
+                        parent=self.view, name=prop_name, label=label, schema=processed_schema,
+                        window=parent_window, z_value=custom_widgets_num - i
+                    )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab='Properties')
+
+                elif prop_type == PropertyType.VARIABLE:
+                    default_val = prop_def.get("default")
+                    widget = VarComboBoxWidgetWrapper(
+                        parent=self.view, name=prop_name, label=label, var_type=default_val or "全局变量",
+                        main_window=parent_window, z_value=custom_widgets_num - i
+                    )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab="properties")
+                    self.set_property(prop_name, "无")
+
+                elif prop_type == PropertyType.FILE:
+                    widget = FileSelectWrapper(
+                        parent=self.view, name=prop_name, label=label, default=default, window=parent_window,
                         z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
                     self.add_custom_widget(widget, tab='Properties')
-                elif prop_type == PropertyType.VARIABLE:  # 新增类型
-                    default_val = prop_def.get("default")
-                    self.add_custom_widget(
-                        VarComboBoxWidgetWrapper(
-                            parent=self.view,
-                            name=prop_name,
-                            label=label,
-                            var_type=default_val or "全局变量",
-                            main_window=parent_window,  # 传入 main_window 引用
-                            z_value=custom_widgets_num - i
-                        ),
-                        tab="properties"
-                    )
-                    self.set_property(prop_name, "无")
-                elif prop_type == PropertyType.FILE:
-                    self.add_custom_widget(
-                        FileSelectWrapper(
-                            parent=self.view,
-                            name=prop_name,
-                            label=label,
-                            default=default,
-                            window=parent_window,
-                            z_value=custom_widgets_num - i
-                        ), tab='Properties'
-                    )
+
                 else:
-                    self.add_custom_widget(
-                        TextWidgetWrapper(
-                            parent=self.view,
-                            name=prop_name,
-                            label=label,
-                            type=prop_type,
-                            default=str(default),
-                            window=parent_window,
-                            z_value=custom_widgets_num - i
-                        ), tab='Properties'
+                    widget = TextWidgetWrapper(
+                        parent=self.view, name=prop_name, label=label, type=prop_type, default=str(default),
+                        window=parent_window, z_value=custom_widgets_num - i
                     )
+                    if description:
+                        widget.setToolTip(description)
+                    self.add_custom_widget(widget, tab='Properties')
 
         def remove_property(self, name):
             self.model._custom_prop.pop(name)
@@ -391,7 +385,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 prop_ori_name = prop_name
                 if prop_name in reserved_properties_name:
                     prop_name = f"_{prop_name}"
-                    params.pop(prpo_name)
+                    params.pop(prop_name)
                 prop_type = prop_def.get("type", PropertyType.TEXT)
                 default = prop_def.get("default", "")
                 if prop_type == PropertyType.DYNAMICFORM:

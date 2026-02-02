@@ -24,7 +24,7 @@ except ImportError:
 class CategoryFilterDialog(QWidget):
     categories_changed = pyqtSignal(set)
 
-    def __init__(self, parent=None, selected_categories=None, direction="auto", max_visible=8):
+    def __init__(self, parent=None, selected_categories=None, direction="auto", max_visible=8, categories=None):
         super().__init__(parent)
         # 窗口标志
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
@@ -40,7 +40,8 @@ class CategoryFilterDialog(QWidget):
 
         self.setFixedWidth(self.WIN_WIDTH)
         self.scanner = ComponentScanner()
-        categories = {path.split("/")[0] for path in self.scanner.get_components()[0].keys()}
+        self.categories = categories
+        categories = categories or {path.split("/")[0] for path in self.scanner.get_components()[0].keys()}
         self.all_categories = categories
         self.selected_categories = set(selected_categories) if selected_categories else set()
         self.checkbox_map = {}
@@ -217,7 +218,7 @@ class CategoryFilterDialog(QWidget):
 
         comp_map, _ = self.scanner.get_components()
         # 获取最新的全部分类并排序
-        new_all_categories = sorted({path.split("/")[0] for path in comp_map.keys()})
+        new_all_categories =  self.categories or sorted({path.split("/")[0] for path in comp_map.keys()})
 
         self.all_categories = set(new_all_categories)
         # 剔除已不存在的分类
