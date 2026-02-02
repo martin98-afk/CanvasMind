@@ -37,7 +37,6 @@ class JsonTreeNode(QtWidgets.QWidget):
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
     sizeChanged = QtCore.Signal()
-    fixed_height = True
 
     TYPES = ["String", "Number", "Boolean", "Object", "Array"]
 
@@ -243,6 +242,7 @@ class JsonTreeNode(QtWidgets.QWidget):
 class JsonTreeWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(object)
     sizeHintChanged = QtCore.Signal()
+    fixed_height = True
 
     def __init__(self, parent=None):
         super(JsonTreeWidget, self).__init__(parent)

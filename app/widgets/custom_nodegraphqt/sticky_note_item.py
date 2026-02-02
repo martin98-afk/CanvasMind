@@ -789,16 +789,16 @@ class StickyNoteItem(BackdropNodeItem):
         self.on_text_block_changed()
         return block
 
-    @AbstractNodeItem.width.setter
+    @AbstractNodeItem.wwidth.setter
     def width(self, width=0.0):
-        AbstractNodeItem.width.fset(self, width)
+        AbstractNodeItem.wwidth.fset(self, width)
         self.prepareGeometryChange()
         self._sizer.set_pos(self._width, self._height)
         self._update_layout()
 
-    @AbstractNodeItem.height.setter
+    @AbstractNodeItem.hheight.setter
     def height(self, height=0.0):
-        AbstractNodeItem.height.fset(self, height)
+        AbstractNodeItem.hheight.fset(self, height)
         self.prepareGeometryChange()
         self._sizer.set_pos(self._width, self._height)
         self._update_layout()

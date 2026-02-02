@@ -514,7 +514,6 @@ class VariableTreeWidget(TreeWidget):
         item = self.itemAt(pos);
         if not item: return
         obj, name = item.data(1, ROLE_RAW_VALUE), item.text(0)
-        print(obj)
         menu = RoundMenu(parent=self)
         menu.addAction(Action(FIF.INFO, "查看详情", triggered=lambda: self._show_detail_popup(item, obj)))
         menu.addAction(Action(FIF.COPY, "复制值", triggered=lambda: QApplication.clipboard().setText(str(obj))))

@@ -31,6 +31,11 @@ class Component(BaseComponent):
             default="",
             label="属性1",
         ),
+        "width": PropertyDefinition(
+            type=PropertyType.MULTILINE,
+            default="",
+            label="属性2",
+        ),
     }
     def run(self, params, inputs=None):
         """
