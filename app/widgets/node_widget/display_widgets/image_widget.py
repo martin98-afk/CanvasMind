@@ -76,7 +76,6 @@ class ImageWidget(QtWidgets.QWidget):
             self._orig_w, self._orig_h = 0, 0
             self._hint_size = QSize(200, 150)
 
-        # 核心：不要用 setFixedSize！
         self.updateGeometry()  # 告诉布局管理器 sizeHint 变了
         self.sizeHintChanged.emit()
         self.update()  # 重新触发重绘
@@ -89,8 +88,8 @@ class ImageWidget(QtWidgets.QWidget):
         painter.setRenderHint(QPainter.TextAntialiasing)
 
         rect = self.rect()
-        # 填充背景（防止缩放时出现残影）
-        painter.fillRect(rect, QColor(30, 30, 30))
+        # # 填充背景（防止缩放时出现残影）
+        # painter.fillRect(rect, QColor(30, 30, 30))
 
         if self._q_image and not self._q_image.isNull():
             # 1. 计算图片显示区域（扣除文字高度）

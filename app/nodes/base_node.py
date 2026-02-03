@@ -149,13 +149,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if PROGRESS_MARKER in line:
                 try:
                     json_str = line.split(PROGRESS_MARKER)[1].strip()
-                    # 使用 orjson 解析或标准 json
-                    data = json.loads(json_str)
-
                     # --- 信号节流：如果数据与上次完全一致，则不发射信号 ---
-                    if data != self._last_intercepted_data:
+                    if json_str != self._last_intercepted_data:
+                        # 使用 orjson 解析或标准 json
+                        data = json.loads(json_str)
                         self.signals.intercepted_msg_signal.emit(data)
-                        self._last_intercepted_data = data
+                        self._last_intercepted_data = json_str
                     continue
                 except Exception as e:
                     logger.error(f"解析拦截消息失败: {e}")

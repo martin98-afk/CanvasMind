@@ -594,7 +594,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 1. 准备远程目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-                ssh.exec_command(f"rm -f {log_path}")  # 强制删除远程旧日志
+                ssh.exec_command(f"rm -f {log_path}| touch {log_path}")  # 强制删除远程旧日志
                 # 2. 生成执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name=comp_obj.__name__,
