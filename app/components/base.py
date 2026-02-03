@@ -499,7 +499,7 @@ class GlobalVariableContext(BaseModel):
         # 临时inputs解析
         inputs_data = data.get("inputs", {})
         for k, v in inputs_data.items():
-            self.input[k] = NodeVariable(value=v)
+            self.input[k.split(".")[1]] = NodeVariable(value=v)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
@@ -1416,7 +1416,9 @@ class BaseComponent(ABC):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             try:
                 # 获取原始值
+                print(value)
                 resolved = self.global_variable.get(value)
+                print(resolved)
                 # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
                 if prop_type == PropertyType.INT:
                     # 先转 float 再转 int，处理变量里存了 "1.0" 的情况

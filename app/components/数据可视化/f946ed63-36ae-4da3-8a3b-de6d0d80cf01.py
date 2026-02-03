@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -42,7 +42,7 @@ class Component(BaseComponent):
             default="",
             label="图表标题",
         ),
-        "widt": PropertyDefinition(
+        "width": PropertyDefinition(
             type=PropertyType.RANGE,
             default="700.0",
             label="宽",
@@ -50,7 +50,7 @@ class Component(BaseComponent):
             max=1000.0,
             step=50.0,
         ),
-        "heigh": PropertyDefinition(
+        "height": PropertyDefinition(
             type=PropertyType.RANGE,
             default="500.0",
             label="高",
@@ -83,8 +83,8 @@ class Component(BaseComponent):
         chart_type = params.get("chart_type", "bar")
         title = params.get("title", "ECharts 图表")
         try:
-            width = int(params.get("widt", "700"))
-            height = int(params.get("heigh", "500"))
+            width = int(params.get("width", "700"))
+            height = int(params.get("height", "500"))
         except (ValueError, TypeError):
             width, height = 700, 500
 

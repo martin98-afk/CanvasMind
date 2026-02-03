@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "为 Wan (2.0/2.1) 模型准备图生视频条件。自动补齐 Latent 时间轴并生成对应掩码。",
   "category": "comfyui节点/视频生成",
-  "updated_at": "2026-01-31 11:28:32",
+  "updated_at": "2026-02-03 22:05:40",
   "author": "black"
 }
