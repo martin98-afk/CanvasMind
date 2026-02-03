@@ -2,6 +2,7 @@
 from Qt import QtWidgets, QtCore, QtGui
 from qfluentwidgets import FluentIcon, TransparentPushButton, TransparentToolButton, LineEdit, SwitchButton
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 
@@ -40,9 +41,11 @@ class JsonTreeNode(QtWidgets.QWidget):
 
     TYPES = ["String", "Number", "Boolean", "Object", "Array"]
 
-    def __init__(self, parent=None, level=0, is_array_item=False):
+    def __init__(self, parent=None, level=0, is_array_item=False, get_port_func=None):
         super(JsonTreeNode, self).__init__(parent)
         self.level = level
+        self.parent = parent
+        self.get_port_func = get_port_func
         self.is_array_item = is_array_item
         self.child_nodes = []
         self.is_expanded = True
@@ -73,7 +76,10 @@ class JsonTreeNode(QtWidgets.QWidget):
             row_layout.addWidget(self.key_label)
             self.key_edit = None
         else:
-            self.key_edit = LineEdit(self)
+            self.key_edit = VariableCompletionLineEdit(
+                get_variable_list_func=lambda func=self.get_port_func: gv.get_vars(func()) if gv else [],
+                use_qcursor=False, parent=self.parent
+            )
             self.key_edit.setPlaceholderText("Key")
             self.key_edit.setMinimumWidth(100)
             self.key_edit.setMaximumWidth(200)
@@ -89,8 +95,11 @@ class JsonTreeNode(QtWidgets.QWidget):
         # 4. Value 编辑区域
         self.value_stack = QtWidgets.QStackedWidget()
         self.value_stack.setFixedHeight(32)
-
-        self.val_edit = LineEdit()
+        gv = getattr(self.parent, 'global_variables', None)
+        self.val_edit = VariableCompletionLineEdit(
+            get_variable_list_func=lambda func=self.get_port_func: gv.get_vars(func()) if gv else [],
+            use_qcursor=False, parent=self.parent
+        )
         self.val_edit.setMinimumWidth(150)
         self.val_edit.setPlaceholderText("Value")
         self.val_edit.textChanged.connect(lambda: self.changed.emit())
@@ -159,7 +168,9 @@ class JsonTreeNode(QtWidgets.QWidget):
 
     def add_child(self, key="", value=None):
         is_parent_array = self.type_combo.currentText() == "Array"
-        child = JsonTreeNode(parent=self, level=self.level + 1, is_array_item=is_parent_array)
+        child = JsonTreeNode(
+            parent=self, level=self.level + 1, is_array_item=is_parent_array, get_port_func=self.get_port_func
+        )
 
         if key and not is_parent_array:
             child.key_edit.setText(str(key))
@@ -244,8 +255,9 @@ class JsonTreeWidget(QtWidgets.QWidget):
     sizeHintChanged = QtCore.Signal()
     fixed_height = True
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, get_port_func=None):
         super(JsonTreeWidget, self).__init__(parent)
+        self.get_port_func = get_port_func
         self.main_window = parent
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(2, 2, 2, 2)
@@ -266,7 +278,7 @@ class JsonTreeWidget(QtWidgets.QWidget):
         self.root_nodes = []
 
     def add_root(self, key="", value=None):
-        node = JsonTreeNode(level=0)
+        node = JsonTreeNode(parent=self.main_window, level=0, get_port_func=self.get_port_func)
         if key: node.key_edit.setText(key)
         if value is not None: node.set_value(value)
 
@@ -328,7 +340,7 @@ class DynamicTreeWidgetWrapper(CustomNodeBaseWidget):
         super(DynamicTreeWidgetWrapper, self).__init__(parent, name, label)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_label(f"{label}({name})")
-        self.tree_widget = JsonTreeWidget(window)
+        self.tree_widget = JsonTreeWidget(window, get_port_func=self.get_port_func)
         self.set_custom_widget(self.tree_widget)
 
         self.tree_widget.sizeHintChanged.connect(self._sync_node_geometry)

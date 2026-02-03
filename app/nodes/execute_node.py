@@ -496,6 +496,18 @@ def create_node_class(full_path, file_path, parent_window=None):
                                               kernel_manager)
                 else:
                     self._execute_via_subprocess(python_exe, local_script_path, log_file_path, check_cancel)
+            # 捕获执行过快循环内没来的及捕获的日志
+            try:
+                if os.path.exists(log_file_path):
+                    with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
+                        lf.seek(self.last_log_pos)
+                        new_content = lf.read()
+                        if new_content:
+                            self._log_message(self.persistent_id, new_content)
+                            self.last_log_pos = lf.tell()
+            except:
+                pass
+
             try:
                 # === 结果读取重试机制 ===
                 max_wait_time = 3.0  # 最大等待3秒
@@ -546,19 +558,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                     raise Exception(f"节点运行结束(超时)，{last_error}")
 
             finally:
-                # === 后续处理结果 (通用) ===
-                # 在删除目录前，务必先处理日志，确保最后一段日志被抓取
-                try:
-                    if os.path.exists(log_file_path):
-                        with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as lf:
-                            lf.seek(self.last_log_pos)
-                            new_content = lf.read()
-                            if new_content:
-                                self._log_message(self.persistent_id, new_content)
-                                self.last_log_pos = lf.tell()
-                except:
-                    pass
-
                 # 最后删除临时运行目录
                 # 如果在高并发下这里报错，可以加一个小延迟
                 shutil.rmtree(run_dir, ignore_errors=True)

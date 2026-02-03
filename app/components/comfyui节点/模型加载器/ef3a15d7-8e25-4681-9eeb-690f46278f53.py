@@ -15,8 +15,25 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
+# -*- coding: utf-8 -*-
+import importlib.util
+from pathlib import Path
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
+spec = importlib.util.spec_from_file_location("base", str(base_path))
+base_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(base_module)
+
+# 导入所需项目
+BaseComponent = base_module.BaseComponent
+PortDefinition = base_module.PortDefinition
+PropertyDefinition = base_module.PropertyDefinition
+PropertyType = base_module.PropertyType
+ArgumentType = base_module.ArgumentType
+ConnectionType = base_module.ConnectionType
+
+
 class ComfyLoraLoader(BaseComponent):
-    requirements = "torch,#comfy,#nodes"
+    requirements = "torch,#comfy,#nodes,folder_paths"
     name = "Lora加载器"
     category = "comfyui节点/模型加载器"
     description = "加载 Lora 并应用到 Model 和 CLIP"
@@ -80,8 +97,7 @@ class ComfyLoraLoader(BaseComponent):
             "model": model,
             "clip": clip
         }
-
-        folder_paths.add_model_folder_path("loras", os.path.dirname(lora_name))
+        folder_paths.add_model_folder_path("loras", os.path.dirname(os.path.abspath(lora_name)))
         lora = comfy.utils.load_torch_file(lora_name, safe_load=True)
         model_lora, clip_lora = comfy.sd.load_lora_for_models(
             model, clip, lora, strength_model, strength_clip

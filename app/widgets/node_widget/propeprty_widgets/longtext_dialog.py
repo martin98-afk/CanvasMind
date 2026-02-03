@@ -4,7 +4,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, LineEdit, TextEdit, TransparentToolButton
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit, VariableCompletionLineEdit
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
@@ -19,13 +19,10 @@ class LongTextEditorDialog(MessageBoxBase):
         if not self.main_window:
             return []
         global_vars = getattr(self.main_window, 'global_variables', None)
-        if global_vars is not None and hasattr(global_vars, 'get_vars'):
-            self.text_edit = VariableCompletionTextEdit(
-                get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()),
-                parent=self
-            )
-        else:
-            self.text_edit = TextEdit()
+        self.text_edit = VariableCompletionTextEdit(
+            get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()),
+            parent=self
+        )
         self.text_edit.setPlainText(content)
         self.text_edit.setMinimumSize(700, 500)
 
@@ -49,7 +46,11 @@ class LongTextWidget(QtWidgets.QWidget):
         self.main_window = parent
         self._text = default_text
         self.get_port_func = get_port_func
-        self.summary_label = LineEdit()
+        global_vars = getattr(self.main_window, 'global_variables', None)
+        self.summary_label = VariableCompletionLineEdit(
+            get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
+            use_qcursor=False, parent=self
+        )
         self.summary_label.setText(self._get_summary())
         self.summary_label.setReadOnly(True)
 
