@@ -1504,9 +1504,6 @@ class BaseComponent(ABC):
 
             return stored_result
 
-        except ImportError as e:
-            raise ComponentError(f"环境安装包缺失: {e}", "MISSING_DEPENDENCY")
-
         except Exception as e:
             raise ComponentError(f"组件执行失败: {traceback.format_exc()}", "EXECUTION_ERROR")
 

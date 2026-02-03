@@ -607,8 +607,7 @@ def create_dynamic_code_node(parent_window=None):
                 sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
                 sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
                 sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
-                if os.path.exists(log_file_path):
-                    sftp.put(log_file_path, log_path)
+                ssh.exec_command(f"rm -f {log_path}| touch {log_path}")  # 强制删除远程旧日志
                 # 3. 生成适合远程的执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name="DynamicComponent",

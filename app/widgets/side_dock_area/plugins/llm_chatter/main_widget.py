@@ -18,13 +18,13 @@ from qfluentwidgets import (
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.plugins.llm_chatter.chat_session import SessionManager
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextSelector
-from app.widgets.side_dock_area.plugins.llm_chatter.history_manager import HistoryManager
-from app.widgets.side_dock_area.plugins.llm_chatter.llm_config_popup import LLMConfigPopup
-from app.widgets.side_dock_area.plugins.llm_chatter.message_card import MessageCard, create_welcome_card
-from app.widgets.side_dock_area.plugins.llm_chatter.bottom_input_area import SendableTextEdit
-from app.widgets.side_dock_area.plugins.llm_chatter.worker import OpenAIChatWorker, TitleGenerationTask
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import SessionManager
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextSelector
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import HistoryManager
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import LLMConfigPopup
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import MessageCard, create_welcome_card
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import SendableTextEdit
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker, TitleGenerationTask
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
