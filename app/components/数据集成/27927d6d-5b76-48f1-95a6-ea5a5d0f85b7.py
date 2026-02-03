@@ -34,4 +34,4 @@ class Component(BaseComponent):
                 method="display_image",
                 params={"file": {"data": file_path}}
             )
-        return {"file": "upload_file_placeholder"}
+        return {"file": file_path}

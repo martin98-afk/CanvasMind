@@ -1,7 +1,5 @@
-from PyQt5.QtCore import QTimer
-
 from app.interfaces.component_developer.constants import LLM_CODE_CONTEXT
-from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextRegistry
 
 
 class LLMContextProvider:

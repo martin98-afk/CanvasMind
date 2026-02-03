@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "使用 ComfyUI 后端加载 Checkpoint (.safetensors/.ckpt)",
   "category": "comfyui节点/模型加载器",
-  "main": "main.py",
-  "updated_at": "2026-01-26 19:10:41",
+  "updated_at": "2026-02-03 23:07:26",
   "author": "black"
 }

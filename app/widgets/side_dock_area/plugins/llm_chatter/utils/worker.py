@@ -25,7 +25,7 @@ class TitleGenerationTask(QRunnable):
             for msg in self.messages_for_summary[-4:]:
                 content = msg["content"]
                 if isinstance(content, list):
-                    texts = [item.get("text", "") for item in conteTnt if item.get("type") == "text"]
+                    texts = [item.get("text", "") for item in content if item.get("type") == "text"]
                     content = "\n".join(texts)
                 role = "用户" if msg["role"] == "user" else "助手"
                 summary_text += f"{role}：{content}\n"

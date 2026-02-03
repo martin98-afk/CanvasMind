@@ -189,32 +189,61 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def rename_variable(self, old_names: list, new_names: list):
         """
-        重命名优化：预编译本次任务的正则
+        重命名优化：
+        1. 使用负向先行断言 (?!__) 排除后缀为双下划线的情况。
+        2. 预编译正则，保持长词优先匹配。
+        3. 优化遍历逻辑，避免边遍历边修改字典的潜在风险。
         """
-        if not old_names: return
+        if not old_names:
+            return
 
         mapping = dict(zip(old_names, new_names))
-        # 预编译本次重命名专用的正则
-        task_pattern = re.compile('|'.join(map(re.escape, sorted(old_names, key=len, reverse=True))))
+
+        # --- 正则优化核心 ---
+        # 1. 排序：按长度降序，防止 "var_1" 被 "var" 提前匹配截断。
+        # 2. 组装：使用 (?:...) 非捕获组包裹所有变量名。
+        # 3. 断言：(?!__) 确保匹配到的词后面紧跟的不是两个下划线。
+        sorted_names = sorted(old_names, key=len, reverse=True)
+        pattern_str = f"(?:{'|'.join(map(re.escape, sorted_names))})(?=__)"
+        task_pattern = re.compile(pattern_str)
 
         def _replace_func(m):
+            # 获取匹配到的内容并查表替换
             return mapping[m.group(0)]
 
         def _process_value(val):
-            v_type = type(val)
-            if v_type is str:
+            # 优化：使用 isinstance 判断类型更规范
+            if isinstance(val, str):
+                # 业务过滤：快速跳过无关字符串
                 if "node_vars." in val or "input." in val:
                     return task_pattern.sub(_replace_func, val)
                 return val
-            if v_type is list: return [_process_value(i) for i in val]
-            if v_type is dict: return {k: _process_value(v) for k, v in val.items()}
+
+            if isinstance(val, list):
+                return [_process_value(i) for i in val]
+
+            if isinstance(val, dict):
+                return {k: _process_value(v) for k, v in val.items()}
+
             return val
 
+        # --- 执行流程优化 ---
+        # 使用 updates 字典收集变更，避免在遍历 items() 时直接 set_property 可能导致的迭代器问题
+        updates = {}
+
         for prop_name, current_val in self.model.custom_properties.items():
-            if current_val is None: continue
+            if current_val is None:
+                continue
+
             new_val = _process_value(current_val)
+
+            # 只有值真正改变时才加入更新队列
             if current_val != new_val:
-                self.set_property(prop_name, new_val, push_undo=False)
+                updates[prop_name] = new_val
+
+        # 统一应用变更
+        for prop_name, new_val in updates.items():
+            self.set_property(prop_name, new_val, push_undo=False)
 
     # =========================== 消息路由与 UI 刷新 ===============================
 

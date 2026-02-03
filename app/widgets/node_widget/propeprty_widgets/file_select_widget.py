@@ -6,6 +6,7 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import LineEdit, TransparentToolButton
 
 from app.utils.utils import get_icon
+from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
 from app.widgets.dialog_widget.ssh_remote_file_dialog import SSHRemoteFileDialog
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
@@ -15,7 +16,7 @@ class FileSelectWidget(QtWidgets.QWidget):
     valueChanged = QtCore.Signal(str)
     fixed_height = True
 
-    def __init__(self, parent=None, default_ext=""):
+    def __init__(self, parent=None, default_ext="", get_port_func=None):
         super().__init__(parent)
         self.main_window = parent
         self._path = ""
@@ -30,8 +31,11 @@ class FileSelectWidget(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-
-        self.path_edit = LineEdit(parent=self)
+        gv = getattr(parent, 'global_variables', None)
+        self.path_edit = VariableCompletionLineEdit(
+            get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
+            use_qcursor=False, parent=parent
+        )
         self.path_edit.textChanged.connect(self._on_text_changed)
         self.path_edit.setMinimumWidth(180)
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
@@ -131,6 +135,7 @@ class FileSelectWrapper(CustomNodeBaseWidget):
         widget = FileSelectWidget(
             parent=window,
             default_ext=default,
+            get_port_func=self.get_port_func
         )
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

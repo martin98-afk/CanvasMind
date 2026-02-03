@@ -1,0 +1,71 @@
+/* 全局背景与文字 */
+QWidget {
+    background-color: transparent;
+    color: #d4d4d4;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 12px;
+}
+
+/* --- 滑块样式 (QSlider) --- */
+QSlider::groove:horizontal {
+    border: 1px solid #303030;
+    height: 4px; /* 轨道细一点，显得精致 */
+    background: #252526;
+    margin: 0px;
+    border-radius: 2px;
+}
+
+/* 滑块手柄 */
+QSlider::handle:horizontal {
+    background: #c5c5c5;
+    border: 1px solid #c5c5c5;
+    width: 10px;
+    height: 10px;
+    margin: -4px 0; /* 垂直居中，(轨道高度4 - 手柄高度10) / 2 = -3，微调为-4 */
+    border-radius: 5px; /* 变成圆形 */
+}
+
+/* 鼠标悬停手柄变亮 */
+QSlider::handle:horizontal:hover {
+    background: #ffffff;
+    border-color: #ffffff;
+}
+
+/* 鼠标按下手柄 */
+QSlider::handle:horizontal:pressed {
+    background: #e0e0e0;
+}
+
+/* 已划过的区域 (高亮条) */
+QSlider::sub-page:horizontal {
+    background: #007acc; /* 经典的 VS Code 蓝 */
+    border-radius: 2px;
+}
+
+/* 未划过的区域 (Add-page) */
+QSlider::add-page:horizontal {
+    background: #333333;
+    border-radius: 2px;
+}
+
+/* --- 输入框样式 (QLineEdit) --- */
+QLineEdit {
+    background-color: #1e1e1e; /* 深色背景 */
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    color: #cccccc;
+    padding: 1px 4px;
+    font-family: "Consolas", "JetBrains Mono", monospace; /* 数字用等宽字体更专业 */
+    selection-background-color: #094771;
+}
+
+/* 输入框聚焦时 */
+QLineEdit:focus {
+    border: 1px solid #007acc; /* 聚焦变蓝 */
+    background-color: #000000;
+}
+
+/* 鼠标悬停输入框 */
+QLineEdit:hover:!focus {
+    border: 1px solid #505050;
+}

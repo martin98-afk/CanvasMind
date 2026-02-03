@@ -1,52 +1,67 @@
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
-from PyQt5.QtGui import QFont
-from Qt import QtWidgets, QtCore
-from qfluentwidgets import CheckBox, SwitchButton, BodyLabel  # 使用 Fluent Design 风格的 CheckBox
+from PyQt5.QtCore import pyqtSignal
+from Qt import QtWidgets
 
-from app.utils.config import Settings
-from app.utils.utils import str_to_bool
+from app.widgets.basic_widget.switch import ModernSwitch
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
 class CheckBoxWidget(QtWidgets.QWidget):
-    """节点内显示：复选框"""
-    valueChanged = QtCore.Signal(bool)
+    """节点内显示：复选框包装容器"""
+    valueChanged = pyqtSignal(bool)
     fixed_height = True
 
     def __init__(self, text="", state=False, parent=None):
         super().__init__(parent)
-        self.main_window = parent
-        self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
-        label = BodyLabel(text)
-        label.setFont(QFont(Settings.get_instance().canvas_font_type.value))
-        label.setStyleSheet("color: rgba(170, 170, 170, 255);")
-        self.checkbox = SwitchButton("")
-        self.checkbox.setFixedHeight(32)
-        self.checkbox._offText = self.checkbox.tr("")
-        self.checkbox._onText = self.checkbox.tr("")
-        self.checkbox.setChecked(self._value)
-        self.checkbox.checkedChanged.connect(self._on_state_changed)
+        self._value = state if isinstance(state, bool) else str(state).lower() in ("true", "1")
 
+        # 现代化文字标签
+        self.label = QtWidgets.QLabel(text)
+        # 字体可以根据你的 Settings 类调整，这里使用默认系统字体演示
+        self.label.setStyleSheet("""
+            QLabel {
+                color: #BBBBBB; 
+                font-family: 'Segoe UI', 'Microsoft YaHei';
+                font-size: 13px;
+            }
+        """)
+
+        # 替换为自定义的原生 ModernSwitch
+        self.checkbox = ModernSwitch()
+        self.checkbox.setChecked(self._value)
+        # 初始化滑块位置，防止初次显示没动画时位置不对
+        self.checkbox._handle_position = (self.checkbox.width() - self.checkbox.height() + 2) if self._value else 2
+
+        self.checkbox.stateChanged.connect(self._on_state_changed)
+
+        # 布局调整
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(label)
+        layout.setContentsMargins(10, 5, 10, 5)  # 适当增加边距更有“呼吸感”
+        layout.setSpacing(10)
+        layout.addWidget(self.label)
         layout.addStretch(1)
         layout.addWidget(self.checkbox)
 
     def _on_state_changed(self, state):
-        # Qt 的 state 是 int（0/2），但我们转为 bool
-        if state != self._value:
-            self._value = state
+        # state: 0 (Unchecked), 2 (Checked)
+        new_val = state == 2
+        if new_val != self._value:
+            self._value = new_val
             self.valueChanged.emit(self._value)
 
     def get_value(self):
         return self._value
 
     def set_value(self, value):
-        value = str_to_bool(value)
+        if isinstance(value, str):
+            value = value.lower() in ("true", "1")
+
         if value != self._value:
             self._value = value
             self.checkbox.setChecked(value)
+            # 手动更新滑块位置（用于非点击触发的状态变更）
+            end_pos = self.checkbox.width() - self.checkbox.height() + 2 if value else 2
+            self.checkbox.handle_position = end_pos
 
 
 class CheckBoxWidgetWrapper(CustomNodeBaseWidget):

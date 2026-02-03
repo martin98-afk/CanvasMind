@@ -62,10 +62,8 @@ class WanTextToImageComponent(BaseComponent):
 
     def run(self, params, inputs=None):
         import requests
-        import json
         import io
         from PIL import Image
-        import numpy as np
         # 1. 获取参数和输入
         api_key = params.get("api_key")
         if not api_key:

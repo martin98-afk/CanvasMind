@@ -116,7 +116,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             else:
                 widget = VariableCompletionLineEdit(
                     get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
-                    use_qcursor=True, parent=self.home
+                    use_qcursor=False, parent=self.home
                 )
                 widget.setPlaceholderText(label)
                 widget.setText(str(default))
@@ -310,16 +310,6 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         view.prepareGeometryChange()
         view.draw_node()
         view.update()
-
-    def get_port_func(self):
-        if not self.node:
-            return []
-        vars_path = [f"input.{p.name()}" for p in self.node.input_ports()]
-        for p in self.node.input_ports():
-            for connected in p.connected_ports():
-                safe_name = connected.node().name().replace(" ", "_")
-                vars_path.append(f"input.{safe_name}__{connected.name()}")
-        return vars_path
 
     def get_value(self):
         return self.get_custom_widget().get_value()

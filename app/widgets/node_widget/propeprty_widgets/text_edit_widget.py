@@ -18,7 +18,7 @@ class TextWidget(QtWidgets.QWidget):
         if type.value == "多行文本":
             self.summary_label = VariableCompletionTextEdit(
                 get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
-                use_qcursor=True, parent=self
+                use_qcursor=False, parent=self
             )
             self.summary_label.textChanged.connect(lambda: self._on_text_changed(self.summary_label.toPlainText()))
             self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -27,7 +27,7 @@ class TextWidget(QtWidgets.QWidget):
             self.fixed_height = True
             self.summary_label = VariableCompletionLineEdit(
                 get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()),
-                use_qcursor=True, parent=self
+                use_qcursor=False, parent=self
             )
             self.summary_label.textChanged.connect(self._on_text_changed)
         self.summary_label.setText(default_text)
@@ -66,16 +66,6 @@ class TextWidgetWrapper(CustomNodeBaseWidget):
         widget = TextWidget(default_text=default, type=type, parent=window, get_port_func=self.get_port_func)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
-
-    def get_port_func(self):
-        vars = [f"input.{port.name()}" for port in self.node.input_ports()]
-        for port in self.node.input_ports():
-            connected_ports = port.connected_ports()
-            for connected_port in connected_ports:
-                safe_name = connected_port.node().name().replace(" ", "_")
-                vars.append(f"input.{safe_name}__{connected_port.name()}")
-
-        return vars
 
     def get_value(self):
         return self.get_custom_widget().get_value()

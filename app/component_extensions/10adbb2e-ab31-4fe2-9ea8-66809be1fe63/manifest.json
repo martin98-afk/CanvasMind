@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "使用微软Edge TTS将文本转换为语音，并保存为本地音频文件",
   "category": "语音处理",
-  "main": "main.py",
-  "updated_at": "2026-01-25 16:26:17",
+  "updated_at": "2026-02-03 19:49:00",
   "author": "black"
 }

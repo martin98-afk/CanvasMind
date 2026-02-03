@@ -26,7 +26,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleC
 
 # 可选：如果你的项目有 ContextRegistry，保留；否则注释
 try:
-    from app.widgets.side_dock_area.plugins.llm_chatter.context_selector import ContextRegistry
+    from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextRegistry
 except ImportError:
     ContextRegistry = None
 
