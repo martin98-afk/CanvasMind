@@ -114,7 +114,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.set_port_deletion_allowed(True)
             # 1. 记录当前所有输出端口的连线状态：{port_name: [connected_downstream_ports]}
             expected_names = [
-                port_name for port_name, _, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()
+                port_name for port_name, _, _, _ in ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()
             ]
             current_connections = {}
             for port in self.output_ports():

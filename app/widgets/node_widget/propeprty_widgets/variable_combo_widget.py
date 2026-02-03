@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
 from Qt import QtWidgets, QtCore
+from loguru import logger
 
 from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.widgets.basic_widget.combo_widget import CustomComboBox
@@ -110,10 +111,10 @@ class VarComboBoxWidget(QtWidgets.QWidget):
             all_vars = get_vars_func()
             if all_vars:
                 # 过滤并排序，保证显示整齐
-                unique_vars = sorted(list(set(all_vars)))
+                unique_vars = list(set(all_vars))
                 self.combobox.addItems(unique_vars)
         except Exception as e:
-            print(f"Refresh options error: {e}")
+            logger.exception(f"Refresh options error: {e}")
 
         # 尝试恢复之前选中的值
         if current_value:
@@ -157,12 +158,12 @@ class VarComboBoxWidget(QtWidgets.QWidget):
     def _get_exported_project_vars(self):
         page = self.main_window.parent.project_manager
         paths = getattr(page, '_known_projects', set())
-        return sorted(list(paths))
+        return list(paths)
 
     def _get_running_service_vars(self):
         page = self.main_window.parent.project_manager
         known = getattr(page, '_known_projects', set())
-        return sorted([p for p in known if SERVICE_MANAGER.is_running(p)])
+        return [p for p in known if SERVICE_MANAGER.is_running(p)]
 
     def on_variable_changed(self, var_name=None, operation=None):
         """保留原有的信号触发逻辑，用于即时响应 UI 变化"""

@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "接收本地上传文件",
   "category": "数据集成",
-  "main": "main.py",
-  "updated_at": "2026-01-25 12:17:15",
+  "updated_at": "2026-02-03 17:27:16",
   "author": "black"
 }
