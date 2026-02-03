@@ -280,7 +280,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if not should_display:
                 self._remove_inline_widget(port_name)
                 continue
-
             plugin = self.plugin_manager.get_plugin(plugin_type)
             if plugin:
                 data = self._output_values.get(port_name)
@@ -329,7 +328,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.view.set_proxy_mode(False)
         self.add_custom_widget(widget, tab=tab)
         self._inline_widgets[key] = widget
-        self.view.draw_node()
 
     def _remove_inline_widget(self, port_name):
         suffix = f"_{port_name}"
@@ -337,13 +335,10 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if k.endswith(suffix):
                 w = self._inline_widgets.pop(k)
                 self.view.remove_widget(w)
-                w.deleteLater()  # 显式释放
 
     def hide_inline_widgets(self):
         """隐藏指定类型的动态控件"""
         if self._inline_widgets:
             for w in self._inline_widgets.values():
                 self.view.remove_widget(w)
-                w.deleteLater()
             self._inline_widgets.clear()
-            self.view.draw_node()
