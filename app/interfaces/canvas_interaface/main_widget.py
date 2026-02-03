@@ -55,15 +55,15 @@ class CanvasPage(QWidget):
         self.ui_manager.setup_ui()
 
         # 节点注册
-        # 1. 节点操作与注册 (扫描组件是耗时的)
+        # 1. 节点操作与注册
         self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine,
                                               QThreadPool.globalInstance())
-        # 异步注册或分批注册节点（如果节点非常多）
+        # 异步注册或分批注册节点
         self.node_operations.register_components()
         self.canvas_widget = self.graph.viewer()
         self.canvas_widget.setStyleSheet("QWidget {border: none;}")
 
-        # 全局变量与基础 IO 工具（加载文件必须）
+        # 全局变量与基础 IO 工具
         self.global_variables = GlobalVariableContext() # 画布全局变量
         self.canvas_io = CanvasIO(self.graph, self.global_variables, self)
 

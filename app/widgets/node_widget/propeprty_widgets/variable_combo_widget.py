@@ -190,15 +190,19 @@ class VarComboBoxWidget(QtWidgets.QWidget):
     def get_value(self):
         return self._value
 
+    def currentText(self):
+        return self.combobox.currentText()
+
     def set_value(self, value):
         self._value = value or ""
-        self.combobox.blockSignals(True)
-        idx = self.combobox.findText(self._value)
-        if idx == -1 and self._value:
-            self.combobox.addItem(self._value)
-            idx = self.combobox.count() - 1
-        self.combobox.setCurrentIndex(max(0, idx))
-        self.combobox.blockSignals(False)
+        if self._value:
+            idx = self.combobox.findText(self._value)
+            if idx == -1:
+                self.combobox.addItem(self._value)
+                idx = self.combobox.count() - 1
+            self.combobox.setCurrentIndex(idx)
+        else:
+            self.combobox.setCurrentIndex(0)
 
 
 class VarComboBoxWidgetWrapper(CustomNodeBaseWidget):
