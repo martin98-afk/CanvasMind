@@ -335,6 +335,7 @@ class GlobalVariableContext(BaseModel):
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: OrderedDict[str, CustomVariable] = Field(default_factory=OrderedDict)
     node_vars: OrderedDict[str, NodeVariable] = Field(default_factory=OrderedDict)
+    input: OrderedDict[str, Any] = Field(default_factory=OrderedDict)  # 每个节点的临时输入，不作为常驻变量
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -495,6 +496,10 @@ class GlobalVariableContext(BaseModel):
         for k, v in node_vars_data.items():
             if k not in self.node_vars:
                 self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+        # 临时inputs解析
+        inputs_data = data.get("inputs", {})
+        for k, v in inputs_data.items():
+            self.input[k] = NodeVariable(value=v)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
@@ -508,7 +513,7 @@ class GlobalVariableContext(BaseModel):
     def __getattr__(self, name: str):
         """支持 global_variable.variable_name 这种点号访问方式"""
         # 检查是否是预定义的属性（如 env, custom, node_vars）
-        if name in {"env", "custom", "node_vars"}:
+        if name in {"env", "custom", "node_vars", "input"}:
             return getattr(self, name)
 
         # 尝试在 custom 变量中查找
@@ -569,6 +574,12 @@ class GlobalVariableContext(BaseModel):
             else:
                 raise KeyError(f"Node variable '{subpath}' not found")
 
+        elif root == "input":
+            if subpath in self.input:
+                return self.input[subpath].value
+            else:
+                raise KeyError(f"Node variable '{subpath}' not found")
+
         else:
             # 不是标准前缀，尝试扁平查找（如直接 "TZ"）
             env_all = self.env.get_all_env_vars()
@@ -578,6 +589,8 @@ class GlobalVariableContext(BaseModel):
                 return env_all[path]
             if path in self.node_vars:
                 return self.node_vars[path].value
+            if path in self.input:
+                return self.input[path].value
             raise KeyError(f"Key '{path}' not found")
 
 
@@ -1309,51 +1322,68 @@ class BaseComponent(ABC):
 
     def emit_interactive_message(
             self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}) -> Any:
-        """在组件执行过程中请求人工干预。此方法会阻塞线程直到用户提交。
-
-        Args:
-            title (str): 弹窗标题。
-            message (str): 给用户的提示信息。
-            schema (Dict[str, Any], optional): 动态表单定义，用于收集用户输入，样例："text": {"label": "生成文本确认", "default": "测试文本"}。
-
-        Returns:
-            Any: 用户在 UI 界面提交的数据。
-
-        Raises:
-            ComponentError: 人工干预超时或读取结果失败。
+        """
+        优化版：在组件执行过程中请求人工干预（文件轮询模式）。
         """
         request_id = str(uuid.uuid4())
-        # 获取当前运行目录，这个目录在 execute 脚本中会被设置到环境变量
+        # 1. 确保目录存在 (由节点侧保证，防止 UI 还没来得及创建)
         run_dir = Path(".").resolve() / "jrpc_response" / self.node_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+
         response_path = run_dir / f"response_{request_id}.pkl"
 
-        # 1. 发送指令给 UI (通过日志流)
+        # 2. 准备发送给 UI 的指令
         emit_messages = {
             "request_id": request_id,
             "response_file": str(response_path),
         }
         emit_messages.update(params)
-        self.emit_message(method, emit_messages, level=level, extra=extra)
 
+        # 通过日志流发送信号
+        self.emit_message(method, emit_messages, level=level, extra=extra)
         self.logger.info(f"等待人工干预 [ID: {request_id}]...")
 
-        # 2. 轮询等待响应
+        # 3. 优化轮询逻辑
         start_wait = time.time()
-        while not response_path.exists():
-            time.sleep(0.5)
-            # 可选：增加一个总超时，防止进程永久挂起
-            if time.time() - start_wait > 3600: # 1小时超时
-                raise ComponentError("人工干预超时")
+        timeout = 3600  # 1小时超时
 
-        # 3. 读取结果并清理
+        # 初始轮询间隔设短一点（如0.1s），让 UI 自动跳过确认时极快响应后期进入稳定等待状态
+        check_interval = 0.1
+
+        data = None
         try:
-            with open(response_path, 'rb') as f:
-                data = pickle.load(f)
+            while True:
+                # A. 检查超时
+                if time.time() - start_wait > timeout:
+                    raise ComponentError(f"人工干预超时 ({timeout} 秒)")
+
+                # B. 检查文件是否存在
+                if response_path.exists():
+                    # 稍微给一点点时间（或通过重试逻辑）确保主进程文件已经写完并关闭
+                    # 在 Windows 上，如果主进程还在写，open 会报错
+                    try:
+                        # 使用 rb 模式读取
+                        with open(response_path, 'rb') as f:
+                            data = pickle.load(f)
+                        break  # 读取成功，跳出循环
+                    except (EOFError, pickle.UnpicklingError, PermissionError):
+                        # 如果文件正在写入，可能会报 EOF 或权限错误，等待下一轮重试
+                        time.sleep(0.05)
+                        continue
+                # D. 动态调整轮询频率：前 5 秒 0.1s 检查一次，之后 0.5s 检查一次
+                if time.time() - start_wait > 5:
+                    check_interval = 0.5
+
+                time.sleep(check_interval)
+        finally:
+            # 4. 无论成功失败，确保清理掉自己的这个临时文件，保持 jrpc_response 目录干净
             if response_path.exists():
-                os.remove(response_path)
-            return data
-        except Exception as e:
-            raise ComponentError(f"读取干预结果失败: {e}")
+                try:
+                    os.remove(response_path)
+                except:
+                    pass
+
+        return data
 
     def update_progress(self, percent: int, status_text: str = ""):
         """快捷方式：更新进度"""
@@ -1364,7 +1394,7 @@ class BaseComponent(ABC):
         self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 变量解析逻辑 ----------------
-    def _resolve_value(self, key, value: Any, prop_type: PropertyType, global_vars) -> Any:
+    def _resolve_value(self, key, value: Any, prop_type: PropertyType) -> Any:
         """解析值：支持普通变量解析和 DYNAMICFORM 内部变量解析"""
 
         # 1. 处理 DYNAMICFORM (数据结构为 List[Dict])
@@ -1374,7 +1404,7 @@ class BaseComponent(ABC):
                 if isinstance(item, dict):
                     schema = self.properties.get(key).schema
                     new_item = {
-                        k: self._resolve_value(k, v, schema.get(k).type, global_vars)
+                        k: self._resolve_value(k, v, schema.get(k).type)
                         for k, v in item.items()
                     }
                     resolved_list.append(new_item)
@@ -1386,9 +1416,7 @@ class BaseComponent(ABC):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             try:
                 # 获取原始值
-                if value.startswith("input."):
-                    value = value.replace("input.", "input_")
-                resolved = global_vars.get(value)
+                resolved = self.global_variable.get(value)
                 # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
                 if prop_type == PropertyType.INT:
                     # 先转 float 再转 int，处理变量里存了 "1.0" 的情况
@@ -1434,7 +1462,7 @@ class BaseComponent(ABC):
             # 遍历 params，根据定义尝试将字符串转为数值
             for key, val in params.items():
                 if key in self.properties:
-                    params[key] = self._resolve_value(key, val, self.properties[key].type, global_vars)
+                    params[key] = self._resolve_value(key, val, self.properties[key].type)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

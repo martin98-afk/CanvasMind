@@ -745,10 +745,6 @@ class CustomNodeItem(NodeItem):
         if w:
             w.setParent(None)
             w.deleteLater()
-            # 如果之前处于手动模式，且删除后内容极少，保持手动尺寸；
-            # 如果处于自动模式，调用 _draw_node_horizontal 会自动收缩
-            self._draw_node_horizontal()
-            self.update()
 
     def add_widget(self, widget):
         """

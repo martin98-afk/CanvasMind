@@ -149,13 +149,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if PROGRESS_MARKER in line:
                 try:
                     json_str = line.split(PROGRESS_MARKER)[1].strip()
-                    # 使用 orjson 解析或标准 json
-                    data = json.loads(json_str)
-
                     # --- 信号节流：如果数据与上次完全一致，则不发射信号 ---
-                    if data != self._last_intercepted_data:
+                    if json_str != self._last_intercepted_data:
+                        # 使用 orjson 解析或标准 json
+                        data = json.loads(json_str)
                         self.signals.intercepted_msg_signal.emit(data)
-                        self._last_intercepted_data = data
+                        self._last_intercepted_data = json_str
                     continue
                 except Exception as e:
                     logger.error(f"解析拦截消息失败: {e}")
@@ -280,7 +279,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if not should_display:
                 self._remove_inline_widget(port_name)
                 continue
-
             plugin = self.plugin_manager.get_plugin(plugin_type)
             if plugin:
                 data = self._output_values.get(port_name)
@@ -329,7 +327,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.view.set_proxy_mode(False)
         self.add_custom_widget(widget, tab=tab)
         self._inline_widgets[key] = widget
-        self.view.draw_node()
 
     def _remove_inline_widget(self, port_name):
         suffix = f"_{port_name}"
@@ -337,13 +334,10 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if k.endswith(suffix):
                 w = self._inline_widgets.pop(k)
                 self.view.remove_widget(w)
-                w.deleteLater()  # 显式释放
 
     def hide_inline_widgets(self):
         """隐藏指定类型的动态控件"""
         if self._inline_widgets:
             for w in self._inline_widgets.values():
                 self.view.remove_widget(w)
-                w.deleteLater()
             self._inline_widgets.clear()
-            self.view.draw_node()

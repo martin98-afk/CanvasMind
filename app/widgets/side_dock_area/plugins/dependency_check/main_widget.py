@@ -76,6 +76,8 @@ class DependencyToolWindow(ToolWindow):
         self.table = TableWidget(self)
         self.table.setMinimumWidth(400)
         self.table.setColumnCount(5)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)  # 允许选中行
+        self.table.itemDoubleClicked.connect(self._on_table_double_clicked)  # 绑定双击事件
         self.table.setHorizontalHeaderLabels(["包名", "需求汇总", "当前版本", "状态", "操作"])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -133,7 +135,7 @@ class DependencyToolWindow(ToolWindow):
     def compare_dependencies(self):
         self.table.setUpdatesEnabled(False)
         self.table.setRowCount(0)
-        req_summary = {}
+        self.req_summary = {}
         nodes = self.homepage.graph.all_nodes()
 
         for node in nodes:
@@ -147,13 +149,13 @@ class DependencyToolWindow(ToolWindow):
                 if match:
                     name = match.group(1).lower().replace('_', '-')
                     spec = match.group(2).strip()
-                    if name not in req_summary: req_summary[name] = {"node_data": []}
-                    req_summary[name]["node_data"].append({"node_name": node.name(), "spec": spec, "node_obj": node})
+                    if name not in self.req_summary: self.req_summary[name] = {"node_data": []}
+                    self.req_summary[name]["node_data"].append({"node_name": node.name(), "spec": spec, "node_obj": node})
 
         fix_list = []
         error_count = 0
 
-        for row, (name, info) in enumerate(req_summary.items()):
+        for row, (name, info) in enumerate(self.req_summary.items()):
             self.table.insertRow(row)
             current_v_str = self.installed_pkgs.get(name)
             combined_spec_str = ",".join(sorted(list(set(d['spec'] for d in info['node_data'] if d['spec']))))
@@ -294,3 +296,40 @@ class DependencyToolWindow(ToolWindow):
     def install_all_missing(self):
         if hasattr(self, '_temp_fix_list') and self._temp_fix_list:
             self.install_packages(self._temp_fix_list)
+
+    def _on_table_double_clicked(self, item):
+        """处理双击表格行事件"""
+        row = item.row()
+        # 获取第一列的包名
+        pkg_name_item = self.table.item(row, 0)
+        if not pkg_name_item:
+            return
+
+        pkg_name = pkg_name_item.text()
+
+        if hasattr(self, 'req_summary') and pkg_name in self.req_summary:
+            # 提取所有相关的节点对象
+            nodes = [d['node_obj'] for d in self.req_summary[pkg_name]['node_data']]
+            self._highlight_nodes_in_graph(nodes)
+
+    def _highlight_nodes_in_graph(self, nodes):
+        """在图中选中并聚焦节点"""
+        if not nodes:
+            return
+
+        graph = self.homepage.graph
+
+        # 1. 清除当前图中所有的选中状态
+        graph.clear_selection()
+
+        # 2. 选中目标节点
+        for node in nodes:
+            node.set_selected(True)
+
+        # 3. 视觉聚焦 (自动缩放/平移以显示所有选中节点)
+        # 假设你的 graph 对象有 fit_to_selection 或类似方法
+        if hasattr(graph, 'fit_to_selection'):
+            graph.fit_to_selection()
+        elif hasattr(graph, 'viewer'):
+            # 兼容某些框架的 viewer 居中
+            graph.viewer().zoom_to_nodes(nodes)

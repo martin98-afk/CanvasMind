@@ -75,6 +75,11 @@ class Qwen3TTSVoiceFeatureExtractor(BaseComponent):
                 ref_text=params.get("ref_text").strip() or None,
                 x_vector_only_mode=params.get("x_vector_only")
             )
-            return {"voice_feature": prompt_items}
+            if isinstance(prompt_items, list) and len(prompt_items) > 0:
+                final_prompt = prompt_items[0]
+            else:
+                final_prompt = prompt_items
+                
+            return {"voice_feature": final_prompt}
         except Exception as e:
             raise RuntimeError(f"特征提取失败: {e}")

@@ -401,6 +401,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             gv.deserialize(global_variable)
             inputs_raw = {}
             input_vars = {}
+            global_variable["inputs"] = {}
             for input_port in self.input_ports():
                 port_name = input_port.name()
                 connected = input_port.connected_ports()
@@ -415,7 +416,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                             safe_name = upstream.node().name().replace(" ", "_")
                             safe_key = f"input_{safe_name}__{upstream.name()}"
                             input_vars[safe_key] = upstream.node()._output_values.get(upstream.name())
-                            global_variable[safe_key] = index
+                            global_variable["inputs"][f"input.{safe_name}__{upstream.name()}"] = index
                     else:
                         inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
                         # 当前节点输入端口key
@@ -593,7 +594,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 1. 准备远程目录
                 ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-                ssh.exec_command(f"rm -f {log_path}")  # 强制删除远程旧日志
+                ssh.exec_command(f"rm -f {log_path}| touch {log_path}")  # 强制删除远程旧日志
                 # 2. 生成执行脚本
                 remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
                     class_name=comp_obj.__name__,
@@ -619,6 +620,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
 
                 # 4. 执行
+                last_log_pos = 0
                 if self.view.current_mode == "ipython" or self.object_io:
                     if not kernel_manager:
                         raise Exception("远程 IPython 内核未连接。请确保右侧控制台已连接到对应的 SSH 环境。")
@@ -640,13 +642,11 @@ def create_node_class(full_path, file_path, parent_window=None):
                         _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
                         found_files = stdout.read().decode()
                         with sftp.open(log_path, 'r') as f:
-                            f.seek(self.last_log_pos)
+                            f.seek(last_log_pos)
                             new_data = f.read().decode('utf-8', errors='ignore')
                             if new_data:
                                 self._log_message(self.persistent_id, new_data)
-                                with open(log_file_path, 'a', encoding='utf-8') as lf:
-                                    lf.write(new_data)
-                                self.last_log_pos += len(new_data)
+                                last_log_pos = f.tell()
                         if remote_res_file in found_files or remote_err_file in found_files:
                             # 如果文件生成了，跳出轮询准备下载
                             break
@@ -673,13 +673,11 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 只有当远程日志文件产生时才尝试读取
                         try:
                             with sftp.open(log_path, 'r') as f:
-                                f.seek(self.last_log_pos)
+                                f.seek(last_log_pos)
                                 new_data = f.read().decode('utf-8', errors='ignore')
                                 if new_data:
                                     self._log_message(self.persistent_id, new_data)
-                                    with open(log_file_path, 'a', encoding='utf-8') as lf:
-                                        lf.write(new_data)
-                                    self.last_log_pos += len(new_data)
+                                    last_log_pos = f.tell()
                         except IOError:
                             # 脚本可能还没开始写日志，忽略
                             pass
@@ -715,6 +713,12 @@ def create_node_class(full_path, file_path, parent_window=None):
 
                 # 6. 清理
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
+                with sftp.open(log_path, 'r') as f:
+                    f.seek(last_log_pos)
+                    new_data = f.read().decode('utf-8', errors='ignore')
+                    if new_data:
+                        self._log_message(self.persistent_id, new_data)
+                        last_log_pos = f.tell()
                 self._log_message(self.persistent_id, "✅ 节点在ssh远程环境执行完成")
             except Exception as e:
                 raise Exception(f"远程执行失败: {str(e)}")

@@ -252,8 +252,6 @@ def create_branch_node(parent_window):
                         # 上游节点输出端口key
                         safe_key = f"input_{safe_name}__{connected[0].name()}"
                         input_vars[safe_key] = inputs_raw[port_name]
-                    if port_name in self.column_select:
-                        inputs_raw[f"{port_name}_column_select"] = self.column_select.get(port_name)
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
             conditions = self.get_property("conditions") or []

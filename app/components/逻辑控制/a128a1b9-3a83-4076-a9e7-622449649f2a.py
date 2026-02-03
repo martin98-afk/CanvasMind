@@ -72,7 +72,6 @@ class Component(BaseComponent):
     }
 
     def run(self, params, inputs = None):
-        self.logger.info(params)
         # 检查是否有未连接但被使用的变量
         conditions = params.get("conditions", [])
         if not conditions:
