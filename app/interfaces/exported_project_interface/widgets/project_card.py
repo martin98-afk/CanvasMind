@@ -282,7 +282,7 @@ class ProjectCard(CardWidget):
                     if exe_path and os.path.exists(exe_path):
                         return exe_path.replace("\\", "/")
             except Exception as e:
-                print(f"解析项目 Python 环境失败: {e}")
+                logger.exception(f"解析项目 Python 环境失败: {e}")
 
         # 兜底方案：如果没找到或路径失效，返回当前运行环境
         return sys.executable.replace("\\", "/")

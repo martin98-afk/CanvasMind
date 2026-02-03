@@ -265,7 +265,7 @@ class ExportedProjectsPage(QWidget):
                     try:
                         self._create_card(proj)
                     except:
-                        traceback.print_exc()
+                        logger.exception("")
 
             # 调用卡片刷新，确保图片等更新
             if proj in self._card_map:
@@ -339,7 +339,7 @@ class ExportedProjectsPage(QWidget):
                 try:
                     self._create_card(proj_path)
                 except:
-                    traceback.print_exc()
+                    logger.exception("")
 
         self._ensure_all_cards_in_layout()
         self._apply_sort_and_filter_and_refresh()

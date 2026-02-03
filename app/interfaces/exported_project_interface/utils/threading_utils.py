@@ -30,12 +30,12 @@ class WatchfilesThread(QThread):
                 filtered = []
                 for change_type, path in changes:
                     if os.path.basename(path) in ("model.workflow.json", "preview.png"):
-                        print(f"[Watchfiles] {change_type}: {path}")
+                        logger.info(f"[Watchfiles] {change_type}: {path}")
                         filtered.append((change_type, path))
                 if filtered:
                     self.projects_changed.emit(filtered)
         except Exception as e:
-            logger.error(f"Watchfiles error: {e}")
+            logger.exception(f"Watchfiles error: {e}")
 
     def stop(self):
         self._stop = True
