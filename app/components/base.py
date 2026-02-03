@@ -335,6 +335,7 @@ class GlobalVariableContext(BaseModel):
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: OrderedDict[str, CustomVariable] = Field(default_factory=OrderedDict)
     node_vars: OrderedDict[str, NodeVariable] = Field(default_factory=OrderedDict)
+    input: OrderedDict[str, Any] = Field(default_factory=OrderedDict)  # 每个节点的临时输入，不作为常驻变量
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -495,6 +496,10 @@ class GlobalVariableContext(BaseModel):
         for k, v in node_vars_data.items():
             if k not in self.node_vars:
                 self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+        # 临时inputs解析
+        inputs_data = data.get("inputs", {})
+        for k, v in inputs_data.items():
+            self.input[k] = NodeVariable(value=v)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):
@@ -508,7 +513,7 @@ class GlobalVariableContext(BaseModel):
     def __getattr__(self, name: str):
         """支持 global_variable.variable_name 这种点号访问方式"""
         # 检查是否是预定义的属性（如 env, custom, node_vars）
-        if name in {"env", "custom", "node_vars"}:
+        if name in {"env", "custom", "node_vars", "input"}:
             return getattr(self, name)
 
         # 尝试在 custom 变量中查找
@@ -569,6 +574,12 @@ class GlobalVariableContext(BaseModel):
             else:
                 raise KeyError(f"Node variable '{subpath}' not found")
 
+        elif root == "input":
+            if subpath in self.input:
+                return self.input[subpath].value
+            else:
+                raise KeyError(f"Node variable '{subpath}' not found")
+
         else:
             # 不是标准前缀，尝试扁平查找（如直接 "TZ"）
             env_all = self.env.get_all_env_vars()
@@ -578,6 +589,8 @@ class GlobalVariableContext(BaseModel):
                 return env_all[path]
             if path in self.node_vars:
                 return self.node_vars[path].value
+            if path in self.input:
+                return self.input[path].value
             raise KeyError(f"Key '{path}' not found")
 
 
@@ -1364,7 +1377,7 @@ class BaseComponent(ABC):
         self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 变量解析逻辑 ----------------
-    def _resolve_value(self, key, value: Any, prop_type: PropertyType, global_vars) -> Any:
+    def _resolve_value(self, key, value: Any, prop_type: PropertyType) -> Any:
         """解析值：支持普通变量解析和 DYNAMICFORM 内部变量解析"""
 
         # 1. 处理 DYNAMICFORM (数据结构为 List[Dict])
@@ -1374,7 +1387,7 @@ class BaseComponent(ABC):
                 if isinstance(item, dict):
                     schema = self.properties.get(key).schema
                     new_item = {
-                        k: self._resolve_value(k, v, schema.get(k).type, global_vars)
+                        k: self._resolve_value(k, v, schema.get(k).type)
                         for k, v in item.items()
                     }
                     resolved_list.append(new_item)
@@ -1386,9 +1399,7 @@ class BaseComponent(ABC):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             try:
                 # 获取原始值
-                if value.startswith("input."):
-                    value = value.replace("input.", "input_")
-                resolved = global_vars.get(value)
+                resolved = self.global_variable.get(value)
                 # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
                 if prop_type == PropertyType.INT:
                     # 先转 float 再转 int，处理变量里存了 "1.0" 的情况
@@ -1434,7 +1445,7 @@ class BaseComponent(ABC):
             # 遍历 params，根据定义尝试将字符串转为数值
             for key, val in params.items():
                 if key in self.properties:
-                    params[key] = self._resolve_value(key, val, self.properties[key].type, global_vars)
+                    params[key] = self._resolve_value(key, val, self.properties[key].type)
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()

@@ -222,6 +222,7 @@ class MessagePusher(BaseComponent):
         push_targets = []
 
         for conf in config_list:
+            conf = conf[1]
             if not isinstance(conf, dict):
                 continue
             

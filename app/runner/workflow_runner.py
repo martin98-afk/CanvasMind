@@ -660,7 +660,7 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
 
 
 # --- 修改后的 execute_workflow 函数 ---
-def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs):
+def execute_workflow(file_path, external_inputs=None, result_path=None, return_result=False, **kwargs):
     global logger
     global global_variable
     global expr_engine
@@ -931,6 +931,8 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, **kwargs
         final_outputs = node_outputs
 
     logger.info(f"最终输出: {final_outputs}")
+    if return_result:
+        return final_outputs
     result_path = result_path if result_path else project_dir / "result.pkl"
     with open(result_path, 'wb') as f:
         pickle.dump(final_outputs, f)
