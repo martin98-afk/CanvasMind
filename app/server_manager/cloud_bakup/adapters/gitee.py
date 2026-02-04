@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from pathlib import Path
+
 import requests
 import json
 import base64
@@ -43,8 +45,10 @@ class GiteeAdapter:
             if os.path.exists(entry_file):
                 zf.write(entry_file, os.path.basename(entry_file))
 
-            # 写入资源文件夹
-            if os.path.exists(resource_dir):
+            # 写入资源文件夹 或 文件
+            if Path(resource_dir).is_file():
+                zf.write(resource_dir, os.path.basename(resource_dir))
+            elif Path(resource_dir).is_dir():
                 for root, dirs, files in os.walk(resource_dir):
                     for file in files:
                         full_path = os.path.join(root, file)
