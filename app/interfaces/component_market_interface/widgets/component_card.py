@@ -99,7 +99,7 @@ class ComponentCard(CardWidget):
         # 第三行：作者与时间
         meta = QHBoxLayout()
         creator = self.data.get('创建人') or self.data.get('creator') or 'unknown'
-        m_time = str(self.data.get('最后修改时间') or '---')[:10]
+        m_time = str(self.data.get('最后修改时间') or '---')
         meta_lbl = QLabel(f"by {creator} • {m_time}")
         meta_lbl.setStyleSheet("color: white; font-size: 11px;")
         meta.addWidget(meta_lbl)
