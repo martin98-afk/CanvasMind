@@ -338,6 +338,13 @@ class CustomNodeViewer(NodeViewer):
             elif hasattr(widget, "summary_label") and widget.summary_label.hasFocus():
                 widget.summary_label.wheelEvent(event)
                 return
+            elif hasattr(widget, "graph") and widget.graph.widget.hasFocus():
+                # 将事件发送给子图的 viewer
+                sub_viewer = widget.graph.viewer()
+                # 转换坐标并发送
+                sub_viewer.wheelEvent(event)
+                event.accept()  # 关键：拦截事件，不让主图继续缩放
+                return
         elif isinstance(item, QtWidgets.QGraphicsProxyWidget):
             for widget in QtWidgets.QApplication.allWidgets():
                 if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
@@ -368,7 +375,18 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
-        # --- 性能优化：交互开始时，临时关闭抗锯齿 ---
+        # 子图点击穿透
+        item = self.itemAt(event.pos())
+        if isinstance(item, QtWidgets.QGraphicsProxyWidget):
+            widget = item.widget()
+            # 如果点击的是 SubGraphWidget 及其内部组件
+            if hasattr(widget, "graph") and widget.graph.widget.hasFocus():
+                print("触发点击")
+                # 给子图焦点，并标记不触发主图的平移/框选
+                self._is_interacting_with_subgraph = True
+                super(CustomNodeViewer, self).mousePressEvent(event)
+                return
+        self._is_interacting_with_subgraph = False
         # ----------------------------------------
         if (event.button() == QtCore.Qt.MiddleButton or
             (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
@@ -632,6 +650,9 @@ class CustomNodeViewer(NodeViewer):
             elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
                 QApplication.sendEvent(focused_widget, event)
                 return
+            elif hasattr(focused_widget, "graph"):
+                QApplication.sendEvent(focused_widget.graph.widget, event)
+                return
 
         self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
         self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
@@ -683,7 +704,6 @@ class CustomNodeViewer(NodeViewer):
             items = self.items(pos)
 
             target_widget = None
-            from app.widgets.node_widget.base import CustomNodeBaseWidget
             for item in items:
                 if isinstance(item, CustomNodeBaseWidget):
                     target_widget = item
@@ -757,8 +777,6 @@ class CustomNodeViewer(NodeViewer):
             items = self.items(pos)
             target_widget = None
             for item in items:
-                # 寻找我们的 CustomNodeBaseWidget 代理
-                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
                 if isinstance(item, CustomNodeBaseWidget):
                     target_widget = item
                     break

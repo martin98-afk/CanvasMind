@@ -415,10 +415,11 @@ class NodeOperations:
         for g_name in list(dict.fromkeys(input_map.values())): group_node.add_input(g_name)
         for g_name in list(dict.fromkeys(output_map.values())): group_node.add_output(g_name)
 
-        group_node.set_sub_graph_session(session_data)
-
+        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph("Group")
+        new_graph.deserialize_session(session_data)
+        group_node.graph_id = graph_id
         # --- 5. 恢复外部连线 ---
-        g_inputs = group_node.inputs();
+        g_inputs = group_node.inputs()
         g_outputs = group_node.outputs()
         for ext_out, g_in_name in ext_in_conns:
             ext_out.connect_to(g_inputs[g_in_name])

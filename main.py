@@ -90,7 +90,7 @@ if __name__ == '__main__':
     sys.path.append(".")
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     app = create_application()
-    load_localization(app)
+    # load_localization(app)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

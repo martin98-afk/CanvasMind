@@ -33,6 +33,7 @@ from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWi
 from app.widgets.node_widget.propeprty_widgets.dynamic_form_widget import DynamicFormWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.dynamic_tree_widget import DynamicTreeWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWrapper
+from app.widgets.node_widget.propeprty_widgets.graph_widget import SubGraphWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.spinbox_widget import NumberWidgetWrapper
