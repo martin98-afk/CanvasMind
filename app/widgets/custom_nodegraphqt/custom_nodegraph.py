@@ -5,10 +5,11 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, )
+    Z_VAL_PIPE, ViewerEnum, )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
+from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5.QtCore import Qt
@@ -306,6 +307,24 @@ class CustomNodeViewer(NodeViewer):
         self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
+        text_color = QtGui.QColor(*tuple(map(
+            lambda i, j: i - j, (255, 255, 255),
+            ViewerEnum.BACKGROUND_COLOR.value
+        )))
+        text_color.setAlpha(50)
+        self._cursor_text = QtWidgets.QGraphicsTextItem()
+        self._cursor_text.setFlag(
+            QtWidgets.QGraphicsTextItem.ItemIsSelectable, False
+        )
+        self._cursor_text.setDefaultTextColor(text_color)
+        self._cursor_text.setZValue(Z_VAL_PIPE - 1)
+        font = self._cursor_text.font()
+        font.setPointSize(7)
+        self._cursor_text.setFont(font)
+        self.scene().addItem(self._cursor_text)
+        self._SLICER_PIPE = SlicerPipeItem()
+        self._SLICER_PIPE.setVisible(False)
+        self.scene().addItem(self._SLICER_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
 
     def set_navigation_mode(self, enabled):
