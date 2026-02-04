@@ -11,7 +11,7 @@ from loguru import logger
 
 
 class GiteeAdapter:
-    def __init__(self, access_token: str, owner: str, repo: str, backup_dir: str = "storage"):
+    def __init__(self, access_token: str, owner: str, repo: str, backup_dir: str = "storage", index_path="index.json"):
         """
         :param backup_dir: 在仓库中存放 zip 包的目录名
         """
@@ -19,7 +19,7 @@ class GiteeAdapter:
         self.owner = owner
         self.repo = repo
         self.backup_dir = backup_dir.strip("/")
-        self.index_path = "index.json"
+        self.index_path = index_path
         self.base_url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/contents"
 
     # --- 内部工具方法 ---
