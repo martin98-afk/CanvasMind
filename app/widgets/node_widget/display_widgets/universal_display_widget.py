@@ -14,7 +14,10 @@ from .image_gallery_widget import ImageGalleryWidget
 from .image_widget import ImageWidget
 from app.widgets.node_widget.display_widgets.media_widget import VideoPlayWidget, AudioPlayWidget
 from .json_tree_widget import JsonTreeWidget
+from .markdown_widget import MarkdownWidget
 from .pdf_widget import PdfWidget
+from .text_diff_widget import TextDiffWidget
+from .threeD_model_widget import Model3DWidget
 
 
 class UniversalDisplayWidget(QtWidgets.QWidget):
@@ -49,15 +52,41 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
             {"id": "video", "class": VideoPlayWidget, "check": self._is_video_path, "priority": 5},
             # 6. 音频
             {"id": "audio", "class": AudioPlayWidget, "check": self._is_audio_path, "priority": 6},
-            # 7. 表格
-            {"id": "table", "class": DataTableWidget, "check": self._is_table_data, "priority": 7},
-            # 8. json
-            {"id": "json", "class": JsonTreeWidget, "check": self._is_json_data, "priority": 8},
-            # 9. html
+            # 7. 新增：3D 模型
+            {"id": "3d", "class": Model3DWidget, "check": self._is_3d_path, "priority": 7},
+            # # 8. 新增：Markdown
+            # {"id": "markdown", "class": MarkdownWidget, "check": self._is_markdown, "priority": 8},
+            # 9. 新增：文本差异对比 (当输入是两个字符串的列表时)
+            {"id": "diff", "class": TextDiffWidget, "check": self._is_diff_data, "priority": 9},
+            # 10. 表格
+            {"id": "table", "class": DataTableWidget, "check": self._is_table_data, "priority": 10},
+            # 11. json
+            {"id": "json", "class": JsonTreeWidget, "check": self._is_json_data, "priority": 11},
+            # 99. html
             {"id": "html", "class": HtmlWidget, "check": lambda x: isinstance(x, str), "priority": 99},
         ]
 
     # --- 数据类型判断逻辑 (策略) ---
+    def _is_diff_data(self, value):
+        """判断是否为两个文本的对比"""
+        return isinstance(value, (list, tuple)) and len(value) == 2 and \
+            isinstance(value[0], str) and isinstance(value[1], str) and \
+            not self._is_image_data(value[0])  # 排除图片路径
+
+    def _is_3d_path(self, value):
+        """判断是否为 3D 模型路径"""
+        if isinstance(value, str):
+            ext = os.path.splitext(value)[1].lower()
+            return ext in ['.obj', '.stl', '.glb', '.gltf']
+        return False
+
+    def _is_markdown(self, value):
+        """判断是否为 Markdown 文本"""
+        if not isinstance(value, str): return False
+        # 简单的启发式判断：包含标题符、列表符、加粗或链接
+        markers = ['# ', '## ', '**', '---', '[', '](', '```']
+        return any(m in value for m in markers)
+
     def _is_gallery_data(self, value):
         """判断是否为 3 张及以上的图像列表"""
         if isinstance(value, (list, tuple)) and len(value) >= 3:
@@ -98,6 +127,7 @@ class UniversalDisplayWidget(QtWidgets.QWidget):
     def _is_json_data(self, value):
         # 字典或者是普通列表
         return isinstance(value, (dict, list))
+
     # --- 核心调度逻辑 ---
     def _get_or_create_view(self, strategy_id, widget_class):
         """根据 ID 延迟实例化控件"""
