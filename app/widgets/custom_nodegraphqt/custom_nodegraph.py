@@ -4,17 +4,12 @@ import json
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
-from NodeGraphQt.base.menu import BaseMenu
 from NodeGraphQt.constants import (
-    PipeLayoutEnum,
-    ViewerEnum,
     Z_VAL_PIPE, )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
-from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
-from NodeGraphQt.widgets.tab_search import TabSearchMenuWidget
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
@@ -27,8 +22,9 @@ from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
-from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
-from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomLivePipeItem, CustomPipeItem
+from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu
+from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
+from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 # --- 常量配置 ---
@@ -81,43 +77,222 @@ class CustomNodeScene(NodeScene):
                 node.setSelected(True)
 
 
+class SelectionLabelItem(QtWidgets.QGraphicsWidget):
+    """左上角显示选中数量"""
+
+    def __init__(self, parent=None):
+        super(SelectionLabelItem, self).__init__(parent)
+        self.setZValue(Z_VAL_PIPE + 201)
+        self.count = 0
+        self.bg_color = QtGui.QColor(30, 30, 35, 200)
+        self.border_color = QtGui.QColor(255, 180, 0, 255)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.label = QtWidgets.QGraphicsTextItem(self)
+        self.label.setDefaultTextColor(QtGui.QColor(255, 255, 255, 220))
+        font = QtGui.QFont("Segoe UI", 9, QtGui.QFont.Bold)
+        self.label.setFont(font)
+
+    def update_count(self, count):
+        self.count = count
+        self.label.setPlainText(f" {count} NODES SELECTED ")
+        self.prepareGeometryChange()
+
+    def boundingRect(self):
+        return self.label.boundingRect().adjusted(0, 0, 10, 0)
+
+    def paint(self, painter, option, widget):
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        rect = self.boundingRect()
+
+        # 1. 绘制背景矩形 (传入 QRectF 对象以支持 float)
+        painter.setBrush(self.bg_color)
+        painter.setPen(QtGui.QPen(self.border_color, 1.0))
+        painter.drawRoundedRect(rect, 5, 5)
+
+        # 2. 绘制左侧的小装饰条 (修复点：使用 QRectF 包裹参数)
+        painter.setBrush(self.border_color)
+        painter.setPen(QtCore.Qt.NoPen)
+        # 错误原因修复：drawRect 需要 (QRectF) 或 (int, int, int, int)
+        side_bar = QtCore.QRectF(rect.left(), rect.top() + 4, 3, rect.height() - 8)
+        painter.drawRect(side_bar)
+
+        painter.restore()
+
+
+class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
+    """右上角动作按钮组"""
+
+    def __init__(self, viewer, parent=None):
+        super(SelectionActionToolbar, self).__init__(parent)
+        self.viewer = viewer
+        self.setZValue(Z_VAL_PIPE + 201)
+        # 确保工具栏本身不响应选择，这样它不会干扰节点选择逻辑
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsFocusable, False)
+        # --- 1. 创建按钮并绑定点击函数 ---
+        # 执行：执行选中节点
+        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", False)
+        self.btn_run.clicked_func = self.on_run
+        # 注释：创建背景框
+        self.btn_comment = NodeActionButton(self, "comment", "添加注释背景", "#34495e", "#2c3e50", True)
+        self.btn_comment.clicked_func = self._on_comment
+
+        # 居中：聚焦选中区域
+        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", True)
+        self.btn_center.clicked_func = self._on_center
+
+        # 克隆：复制并粘贴
+        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", True)
+        self.btn_clone.clicked_func = self._on_clone
+
+        # 模板：保存到模板库
+        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", True)
+        self.btn_template.clicked_func = self._on_template
+
+        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", False)
+        self._close_btn.clicked_func = self._on_close
+        # --- 2. 布局逻辑 (保持不变) ---
+        self.buttons = [self.btn_run, self.btn_comment, self.btn_center, self.btn_clone, self.btn_template, self._close_btn]
+        spacing = 6
+        btn_w = 28
+        for i, btn in enumerate(self.buttons):
+            btn.setParentItem(self)
+            btn.setPos(i * (btn_w + spacing), 0)
+        self._total_width = (btn_w * len(self.buttons)) + (spacing * (len(self.buttons) - 1))
+
+    def boundingRect(self):
+        return QtCore.QRectF(0, 0, self._total_width, 28)
+
+    # --- 3. 功能具体实现 ---
+    def on_run(self):
+        """功能：执行选中的节点"""
+        self.viewer.home_window.canvas_runner.run_full()
+
+    def _on_comment(self):
+        """功能：为选中的节点创建一个 Backdrop (背景框)"""
+        # 如果你的 node_operations 已经有这个方法，直接调用：
+        if hasattr(self.viewer.home_window, 'node_operations'):
+            # 这是一个常见的 NodeGraphQt 操作：创建一个包围选中节点的背景框
+            self.viewer.home_window.create_backdrop_node("general.StickyNote", init_io=False)
+
+    def _on_center(self):
+        """功能：将视图中心对准并缩放到选中节点"""
+        self.viewer.zoom_to_nodes(self.viewer.selected_nodes())
+
+    def _on_clone(self):
+        """功能：快速克隆选中的节点"""
+        # 调用主窗口现有的复制粘贴逻辑
+        if hasattr(self.viewer.home_window, 'node_operations'):
+            ops = self.viewer.home_window.node_operations
+            ops._copy_selected_nodes()
+            ops._paste_nodes()
+            # 粘贴后更新一下多选框
+            self.viewer._selection_overlay.update()
+
+    def _on_template(self):
+        """功能：将当前选择保存为代码段/模板库"""
+        self.viewer.home_window.add_template()
+
+    def _on_close(self):
+        """功能：删除选中的节点"""
+        # 获取选中的节点
+        selected_nodes = self.viewer.selected_nodes()
+        if selected_nodes:
+            # 删除节点
+            self.viewer.home_window.node_operations.delete_selected_nodes(self.viewer.graph)
+            # 更新多选框
+            self.viewer._selection_overlay.update()
+
+
+class SelectionOverlayManager:
+    def __init__(self, viewer):
+        self.viewer = viewer
+        self.scene = viewer.scene()
+        self._visible = False
+        # 1. 虚线框
+        self.rect_item = QtWidgets.QGraphicsPathItem()
+        self.rect_item.setZValue(Z_VAL_PIPE + 190)
+        pen = QtGui.QPen(QtGui.QColor(255, 180, 0, 150), 1.5, QtCore.Qt.DashLine)
+        pen.setCosmetic(True)
+        self.rect_item.setPen(pen)
+        self.scene.addItem(self.rect_item)
+        self.rect_item.hide()
+        # 3. 右上角动作栏
+        self.toolbar = SelectionActionToolbar(viewer)
+        self.scene.addItem(self.toolbar)
+        self.toolbar.hide()
+
+    def update(self):
+        selected_nodes = [
+            i for i in self.scene.selectedItems()
+            if isinstance(i, AbstractNodeItem) and i.isVisible()
+        ]
+
+        if len(selected_nodes) < 2:
+            self.hide()
+            return
+        self._visible = True
+        # 1. 计算场景中的并集矩形
+        rect = selected_nodes[0].sceneBoundingRect()
+        for node in selected_nodes[1:]:
+            rect = rect.united(node.sceneBoundingRect())
+
+        # 虚线框跟随场景缩放，所以 padding 使用场景单位
+        padding = 20
+        rect.adjust(-padding, -padding, padding, padding)
+
+        # 2. 更新虚线框路径
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(rect, 10, 10)
+        self.rect_item.setPath(path)
+        self.rect_item.show()
+
+        # 3. 计算当前的视图缩放比例 (Scale)
+        # transform().m11() 返回的是当前的缩放倍数
+        view_scale = self.viewer.transform().m11()
+
+        # 在场景中的间距 = 屏幕像素 / 缩放比例
+        scene_gap = 10 / view_scale
+
+        # --- 更新右上角工具栏位置 ---
+        toolbar_w_pixel = self.toolbar.boundingRect().width()
+        toolbar_h_pixel = self.toolbar.boundingRect().height()
+
+        # x轴位置：矩形右侧 - (自身像素宽度 / view_scale)
+        toolbar_x = rect.right() - (toolbar_w_pixel / view_scale)
+        # y轴位置：矩形上方
+        toolbar_y = rect.top() - scene_gap - (toolbar_h_pixel / view_scale)
+
+        self.toolbar.setPos(toolbar_x, toolbar_y)
+        self.toolbar.show()
+
+    def hide(self):
+        self.rect_item.hide()
+        self.toolbar.hide()
+        self._visible = False
+
+
 class CustomNodeViewer(NodeViewer):
 
     def __init__(self, parent=None, undo_stack=None):
         super(CustomNodeViewer, self).__init__(parent)
         self.home_window = parent
+        self._panning = False
+        self.graph = None
         self._navigation_mode = False
         self._last_drag_target = None  # 记录当前正在高亮的代理控件
         self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
         self._temp_connection_source = None  # 用于存放拉线的起始端口
         self.setScene(CustomNodeScene(self))
         # --- 性能优化：初始开启抗锯齿 ---
-        self.setRenderHint(QtGui.QPainter.Antialiasing, True)
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
 
         # --- 性能优化：微调 View 参数 ---
-        # 视口更新模式：BoundingRect 是最安全的，SmartViewportUpdate 有时会闪烁
-        self.setViewportUpdateMode(QtWidgets.QGraphicsView.BoundingRectViewportUpdate)
         # 优化拖动时的重绘策略
         self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
-
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setAcceptDrops(True)
-        self.resize(850, 800)
-
-        # --- 内部状态初始化 ---
-        self._pipe_layout = PipeLayoutEnum.CURVED.value
-        self._panning = False
-        self._detached_port = None
-        self._start_port = None
-        self._origin_pos = None
-        self._previous_pos = QtCore.QPoint(int(self.width() / 2),
-                                           int(self.height() / 2))
-        self._prev_selection_nodes = []
-        self._prev_selection_pipes = []
-        self._node_positions = {}
 
         # --- 新增：对齐线对象 (初始化一次，复用) ---
         self._snap_lines_item = QtWidgets.QGraphicsPathItem()
@@ -128,74 +303,10 @@ class CustomNodeViewer(NodeViewer):
         self.scene().addItem(self._snap_lines_item)
         self._snap_lines_item.hide()
         # -------------------------------------
-
-        self._rubber_band = QtWidgets.QRubberBand(
-            QtWidgets.QRubberBand.Rectangle, self
-        )
-        self._rubber_band.isActive = False
-
-        text_color = QtGui.QColor(*tuple(map(
-            lambda i, j: i - j, (255, 255, 255),
-            ViewerEnum.BACKGROUND_COLOR.value
-        )))
-        text_color.setAlpha(50)
-        self._cursor_text = QtWidgets.QGraphicsTextItem()
-        self._cursor_text.setFlag(
-            QtWidgets.QGraphicsTextItem.ItemIsSelectable, False
-        )
-        self._cursor_text.setDefaultTextColor(text_color)
-        self._cursor_text.setZValue(Z_VAL_PIPE - 1)
-        font = self._cursor_text.font()
-        font.setPointSize(7)
-        self._cursor_text.setFont(font)
-        self.scene().addItem(self._cursor_text)
-
         self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
-
-        self._SLICER_PIPE = SlicerPipeItem()
-        self._SLICER_PIPE.setVisible(False)
-        self.scene().addItem(self._SLICER_PIPE)
-
-        self._search_widget = TabSearchMenuWidget()
-        self._search_widget.search_submitted.connect(self._on_search_submitted)
-
-        # workaround fix for shortcuts from the non-native menu.
-        # actions don't seem to trigger so we create a hidden menu bar.
-        self._ctx_menu_bar = QtWidgets.QMenuBar(self)
-        self._ctx_menu_bar.setNativeMenuBar(False)
-        # shortcuts don't work with "setVisibility(False)".
-        self._ctx_menu_bar.setMaximumSize(0, 0)
-
-        # context menus.
-        self._ctx_graph_menu = BaseMenu('NodeGraph', self)
-        self._ctx_node_menu = BaseMenu('Nodes', self)
-
-        if undo_stack:
-            self._undo_action = undo_stack.createUndoAction(self, '&Undo')
-            self._redo_action = undo_stack.createRedoAction(self, '&Redo')
-        else:
-            self._undo_action = None
-            self._redo_action = None
-
-        self._build_context_menus()
-
-        self.acyclic = True
-        self.pipe_collision = False
-        self.pipe_slicing = True
-
-        self.LMB_state = False
-        self.RMB_state = False
-        self.MMB_state = False
-        self.ALT_state = False
-        self.CTRL_state = False
-        self.SHIFT_state = False
-        self.COLLIDING_state = False
-
-        # connection constrains.
-        self.accept_connection_types = None
-        self.reject_connection_types = None
+        self._selection_overlay = SelectionOverlayManager(self)
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""
@@ -343,18 +454,18 @@ class CustomNodeViewer(NodeViewer):
                 if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
                     widget.view().wheelEvent(event)
                     return
-
         try:
             delta = event.delta()
         except AttributeError:
             delta = event.angleDelta().y()
             if delta == 0:
                 delta = event.angleDelta().x()
-
         try:
             self._set_viewer_zoom(delta, pos=event.pos())
         except AttributeError:
             self._set_viewer_zoom(delta, pos=event.position().toPoint())
+        if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
+            self._selection_overlay.update()
 
     def establish_connection(self, start_port, end_port):
         # 保持你原本的逻辑不变
@@ -368,7 +479,14 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
-        # --- 性能优化：交互开始时，临时关闭抗锯齿 ---
+        item = self.itemAt(event.pos())
+        if isinstance(item, NodeActionButton):
+            # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
+            super(NodeViewer, self).mousePressEvent(event)
+            return
+        if event.button() == QtCore.Qt.LeftButton:
+            # 开始新操作前先隐藏
+            self._selection_overlay.hide()
         # ----------------------------------------
         if (event.button() == QtCore.Qt.MiddleButton or
             (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
@@ -480,26 +598,17 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # import time
-        # if not hasattr(self, '_last_pan_time'):
-        #     self._last_pan_time = time.time()
-        #     self._pan_frames = 0
-        #
-        # if self._panning:
-        #     self._pan_frames += 1
-        #     if time.time() - self._last_pan_time > 1.0:
-        #         print(f"Pan FPS: {self._pan_frames}")
-        #         self._last_pan_time = time.time()
-        #         self._pan_frames = 0
-        # 注入导航模式下的平移逻辑 (模仿 Alt+LMB)
+        # 1. 注入导航模式下的平移逻辑
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
             delta = previous_pos - current_pos
             self._set_viewer_pan(delta.x(), delta.y())
 
+        # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
         super(CustomNodeViewer, self).mouseMoveEvent(event)
-        # 1. 修正基础条件判断：如果是导航模式，则不判定为“正在拖动节点”
+
+        # 3. 判定是否正在拖拽节点
         is_dragging_nodes = (
                 self.LMB_state and
                 not self.ALT_state and
@@ -513,14 +622,23 @@ class CustomNodeViewer(NodeViewer):
                 i for i in self.scene().selectedItems()
                 if isinstance(i, AbstractNodeItem)
             ]
+
+            # 排除正在缩放节点的情况
             if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
-                if self._snap_lines_item.isVisible():
-                    self._snap_lines_item.hide()
+                self._snap_lines_item.hide()
+                self._selection_overlay.hide()
             else:
+                # 处理对齐线
                 self._handle_snapping(selected_nodes)
+                # --- 新增：更新多选虚线框和工具栏 ---
+                self._selection_overlay.update()
         else:
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
+
+            # 如果是在拉框选择，实时更新虚线框 (体验更好)
+            if self._rubber_band.isActive:
+                self._selection_overlay.update()
 
     # ---------------------------------------------
 
@@ -622,6 +740,7 @@ class CustomNodeViewer(NodeViewer):
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 
         super(CustomNodeViewer, self).mouseReleaseEvent(event)
+        # self._selection_overlay.update()
 
     def keyPressEvent(self, event):
         focused_widget = QApplication.focusWidget()
@@ -683,7 +802,6 @@ class CustomNodeViewer(NodeViewer):
             items = self.items(pos)
 
             target_widget = None
-            from app.widgets.node_widget.base import CustomNodeBaseWidget
             for item in items:
                 if isinstance(item, CustomNodeBaseWidget):
                     target_widget = item
@@ -757,8 +875,6 @@ class CustomNodeViewer(NodeViewer):
             items = self.items(pos)
             target_widget = None
             for item in items:
-                # 寻找我们的 CustomNodeBaseWidget 代理
-                from app.widgets.node_widget.base import CustomNodeBaseWidget  # 避开循环导入
                 if isinstance(item, CustomNodeBaseWidget):
                     target_widget = item
                     break
@@ -809,6 +925,7 @@ class CustomNodeGraph(NodeGraph):
     def __init__(self, parent, **kwargs):
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
+        self._viewer.graph = self
 
     def _register_context_menu(self):
         """

@@ -3,6 +3,7 @@ import os
 import traceback
 from pathlib import Path
 
+import orjson
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtCore import pyqtSignal, QThread, QRectF, Qt, QRunnable
 from PyQt5.QtGui import QPainter, QImage
@@ -168,7 +169,7 @@ class WorkflowLoader(QThread):
         """在后台线程中加载工作流"""
         try:
             with open(self.file_path, 'r', encoding='utf-8') as f:
-                full_data = json.load(f)
+                full_data = orjson.loads(f.read())
             full_data = deserialize_from_json(full_data)
 
             graph_data = full_data.get("graph", {})

@@ -234,6 +234,9 @@ class CanvasPage(QWidget):
             self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
         category_filter_dialog.show_at(pos)
 
+    def add_template(self):
+        self.ui_manager.nav_panel.template_container.add_template()
+
     def _on_global_variables_changed(self, var_type: str, var_name: str, action: str):
         self.property_panel._on_global_variables_changed(var_type, var_name, action)
 
@@ -454,6 +457,7 @@ class CanvasPage(QWidget):
             self.ui_manager.save_btn.clicked.disconnect()
             self.ui_manager.export_model_btn.clicked.disconnect()
             self.ui_manager.close_btn.clicked.disconnect()
+            self.graph.disconnect()
         except TypeError:
             pass
         try:

@@ -11,84 +11,88 @@ from pypinyin import lazy_pinyin, Style
 
 # --- 样式配置 ---
 class ModernStyles:
-    # 深色背景，类似 VS Code
-    BG_COLOR = "#1e1e1e"  # 编辑器背景
-    POPUP_BG_COLOR = "#252526"  # 弹窗背景
-    TEXT_COLOR = "#d4d4d4"  # 普通文字
-    BORDER_COLOR = "#454545"  # 边框颜色
+    # 颜色面板
+    BG_COLOR = "#2D2D2D"  # 编辑器背景
+    WINDOW_BG = "#2D2D2D"  # 窗口背景
+    INPUT_BG = "#2D2D2D"  # 输入框背景（比背景深，增加凹陷感）
+    POPUP_BG = "#2d2d2d"  # 弹窗背景
+    TEXT_COLOR = "#E0E0E0"  # 普通文字
+    TEXT_MAIN = "#E0E0E0"  # 主文字颜色
+    TEXT_DIM = "#858585"  # 次要文字颜色
 
-    # 选中与悬停
-    SELECTION_BG = "#094771"  # 列表选中背景 (深蓝)
-    HOVER_BG = "#2a2d2e"  # 列表悬停背景
-    ACCENT_COLOR = "#007acc"  # 焦点边框色
+    # 凹陷边框色组合
+    BORDER_SUNKEN_TOP = "#0a0a0a"  # 顶部边缘（最深，模拟阴影）
+    BORDER_SUNKEN_BOTTOM = "#3c3c3c"  # 底部边缘（较亮，模拟反光）
 
-    # 字体
-    FONT_FAMILY = "Consolas, 'JetBrains Mono', monospace"  # 代码感字体
-    UI_FONT_FAMILY = "Segoe UI, Microsoft YaHei, sans-serif"
+    ACCENT_COLOR = "#007acc"  # 蓝调高亮
+    SELECTION_BG = "#264f78"  # 选中背景
 
     @staticmethod
     def get_editor_style():
         return f"""
-            /* 编辑框样式 */
-            QWidget {{
-                background-color: {ModernStyles.BG_COLOR};
-                color: {ModernStyles.TEXT_COLOR};
-                border: 1px solid {ModernStyles.BORDER_COLOR};
-                border-radius: 4px; /* 圆角 */
-                padding: 4px;
-                font-family: {ModernStyles.FONT_FAMILY};
-                font-size: 14px;
+            QTextEdit, QLineEdit {{
+                background-color: {ModernStyles.INPUT_BG};
+                color: {ModernStyles.TEXT_MAIN};
+
+                /* 模拟凹陷感：上深下浅的边框 */
+                border-top: 2px solid {ModernStyles.BORDER_SUNKEN_TOP};
+                border-left: 2px solid {ModernStyles.BORDER_SUNKEN_TOP};
+                border-bottom: 1px solid {ModernStyles.BORDER_SUNKEN_BOTTOM};
+                border-right: 1px solid {ModernStyles.BORDER_SUNKEN_BOTTOM};
+
+                border-radius: 4px;
+                padding: 8px;
+                font-family: 'Consolas', 'Monaco', 'Microsoft YaHei';
+                font-size: 13px;
+                selection-background-color: {ModernStyles.SELECTION_BG};
             }}
-            QWidget:focus {{
-                border: 1px solid {ModernStyles.ACCENT_COLOR}; /* 聚焦时高亮边框 */
+
+            QTextEdit:focus, QLineEdit:focus {{
+                /* 聚焦时取消凹陷感，改为发光感 */
+                border: 1px solid {ModernStyles.ACCENT_COLOR};
+                background-color: #121212; /* 聚焦时更深一点 */
             }}
         """
 
     @staticmethod
     def get_popup_style():
         return f"""
-            /* 列表弹窗样式 */
-            QListWidget {{
-                background-color: {ModernStyles.POPUP_BG_COLOR};
-                color: {ModernStyles.TEXT_COLOR};
-                border: 1px solid {ModernStyles.BORDER_COLOR};
-                border-radius: 4px;
-                outline: none;
-                font-family: {ModernStyles.UI_FONT_FAMILY};
-            }}
-            QListWidget::item {{
-                height: 32px; /* 增加高度，增加呼吸感 */
-                padding-left: 8px;
-                border-radius: 3px;
-                margin: 1px 4px; /* 每一项四周留白 */
-            }}
-            QListWidget::item:hover {{
-                background-color: {ModernStyles.HOVER_BG};
-            }}
-            QListWidget::item:selected {{
-                background-color: {ModernStyles.SELECTION_BG};
-                color: white;
-            }}
-            /* 滚动条美化 */
-            QScrollBar:vertical {{
-                border: none;
-                background: {ModernStyles.POPUP_BG_COLOR};
-                width: 10px;
-                margin: 0px 0px 0px 0px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: #424242;
-                min-height: 20px;
-                border-radius: 5px;
-            }}
-            QScrollBar::handle:vertical:hover {{
-                background: #606060;
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0px;
-            }}
-        """
-
+                QListWidget {{
+                    background-color: {ModernStyles.POPUP_BG};
+                    color: {ModernStyles.TEXT_MAIN};
+                    border: 1px solid #454545;
+                    border-radius: 6px;
+                    outline: 0;
+                    padding: 5px;
+                }}
+                QListWidget::item {{
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    margin: 1px 2px;
+                }}
+                QListWidget::item:hover {{
+                    background-color: #3e3e42;
+                }}
+                QListWidget::item:selected {{
+                    background-color: {ModernStyles.SELECTION_BG};
+                    color: white;
+                }}
+                /* 滚动条现代化 */
+                QScrollBar:vertical {{
+                    border: none;
+                    background: transparent;
+                    width: 8px;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: #4f4f4f;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }}
+                QScrollBar::handle:vertical:hover {{
+                    background: #686868;
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            """
 
 # -----------------------
 # 高亮器类：保持不变
@@ -131,50 +135,7 @@ class VariableCompletionPopup(QListWidget):
 
     def _setup_style(self):
         """现代化深色主题 QSS"""
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #252526;
-                color: #D4D4D4;
-                border: 1px solid #454545;
-                border-radius: 6px;
-                outline: 0;
-                padding: 4px;
-            }
-            QListWidget::item {
-                padding: 6px 10px;
-                border-radius: 4px;
-                margin-bottom: 1px;
-            }
-            QListWidget::item:hover {
-                background-color: #2A2D2E;
-            }
-            QListWidget::item:selected {
-                background-color: #094771;
-                color: #FFFFFF;
-            }
-
-            /* 现代滚动条样式 */
-            QScrollBar:vertical {
-                border: none;
-                background: transparent;
-                width: 10px;
-                margin: 2px 2px 2px 2px;
-            }
-            QScrollBar::handle:vertical {
-                background: #4F4F4F;
-                min-height: 20px;
-                border-radius: 3px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #606060;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
-        """)
+        self.setStyleSheet(ModernStyles.get_popup_style())
 
     def update_size(self):
         """根据内容动态计算宽度和高度"""
@@ -337,21 +298,15 @@ class VariableCompletionTextEdit(QTextEdit, CompletionMixin):
         super().__init__(parent)
         # 1. 应用现代化编辑器样式
         self.setStyleSheet(ModernStyles.get_editor_style())
-
+        self.setMinimumHeight(100)
         # 2. 设置光标颜色 (深色背景下光标需要是白色的)
         p = self.palette()
         p.setColor(QPalette.Text, QColor(ModernStyles.TEXT_COLOR))
         p.setColor(QPalette.Base, QColor(ModernStyles.BG_COLOR))
         self.setPalette(p)
 
-        # 3. 设置闪烁光标颜色为白色 (有些平台需要单独设置)
-        # 这一步通常通过 stylesheet 的 color 属性已经解决，但为了保险：
-        # self.setCursorWidth(2) # 加宽光标更现代
-
         self.popup = VariableCompletionPopup(use_qcursor, self.window())
         self.popup.itemClicked.connect(lambda item: self._apply_completion(item.text()))
-        # 注意: itemSelected 信号在 QListWidget 中通常是 currentItemChanged 或 itemClicked
-        # 这里为了演示方便使用 itemClicked，如果是自定义信号请保留原样
 
         self.init_completion(get_variable_list_func)
 

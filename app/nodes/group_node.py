@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from NodeGraphQt import GroupNode, Port
+from NodeGraphQt import Port
 from NodeGraphQt.constants import PortTypeEnum
 from NodeGraphQt.errors import PortRegistrationError
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_group import GroupNodeItem
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
+
 from app.nodes.status_node import StatusNode
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
 
 class GroupPortInputNode(PortInputNode):
@@ -132,13 +134,79 @@ class GroupPortOutputNode(PortOutputNode):
 
 def create_group_node_class(graph, parent_window):
 
-    class CustomGroupNode(GroupNode, StatusNode):
+    class CustomGroupNode(CustomBaseNode, StatusNode):
         __identifier__ = 'general'
         NODE_NAME = 'GroupNode'
+        graph_id = None
 
         def __init__(self):
             super(CustomGroupNode, self).__init__(qgraphics_item=GroupNodeItem)
             self.model.port_deletion_allowed = True
             self.set_color(50, 50, 50)  # 设置一个深色背景
+
+        @property
+        def is_expanded(self):
+            """
+            Returns if the group node is expanded or collapsed.
+
+            Returns:
+                bool: true if the node is expanded.
+            """
+            if not self.graph_id:
+                return False
+            return bool(self.graph_id in parent_window.ui_manager.canvas_manager.all_graph_ids)
+
+        def get_sub_graph(self):
+            """
+            Returns the sub graph controller to the group node if initialized
+            or returns None.
+
+            Returns:
+                SubGraph: sub graph controller.
+            """
+            return parent_window.ui_manager.canvas_manager.get_graph_by_id(self.graph_id)
+
+        def get_sub_graph_session(self):
+            """
+            Returns the serialized sub graph session.
+
+            Returns:
+                dict: serialized sub graph session.
+            """
+            return self.model.subgraph_session
+
+        def set_sub_graph_session(self, serialized_session):
+            """
+            Sets the sub graph session data to the group node.
+
+            Args:
+                serialized_session (dict): serialized session.
+            """
+            serialized_session = serialized_session or {}
+            self.model.subgraph_session = serialized_session
+
+        def expand(self):
+            """
+            Expand the group node session.
+
+            See Also:
+                :meth:`NodeGraph.expand_group_node`,
+                :meth:`SubGraph.expand_group_node`.
+
+            Returns:
+                SubGraph: node graph used to manage the nodes expaneded session.
+            """
+            parent_window.ui_manager.canvas_manager.switch_to_graph_by_id(self.graph_id)
+
+        def collapse(self):
+            """
+            Collapse the group node session it's expanded child sub graphs.
+
+            See Also:
+                :meth:`NodeGraph.collapse_group_node`,
+                :meth:`SubGraph.collapse_group_node`.
+            """
+            self.graph.collapse_group_node(self)
+
 
     return CustomGroupNode
