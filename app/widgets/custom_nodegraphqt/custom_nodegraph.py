@@ -23,7 +23,7 @@ from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu
-from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem
+from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
@@ -303,6 +303,9 @@ class CustomNodeViewer(NodeViewer):
         self.scene().addItem(self._snap_lines_item)
         self._snap_lines_item.hide()
         # -------------------------------------
+        self._LIVE_PIPE = CustomLivePipeItem()
+        self._LIVE_PIPE.setVisible(False)
+        self.scene().addItem(self._LIVE_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
 
     def set_navigation_mode(self, enabled):

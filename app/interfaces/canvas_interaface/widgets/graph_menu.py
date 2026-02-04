@@ -17,8 +17,8 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 
 class MenuMode:
     CREATE = 0  # 节点库
-    NAVIGATE = 1  # 画布节点
-    TEMPLATE = 2  # 模板库 (新增)
+    NAVIGATE = 2  # 画布节点
+    TEMPLATE = 1  # 模板库
 
 
 # --- 胶囊筛选小部件 (保持不变) ---
