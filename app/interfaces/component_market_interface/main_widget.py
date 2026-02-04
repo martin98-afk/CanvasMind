@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QWidget,
                              QStackedWidget, QGridLayout, QPushButton)
 from loguru import logger
-from pypinyin import lazy_pinyin
+from pypinyin import lazy_pinyin, Style
 from qfluentwidgets import (SearchLineEdit, IndeterminateProgressRing, SmoothScrollArea,
                             CardWidget, PrimaryPushButton, FluentIcon, InfoBar,
                             PushButton, ComboBox, MessageBox, ToolButton,
-                            CheckBox, LineEdit, BodyLabel, TitleLabel, PasswordLineEdit, ProgressBar)
+                            CheckBox, LineEdit, BodyLabel, TitleLabel, SubtitleLabel,
+                            PasswordLineEdit, ProgressBar)
 
 from app.interfaces.component_market_interface.utils.utils import GenericWorker, calculate_md5
 from app.interfaces.component_market_interface.widgets.component_card import ComponentCard
@@ -22,7 +24,7 @@ from app.widgets.basic_widget.style_sheet import StyleSheet
 
 
 class PluginManagerCenter(QWidget):
-    """ 组件 & 画布云存储管理主界面 (修复版) """
+    """ 组件 & 画布云存储管理主界面 (功能全修复完整版) """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -38,7 +40,7 @@ class PluginManagerCenter(QWidget):
         self._local_wf_cache = []
 
         self.active_worker = None
-        self._batch_workers = []  # 强引用，防闪退
+        self._batch_workers = []  # 强引用，防止异步任务被 GC 回收导致闪退
 
         self._render_queue = []
         self._render_timer = QTimer(self)
@@ -90,10 +92,13 @@ class PluginManagerCenter(QWidget):
 
         self.toolbar = QHBoxLayout()
         self.search_bar = SearchLineEdit()
+        self.search_bar.setPlaceholderText("检索资源 (支持拼音)...")
+        self.search_bar.textChanged.connect(self.on_filter_changed)
         self.toolbar.addWidget(self.search_bar, 1)
 
         self.creator_filter = ComboBox()
         self.creator_filter.setFixedWidth(130)
+        self.creator_filter.currentIndexChanged.connect(self.on_filter_changed)
         self.toolbar.addWidget(self.creator_filter)
 
         self.status_filter = ComboBox()
@@ -153,7 +158,7 @@ class PluginManagerCenter(QWidget):
         self.scan_local(silent=True)
         self.scan_local_workflows(silent=True)
 
-    # --- 组件扫描 (原始逻辑) ---
+    # --- 数据扫描 ---
     def scan_local(self, silent=False):
         if not silent: self._start_task()
         result = self.scanner.get_components()
@@ -176,7 +181,6 @@ class PluginManagerCenter(QWidget):
         if not silent: self._stop_task()
         if self.stack.currentIndex() == 1: self.render_local()
 
-    # --- 画布扫描 (增强) ---
     def scan_local_workflows(self, silent=False):
         if not silent: self._start_task()
         new_wf_data = []
@@ -198,8 +202,7 @@ class PluginManagerCenter(QWidget):
                     "版本号": datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y%m%d"),
                     "MD5": calculate_md5(str(p)), "创建人": user_name,
                     "最后修改时间": datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                    "entry_file": str(p), "resource_dir": safe_img_path,
-                    "resource_dir": safe_img_path if safe_img_path else None, "data_type": "workflow"
+                    "entry_file": str(p), "resource_dir": safe_img_path, "data_type": "workflow"
                 })
         except Exception as e:
             logger.exception(f"扫描画布失败: {e}")
@@ -207,7 +210,18 @@ class PluginManagerCenter(QWidget):
         if not silent: self._stop_task()
         if self.stack.currentIndex() == 3: self.render_local_workflows()
 
-    # --- 渲染与导航 ---
+    # --- 作者筛选更新 ---
+    def update_creator_filter(self, items):
+        self.creator_filter.blockSignals(True)
+        self.creator_filter.clear()
+        creators = set()
+        for i in (items or []):
+            name = i.get('创建人') or i.get('creator') or i.get('author') or '未知'
+            creators.add(str(name))
+        self.creator_filter.addItems(["所有创建人"] + sorted(list(creators)))
+        self.creator_filter.blockSignals(False)
+
+    # --- 渲染逻辑 ---
     def switch_page(self, index):
         for i, btn in enumerate(self.nav_btns): btn.setChecked(i == index)
         self.stack.setCurrentIndex(index)
@@ -218,14 +232,15 @@ class PluginManagerCenter(QWidget):
         else:
             self.status_filter.addItems(["全部状态", "未同步", "已同步"])
         self.status_filter.blockSignals(False)
-        is_setting = (index == 4)
-        self.search_bar.setVisible(not is_setting)
+
+        self.search_bar.setVisible(index != 4)
         self.creator_filter.setVisible(index in [0, 2])
-        self.status_filter.setVisible(not is_setting)
+        self.status_filter.setVisible(index != 4)
         self.batch_btn.setVisible(index in [0, 2])
         self.sync_all_btn.setVisible(index in [1, 3])
-        self.refresh_btn.setVisible(not is_setting)
-        if not is_setting: self.refresh_ui()
+        self.refresh_btn.setVisible(index != 4)
+        self.select_all_check.setVisible(index != 4)
+        if index != 4: self.refresh_ui()
 
     def refresh_ui(self):
         idx = self.stack.currentIndex()
@@ -288,7 +303,6 @@ class PluginManagerCenter(QWidget):
 
         cards = []
         for i, item in enumerate(items):
-            # 重要：在显示前对画布字段进行映射映射，修复上传者为空的问题
             if is_wf and mode == "market":
                 item["组件id"] = item.get("unique_id")
                 item["组件名称"] = item.get("canvas_name")
@@ -316,17 +330,13 @@ class PluginManagerCenter(QWidget):
         return view
 
     def _get_comparison_status(self, cloud_item, local_list):
-        """ 增强比对逻辑：支持版本号大小比对 """
         cid = str(cloud_item.get('组件id') or cloud_item.get('unique_id'))
         local_item = next((i for i in local_list if str(i.get('组件id')) == cid), None)
         if not local_item: return "new", False
-
-        cv = str(cloud_item.get('版本号', '0.0.0'))
-        lv = str(local_item.get('版本号', '0.0.0'))
-
+        cv, lv = str(cloud_item.get('版本号', '0.0.0')), str(local_item.get('版本号', '0.0.0'))
         if cv == lv: return "match", True
-        if cv < lv: return "old", True  # 云端版本旧于本地
-        return "diff", True  # 云端版本新于本地
+        if cv < lv: return "old", True
+        return "diff", True
 
     # --- 后台任务 ---
     def fetch_cloud(self):
@@ -339,14 +349,21 @@ class PluginManagerCenter(QWidget):
 
     def on_cloud_loaded(self, data):
         self._cloud_cache = data or []
+        self.update_creator_filter(self._cloud_cache)
         self._stop_task()
         self.render_market()
 
     def fetch_cloud_workflows(self):
         self._start_task()
         worker = GenericWorker(self.canvas_mgr.fetch_all)
-        worker.finished.connect(lambda data: [setattr(self, '_cloud_wf_cache', data or []), self._stop_task(),
-                                              self.render_market_workflows()])
+
+        def on_wf_done(data):
+            self._cloud_wf_cache = data or []
+            self.update_creator_filter(self._cloud_wf_cache)
+            self._stop_task()
+            self.render_market_workflows()
+
+        worker.finished.connect(on_wf_done)
         worker.error.connect(self.on_error)
         self._batch_workers.append(worker)
         worker.start()
@@ -407,12 +424,53 @@ class PluginManagerCenter(QWidget):
         self._batch_workers.append(worker)
         worker.start()
 
+    # --- 批量安装 (已修复并增强) ---
+    def on_batch_install(self):
+        if self._render_timer.isActive():
+            InfoBar.warning("请稍候", "正在加载列表...", parent=self)
+            return
+        idx = self.stack.currentIndex()
+        page = self.pages[idx].widget()
+        all_cards = page.findChildren(ComponentCard)
+        selected_data = [c.data for c in all_cards if c.check_box.isChecked() and c.isVisible()]
+        if not selected_data:
+            InfoBar.warning("提示", "请勾选资源", parent=self)
+            return
+
+        self._start_task(total=len(selected_data))
+        self.completed_count = 0
+        self._batch_workers.clear()
+
+        def step_done(worker_obj):
+            self.completed_count += 1
+            self.progress_bar.setValue(self.completed_count)
+            if self.completed_count >= len(selected_data):
+                self._stop_task()
+                InfoBar.success("批量成功", f"处理完成", parent=self)
+                self.force_refresh()
+
+        for d in selected_data:
+            if idx == 0:  # 组件云
+                worker = GenericWorker(self.cloud_mgr.download_component, d.get('组件id'), resource_path(""))
+            else:  # 画布云
+                wf_mgr = getattr(self.window(), 'workflow_manager', None)
+                target_root = Path(
+                    wf_mgr.all_workflow_paths[0]).parent if wf_mgr and wf_mgr.all_workflow_paths else Path(
+                    resource_path("app/workflows"))
+                worker = GenericWorker(self.canvas_mgr.download_canvas, d.get('组件id') or d.get('unique_id'),
+                                       target_root)
+
+            worker.finished.connect(lambda w=worker: step_done(w))
+            worker.error.connect(self.on_error)
+            self._batch_workers.append(worker)
+            worker.start()
+
     def on_sync_all(self):
         idx = self.stack.currentIndex()
         cards = self.pages[idx].widget().findChildren(ComponentCard)
         selected = [c.data for c in cards if c.check_box.isChecked() and c.isVisible()]
         if not selected: return
-        if MessageBox("确认同步", f"将选中的 {len(selected)} 个资源备份至云端？", self).exec():
+        if MessageBox("确认同步", f"备份 {len(selected)} 个资源？", self).exec():
             self._start_task()
             if idx == 3:
                 formatted = [{"meta": {"id": s['组件id'], "name": s['组件名称'], "category": s['组件类别'],
@@ -443,25 +501,40 @@ class PluginManagerCenter(QWidget):
     # --- UI 辅助 ---
     def on_filter_changed(self):
         search_text = self.search_bar.text().strip().lower()
+        selected_creator = self.creator_filter.currentText()
+        status_mode = self.status_filter.currentText()
         idx = self.stack.currentIndex()
         if idx > 3: return
+
         container = self.pages[idx].widget()
         cards = container.findChildren(ComponentCard)
         cat_vis = {}
         for card in cards:
             name = str(card.data.get('组件名称') or card.data.get('canvas_name') or '').lower()
             py_full = "".join(lazy_pinyin(name)).lower()
-            match = search_text in name or search_text in py_full
-            card.setVisible(match)
-            if match: cat_vis[str(card.data.get('组件类别') or card.data.get('category'))] = True
+            match_s = search_text in name or search_text in py_full
+
+            match_c = True
+            if idx in [0, 2]:
+                creator = str(card.data.get('创建人') or card.data.get('creator') or card.data.get('author') or '未知')
+                match_c = (selected_creator == "所有创建人" or creator == selected_creator)
+
+            match_st = True
+            if idx in [0, 2]:
+                if status_mode == "隐藏已安装":
+                    match_st = card.status_code != "match"
+                elif status_mode == "仅看更新":
+                    match_st = card.status_code == "diff"
+
+            vis = match_s and match_c and match_st
+            card.setVisible(vis)
+            if vis: cat_vis[str(card.data.get('组件类别') or card.data.get('category'))] = True
+
         for i in range(container.layout().count()):
             w = container.layout().itemAt(i).widget()
             if w:
                 chk = w.findChild(CheckBox)
                 if chk: w.setVisible(chk.text() in cat_vis)
-
-    def on_batch_install(self):
-        pass
 
     def force_refresh(self):
         idx = self.stack.currentIndex()
