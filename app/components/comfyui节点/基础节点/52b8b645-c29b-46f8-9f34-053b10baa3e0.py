@@ -16,8 +16,8 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyModelSamplingSD3(BaseComponent):
-    requirements = "comfy"
-    name = "ModelSampling SD3"
+    requirements = "#comfy"
+    name = "采样算法(SD3)"
     category = "comfyui节点/基础节点"
     description = "基于 DiscreteFlow 针对 SD3/Flux 等模型调整采样 Shift 和 Multiplier 参数。"
 

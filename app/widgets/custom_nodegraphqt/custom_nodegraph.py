@@ -5,10 +5,11 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, )
+    Z_VAL_PIPE, ViewerEnum, )
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
+from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.viewer import NodeViewer
 from PyQt5.QtCore import Qt
@@ -22,7 +23,7 @@ from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
-from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu
+from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
 from app.widgets.node_widget.base import CustomNodeBaseWidget
@@ -303,9 +304,30 @@ class CustomNodeViewer(NodeViewer):
         self.scene().addItem(self._snap_lines_item)
         self._snap_lines_item.hide()
         # -------------------------------------
+        # context menus.
+        self._ctx_graph_menu = BaseMenu('NodeGraph', self)
+        self._ctx_node_menu = BaseMenu('Nodes', self)
         self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
+        text_color = QtGui.QColor(*tuple(map(
+            lambda i, j: i - j, (255, 255, 255),
+            ViewerEnum.BACKGROUND_COLOR.value
+        )))
+        text_color.setAlpha(50)
+        self._cursor_text = QtWidgets.QGraphicsTextItem()
+        self._cursor_text.setFlag(
+            QtWidgets.QGraphicsTextItem.ItemIsSelectable, False
+        )
+        self._cursor_text.setDefaultTextColor(text_color)
+        self._cursor_text.setZValue(Z_VAL_PIPE - 1)
+        font = self._cursor_text.font()
+        font.setPointSize(7)
+        self._cursor_text.setFont(font)
+        self.scene().addItem(self._cursor_text)
+        self._SLICER_PIPE = SlicerPipeItem()
+        self._SLICER_PIPE.setVisible(False)
+        self.scene().addItem(self._SLICER_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
 
     def set_navigation_mode(self, enabled):
@@ -917,6 +939,8 @@ class CustomNodeViewer(NodeViewer):
 
     def resizeEvent(self, event):
         self.home_window.ui_manager.update_position()
+        if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
+            self._selection_overlay.update()
         return super().resizeEvent(event)
 
 

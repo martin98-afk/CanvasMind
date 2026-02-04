@@ -50,7 +50,7 @@ class ModernStyles:
             QTextEdit:focus, QLineEdit:focus {{
                 /* 聚焦时取消凹陷感，改为发光感 */
                 border: 1px solid {ModernStyles.ACCENT_COLOR};
-                background-color: #121212; /* 聚焦时更深一点 */
+                background-color: #2D2D2D; /* 聚焦时更深一点 */
             }}
         """
 

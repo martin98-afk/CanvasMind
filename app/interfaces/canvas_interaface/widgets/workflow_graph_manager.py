@@ -89,7 +89,7 @@ class WorkflowCanvasManager(QWidget):
         self._apply_style_to_graph(root_graph)
         self._add_graph_to_stack(root_graph, "Main Workflow", self._root_graph_id)
 
-    def current_graph(self) -> Optional[CustomNodeGraph]:
+    def  current_graph(self) -> Optional[CustomNodeGraph]:
         """获取当前显示的 Graph 实例"""
         return self.get_graph_by_id(self.current_graph_id)
 

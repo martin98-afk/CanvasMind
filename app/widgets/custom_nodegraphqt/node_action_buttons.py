@@ -9,6 +9,7 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
     def __init__(self, parent, icon_type, tooltip, color, hover_color, is_permanent=False):
         super(NodeActionButton, self).__init__(parent)
         self.setAcceptHoverEvents(True)
+        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(Z_VAL_NODE_WIDGET + 10)
         self.icon_type = icon_type
         self.setToolTip(tooltip)
@@ -79,8 +80,6 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
             painter.drawLine(QtCore.QPointF(cx - 4, cy + 2), QtCore.QPointF(cx + 1, cy + 2))
 
         elif self.icon_type == 'clone':
-            # 图标：双层矩形 (用于克隆/拷贝)
-            # 底层矩形
             painter.drawRoundedRect(QtCore.QRectF(cx - 6, cy - 6, 9, 9), 1, 1)
             # 顶层矩形 (带背景填充，增加重叠感)
             painter.setBrush(painter.pen().color())
@@ -126,11 +125,11 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
         painter.restore()
 
     def hoverEnterEvent(self, event):
-        self._hovered = True;
+        self._hovered = True
         self.update()
 
     def hoverLeaveEvent(self, event):
-        self._hovered = False;
+        self._hovered = False
         self.update()
 
     def mousePressEvent(self, event):
