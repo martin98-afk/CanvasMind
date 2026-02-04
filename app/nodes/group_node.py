@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from NodeGraphQt import GroupNode, Port
+from NodeGraphQt import Port
 from NodeGraphQt.constants import PortTypeEnum
 from NodeGraphQt.errors import PortRegistrationError
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_group import GroupNodeItem
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
+
 from app.nodes.status_node import StatusNode
+from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
 
 class GroupPortInputNode(PortInputNode):
@@ -132,7 +134,7 @@ class GroupPortOutputNode(PortOutputNode):
 
 def create_group_node_class(graph, parent_window):
 
-    class CustomGroupNode(GroupNode, StatusNode):
+    class CustomGroupNode(CustomBaseNode, StatusNode):
         __identifier__ = 'general'
         NODE_NAME = 'GroupNode'
         graph_id = None

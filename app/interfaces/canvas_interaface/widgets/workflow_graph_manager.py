@@ -91,9 +91,7 @@ class WorkflowCanvasManager(QWidget):
 
     def current_graph(self) -> Optional[CustomNodeGraph]:
         """获取当前显示的 Graph 实例"""
-        if self._graph_stack_data:
-            return self._graph_stack_data[-1]['graph']
-        return None
+        return self.get_graph_by_id(self.current_graph_id)
 
     def create_sub_graph(self, name: str = "Untitled Subgraph",
                          custom_id: Optional[str] = None) -> (str, Optional[CustomNodeGraph]):
@@ -141,7 +139,7 @@ class WorkflowCanvasManager(QWidget):
         finally:
             self.setUpdatesEnabled(True)
 
-    def switch_to_graph_by_id(self, graph_id: str, destroy_intermediates: bool = True) -> bool:
+    def switch_to_graph_by_id(self, graph_id: str, destroy_intermediates: bool = False) -> bool:
         """
         根据子图ID切换视图
 
@@ -183,7 +181,7 @@ class WorkflowCanvasManager(QWidget):
         finally:
             self.stack_widget.setUpdatesEnabled(True)
 
-    def switch_to_level(self, index: int, destroy_intermediates: bool = True) -> bool:
+    def switch_to_level(self, index: int, destroy_intermediates: bool = False) -> bool:
         """
         跳转到指定层级（兼容旧接口）
 

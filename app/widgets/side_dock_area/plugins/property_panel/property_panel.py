@@ -56,7 +56,10 @@ class FuturisticCard(QFrame):
         header_layout = QHBoxLayout(self.header_hud)
         header_layout.setContentsMargins(18, 0, 10, 0)
 
-        self.icon_widget = IconWidget(icon, self.header_hud)
+        try:
+            self.icon_widget = IconWidget(icon, self.header_hud)
+        except Exception as e:
+            self.icon_widget = IconWidget(FluentIcon.DEVELOPER_TOOLS, self.header_hud)
         self.icon_widget.setFixedSize(18, 18)
         self.title_label = StrongBodyLabel(title, self.header_hud)
         self.title_label.setFont(QFont("Segoe UI Semibold", 13))

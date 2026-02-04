@@ -12,9 +12,9 @@ from pypinyin import lazy_pinyin, Style
 # --- 样式配置 ---
 class ModernStyles:
     # 颜色面板
-    BG_COLOR = "#252526"  # 编辑器背景
-    WINDOW_BG = "#252526"  # 窗口背景
-    INPUT_BG = "#181818"  # 输入框背景（比背景深，增加凹陷感）
+    BG_COLOR = "#2D2D2D"  # 编辑器背景
+    WINDOW_BG = "#2D2D2D"  # 窗口背景
+    INPUT_BG = "#2D2D2D"  # 输入框背景（比背景深，增加凹陷感）
     POPUP_BG = "#2d2d2d"  # 弹窗背景
     TEXT_COLOR = "#E0E0E0"  # 普通文字
     TEXT_MAIN = "#E0E0E0"  # 主文字颜色
@@ -298,21 +298,15 @@ class VariableCompletionTextEdit(QTextEdit, CompletionMixin):
         super().__init__(parent)
         # 1. 应用现代化编辑器样式
         self.setStyleSheet(ModernStyles.get_editor_style())
-
+        self.setMinimumHeight(100)
         # 2. 设置光标颜色 (深色背景下光标需要是白色的)
         p = self.palette()
         p.setColor(QPalette.Text, QColor(ModernStyles.TEXT_COLOR))
         p.setColor(QPalette.Base, QColor(ModernStyles.BG_COLOR))
         self.setPalette(p)
 
-        # 3. 设置闪烁光标颜色为白色 (有些平台需要单独设置)
-        # 这一步通常通过 stylesheet 的 color 属性已经解决，但为了保险：
-        # self.setCursorWidth(2) # 加宽光标更现代
-
         self.popup = VariableCompletionPopup(use_qcursor, self.window())
         self.popup.itemClicked.connect(lambda item: self._apply_completion(item.text()))
-        # 注意: itemSelected 信号在 QListWidget 中通常是 currentItemChanged 或 itemClicked
-        # 这里为了演示方便使用 itemClicked，如果是自定义信号请保留原样
 
         self.init_completion(get_variable_list_func)
 

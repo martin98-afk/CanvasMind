@@ -2,13 +2,13 @@
 import shutil
 import uuid
 
-from NodeGraphQt import GroupNode, BaseNode, constants
+from NodeGraphQt import GroupNode
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
-from markdown.extensions.attr_list import get_attrs
 from qfluentwidgets import Theme, getIconColor, FluentIcon
 
+from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
@@ -20,7 +20,6 @@ from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import create_sticky_note_node
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
-from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
 from app.widgets.custom_nodegraphqt.sticky_note_item import StickyNoteItem
 from .logger import get_logger
 
@@ -120,15 +119,15 @@ class NodeOperations:
         except Exception as e:
             logger.exception("register_components 执行失败！")  # ← 关键
 
-    def setup_graph_menu(self):
+    def setup_graph_menu(self, graph):
         """注入函数"""
         left_panel = self.parent.nav_panel
-        self.graph_menu = CustomGraphMenu(self.graph, self.parent.nav_panel, self.parent)
+        self.graph_menu = CustomGraphMenu(graph, self.parent.nav_panel, self.parent)
         left_panel.draggable_tree.filter_changed_signal.connect(self.graph_menu.set_category_filter)
         initial_cats = left_panel.draggable_tree.tree._selected_categories
         self.graph_menu.set_category_filter(initial_cats)
 
-        viewer = self.graph.viewer()
+        viewer = graph.viewer()
         scene_view = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
         scene_view._custom_menu = self.graph_menu
         original_context_menu_event = scene_view.contextMenuEvent
@@ -168,7 +167,7 @@ class NodeOperations:
         scene_view.contextMenuEvent = custom_context_menu_event
 
     def setup_context_menu(self):
-        self.setup_graph_menu()
+        self.setup_graph_menu(self.graph)
         # 画布右键菜单注册
         graph_menu = self.graph.get_context_menu('graph')
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
@@ -417,6 +416,20 @@ class NodeOperations:
 
         graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph("Group")
         new_graph.deserialize_session(session_data)
+        self.setup_graph_menu(new_graph)
+        self.setup_graph_menu(self.graph)
+        self.parent.refresh_graph_signals()
+        # 画布右键菜单注册
+        graph_menu = new_graph.get_context_menu('graph')
+        graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
+        graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
+        graph_menu.add_command(
+            '删除选中', lambda graph: (
+                self.parent.node_operations.delete_selected_nodes(graph),
+                self.parent.property_panel.update_properties(None)
+            ), 'Del'
+        )
+        QTimer.singleShot(0, lambda: self.parent.ui_manager.update_position(True))
         group_node.graph_id = graph_id
         # --- 5. 恢复外部连线 ---
         g_inputs = group_node.inputs()

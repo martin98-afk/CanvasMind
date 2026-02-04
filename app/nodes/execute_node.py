@@ -641,12 +641,16 @@ def create_node_class(full_path, file_path, parent_window=None):
                         # 2. 检查远程结果文件是否存在 (ls 比 stat 在某些 SSH 环境下更稳定)
                         _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
                         found_files = stdout.read().decode()
-                        with sftp.open(log_path, 'r') as f:
-                            f.seek(last_log_pos)
-                            new_data = f.read().decode('utf-8', errors='ignore')
-                            if new_data:
-                                self._log_message(self.persistent_id, new_data)
-                                last_log_pos = f.tell()
+                        try:
+                            with sftp.open(log_path, 'r') as f:
+                                f.seek(last_log_pos)
+                                new_data = f.read().decode('utf-8', errors='ignore')
+                                if new_data:
+                                    self._log_message(self.persistent_id, new_data)
+                                    last_log_pos = f.tell()
+                        except IOError:
+                            # 脚本可能还没开始写日志，忽略
+                            pass
                         if remote_res_file in found_files or remote_err_file in found_files:
                             # 如果文件生成了，跳出轮询准备下载
                             break
