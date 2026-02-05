@@ -6,6 +6,7 @@ from typing import Any, Optional
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from loguru import logger
 
+from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
 from app.scheduler.workflow_scheduler import WorkflowScheduler
 
 
@@ -107,11 +108,26 @@ class CanvasRunner(QObject):
         self._scheduler = self._create_scheduler()
         self._connect_signals(self._scheduler, task)
 
-        # 数据注入逻辑：如果起始节点是触发器，先更新它的数据
-        if task.mode == 'from' and task.trigger_data:
-            if hasattr(task.target, '_last_trigger_data'):
-                task.target._last_trigger_data = task.trigger_data
+        # --- 1. 创建执行记录 ---
+        em = ExecutionManager()
+        exec_id = em.create_record(
+            exec_id=task.task_id,
+            canvas_name=self.parent.workflow_name,
+            trigger_type=task.mode
+        )
 
+        # --- 2. 增强信号处理 ---
+        def on_finished():
+            # 假设你的调度器运行完后能拿到最后一个节点的输出
+            em.update_record(exec_id, "success", output_data={})
+            self._on_task_finished()
+
+        def on_error(msg):
+            em.update_record(exec_id, "failed", error_msg=msg)
+            self._on_task_error(msg)
+
+        self._scheduler.finished.connect(on_finished)
+        self._scheduler.error.connect(on_error)
         # 启动执行
         try:
             if task.mode in ['full', 'workflow']:
@@ -132,8 +148,6 @@ class CanvasRunner(QObject):
         self.workflow_started.emit()
 
         # 任务结束后的队列回环
-        scheduler.finished.connect(self._on_task_finished)
-        scheduler.error.connect(self._on_task_error)
         scheduler.cancelled.connect(self._on_task_finished)
 
         scheduler.node_vars_changed.connect(self.node_vars_changed.emit)

@@ -10,6 +10,8 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
+
 
 class WebhookManager:
     _instance = None
@@ -38,6 +40,23 @@ class WebhookManager:
         self._initialized = True
 
     def _setup_routes(self):
+        @self.app.get("/api/v1/result/{exec_id}")
+        async def get_result(exec_id: str):
+            em = ExecutionManager()
+            record = em.get_record(exec_id)
+            if not record:
+                return JSONResponse(status_code=404, content={"message": "Not Found"})
+
+            return {
+                "execution_id": record.execution_id,
+                "status": record.status,
+                "start_time": record.start_time,
+                "end_time": record.end_time,
+                "duration": (record.end_time - record.start_time) if record.end_time else None,
+                "output": record.output_data,
+                "error": record.error_msg
+            }
+
         @self.app.api_route("/api/v1/trigger/{node_id}", methods=["GET", "POST", "PUT"])
         async def handle_trigger(node_id: str, request: Request):
             path = f"/api/v1/trigger/{node_id}"
@@ -55,7 +74,7 @@ class WebhookManager:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 
                 self.registry[path](data, task_id)
-                return {"status": "success", "node_id": node_id}
+                return {"status": "success", "node_id": node_id, "task_id": task_id}
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 
     def register(self, canvas_name: str, endpoint: str, callback: Callable):
