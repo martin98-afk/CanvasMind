@@ -28,6 +28,7 @@ class NodeSignals(QObject):
     htmlReady = QtCore.pyqtSignal(object, bool)
     stream_data_updated = QtCore.pyqtSignal(object)
     portsReady = QtCore.pyqtSignal()
+    execution_requested = QtCore.pyqtSignal(object, str) # incoming_data, task_id
 
 
 class BasicNodeWithGlobalProperty(NodeObject):

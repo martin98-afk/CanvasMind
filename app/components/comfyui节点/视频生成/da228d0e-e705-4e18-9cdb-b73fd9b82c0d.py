@@ -27,12 +27,12 @@ class ComfyWan21VideoLatent(BaseComponent):
     ]
 
     properties = {
-        "widt": PropertyDefinition(
+        "width": PropertyDefinition(
             type=PropertyType.INT,
             default=832,
             label="宽度 (必须是16的倍数)",
         ),
-        "heigh": PropertyDefinition(
+        "height": PropertyDefinition(
             type=PropertyType.INT,
             default=480,
             label="高度 (必须是16的倍数)",
@@ -53,8 +53,8 @@ class ComfyWan21VideoLatent(BaseComponent):
         import torch
 
         # 1. 获取参数
-        width = params.get("widt", 832)
-        height = params.get("heigh", 480)
+        width = params.get("width", 832)
+        height = params.get("height", 480)
         length = params.get("length", 81)
         batch_size = params.get("batch_size", 1)
 

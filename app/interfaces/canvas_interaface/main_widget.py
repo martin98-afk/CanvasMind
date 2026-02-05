@@ -25,6 +25,7 @@ from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
+from app.scheduler.trigger_manager import WebhookManager, SchedulerManager
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
@@ -672,6 +673,11 @@ class CanvasPage(QWidget):
     def close_current_canvas(self):
         if not self.file_path.exists():
             self.clean_canvas()
+
+        # 清除注册的触发器
+        WebhookManager().unregister_by_canvas(self.workflow_name)
+        SchedulerManager().remove_by_canvas(self.workflow_name)
+        # 定时器关闭
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()
         self._disconnect_signals()

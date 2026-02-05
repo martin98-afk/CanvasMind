@@ -10,7 +10,7 @@ import traceback
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, Dict, Type, Optional, List, Set
+from typing import Tuple, Dict, Type, Optional, List
 
 from PyQt5.QtCore import QTimer
 from loguru import logger

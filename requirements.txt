@@ -143,3 +143,4 @@ simplejson
 opencv-python
 pyecharts
 sshtunnel
+apscheduler

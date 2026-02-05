@@ -120,7 +120,7 @@ class CanvasUISetUp:
         self.echart_node.clicked.connect(lambda: self.parent.create_next_node("visualize.MediaNode"))
         self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
         self.note_node.clicked.connect(lambda: self.parent.create_backdrop_node("general.StickyNote", init_io=False))
-        self.group_node.clicked.connect(lambda: self.parent.create_group_node())
+        self.trigger_node.clicked.connect(lambda: self.parent.create_next_node("general.trigger"))
 
         if hasattr(self.parent, 'quick_manager'):
             self.add_quick_btn.clicked.connect(lambda: self.parent.quick_manager.open_add_dialog(self.add_quick_btn))
@@ -273,13 +273,13 @@ class CanvasUISetUp:
         self.iterate_node = self._build_tool_btn(get_icon("更新"), "创建迭代")
         self.loop_node = self._build_tool_btn(get_icon("无限"), "创建循环")
         self.branch_node = self._build_tool_btn(get_icon("条件分支"), "创建分支")
-        self.group_node = self._build_tool_btn(get_icon("组节点"), "创建组节点")
+        self.trigger_node = self._build_tool_btn(get_icon("触发器"), "创建触发器")
         self.echart_node = self._build_tool_btn(get_icon("多媒体"), "媒体展示")
         self.code_node = self._build_tool_btn(get_icon("代码执行"), "代码节点")
         self.note_node = self._build_tool_btn(get_icon("文本注释"), "注释节点")
 
         for btn in [self.iterate_node, self.loop_node, self.branch_node, self.echart_node,
-                    self.code_node, self.group_node, self.note_node]:
+                    self.code_node, self.trigger_node, self.note_node]:
             self.node_layout.addWidget(btn)
 
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
