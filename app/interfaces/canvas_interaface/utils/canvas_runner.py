@@ -16,6 +16,7 @@ class ExecutionTask:
     mode: str  # 'full', 'to', 'from', 'node', 'workflow'
     target: Any  # node or list of nodes
     sort: bool = True
+    triggered_data: dict = None
     task_id: str = None
 
 
@@ -36,6 +37,7 @@ class CanvasRunner(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.execution_storage = ExecutionManager()
         self._scheduler: Optional[WorkflowScheduler] = None
         self._task_queue = deque()
         self._is_running = False
@@ -72,12 +74,12 @@ class CanvasRunner(QObject):
     def run_full(self, nodes=None, sort=True):
         self._enqueue(ExecutionTask('full', nodes, sort=sort))
 
-    def run_to(self, target_node, task_id=None):
-        self._enqueue(ExecutionTask('to', target_node, task_id=task_id))
+    def run_to(self, target_node, triggered_data=None, task_id=None):
+        self._enqueue(ExecutionTask('to', target_node, triggered_data=triggered_data, task_id=task_id))
 
-    def run_from(self, start_node, task_id=None):
+    def run_from(self, start_node, triggered_data=None, task_id=None):
         """由 TriggerNode 触发器调用"""
-        self._enqueue(ExecutionTask('from', start_node, task_id=task_id))
+        self._enqueue(ExecutionTask('from', start_node, triggered_data=triggered_data, task_id=task_id))
 
     def run_node(self, node):
         self._enqueue(ExecutionTask('node', node))
@@ -128,20 +130,20 @@ class CanvasRunner(QObject):
 
         # 任务结束后的队列回环
         # --- 1. 创建执行记录 ---
-        em = ExecutionManager()
-        exec_id = em.create_record(
+        exec_id = self.execution_storage.create_record(
             exec_id=task.task_id,
             canvas_name=self.parent.workflow_name,
-            trigger_type=task.mode
+            trigger_type=task.mode,
+            input_data=task.triggered_data
         )
 
         # --- 2. 增强信号处理 ---
         def on_finished():
-            em.update_record(exec_id, "success", output_data={})
+            self.execution_storage.update_record(exec_id, "success", output_data={})
             self._on_task_finished()
 
         def on_error(msg):
-            em.update_record(exec_id, "failed", error_msg=msg)
+            self.execution_storage.update_record(exec_id, "failed", error_msg=msg)
             self._on_task_error(msg)
 
         scheduler.finished.connect(on_finished)

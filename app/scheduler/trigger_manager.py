@@ -1,3 +1,4 @@
+import socket
 import threading
 from uuid import uuid4
 
@@ -40,6 +41,10 @@ class WebhookManager:
         self._initialized = True
 
     def _setup_routes(self):
+        @self.app.get("/health")
+        async def health_check():
+            return {"status": "ok", "active_canvases": list(self.canvas_map.keys())}
+
         @self.app.get("/api/v1/result/{exec_id}")
         async def get_result(exec_id: str):
             em = ExecutionManager()
@@ -110,7 +115,15 @@ class WebhookManager:
             del self.canvas_map[canvas_name]
             logger.info(f"[Webhook] 已清理画布 '{canvas_name}' 的所有 Webhook 注册 ({len(endpoints)} 个)")
 
+    def _is_port_in_use(self, port: int) -> bool:
+        """--- 优化：端口占用检测 ---"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex((self.host, port)) == 0
+
     def start(self):
+        if self._is_port_in_use(self.port):
+            logger.error(f"端口 {self.port} 已被占用，Webhook 服务启动失败！")
+            return
         if self._server_thread is None:
             config = uvicorn.Config(
                 self.app,
@@ -141,9 +154,13 @@ class SchedulerManager:
     def __init__(self):
         if self._initialized:
             return
-        self.scheduler = BackgroundScheduler()
+        self.scheduler = BackgroundScheduler(job_defaults={
+            'coalesce': True,  # 积压任务合并：如果错过了多次，只跑一次
+            'max_instances': 1,  # 同一任务同一时间只允许跑一个实例
+            'misfire_grace_time': 30  # 容错时间
+        })
         self.scheduler.start()
-        # 新增：画布与任务ID的映射 { canvas_name: {job_id1, job_id2} }
+        # 画布与任务ID的映射 { canvas_name: {job_id1, job_id2} }
         self.canvas_jobs: Dict[str, set] = {}
         self._initialized = True
         logger.info("APScheduler 调度器已启动")
