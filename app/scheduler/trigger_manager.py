@@ -32,7 +32,7 @@ class WebhookManager:
         self.host = host
         self.port = port
         self.registry: Dict[str, Callable] = {}  # { path: callback }
-        # 新增：画布与路径的映射关系 { canvas_name: {path1, path2} }
+        # 画布与路径的映射关系 { canvas_name: {path1, path2} }
         self.canvas_map: Dict[str, set] = {}
 
         self._setup_routes()
