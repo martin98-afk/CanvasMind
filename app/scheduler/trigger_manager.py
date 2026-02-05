@@ -28,66 +28,70 @@ class WebhookManager:
         self.host = host
         self.port = port
         self.registry: Dict[str, Callable] = {}  # { path: callback }
+        # 新增：画布与路径的映射关系 { canvas_name: {path1, path2} }
+        self.canvas_map: Dict[str, set] = {}
 
         self._setup_routes()
         self._server_thread = None
         self._initialized = True
 
     def _setup_routes(self):
-        """配置 FastAPI 路由"""
-
-        # 使用通配符/路径参数来捕获所有触发请求
         @self.app.api_route("/api/v1/trigger/{node_id}", methods=["GET", "POST", "PUT"])
         async def handle_trigger(node_id: str, request: Request):
             path = f"/api/v1/trigger/{node_id}"
-            logger.info(f"收到 Webhook 请求: {path}")
-
             if path in self.registry:
-                # 解析请求体
                 data = {}
                 try:
                     if request.method == "POST":
-                        # 尝试获取 JSON，如果失败则尝试获取表单
                         content_type = request.headers.get("content-type", "")
-                        if "application/json" in content_type:
-                            data = await request.json()
-                        else:
-                            form_data = await request.form()
-                            data = dict(form_data)
+                        data = await request.json() if "application/json" in content_type else dict(
+                            await request.form())
                     else:
-                        # GET 请求获取查询参数
                         data = dict(request.query_params)
                 except Exception as e:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 
-                # 调用节点的回调函数 (TriggerNode.trigger_execution)
-                # 注意：回调函数内部通过信号发射到主线程，所以这里可以安全调用
                 self.registry[path](data)
-
                 return {"status": "success", "node_id": node_id}
-
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 
-    def register(self, endpoint: str, callback: Callable):
-        """注册路径回调"""
-        # 确保路径以 / 开头
+    def register(self, canvas_name: str, endpoint: str, callback: Callable):
+        """注册路径回调，关联画布名"""
         if not endpoint.startswith("/"):
             endpoint = "/" + endpoint
+
         self.registry[endpoint] = callback
-        logger.info(f"[FastAPI] 注册接口: {endpoint}")
+
+        # 记录到画布映射中
+        if canvas_name not in self.canvas_map:
+            self.canvas_map[canvas_name] = set()
+        self.canvas_map[canvas_name].add(endpoint)
+
+        logger.info(f"[Webhook] 画布 '{canvas_name}' 注册接口: {endpoint}")
 
     def unregister(self, endpoint: str):
-        """注销路径"""
+        """注销单个路径"""
         if endpoint in self.registry:
             del self.registry[endpoint]
-            logger.info(f"[FastAPI] 注销接口: {endpoint}")
+            # 从所有画布映射中移除该路径
+            for endpoints in self.canvas_map.values():
+                endpoints.discard(endpoint)
+            logger.info(f"[Webhook] 注销接口: {endpoint}")
+
+    def unregister_by_canvas(self, canvas_name: str):
+        """新增：直接关闭该画布下的所有 Webhook"""
+        if canvas_name in self.canvas_map:
+            endpoints = list(self.canvas_map[canvas_name])
+            for ep in endpoints:
+                if ep in self.registry:
+                    del self.registry[ep]
+            del self.canvas_map[canvas_name]
+            logger.info(f"[Webhook] 已清理画布 '{canvas_name}' 的所有 Webhook 注册 ({len(endpoints)} 个)")
 
     def start(self):
-        """在独立线程中启动 Uvicorn"""
         if self._server_thread is None:
             config = uvicorn.Config(self.app, host=self.host, port=self.port, log_level="error")
             server = uvicorn.Server(config)
-
             self._server_thread = threading.Thread(target=server.run, daemon=True)
             self._server_thread.start()
             logger.info(f"FastAPI Webhook 服务已启动: http://{self.host}:{self.port}")
@@ -107,65 +111,58 @@ class SchedulerManager:
     def __init__(self):
         if self._initialized:
             return
-        # 使用 BackgroundScheduler
         self.scheduler = BackgroundScheduler()
         self.scheduler.start()
+        # 新增：画布与任务ID的映射 { canvas_name: {job_id1, job_id2} }
+        self.canvas_jobs: Dict[str, set] = {}
         self._initialized = True
         logger.info("APScheduler 调度器已启动")
 
-    def add_job(self, node_id: str, callback: callable, cron_str: str):
-        """
-        添加/更新定时任务
-        """
+    def add_job(self, canvas_name: str, node_id: str, callback: callable, cron_str: str):
+        """添加定时任务，关联画布名"""
         try:
-            # 1. 预处理表达式，去除多余空格
             cron_str = cron_str.strip()
             fields = cron_str.split()
-
-            trigger = None
-
-            # 2. 根据字段数量判断解析方式
             if len(fields) == 5:
-                # 标准 Unix 格式: 分 时 日 月 周
                 trigger = CronTrigger.from_crontab(cron_str)
-                logger.info(f"[Scheduler] 解析为标准 5 位 Crontab (分钟级)")
             elif len(fields) == 6:
-                # 扩展格式: 秒 分 时 日 月 周
-                trigger = CronTrigger(
-                    second=fields[0],
-                    minute=fields[1],
-                    hour=fields[2],
-                    day=fields[3],
-                    month=fields[4],
-                    day_of_week=fields[5]
-                )
-                logger.info(f"[Scheduler] 解析为 6 位 Cron (秒级)")
+                trigger = CronTrigger(second=fields[0], minute=fields[1], hour=fields[2],
+                                      day=fields[3], month=fields[4], day_of_week=fields[5])
             else:
-                raise ValueError(f"不支持的 Cron 格式 (字段数量: {len(fields)})，请使用 5 位或 6 位表达式")
+                raise ValueError("Cron 格式需为 5 位或 6 位")
 
-            # 3. 提交任务
-            self.scheduler.add_job(
-                callback,
-                trigger,
-                id=node_id,
-                replace_existing=True,
-                # 容错时间：如果系统繁忙导致错过触发，10秒内仍允许运行
-                misfire_grace_time=10
-            )
-            logger.info(f"[Scheduler] 节点 {node_id} 任务已成功挂载: {cron_str}")
+            self.scheduler.add_job(callback, trigger, id=node_id, replace_existing=True, misfire_grace_time=10)
 
+            # 记录画布与 Job 的关系
+            if canvas_name not in self.canvas_jobs:
+                self.canvas_jobs[canvas_name] = set()
+            self.canvas_jobs[canvas_name].add(node_id)
+
+            logger.info(f"[Scheduler] 画布 '{canvas_name}' 节点 {node_id} 挂载成功: {cron_str}")
         except Exception as e:
-            # 使用 logger.exception 会打印出完整的堆栈信息，方便调试
-            logger.error(f"[Scheduler] 任务解析或添加失败: {cron_str} | 错误: {e}")
+            logger.error(f"[Scheduler] 任务添加失败: {e}")
 
     def remove_job(self, node_id: str):
-        """移除指定节点的定时任务"""
+        """移除单个任务"""
         try:
             if self.scheduler.get_job(node_id):
                 self.scheduler.remove_job(node_id)
+                # 清理映射关系
+                for job_ids in self.canvas_jobs.values():
+                    job_ids.discard(node_id)
                 logger.info(f"[Scheduler] 任务已注销: {node_id}")
         except Exception as e:
-            logger.error(f"[Scheduler] 移除任务失败: {node_id} | {e}")
+            logger.error(f"[Scheduler] 移除任务失败: {e}")
+
+    def remove_by_canvas(self, canvas_name: str):
+        """新增：清理特定画布的所有定时任务"""
+        if canvas_name in self.canvas_jobs:
+            job_ids = list(self.canvas_jobs[canvas_name])
+            for jid in job_ids:
+                if self.scheduler.get_job(jid):
+                    self.scheduler.remove_job(jid)
+            del self.canvas_jobs[canvas_name]
+            logger.info(f"[Scheduler] 已清理画布 '{canvas_name}' 的所有定时任务 ({len(job_ids)} 个)")
 
     def stop(self):
         if self.scheduler.running:
