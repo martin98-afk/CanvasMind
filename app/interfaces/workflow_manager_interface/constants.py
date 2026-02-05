@@ -1,3 +1,4 @@
+from app.widgets.side_dock_area.plugins.canvas_execution_records.main_widget import ExecutionHistoryWindow
 from app.widgets.side_dock_area.plugins.canvas_node_log.main_widget import LogToolWindow
 from app.widgets.side_dock_area.plugins.component_readme.main_widget import NodeDocToolWindow
 from app.widgets.side_dock_area.plugins.dependency_check.main_widget import DependencyToolWindow
@@ -14,9 +15,9 @@ SideDockRegistry.register(category, PropertyToolWindow.name, PropertyToolWindow)
 SideDockRegistry.register(category, DependencyToolWindow.name, DependencyToolWindow)
 SideDockRegistry.register(category, NodeDocToolWindow.name, NodeDocToolWindow)
 SideDockRegistry.register(category, PluginTemplateToolWindow.name, PluginTemplateToolWindow, DockPosition.TOP)
-# SideDockRegistry.register(category, VariableExplorerToolWindow.name, VariableExplorerToolWindow)
 
 
 SideDockRegistry.register(category, OpenAIChatToolWindow.name, OpenAIChatToolWindow)
 SideDockRegistry.register(category, IPythonConsoleToolWindow.name, IPythonConsoleToolWindow)
+SideDockRegistry.register(category, ExecutionHistoryWindow.name, ExecutionHistoryWindow)
 SideDockRegistry.register(category, LogToolWindow.name, LogToolWindow)

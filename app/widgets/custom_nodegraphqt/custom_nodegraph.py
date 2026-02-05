@@ -169,7 +169,7 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
     # --- 3. 功能具体实现 ---
     def on_run(self):
         """功能：执行选中的节点"""
-        self.viewer.home_window.canvas_runner.run_full()
+        self.viewer.home_window.canvas_runner.run_workflow()
 
     def _on_comment(self):
         """功能：为选中的节点创建一个 Backdrop (背景框)"""

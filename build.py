@@ -32,7 +32,6 @@ params = [
     '--copy-metadata=jupyter_client',
     '--hidden-import=jupyter_client.provisioning.local',
     '--hidden-import=ipykernel',
-
     # 建议加上 --clean 清理之前的缓存，避免路径残留
     '--clean',
     '--noconfirm',

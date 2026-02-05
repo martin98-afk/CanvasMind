@@ -4,11 +4,12 @@ import os
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QPlainTextEdit, QApplication, QDesktopWidget
+from PyQt5.QtWidgets import (QPlainTextEdit, QApplication, QDesktopWidget,
+                             QSystemTrayIcon, QMenu, QAction, qApp)
 from loguru import logger
 from qfluentwidgets import (
     FluentWindow, Theme, setTheme, NavigationItemPosition,
-    SplashScreen, FluentIcon, setFontFamilies
+    SplashScreen, FluentIcon, setFontFamilies, MessageBox
 )
 
 # --- 页面模块 ---
@@ -21,7 +22,6 @@ from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
 from app.plugins.plugin_manager import NodePluginManager
-
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.scheduler.trigger_manager import WebhookManager
@@ -35,6 +35,7 @@ class LowCodeWindow(FluentWindow):
         super().__init__()
         self._init_window()
         self._setup_splash_and_startup()
+        self._init_system_tray()
         self._init_services()
         self._init_pages()
         self._setup_navigation()
@@ -229,3 +230,81 @@ class LowCodeWindow(FluentWindow):
         if self.config.auto_check_update.value:
             QtCore.QTimer.singleShot(500, self.updater.check_update)
     # endregion
+    # --- 新增区域：系统托盘与关闭逻辑 ---
+
+    def _init_system_tray(self):
+        """初始化系统托盘图标"""
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(get_icon("logoico"))  # 使用您现有的图标获取方法
+
+        # 创建托盘菜单
+        tray_menu = QMenu()
+
+        # 动作：显示主界面
+        show_action = QAction("显示主界面", self)
+        show_action.triggered.connect(self.show_window)
+
+        # 动作：退出程序
+        quit_action = QAction("退出程序", self)
+        quit_action.triggered.connect(self.quit_app)
+
+        tray_menu.addAction(show_action)
+        tray_menu.addSeparator()
+        tray_menu.addAction(quit_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+
+        # 点击托盘图标的事件（左键点击恢复窗口）
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+        self.tray_icon.show()
+
+    def on_tray_icon_activated(self, reason):
+        """点击托盘图标时的响应"""
+        if reason == QSystemTrayIcon.Trigger:  # 单击
+            if self.isVisible():
+                if self.isMinimized():
+                    self.showNormal()
+                self.activateWindow()
+            else:
+                self.show_window()
+
+    def show_window(self):
+        """恢复并显示窗口"""
+        self.showNormal()
+        self.activateWindow()
+
+    def quit_app(self):
+        """彻底退出程序"""
+        self.tray_icon.setVisible(False)  # 隐藏图标，防止残留
+        qApp.quit()
+
+    def closeEvent(self, event):
+        """
+        重写关闭事件：弹出对话框询问用户
+        """
+        # 使用 QFluentWidgets 的 MessageBox 保持界面风格一致
+        w = MessageBox(
+            '关闭提示',
+            '您希望将程序最小化到系统托盘，还是彻底退出？',
+            self
+        )
+        w.yesButton.setText('最小化')
+        w.cancelButton.setText('退出程序')
+
+        # MessageBox.exec() 返回 True 表示点击了 YesButton (最小化)
+        if w.exec():
+            event.ignore()  # 忽略关闭事件
+            self.hide()  # 隐藏窗口
+            # 可选：显示气泡提示
+            self.tray_icon.showMessage(
+                "Canvas Mind",
+                "程序已在后台运行，点击托盘图标可恢复。",
+                QSystemTrayIcon.Information,
+                2000
+            )
+        else:
+            # 点击了 CancelButton (退出程序)
+            event.accept()  # 接受关闭事件
+            self.tray_icon.setVisible(False)
+            qApp.quit()  # 强制退出进程

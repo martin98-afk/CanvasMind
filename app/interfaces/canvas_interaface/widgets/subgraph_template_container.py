@@ -18,7 +18,7 @@ from qfluentwidgets import (
 )
 
 from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog, CustomEditableComboDialog
@@ -398,7 +398,7 @@ class SubgraphTemplatePanel(QWidget):
         nodes_file = self._template_dir / tid / "nodes.json"
         if not nodes_file.exists(): return
         with open(nodes_file, "r", encoding="utf-8") as f:
-            nodes_data = json.load(f)
+            nodes_data = deserialize_from_json(json.load(f))
 
         # 性能优化：暂停更新
         viewer = graph.viewer()
@@ -467,7 +467,7 @@ class SubgraphTemplatePanel(QWidget):
         template_path.mkdir(exist_ok=True)
 
         with open(template_path / "nodes.json", "w", encoding="utf-8") as f:
-            json.dump(nodes_data, f, ensure_ascii=False, indent=2)
+            json.dump(serialize_for_json(nodes_data), f, ensure_ascii=False, indent=2)
         preview_pixmap.save(str(template_path / "preview.png"))
         with open(template_path / "meta.json", "w", encoding="utf-8") as f:
             json.dump({"id": tid, "name": template_name, "tags": []}, f, ensure_ascii=False)

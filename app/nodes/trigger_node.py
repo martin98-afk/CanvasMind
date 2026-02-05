@@ -86,9 +86,6 @@ def create_trigger_node(parent_window):
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self.view.delete_signal.connect(self.on_deleted)
 
-            # 初始化同步
-            QtCore.QTimer.singleShot(100, self._sync_services_and_ui)
-
         def _generate_parms_widget(self):
             custom_widgets_num = len(self.property_defs) + 10
 
@@ -194,9 +191,13 @@ def create_trigger_node(parent_window):
             if not hasattr(self.parent_window, 'canvas_runner'): return
 
             if self.get_property("run_strategy") == "从此处运行":
-                self.parent_window.canvas_runner.run_from(start_node=self, task_id=task_id)
+                self.parent_window.canvas_runner.run_from(
+                    start_node=self, triggered_data=self._last_trigger_data, task_id=task_id
+                )
             else:
-                self.parent_window.canvas_runner.run_to(target_node=self, task_id=task_id)
+                self.parent_window.canvas_runner.run_to(
+                    target_node=self, triggered_data=self._last_trigger_data, task_id=task_id
+                )
 
         def execute_sync(self, *args, global_variable=None, **kwargs):
             self.init_logger()
