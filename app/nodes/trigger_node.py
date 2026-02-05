@@ -180,23 +180,23 @@ def create_trigger_node(parent_window):
 
             logging.info(f"触发器后台服务同步完成: {trigger_type}")
 
-        def trigger_execution(self, incoming_data=None):
+        def trigger_execution(self, incoming_data=None, task_id=None):
             if self.get_property("enable_throttle"):
                 current_time = time.time()
                 interval = self.get_property("throttle_interval")
                 if current_time - self._last_execution_time < interval:
                     return
                 self._last_execution_time = current_time
-            self.signals.execution_requested.emit(incoming_data or {})
+            self.signals.execution_requested.emit(incoming_data or {}, task_id)
 
-        def _on_execution_signal_received(self, incoming_data):
+        def _on_execution_signal_received(self, incoming_data, task_id):
             self._last_trigger_data = incoming_data
             if not hasattr(self.parent_window, 'canvas_runner'): return
 
             if self.get_property("run_strategy") == "从此处运行":
-                self.parent_window.canvas_runner.run_from(start_node=self, trigger_data=incoming_data)
+                self.parent_window.canvas_runner.run_from(start_node=self, task_id=task_id)
             else:
-                self.parent_window.canvas_runner.run_to(target_node=self)
+                self.parent_window.canvas_runner.run_to(target_node=self, task_id=task_id)
 
         def execute_sync(self, *args, global_variable=None, **kwargs):
             self.init_logger()

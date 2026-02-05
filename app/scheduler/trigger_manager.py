@@ -1,4 +1,6 @@
 import threading
+from uuid import uuid4
+
 import uvicorn
 
 from loguru import logger
@@ -39,6 +41,7 @@ class WebhookManager:
         @self.app.api_route("/api/v1/trigger/{node_id}", methods=["GET", "POST", "PUT"])
         async def handle_trigger(node_id: str, request: Request):
             path = f"/api/v1/trigger/{node_id}"
+            task_id = uuid4().hex
             if path in self.registry:
                 data = {}
                 try:
@@ -51,7 +54,7 @@ class WebhookManager:
                 except Exception as e:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 
-                self.registry[path](data)
+                self.registry[path](data, task_id)
                 return {"status": "success", "node_id": node_id}
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 

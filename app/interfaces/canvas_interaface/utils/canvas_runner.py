@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-from loguru import logger
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, List
+from typing import Any, Optional
 
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
+from loguru import logger
+
 from app.scheduler.workflow_scheduler import WorkflowScheduler
 
 
@@ -13,8 +14,8 @@ class ExecutionTask:
     """封装执行任务的实体"""
     mode: str  # 'full', 'to', 'from', 'node', 'workflow'
     target: Any  # node or list of nodes
-    trigger_data: Optional[Dict] = None  # 携带触发时的数据（如 Webhook payload）
     sort: bool = True
+    task_id: str = None
 
 
 class CanvasRunner(QObject):
@@ -38,7 +39,7 @@ class CanvasRunner(QObject):
         self._task_queue = deque()
         self._is_running = False
 
-    def _create_scheduler(self, trigger_data=None):
+    def _create_scheduler(self):
         """创建调度器"""
         scheduler = WorkflowScheduler(
             graph=self.parent.graph,
@@ -49,10 +50,6 @@ class CanvasRunner(QObject):
             global_variables=self.parent.global_variables,
             parent=self.parent,
         )
-        # 如果 WorkflowScheduler 支持上下文注入
-        if hasattr(scheduler, 'set_trigger_context'):
-            scheduler.set_trigger_context(trigger_data)
-
         scheduler.node_status_changed.connect(self.node_status_changed.emit)
         scheduler.property_changed.connect(self.property_changed.emit)
         return scheduler
@@ -69,17 +66,17 @@ class CanvasRunner(QObject):
         else:
             # 否则运行当前选中的节点
             selected_nodes = self.parent.graph.selected_nodes()
-            self._enqueue(ExecutionTask('workflow', selected_nodes, sort=True))
+            self._enqueue(ExecutionTask('full', selected_nodes, sort=True))
 
     def run_full(self, nodes=None, sort=True):
         self._enqueue(ExecutionTask('full', nodes, sort=sort))
 
-    def run_to(self, target_node):
-        self._enqueue(ExecutionTask('to', target_node))
+    def run_to(self, target_node, task_id=None):
+        self._enqueue(ExecutionTask('to', target_node, task_id=task_id))
 
-    def run_from(self, start_node, trigger_data=None):
+    def run_from(self, start_node, task_id=None):
         """由 TriggerNode 触发器调用"""
-        self._enqueue(ExecutionTask('from', start_node, trigger_data=trigger_data))
+        self._enqueue(ExecutionTask('from', start_node, task_id=task_id))
 
     def run_node(self, node):
         self._enqueue(ExecutionTask('node', node))
@@ -107,7 +104,7 @@ class CanvasRunner(QObject):
         self.queue_size_changed.emit(len(self._task_queue))
 
         # 创建调度器
-        self._scheduler = self._create_scheduler(trigger_data=task.trigger_data)
+        self._scheduler = self._create_scheduler()
         self._connect_signals(self._scheduler, task)
 
         # 数据注入逻辑：如果起始节点是触发器，先更新它的数据
@@ -143,17 +140,18 @@ class CanvasRunner(QObject):
 
         def update_ui():
             QTimer.singleShot(50, self.parent.property_panel.update_node_list_content)
-            if task.mode in ['workflow', 'full'] and task.target:
-                QTimer.singleShot(50, lambda: self.parent.property_panel.update_properties(task.target))
 
-        scheduler.finished.connect(update_ui)
-        scheduler.error.connect(update_ui)
-        scheduler.cancelled.connect(update_ui)
-        scheduler.node_status_changed.connect(update_ui)
+        if task.mode == 'workflow':
+            scheduler.finished.connect(update_ui)
+            scheduler.error.connect(update_ui)
+            scheduler.cancelled.connect(update_ui)
+            scheduler.node_status_changed.connect(update_ui)
 
         # 如果调度器支持 backdrop_finished 信号
         if hasattr(scheduler, 'backdrop_finished'):
-            scheduler.backdrop_finished.connect(update_ui)
+            scheduler.backdrop_finished.connect(
+                lambda: QTimer.singleShot(50, lambda: self.parent.property_panel.update_properties(task.target))
+            )
 
     def _on_task_finished(self):
         logger.info("[Runner] 当前任务结束。")
