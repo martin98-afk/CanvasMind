@@ -16,7 +16,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 params = [
     'main.py',
     '--onedir',
-    '--windowed',
+    # '--windowed',
     '--icon=' + os.path.join('icons', 'logoico.ico'),
 
     # 动态添加 Spyder 数据文件夹
@@ -32,7 +32,9 @@ params = [
     '--copy-metadata=jupyter_client',
     '--hidden-import=jupyter_client.provisioning.local',
     '--hidden-import=ipykernel',
-
+    '--hidden-import=uvicorn.protocols.http.h11_impl',
+    '--hidden-import=uvicorn.lifespan.on',
+    '--hidden-import=uvicorn.loops.asyncio',
     # 建议加上 --clean 清理之前的缓存，避免路径残留
     '--clean',
     '--noconfirm',

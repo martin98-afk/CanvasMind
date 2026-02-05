@@ -86,9 +86,6 @@ def create_trigger_node(parent_window):
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self.view.delete_signal.connect(self.on_deleted)
 
-            # 初始化同步
-            QtCore.QTimer.singleShot(100, self._sync_services_and_ui)
-
         def _generate_parms_widget(self):
             custom_widgets_num = len(self.property_defs) + 10
 

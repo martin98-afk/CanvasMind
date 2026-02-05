@@ -112,7 +112,15 @@ class WebhookManager:
 
     def start(self):
         if self._server_thread is None:
-            config = uvicorn.Config(self.app, host=self.host, port=self.port, log_level="error")
+            config = uvicorn.Config(
+                self.app,
+                host=self.host,
+                port=self.port,
+                log_level="error",
+                log_config=None,
+                ws="none",  # <--- 强制禁用 WebSocket 协议加载
+                loop="asyncio"
+            )
             server = uvicorn.Server(config)
             self._server_thread = threading.Thread(target=server.run, daemon=True)
             self._server_thread.start()
