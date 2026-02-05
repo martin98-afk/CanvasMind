@@ -18,6 +18,7 @@ from app.nodes.group_node import create_group_node_class, GroupPortOutputNode, G
 from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import create_sticky_note_node
+from app.nodes.trigger_node import create_trigger_node
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
 from app.widgets.custom_nodegraphqt.sticky_note_item import StickyNoteItem
@@ -44,7 +45,7 @@ class NodeOperations:
         self.node_uuid_map = {}
         self.name2type = {}
 
-    # --- 节点注册 ---
+    # --- 内置节点注册 ---
     def _register_builtin_components(self):
         # 迭代节点
         code_node = create_dynamic_code_node(self.parent)
@@ -79,10 +80,10 @@ class NodeOperations:
         self.graph.register_node(branch_node)
         self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
         # 子工作流节点
-        group_node = create_group_node_class(self.graph, self.parent)
-        group_node.__name__ = "GroupNode"
-        self.graph.register_node(group_node)
-        self.node_type_map[branch_node.FULL_PATH] = f"general.{branch_node.__name__}"
+        trigger_node = create_trigger_node(self.parent)
+        trigger_node.__name__ = "trigger"
+        self.graph.register_node(trigger_node)
+        self.node_type_map[trigger_node.FULL_PATH] = f"general.{trigger_node.__name__}"
         # 输入端口节点
         input_port_node = GroupPortInputNode
         input_port_node.__name__ = "GroupPortInputNode"
@@ -185,7 +186,7 @@ class NodeOperations:
         nodes_menu = self.graph.get_context_menu('nodes')
         for special_node in [
             "visualize.MediaNode", "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
-            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode"
+            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode", "general.trigger"
         ]:
             nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
                                    node_type=special_node, icon=get_icon("运行"))
@@ -418,7 +419,6 @@ class NodeOperations:
         new_graph.deserialize_session(session_data)
         self.setup_graph_menu(new_graph)
         self.setup_graph_menu(self.graph)
-        self.parent.refresh_graph_signals()
         # 画布右键菜单注册
         graph_menu = new_graph.get_context_menu('graph')
         graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')

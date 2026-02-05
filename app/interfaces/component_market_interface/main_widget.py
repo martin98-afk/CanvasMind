@@ -394,8 +394,7 @@ class PluginManagerCenter(QWidget):
     def install_workflow(self, data):
         self._start_task()
         wf_mgr = getattr(self.window(), 'workflow_manager', None)
-        target_root = Path(wf_mgr.all_workflow_paths[0]).parent if wf_mgr and wf_mgr.all_workflow_paths else Path(
-            resource_path("app/workflows"))
+        target_root = wf_mgr.workflow_dir[0]
         worker = GenericWorker(self.canvas_mgr.download_canvas, data['组件id'] or data['unique_id'], target_root)
         worker.finished.connect(lambda: [self._stop_task(), self.force_refresh(),
                                          InfoBar.success("资源已同步", data.get('组件名称'), parent=self)])
@@ -545,8 +544,8 @@ class PluginManagerCenter(QWidget):
         self.refresh_ui()
 
     def on_single_sync_done(self, name):
-        self._stop_task();
-        InfoBar.success("同步成功", name, parent=self);
+        self._stop_task()
+        InfoBar.success("同步成功", name, parent=self)
         self.force_refresh()
 
     def on_error(self, msg):
@@ -594,34 +593,34 @@ class PluginManagerCenter(QWidget):
         return scroll
 
     def _create_setting_page(self):
-        page = self._create_scroll_page();
+        page = self._create_scroll_page()
         layout = page.widget().layout()
         layout.insertWidget(0, TitleLabel("Gitee 存储配置"))
-        card = CardWidget();
+        card = CardWidget()
         v = QVBoxLayout(card)
-        self.token_edit = PasswordLineEdit();
-        self.token_edit.setText(self.cloud_mgr.config.GITEE_TOKEN.value);
-        v.addWidget(BodyLabel("Access Token:"));
+        self.token_edit = PasswordLineEdit()
+        self.token_edit.setText(self.cloud_mgr.config.GITEE_TOKEN.value)
+        v.addWidget(BodyLabel("Access Token:"))
         v.addWidget(self.token_edit)
-        self.owner_edit = LineEdit();
-        self.owner_edit.setText(self.cloud_mgr.config.GITEE_OWNER.value);
-        v.addWidget(BodyLabel("Owner:"));
+        self.owner_edit = LineEdit()
+        self.owner_edit.setText(self.cloud_mgr.config.GITEE_OWNER.value)
+        v.addWidget(BodyLabel("Owner:"))
         v.addWidget(self.owner_edit)
-        self.repo_edit = LineEdit();
-        self.repo_edit.setText(self.cloud_mgr.config.GITEE_REPO.value);
-        v.addWidget(BodyLabel("Repo:"));
+        self.repo_edit = LineEdit()
+        self.repo_edit.setText(self.cloud_mgr.config.GITEE_REPO.value)
+        v.addWidget(BodyLabel("Repo:"))
         v.addWidget(self.repo_edit)
-        layout.insertWidget(1, card);
-        btn = PrimaryPushButton("保存配置");
-        btn.clicked.connect(self.on_save_settings);
+        layout.insertWidget(1, card)
+        btn = PrimaryPushButton("保存配置")
+        btn.clicked.connect(self.on_save_settings)
         layout.insertWidget(2, btn)
         return page
 
     def on_save_settings(self):
-        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_TOKEN, self.token_edit.text());
-        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_OWNER, self.owner_edit.text());
-        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_REPO, self.repo_edit.text());
-        self.cloud_mgr.config.save_config();
-        self.cloud_mgr.__init__();
-        self.canvas_mgr.__init__();
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_TOKEN, self.token_edit.text())
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_OWNER, self.owner_edit.text())
+        self.cloud_mgr.config.set(self.cloud_mgr.config.GITEE_REPO, self.repo_edit.text())
+        self.cloud_mgr.config.save_config()
+        self.cloud_mgr.__init__()
+        self.canvas_mgr.__init__()
         InfoBar.success("配置已更新", "重载成功", parent=self)

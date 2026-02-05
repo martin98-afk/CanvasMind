@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "生成适用于 Wan 2.1 的 16通道、8倍压缩的 5D 视频潜空间",
   "category": "comfyui节点/视频生成",
-  "updated_at": "2026-01-31 00:47:45",
+  "updated_at": "2026-02-05 09:13:24",
   "author": "black"
 }

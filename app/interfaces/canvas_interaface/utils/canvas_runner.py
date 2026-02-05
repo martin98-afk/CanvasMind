@@ -1,6 +1,20 @@
 # -*- coding: utf-8 -*-
+from loguru import logger
+from collections import deque
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, List
+
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from app.scheduler.workflow_scheduler import WorkflowScheduler
+
+
+@dataclass
+class ExecutionTask:
+    """封装执行任务的实体"""
+    mode: str  # 'full', 'to', 'from', 'node', 'workflow'
+    target: Any  # node or list of nodes
+    trigger_data: Optional[Dict] = None  # 携带触发时的数据（如 Webhook payload）
+    sort: bool = True
 
 
 class CanvasRunner(QObject):
@@ -8,21 +22,25 @@ class CanvasRunner(QObject):
     workflow_finished = pyqtSignal()
     workflow_error = pyqtSignal(str)
     workflow_cancelled = pyqtSignal()
-    workflow_paused = pyqtSignal()  # ← 新增
-    workflow_resumed = pyqtSignal()  # ← 新增
+    workflow_paused = pyqtSignal()
+    workflow_resumed = pyqtSignal()
     node_status_changed = pyqtSignal(str, object)
     property_changed = pyqtSignal(object)
     node_vars_changed = pyqtSignal()
 
+    # 任务队列状态信号
+    queue_size_changed = pyqtSignal(int)
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._scheduler = None
         self.parent = parent
+        self._scheduler: Optional[WorkflowScheduler] = None
+        self._task_queue = deque()
+        self._is_running = False
 
-    def _create_scheduler(self):
-        if self._scheduler:
-            self._scheduler.cancel()
-        self._scheduler = WorkflowScheduler(
+    def _create_scheduler(self, trigger_data=None):
+        """创建调度器"""
+        scheduler = WorkflowScheduler(
             graph=self.parent.graph,
             component_map=self.parent.component_map,
             get_node_status=self.parent.get_node_status,
@@ -31,81 +49,144 @@ class CanvasRunner(QObject):
             global_variables=self.parent.global_variables,
             parent=self.parent,
         )
-        self._scheduler.node_status_changed.connect(self.node_status_changed.emit)
-        self._scheduler.property_changed.connect(self.property_changed.emit)
-        return self._scheduler
+        # 如果 WorkflowScheduler 支持上下文注入
+        if hasattr(scheduler, 'set_trigger_context'):
+            scheduler.set_trigger_context(trigger_data)
+
+        scheduler.node_status_changed.connect(self.node_status_changed.emit)
+        scheduler.property_changed.connect(self.property_changed.emit)
+        return scheduler
+
+    # --- 兼容旧代码的 UI 调用接口 ---
 
     def run_workflow(self):
-        """执行所有选中节点的工作流"""
-        self._scheduler = self._create_scheduler()
-        self._connect_signals(self._scheduler)
+        """执行所有选中节点的工作流（兼容主界面运行按钮）"""
+        # 获取属性面板当前的执行顺序
         nodes = self.parent.property_panel.get_current_execution_order()
         if nodes:
-            self._scheduler.run_full(nodes=nodes, sort=False)
-            for sig in [
-                self._scheduler.backdrop_finished,
-                self._scheduler.finished,
-                self._scheduler.error,
-                self._scheduler.cancelled,
-                self._scheduler.node_status_changed
-            ]:
-                sig.connect(
-                    lambda: QTimer.singleShot(50, self.parent.property_panel.update_node_list_content)
-                )
-            self._scheduler.backdrop_finished.connect(
-                lambda: QTimer.singleShot(50, lambda: self.parent.property_panel.update_properties(nodes))
-            )
+            # 如果有特定顺序，传入节点列表且不自动排序
+            self._enqueue(ExecutionTask('workflow', nodes, sort=False))
         else:
-            self._scheduler.run_full(nodes=self.parent.graph.selected_nodes())
+            # 否则运行当前选中的节点
+            selected_nodes = self.parent.graph.selected_nodes()
+            self._enqueue(ExecutionTask('workflow', selected_nodes, sort=True))
 
     def run_full(self, nodes=None, sort=True):
-        scheduler = self._create_scheduler()
-        self._connect_signals(scheduler)
-        if nodes is None:
-            nodes = self.parent.graph.selected_nodes()
-        scheduler.run_full(nodes=nodes, sort=sort)
+        self._enqueue(ExecutionTask('full', nodes, sort=sort))
 
     def run_to(self, target_node):
-        scheduler = self._create_scheduler()
-        self._connect_signals(scheduler)
-        scheduler.run_to(target_node)
+        self._enqueue(ExecutionTask('to', target_node))
+
+    def run_from(self, start_node, trigger_data=None):
+        """由 TriggerNode 触发器调用"""
+        self._enqueue(ExecutionTask('from', start_node, trigger_data=trigger_data))
 
     def run_node(self, node):
-        scheduler = self._create_scheduler()
-        self._connect_signals(scheduler)
-        scheduler.run(node)
+        self._enqueue(ExecutionTask('node', node))
 
-    def run_from(self, start_node):
-        scheduler = self._create_scheduler()
-        self._connect_signals(scheduler)
-        scheduler.run_from(start_node)
+    # --- 队列核心逻辑 ---
 
-    def _connect_signals(self, scheduler):
+    def _enqueue(self, task: ExecutionTask):
+        """任务入队并尝试启动"""
+        self._task_queue.append(task)
+        self.queue_size_changed.emit(len(self._task_queue))
+        logger.info(f"[Runner] 任务入队: {task.mode}. 当前队列长度: {len(self._task_queue)}")
+
+        if not self._is_running:
+            self._process_next_task()
+
+    def _process_next_task(self):
+        """处理队列中的下一个任务"""
+        if not self._task_queue:
+            self._is_running = False
+            logger.info("[Runner] 所有任务执行完毕。")
+            return
+
+        self._is_running = True
+        task = self._task_queue.popleft()
+        self.queue_size_changed.emit(len(self._task_queue))
+
+        # 创建调度器
+        self._scheduler = self._create_scheduler(trigger_data=task.trigger_data)
+        self._connect_signals(self._scheduler, task)
+
+        # 数据注入逻辑：如果起始节点是触发器，先更新它的数据
+        if task.mode == 'from' and task.trigger_data:
+            if hasattr(task.target, '_last_trigger_data'):
+                task.target._last_trigger_data = task.trigger_data
+
+        # 启动执行
+        try:
+            if task.mode in ['full', 'workflow']:
+                nodes = task.target or self.parent.graph.selected_nodes()
+                self._scheduler.run_full(nodes=nodes, sort=task.sort)
+            elif task.mode == 'to':
+                self._scheduler.run_to(task.target)
+            elif task.mode == 'from':
+                self._scheduler.run_from(task.target)
+            elif task.mode == 'node':
+                self._scheduler.run(task.target)
+        except Exception as e:
+            logger.exception(f"[Runner] 启动任务失败: {e}")
+            self._on_task_finished()
+
+    def _connect_signals(self, scheduler, task):
+        """连接信号，并保留 UI 更新逻辑"""
         self.workflow_started.emit()
-        scheduler.finished.connect(self.workflow_finished.emit)
-        scheduler.error.connect(self.workflow_error.emit)
+
+        # 任务结束后的队列回环
+        scheduler.finished.connect(self._on_task_finished)
+        scheduler.error.connect(self._on_task_error)
+        scheduler.cancelled.connect(self._on_task_finished)
+
         scheduler.node_vars_changed.connect(self.node_vars_changed.emit)
 
+        def update_ui():
+            QTimer.singleShot(50, self.parent.property_panel.update_node_list_content)
+            if task.mode in ['workflow', 'full'] and task.target:
+                QTimer.singleShot(50, lambda: self.parent.property_panel.update_properties(task.target))
+
+        scheduler.finished.connect(update_ui)
+        scheduler.error.connect(update_ui)
+        scheduler.cancelled.connect(update_ui)
+        scheduler.node_status_changed.connect(update_ui)
+
+        # 如果调度器支持 backdrop_finished 信号
+        if hasattr(scheduler, 'backdrop_finished'):
+            scheduler.backdrop_finished.connect(update_ui)
+
+    def _on_task_finished(self):
+        logger.info("[Runner] 当前任务结束。")
+        self.workflow_finished.emit()
+        QTimer.singleShot(100, self._process_next_task)
+
+    def _on_task_error(self, error_msg):
+        logger.error(f"[Runner] 任务执行出错: {error_msg}")
+        self.workflow_error.emit(error_msg)
+        QTimer.singleShot(100, self._process_next_task)
+
+    # --- 控制逻辑 ---
+
     def stop_workflow(self):
+        self._task_queue.clear()
+        self.queue_size_changed.emit(0)
         if self._scheduler:
             self._scheduler.cancel()
             self._scheduler = None
-            self.workflow_cancelled.emit()
+        self._is_running = False
+        self.workflow_cancelled.emit()
 
     def pause_workflow(self):
-        """暂停执行（可恢复）"""
-        if self._scheduler and self._scheduler._executor:
+        if self._scheduler and hasattr(self._scheduler, '_executor'):
             self._scheduler._executor.pause()
             self.workflow_paused.emit()
 
     def resume_workflow(self):
-        """继续执行（从暂停处恢复）"""
-        if self._scheduler and self._scheduler._executor:
+        if self._scheduler and hasattr(self._scheduler, '_executor'):
             self._scheduler._executor.resume()
             self.workflow_resumed.emit()
 
     def is_paused(self) -> bool:
-        """查询当前是否处于暂停状态"""
-        if self._scheduler and self._scheduler._executor:
+        if self._scheduler and hasattr(self._scheduler, '_executor'):
             return self._scheduler._executor.ctx.is_paused()
         return False

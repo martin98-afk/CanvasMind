@@ -444,7 +444,7 @@ class GlobalPanelWidget:
         port_icon.setStyleSheet("background: #0078d4; color: white; padding: 1px 4px; border-radius: 2px;")
 
         port_label = BodyLabel(port_name)
-
+        port_label.setWordWrap(True)
         # 策略图标预览
         strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
                                                        parent=self.parent_panel)
@@ -471,7 +471,7 @@ class GlobalPanelWidget:
         del_btn.clicked.connect(lambda: self.delete_variable('node_vars', full_var_name))
 
         title_layout.addWidget(port_icon)
-        title_layout.addWidget(port_label)
+        title_layout.addWidget(port_label, 1)
         title_layout.addStretch()
         title_layout.addWidget(strategy_combo)
         title_layout.addWidget(del_btn)

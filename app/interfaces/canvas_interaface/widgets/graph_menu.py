@@ -1,7 +1,4 @@
 # -- coding: utf-8 --
-import time
-import json
-import uuid
 from pathlib import Path
 
 import orjson
@@ -518,6 +515,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             return None, None
 
         source_node = self.source_port_item.original_node
+        if not hasattr(source_node, 'uuid'): return None, None
         node_uuid = source_node.uuid
         port_name = self.source_port_item.name
         scanner = ComponentScanner()

@@ -44,6 +44,8 @@ class PropertyToolWindow(ToolWindow):
         self.property_panel.reset_current_components()
 
     def update_node_list_content(self):
+        if self.property_panel.node_list_panel_widget is None:
+            return
         self.property_panel.node_list_panel_widget.update_node_list_content()
 
     def refresh_node_vars_page(self):
