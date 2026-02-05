@@ -135,6 +135,8 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             event.accept()
-            if self.clicked_func: self.clicked_func()
+            if self.clicked_func:
+                self.clicked_func()
+                self.update() # 点击后立刻强制刷新一次状态
         else:
             event.ignore()
