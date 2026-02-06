@@ -168,12 +168,11 @@ def create_dynamic_code_node(parent_window=None):
                 z_value=3
             )
             self.add_custom_widget(self.output_widget, tab='Properties')
-            template_items = [info['name'] for key, info in GLUE_CODE_TEMPLATES.items()]
             self.glue_templates_widget = ComboBoxWidgetWrapper(
                 parent=self.view,
                 name="glue_code_template",
                 label="胶水代码模板",
-                items=template_items,
+                items=[key for key in GLUE_CODE_TEMPLATES],
                 z_value=2,
                 window=parent_window
             )
@@ -183,7 +182,7 @@ def create_dynamic_code_node(parent_window=None):
                 parent=self.view,
                 name="code",
                 label="执行代码",
-                default=GLUE_CODE_TEMPLATES.get("default").get("code"),
+                default=GLUE_CODE_TEMPLATES.get("空白模板"),
                 window=parent_window
             )
             self.code_editor = code_widget.get_custom_widget()
@@ -201,8 +200,7 @@ def create_dynamic_code_node(parent_window=None):
 
             # 解析 key（格式为 "key:name"）
             try:
-                template_key = current_text.split(":", 1)[0]
-                template_code = GLUE_CODE_TEMPLATES[template_key]["code"]
+                template_code = GLUE_CODE_TEMPLATES[current_text]
             except (IndexError, KeyError):
                 return
 
@@ -371,33 +369,6 @@ def create_dynamic_code_node(parent_window=None):
             parent_window.parent.switchTo(parent_window.parent.develop_page)
 
         # --- 具体处理器 ---
-        def _handle_global_variable_clear(self, params: dict, msg: ComponentMessage):
-            """
-            处理全局变量清空逻辑
-            """
-            type = params.get("type", "")
-            value = params.get("value", "")
-            if value.startswith(type):
-                value = value.split(".")[1]
-            if type == "node_vars":
-                parent_window._on_global_variables_changed(
-                    var_type="node_vars",
-                    var_name=value,
-                    action="clear"
-                )
-                logger.info(f"[变量 {value} 内容已清空]")
-
-        def _handle_global_variable_add(self, params: dict, msg: ComponentMessage):
-            """
-            处理全局变量添加逻辑
-            """
-            value = params.get("value", "")
-            if value:
-                parent_window.property_panel._add_output_to_global_variable(
-                    node=self,
-                    port_name=value,
-                )
-
         def format_code(self, add_import=True):
             # === 1. 收集参数（不变）===
             self.object_io = False
