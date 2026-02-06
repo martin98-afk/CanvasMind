@@ -149,8 +149,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.model.set_property("_zmq_ports", f"{pub_port}/{svc_port}")
 
         # 确定连接 IP：如果是 SSH 且有 IP，则 UI 连远程；否则 UI 连本地
-        exec_mode = self.model.get_property("_exec_mode")
-        if exec_mode == "ssh" and remote_ip:
+        if remote_ip:
             self._zmq_ip = remote_ip
         else:
             self._zmq_ip = "127.0.0.1"
@@ -161,19 +160,13 @@ class BasicNodeWithGlobalProperty(NodeObject):
         # 返回环境变量，供 Executor 注入到进程中
         return {
             "NODE_ZMQ_PUB_PORT": str(pub_port),
-            "NODE_ZMQ_SVC_PORT": str(svc_port),
-            "NODE_ID": self.persistent_id,
-            "NODE_EXEC_MODE": exec_mode
+            "NODE_ZMQ_SVC_PORT": str(svc_port)
         }
 
     def _start_zmq_transceiver(self):
         """启动后台通信线程"""
         # 停止旧线程
         self.stop_zmq()
-
-        logger.info(
-            f"Node {self.name()} start ZMQ listener on {self._zmq_ip} Ports:{self._zmq_pub_port}/{self._zmq_svc_port}")
-
         self._zmq_transceiver = NodeZmqTransceiver(self._zmq_ip, self._zmq_pub_port, self._zmq_svc_port)
 
         # 连接信号

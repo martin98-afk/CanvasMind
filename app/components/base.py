@@ -1339,23 +1339,19 @@ class BaseComponent(ABC):
         self._svc_socket = self._zmq_context.socket(zmq.PAIR)
         self._svc_socket.setsockopt(zmq.LINGER, 1000)
         self._svc_socket.bind(f"tcp://0.0.0.0:{svc_port}")
-
         self.logger.info(f"ZMQ Bound on PUB:{pub_port} / SVC:{svc_port}")
-
         # ==========================================
-        # 【核心修改】同步握手逻辑 (解决 Slow Joiner)
+        # 同步握手逻辑
         # ==========================================
         # 等待 UI 端连接并发送 "handshake" 信号
         # 设置超时时间（例如 3000ms），防止 UI 没启动导致节点无限卡死
-        HANDSHAKE_TIMEOUT = 3000
-
-        self.logger.info("Waiting for UI handshake...")
+        HANDSHAKE_TIMEOUT = 1000
         # 使用 poll 检查是否有消息进来
         if self._svc_socket.poll(HANDSHAKE_TIMEOUT):
             try:
                 msg = self._svc_socket.recv_json()
                 if msg.get("type") == "handshake":
-                    self.logger.info("✅ UI Handshake received. Starting execution.")
+                    pass
                 else:
                     self.logger.warning(f"Received unknown message during handshake: {msg}")
             except Exception as e:
@@ -1446,14 +1442,6 @@ class BaseComponent(ABC):
                 # 可以在此处添加检查外部中断信号的逻辑
         except Exception as e:
             raise ComponentError(f"ZMQ 人工干预通信失败: {e}")
-
-    def update_progress(self, percent: int, status_text: str = ""):
-        """快捷方式：更新进度"""
-        self.emit_message("ui.progress", {"value": percent, "text": status_text})
-
-    def send_preview(self, data_type: str, payload: Any):
-        """快捷方式：发送数据预览"""
-        self.emit_message("data.preview", {"type": data_type, "data": payload})
 
     # ---------------- 变量解析逻辑 ----------------
     def _resolve_value(self, key, value: Any, prop_type: PropertyType) -> Any:
