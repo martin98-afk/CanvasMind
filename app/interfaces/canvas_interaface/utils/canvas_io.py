@@ -1,11 +1,10 @@
 import os
-import os
 import traceback
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal, Qt, QRectF, pyqtSlot, QEventLoop
+from PyQt5.QtCore import QObject, pyqtSignal, Qt, QRectF, pyqtSlot
 from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel, QProgressDialog
+from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel
 
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner

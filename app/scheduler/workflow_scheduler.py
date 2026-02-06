@@ -34,18 +34,20 @@ class WorkflowScheduler(QObject):
             get_node_status: Callable,
             get_python_exe: Callable[[], Optional[str]],
             kernel_manager: IPythonKernelManager,
-            global_variables: GlobalVariableContext,
             parent=None
     ):
         super().__init__(parent)
         self.parent = parent
         self.graph = graph
-        self.global_variables = global_variables
         self.component_map = component_map
         self.get_node_status = get_node_status
         self.get_python_exe = get_python_exe
         self.kernel_manager = kernel_manager
         self._executor = None
+
+    @property
+    def global_variables(self):
+        return self.parent.global_variables
 
     def set_node_status(self, node, status):
         self.node_status_changed.emit(node.id, status)

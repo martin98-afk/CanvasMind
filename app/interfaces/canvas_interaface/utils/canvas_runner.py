@@ -55,7 +55,6 @@ class CanvasRunner(QObject):
             get_node_status=self.parent.get_node_status,
             get_python_exe=lambda: self.parent.env_data.get("path"),
             kernel_manager=self.parent.ipython_kernel.kernel_manager,
-            global_variables=self.parent.global_variables,
             parent=self.parent,
         )
 
