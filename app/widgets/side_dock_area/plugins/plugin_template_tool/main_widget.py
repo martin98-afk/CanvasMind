@@ -185,8 +185,7 @@ class PluginTemplateToolWindow(ToolWindow):
                 "output1": {"data": "test", "data_type": "str", "plugin": "display_str"}, 
                 "output2": {"data": 1, "data_type": "list", "plugin": "display_list"},
                 "output3": {"data": "hidden", "data_type": "str"} # 不带 plugin 参数则不实时展示
-            },
-            extra={"display": True} 
+            }
         )"""
             },
             {
@@ -198,8 +197,7 @@ class PluginTemplateToolWindow(ToolWindow):
             params={
                 "output1": {"data": "test", "data_type": "str"}, 
                 "output2": {"data": 1, "data_type": "list"}
-            },
-            extra={"display": False}
+            }
         )"""
             }
         ]

@@ -3,6 +3,8 @@ import collections
 import re
 import uuid
 
+from app.nodes.node_zmq import NodeZmqTransceiver
+
 # 尝试导入高性能 json 库，如果不存在则回退
 try:
     import orjson as json
@@ -10,7 +12,7 @@ except ImportError:
     import json
 
 from NodeGraphQt import NodeObject
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QObject, QTimer
 from loguru import logger
 from typing import Dict, Any, Set
@@ -22,18 +24,33 @@ from app.utils.node_logger import NodeLogHandler
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 
 
+# =========================================================================
+# 节点基类
+# =========================================================================
+
 class NodeSignals(QObject):
     """节点核心信号管理器"""
     intercepted_msg_signal = QtCore.pyqtSignal(dict)
     htmlReady = QtCore.pyqtSignal(object, bool)
     stream_data_updated = QtCore.pyqtSignal(object)
     portsReady = QtCore.pyqtSignal()
-    execution_requested = QtCore.pyqtSignal(object, str) # incoming_data, task_id
+    execution_requested = QtCore.pyqtSignal(object, str)  # incoming_data, task_id
+    # 参数: payload(dict), node_instance(object)
+    intervention_requested_signal = QtCore.pyqtSignal(dict)
+
+    @QtCore.pyqtSlot(dict)
+    def receive_zmq_data(self, data: dict):
+        self.intercepted_msg_signal.emit(data)
+
+    @QtCore.pyqtSlot(dict)
+    def receive_zmq_intervention(self, payload: dict):
+        self.intervention_requested_signal.emit(payload)
 
 
 class BasicNodeWithGlobalProperty(NodeObject):
     """
     优化后的业务节点基类
+    支持 ZMQ 流式传输、远程执行与人工干预
     """
     # --- 预编译正则表达式，避免在循环中重复编译 ---
     RE_SAFE_NAME = re.compile(r'\s+')
@@ -57,6 +74,12 @@ class BasicNodeWithGlobalProperty(NodeObject):
         # 使用 deque 限制内存中存储的日志行数（例如保留最近1000行）
         self._log_buffer = collections.deque(maxlen=1000)
         self._last_intercepted_data = None  # 用于信号节流比较
+
+        # --- ZMQ 通信组件 ---
+        self._zmq_transceiver = None
+        self._zmq_pub_port = 0
+        self._zmq_svc_port = 0
+        self._zmq_ip = "127.0.0.1"
 
         # --- 动态控件管理 ---
         self._inline_widgets = {}
@@ -87,6 +110,9 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.signals.intercepted_msg_signal.connect(self._message_router)
         self.signals.stream_data_updated.connect(lambda _: self._ui_update_timer.start(self._ui_update_interval))
 
+        # 绑定干预信号 (默认处理逻辑，也可在 Scheduler 中覆盖)
+        self.signals.intervention_requested_signal.connect(self._default_intervention_handler)
+
     # --- 内部事件处理，减少 lambda 产生的匿名对象 ---
     def _on_collapsed_toggle(self, toggled):
         self.model.set_property("_collapsed", toggled)
@@ -108,7 +134,87 @@ class BasicNodeWithGlobalProperty(NodeObject):
         if name in ['width', 'height'] and self.view and hasattr(self.view, 'update_size_from_property'):
             self.view.update_size_from_property(name, value)
 
-    # =========================== 日志与协议解析逻辑 =================================
+    # =========================== ZMQ 环境配置与启动 (新增核心) =================================
+
+    def setup_zmq_env(self, pub_port: int, svc_port: int, remote_ip: str = None) -> dict:
+        """
+        [Executor调用] 准备 ZMQ 环境
+        :param pub_port: 分配的数据流端口 (PUB)
+        :param svc_port: 分配的交互服务端口 (PAIR)
+        :param remote_ip: 如果是远程SSH模式，传入远程IP；本地则传None
+        :return: 传递给子进程的环境变量字典
+        """
+        self._zmq_pub_port = pub_port
+        self._zmq_svc_port = svc_port
+        self.model.set_property("_zmq_ports", f"{pub_port}/{svc_port}")
+
+        # 确定连接 IP：如果是 SSH 且有 IP，则 UI 连远程；否则 UI 连本地
+        exec_mode = self.model.get_property("_exec_mode")
+        if exec_mode == "ssh" and remote_ip:
+            self._zmq_ip = remote_ip
+        else:
+            self._zmq_ip = "127.0.0.1"
+
+        # 启动 UI 端的监听线程
+        self._start_zmq_transceiver()
+
+        # 返回环境变量，供 Executor 注入到进程中
+        return {
+            "NODE_ZMQ_PUB_PORT": str(pub_port),
+            "NODE_ZMQ_SVC_PORT": str(svc_port),
+            "NODE_ID": self.persistent_id,
+            "NODE_EXEC_MODE": exec_mode
+        }
+
+    def _start_zmq_transceiver(self):
+        """启动后台通信线程"""
+        # 停止旧线程
+        self.stop_zmq()
+
+        logger.info(
+            f"Node {self.name()} start ZMQ listener on {self._zmq_ip} Ports:{self._zmq_pub_port}/{self._zmq_svc_port}")
+
+        self._zmq_transceiver = NodeZmqTransceiver(self._zmq_ip, self._zmq_pub_port, self._zmq_svc_port)
+
+        # 连接信号
+        self._zmq_transceiver.stream_data_received.connect(self.signals.receive_zmq_data)
+        self._zmq_transceiver.intervention_requested.connect(self.signals.receive_zmq_intervention)
+        self._zmq_transceiver.connection_lost.connect(lambda err: logger.warning(f"ZMQ Error: {err}"))
+
+        self._zmq_transceiver.start()
+
+    def stop_zmq(self):
+        """停止 ZMQ 线程 (节点运行结束或删除时调用)"""
+        if self._zmq_transceiver:
+            self._zmq_transceiver.stop()
+            self._zmq_transceiver = None
+
+    def _on_zmq_intervention_req(self, payload: dict):
+        """收到干预请求 -> 转发到主线程信号"""
+        self.signals.intervention_requested_signal.emit(payload, self)
+
+    def _default_intervention_handler(self, payload: dict):
+        """
+        [默认人工干预处理]
+        如果外部没有连接此信号，这个槽函数会响应。
+        弹出一个确认框，并将结果回传给节点。
+        """
+        # 解析 payload，例如: {"msg": "Confirm?", "data": {...}}
+        msg = ComponentMessage(**payload)
+        plugin = self.plugin_manager.get_plugin(msg.method)
+        if plugin:
+            response = plugin.handle(self, msg.params, msg)
+        else:
+            response = {"success": False, "msg": "Plugin not found"}
+        # 回传给节点
+        self.send_intervention_response(response)
+
+    def send_intervention_response(self, data: dict):
+        """将 UI 的决策发回给 ZMQ 节点"""
+        if self._zmq_transceiver:
+            self._zmq_transceiver.send_intervention_response(data)
+
+    # =========================== 日志与协议解析逻辑 (保留原有逻辑) =================================
 
     def init_logger(self):
         self.log_capture = NodeLogHandler(self.persistent_id, self._log_message, use_file_logging=True)
@@ -116,52 +222,22 @@ class BasicNodeWithGlobalProperty(NodeObject):
     def _log_message(self, node_id, message):
         """
         处理来自 Subprocess 的日志输出（优化了字符串拼接性能）
+        保留此方法以兼容文本日志文件记录
         """
-        # 1. 解析拦截协议
-        clean_text = self._parse_and_filter_logs(message)
+        # 使用 buffer 存储而不是直接字符串相加，避免 O(n^2) 拷贝
+        self._log_buffer.append(message)
 
-        if clean_text:
-            # 使用 buffer 存储而不是直接字符串相加，避免 O(n^2) 拷贝
-            self._log_buffer.append(clean_text)
+        # 2. 通过 scheduler 推送日志
+        if hasattr(self, '_log_message_emitter'):
+            run_id = getattr(self, '_current_run_id', "default")
+            self._log_message_emitter(run_id, message + "\n")
 
-            # 2. 通过 scheduler 推送日志
-            if hasattr(self, '_log_message_emitter'):
-                run_id = getattr(self, '_current_run_id', "default")
-                self._log_message_emitter(run_id, clean_text + "\n")
-
-            # 3. 同步到弹窗窗口
-            if hasattr(self, 'log_capture') and self.log_capture and self.log_capture.log_window:
-                try:
-                    self.log_capture.log_window.add_log_entry(clean_text)
-                except Exception as e:
-                    logger.error(f"Error sending log to window: {e}")
-
-    def _parse_and_filter_logs(self, raw_text: str) -> str:
-        """
-        极速解析逻辑：增加信号节流和高性能 JSON 解析
-        """
-        if not raw_text:
-            return ""
-
-        clean_lines = []
-        lines = raw_text.splitlines()
-
-        for line in lines:
-            if PROGRESS_MARKER in line:
-                try:
-                    json_str = line.split(PROGRESS_MARKER)[1].strip()
-                    # --- 信号节流：如果数据与上次完全一致，则不发射信号 ---
-                    if json_str != self._last_intercepted_data:
-                        # 使用 orjson 解析或标准 json
-                        data = json.loads(json_str)
-                        self.signals.intercepted_msg_signal.emit(data)
-                        self._last_intercepted_data = json_str
-                    continue
-                except Exception as e:
-                    logger.error(f"解析拦截消息失败: {e}")
-            clean_lines.append(line)
-
-        return "\n".join(clean_lines)
+        # 3. 同步到弹窗窗口
+        if hasattr(self, 'log_capture') and self.log_capture and self.log_capture.log_window:
+            try:
+                self.log_capture.log_window.add_log_entry(message)
+            except Exception as e:
+                logger.error(f"Error sending log to window: {e}")
 
     def get_logs(self):
         """优先从 buffer 获取最新日志，buffer 满了从文件读"""

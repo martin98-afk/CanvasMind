@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
+import atexit
 import base64
 import io
 import json
@@ -22,6 +23,7 @@ from typing import List, Tuple, Type, Union, OrderedDict
 
 import numpy as np
 import pandas as pd
+import zmq  # 新增：ZMQ通信库
 from PIL import Image
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -1166,6 +1168,11 @@ class BaseComponent(ABC):
     logger: logger = logger
     global_variable: GlobalVariableContext = GlobalVariableContext()
 
+    # ZMQ 上下文缓存
+    _zmq_context = None
+    _pub_socket = None
+    _svc_socket = None
+
     @abstractmethod
     def run(self, params: BaseModel, inputs: BaseModel = None) -> Dict[str, Any]:
         """"组件的核心执行逻辑。
@@ -1303,8 +1310,77 @@ class BaseComponent(ABC):
         return create_model(model_name, __base__=base_classes, **fields)
 
     # ----------------中间结果流式返回----------------
+
+    def _get_zmq_sockets(self):
+        """
+        延迟初始化 ZMQ socket。
+        包含 LINGER 设置（防止进程挂死）和 启动延时（防止数据丢失）。
+        """
+        # 检查环境变量中是否有端口定义
+        pub_port = os.environ.get("NODE_ZMQ_PUB_PORT")
+        svc_port = os.environ.get("NODE_ZMQ_SVC_PORT")
+
+        # 如果没有端口（例如本地调试模式），返回 None
+        if not pub_port or not svc_port:
+            return None, None
+        # 避免重复初始化
+        if self._zmq_context and self._pub_socket:
+            return self._pub_socket, self._svc_socket
+        self._zmq_context = zmq.Context()
+        atexit.register(self._cleanup_zmq)
+
+        # --- 1. 初始化发布端 (PUB) ---
+        self._pub_socket = self._zmq_context.socket(zmq.PUB)
+        self._pub_socket.setsockopt(zmq.LINGER, 1000)
+        self._pub_socket.setsockopt(zmq.SNDHWM, 0)
+        self._pub_socket.bind(f"tcp://0.0.0.0:{pub_port}")
+
+        # --- 2. 初始化交互端 (PAIR) ---
+        self._svc_socket = self._zmq_context.socket(zmq.PAIR)
+        self._svc_socket.setsockopt(zmq.LINGER, 1000)
+        self._svc_socket.bind(f"tcp://0.0.0.0:{svc_port}")
+
+        self.logger.info(f"ZMQ Bound on PUB:{pub_port} / SVC:{svc_port}")
+
+        # ==========================================
+        # 【核心修改】同步握手逻辑 (解决 Slow Joiner)
+        # ==========================================
+        # 等待 UI 端连接并发送 "handshake" 信号
+        # 设置超时时间（例如 3000ms），防止 UI 没启动导致节点无限卡死
+        HANDSHAKE_TIMEOUT = 3000
+
+        self.logger.info("Waiting for UI handshake...")
+        # 使用 poll 检查是否有消息进来
+        if self._svc_socket.poll(HANDSHAKE_TIMEOUT):
+            try:
+                msg = self._svc_socket.recv_json()
+                if msg.get("type") == "handshake":
+                    self.logger.info("✅ UI Handshake received. Starting execution.")
+                else:
+                    self.logger.warning(f"Received unknown message during handshake: {msg}")
+            except Exception as e:
+                self.logger.error(f"Handshake error: {e}")
+        else:
+            self.logger.warning("⚠️ No UI handshake received (Timeout). Assuming headless/debug mode.")
+
+        return self._pub_socket, self._svc_socket
+
+    def _cleanup_zmq(self):
+        """进程退出时的清理函数"""
+        try:
+            if self._pub_socket: self._pub_socket.close()
+            if self._svc_socket: self._svc_socket.close()
+            if self._zmq_context: self._zmq_context.term()
+            self._pub_socket = None
+            self._svc_socket = None
+            self._zmq_context = None
+        except:
+            pass
+
     def emit_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}):
         """发送自定义协议消息至 UI 端。
+
+        优先尝试 ZMQ 通信，如果未配置 ZMQ 环境（如本地单测），则降级为 stdout 打印。
 
         Args:
             method: 方法标识符，如 'stream.output', 'global_variable.clear'
@@ -1316,73 +1392,60 @@ class BaseComponent(ABC):
             params=params,
             extra=extra
         )
-        # 通过 stdout 发送加密/编码后的 JSON，防止业务日志干扰
-        print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
+
+        pub_sock, _ = self._get_zmq_sockets()
+        if not pub_sock:
+            return
+        final_msg = {
+            "type": "stream_data",
+            "payload": msg.dict()
+        }
+        pub_sock.send_string(json.dumps(final_msg))
 
     def emit_interactive_message(
             self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}) -> Any:
         """
-        优化版：在组件执行过程中请求人工干预（文件轮询模式）。
+        在组件执行过程中请求人工干预。
+
+        优先使用 ZMQ PAIR 模式进行阻塞式交互。
+        若未配置 ZMQ 环境，则降级为文件轮询模式（保留旧逻辑以支持本地调试）。
         """
-        request_id = str(uuid.uuid4())
-        # 1. 确保目录存在 (由节点侧保证，防止 UI 还没来得及创建)
-        run_dir = Path(".").resolve() / "jrpc_response" / self.node_id
-        run_dir.mkdir(parents=True, exist_ok=True)
-
-        response_path = run_dir / f"response_{request_id}.pkl"
-
-        # 2. 准备发送给 UI 的指令
-        emit_messages = {
-            "request_id": request_id,
-            "response_file": str(response_path),
+        _, svc_sock = self._get_zmq_sockets()
+        if not svc_sock:
+            return
+        # === ZMQ 交互模式 ===
+        req_id = str(uuid.uuid4())
+        self.logger.info(f"等待人工干预 [ZMQ ID: {req_id}]...")
+        msg = ComponentMessage(
+            method=method,
+            params=params,
+            extra=extra
+        )
+        # 构造请求，匹配 UI 端 NodeZmqTransceiver 的期望格式
+        # UI 端逻辑：msg.get("type") == "intervention_request" -> emit(payload)
+        req_msg = {
+            "type": "intervention_request",
+            "req_id": req_id,
+            "payload": msg.dict()  # 直接将业务参数作为 payload 发送给 UI 弹窗
         }
-        emit_messages.update(params)
 
-        # 通过日志流发送信号
-        self.emit_message(method, emit_messages, level=level, extra=extra)
-        self.logger.info(f"等待人工干预 [ID: {request_id}]...")
-
-        # 3. 优化轮询逻辑
-        start_wait = time.time()
-        timeout = 3600  # 1小时超时
-
-        # 初始轮询间隔设短一点（如0.1s），让 UI 自动跳过确认时极快响应后期进入稳定等待状态
-        check_interval = 0.1
-
-        data = None
         try:
+            # 1. 发送请求
+            svc_sock.send_string(json.dumps(req_msg))
+
+            # 2. 阻塞等待回复
+            # 使用 poll 轮询防止死锁，虽然 PAIR 是 1-to-1，但加个超时机制更安全（此处设为无限循环但可被中断）
             while True:
-                # A. 检查超时
-                if time.time() - start_wait > timeout:
-                    raise ComponentError(f"人工干预超时 ({timeout} 秒)")
-
-                # B. 检查文件是否存在
-                if response_path.exists():
-                    # 稍微给一点点时间（或通过重试逻辑）确保主进程文件已经写完并关闭
-                    # 在 Windows 上，如果主进程还在写，open 会报错
-                    try:
-                        # 使用 rb 模式读取
-                        with open(response_path, 'rb') as f:
-                            data = pickle.load(f)
-                        break  # 读取成功，跳出循环
-                    except (EOFError, pickle.UnpicklingError, PermissionError):
-                        # 如果文件正在写入，可能会报 EOF 或权限错误，等待下一轮重试
-                        time.sleep(0.05)
-                        continue
-                # D. 动态调整轮询频率：前 5 秒 0.1s 检查一次，之后 0.5s 检查一次
-                if time.time() - start_wait > 5:
-                    check_interval = 0.5
-
-                time.sleep(check_interval)
-        finally:
-            # 4. 无论成功失败，确保清理掉自己的这个临时文件，保持 jrpc_response 目录干净
-            if response_path.exists():
-                try:
-                    os.remove(response_path)
-                except:
-                    pass
-
-        return data
+                if svc_sock.poll(500):  # 0.5秒轮询一次
+                    resp_bytes = svc_sock.recv()
+                    resp = json.loads(resp_bytes)
+                    # 校验响应类型
+                    if resp.get("type") == "intervention_response":
+                        self.logger.info(f"收到人工干预响应")
+                        return resp.get("payload")
+                # 可以在此处添加检查外部中断信号的逻辑
+        except Exception as e:
+            raise ComponentError(f"ZMQ 人工干预通信失败: {e}")
 
     def update_progress(self, percent: int, status_text: str = ""):
         """快捷方式：更新进度"""
@@ -1415,9 +1478,7 @@ class BaseComponent(ABC):
         if isinstance(value, str) and GlobalVariableContext.is_variable_name(value):
             try:
                 # 获取原始值
-                print(value)
                 resolved = self.global_variable.get(value)
-                print(resolved)
                 # 3. 根据定义的属性类型进行二次强制转换（增强鲁棒性）
                 if prop_type == PropertyType.INT:
                     # 先转 float 再转 int，处理变量里存了 "1.0" 的情况
@@ -1507,6 +1568,8 @@ class BaseComponent(ABC):
 
         except Exception as e:
             raise ComponentError(f"组件执行失败: {traceback.format_exc()}", "EXECUTION_ERROR")
+        finally:
+            self._cleanup_zmq()
 
     # ---------------- 组件调试专用方法 ----------------
     def debug(self,

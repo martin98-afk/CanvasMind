@@ -22,10 +22,10 @@ class HtmlWidget(QtWidgets.QWidget):
     valueChanged = pyqtSignal(str)
     sizeHintChanged = pyqtSignal()
 
-    def __init__(self, parent=None, node=None):
+    def __init__(self, parent=None, node=None, default_html=""):
         super().__init__(parent)
         # 初始化 HTML 内容
-        self._html = "<center>等待图表...</center>"
+        self._html = default_html or "<center>等待图表...</center>"
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

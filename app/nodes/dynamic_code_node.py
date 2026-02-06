@@ -17,7 +17,7 @@ from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
 from app.utils.utils import _safe_load_pickle, \
-    kill_proc_tree, sftp_download_dir, replace_remote_paths, sftp_upload_dir
+    kill_proc_tree, sftp_download_dir, replace_remote_paths, sftp_upload_dir, get_free_port
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.node_widget.propeprty_widgets.code_editor_widget import CodeEditorWidgetWrapper
 from app.widgets.node_widget.propeprty_widgets.combobox_widget import ComboBoxWidgetWrapper
@@ -460,7 +460,6 @@ def create_dynamic_code_node(parent_window=None):
                 temp_component_path = run_dir / temp_component_name
                 shutil.rmtree(run_dir, ignore_errors=True)
                 run_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
 
                 local_script_path = run_dir / "exec_script.py"
                 local_comp_path = run_dir / "component.py"  # 为了SSH内部一致性，改名为component.py
@@ -518,6 +517,11 @@ def create_dynamic_code_node(parent_window=None):
                     return v
 
                 inputs = {k: _evaluate(v) for k, v in inputs_raw.items()}
+                # === 准备 ZMQ 环境 ===
+                remote_ip = env_data.get('host') if env_data.get('type') == 'ssh' else None
+                self._zmq_pub_port = get_free_port()
+                self._zmq_svc_port = get_free_port()
+                zmq_env_vars = self.setup_zmq_env(self._zmq_pub_port, self._zmq_svc_port, remote_ip)
 
                 with open(params_path, 'wb') as f:
                     pickle.dump(({}, inputs, global_variable), f)
@@ -527,11 +531,14 @@ def create_dynamic_code_node(parent_window=None):
                 self.timeout_seconds = parent_window.config.node_run_timeout.value
                 # === 分支执行 ===
                 if env_data.get('type') == 'ssh':
-                    self._execute_via_ssh(env_data, kernel_manager, local_script_path, local_comp_path, params_path,
-                                          result_path, log_file_path, error_path, check_cancel)
+                    self._execute_via_ssh(comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path,
+                                          check_cancel, zmq_env_vars)
                 else:
+                    shutil.copyfile(resource_path("app/components/base.py"), str(run_dir.parent / "base.py"))
                     python_exe = env_data['path']
-                    script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
+                    # 构建本地脚本：直接将环境变量注入到 os.environ
+                    env_inject_code = "\n".join([f"os.environ['{k}'] = '{v}'" for k, v in zmq_env_vars.items()])
+                    script_content = "import os\n" + env_inject_code + "\n" + _EXECUTION_SCRIPT_TEMPLATE.format(
                         class_name="DynamicComponent",
                         file_path=str(local_comp_path.resolve()),
                         params_path=str(params_path.resolve()),
@@ -578,9 +585,10 @@ def create_dynamic_code_node(parent_window=None):
                 except:
                     pass
 
-        def _execute_via_ssh(self, env_data, kernel_manager, local_script_path, local_comp_path, params_path, result_path,
-                             log_file_path, error_path, check_cancel):
-            """远程 SSH 执行逻辑 - 针对动态代码优化"""
+        def _execute_via_ssh(self, comp_obj, env_data, kernel_manager, run_dir, log_file_path, error_path, check_cancel,
+                             zmq_env_vars):
+            """远程 SSH 执行逻辑 (增加 zmq_env_vars 注入)"""
+            local_result_path = run_dir / "result.pkl"
             remote_root = "/tmp/workspace"
             upload_dir = f"{remote_root}/{self.persistent_id}/upload"
             result_dir = f"{remote_root}/{self.persistent_id}/result"
@@ -590,27 +598,19 @@ def create_dynamic_code_node(parent_window=None):
 
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            try:
-                ssh.connect(hostname=env_data['host'], port=int(env_data.get('port', 22)),
-                            username=env_data['user'], password=env_data['pwd'], timeout=15, compress=True)
-                sftp = ssh.open_sftp()
-                transport = ssh.get_transport()
-                # 设置窗口大小（默认 2MB 左右，可以加大）
-                transport.set_keepalive(30)
-                # 1. 准备目录
-                ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
-                # 上传本地 Workspace 下的 upload 内容
-                local_up = local_node_workspace / "upload"
-                if local_up.exists():
-                    sftp_upload_dir(sftp, local_up, upload_dir)
 
-                sftp.put(str(local_comp_path), f"{remote_run_dir}/component.py")
-                sftp.put(str(params_path), f"{remote_run_dir}/params.pkl")
-                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
-                ssh.exec_command(f"rm -f {log_path}| touch {log_path}")  # 强制删除远程旧日志
-                # 3. 生成适合远程的执行脚本
-                remote_script_content = _EXECUTION_SCRIPT_TEMPLATE.format(
-                    class_name="DynamicComponent",
+            try:
+                ssh.connect(env_data['host'], int(env_data.get('port', 22)), env_data['user'], env_data['pwd'],
+                            timeout=15, compress=True)
+                sftp = ssh.open_sftp()
+                ssh.exec_command(f"mkdir -p {upload_dir} {result_dir} {remote_run_dir} {remote_root}/node_logs")
+                ssh.exec_command(f"rm -f {log_path}| touch {log_path}")
+
+                # 注入环境变量代码
+                env_inject_code = "\n".join([f"os.environ['{k}'] = '{v}'" for k, v in zmq_env_vars.items()])
+
+                remote_script_content = "import os\n" + env_inject_code + "\n" + _EXECUTION_SCRIPT_TEMPLATE.format(
+                    class_name=comp_obj.__name__,
                     file_path=f"{remote_run_dir}/component.py",
                     params_path=f"{remote_run_dir}/params.pkl",
                     result_path=f"{remote_run_dir}/result.pkl",
@@ -620,35 +620,33 @@ def create_dynamic_code_node(parent_window=None):
                     workflow_path="/tmp",
                     is_memory_resident=self.view.current_mode == "ipython"
                 )
+                with open(run_dir / "exec_script.py", 'w', encoding='utf-8') as f:
+                    f.write(remote_script_content)
 
-                # 4. 执行
+                local_upload_dir = local_node_workspace / "upload"
+                if local_upload_dir.exists():
+                    sftp_upload_dir(sftp, local_upload_dir, upload_dir)
+                sftp_upload_dir(sftp, resource_path(f"app/component_extensions/{self.uuid}"),
+                                f"{remote_root}/{self.persistent_id}")
+                sftp_upload_dir(sftp, run_dir, remote_run_dir)
+                sftp.put(resource_path("app/components/base.py"), f"{remote_root}/{self.persistent_id}/base.py")
+
                 last_log_pos = 0
                 if self.view.current_mode == "ipython" or self.object_io:
                     if not kernel_manager:
-                        raise Exception("远程 IPython 内核未连接。请确保右侧控制台已连接到对应的 SSH 环境。")
-                        # B. 通过 SSH 隧道发送给远程内核执行 (非阻塞发送)
+                        raise Exception("远程 IPython 内核未连接。")
+                    # 发送代码
                     kernel_manager.execute_code(remote_script_content, hidden=True)
-
-                    # C. 轮询远程文件系统，等待结果生成，同时拉取日志
                     start_time = time.time()
-                    remote_res_file = f"{remote_run_dir}/result.pkl"
-                    remote_err_file = f"{remote_run_dir}/error.pkl"
-
+                    remote_res = f"{remote_run_dir}/result.pkl"
+                    remote_err = f"{remote_run_dir}/error.pkl"
                     while True:
-                        # 1. 检查取消信号
                         if check_cancel and check_cancel():
                             kernel_manager.interrupt_kernel()
-                            raise Exception("远程 IPython 执行被用户取消")
+                            raise Exception("远程 IPython 执行被取消")
+                        _, stdout, _ = ssh.exec_command(f"ls {remote_res} {remote_err}")
+                        found = stdout.read().decode()
 
-                        # 2. 检查远程结果文件是否存在 (ls 比 stat 在某些 SSH 环境下更稳定)
-                        _, stdout, _ = ssh.exec_command(f"ls {remote_res_file} {remote_err_file}")
-                        found_files = stdout.read().decode()
-
-                        if remote_res_file in found_files or remote_err_file in found_files:
-                            # 如果文件生成了，跳出轮询准备下载
-                            break
-
-                        # 3. 实时同步远程日志 (复用你 Subprocess 分支的日志读取逻辑)
                         try:
                             with sftp.open(log_path, 'r') as f:
                                 f.seek(last_log_pos)
@@ -656,25 +654,22 @@ def create_dynamic_code_node(parent_window=None):
                                 if new_data:
                                     self._log_message(self.persistent_id, new_data)
                                     last_log_pos = f.tell()
-                        except IOError:
+                        except:
                             pass
 
-                        # 4. 检查超时
+                        if remote_res in found or remote_err in found:
+                            break
                         if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                             kernel_manager.interrupt_kernel()
-                            raise Exception(f"远程 IPython 执行超时 {self.timeout_seconds} 秒")
-
-                        time.sleep(0.5)  # 降低轮询频率
+                            raise Exception("远程 IPython 执行超时")
+                        time.sleep(0.5)
                 else:
-                    # ssh执行需要将脚本写入远程
-                    with open(local_script_path, 'w', encoding='utf-8') as f:
-                        f.write(remote_script_content)
-                    sftp.put(str(local_script_path), f"{remote_run_dir}/exec_script.py")
                     python_exe = env_data['path']
-                    cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && {python_exe} {remote_run_dir}/exec_script.py"
+                    # 命令行环境也注入变量
+                    env_cmd = " ".join([f"{k}={v}" for k, v in zmq_env_vars.items()])
+                    cmd = f"export PYTHONPATH={remote_root}:$PYTHONPATH && export {env_cmd} && {python_exe} {remote_run_dir}/exec_script.py"
                     stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
                     stdout.channel.setblocking(0)
-                    # 轮询直到进程结束
                     start_time = time.time()
                     while not stdout.channel.exit_status_ready():
                         if check_cancel and check_cancel():
@@ -688,31 +683,25 @@ def create_dynamic_code_node(parent_window=None):
                                 if new_data:
                                     self._log_message(self.persistent_id, new_data)
                                     last_log_pos = f.tell()
-                        except IOError:
+                        except:
                             pass
                         if self.timeout_enabled and time.time() - start_time > self.timeout_seconds:
                             ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
                             ssh.close()
-                            raise Exception(f"节点执行超时{self.timeout_seconds}秒")
+                            raise Exception("执行超时")
                         time.sleep(0.5)
 
+                # 结果下载处理 (原有逻辑)
                 try:
-                    sftp.get(f"{remote_run_dir}/result.pkl", str(result_path))
-                    replace_remote_paths(
-                        result_path, f"{remote_root}/{self.persistent_id}", str(local_node_workspace)
-                    )
+                    sftp.get(f"{remote_run_dir}/result.pkl", str(local_result_path))
+                    replace_remote_paths(local_result_path, f"{remote_root}/{self.persistent_id}",
+                                         str(local_node_workspace))
                 except:
-                    os.remove(result_path)
+                    os.remove(local_result_path) if os.path.exists(local_result_path) else None
                 try:
                     sftp.get(f"{remote_run_dir}/error.pkl", str(error_path))
                 except:
-                    os.remove(error_path)
-                # 下载日志文件
-                try:
-                    sftp.get(log_path, log_file_path)
-                except:
-                    pass
-                # 下载 result 目录内容
+                    os.remove(error_path) if os.path.exists(error_path) else None
                 local_res_dir = local_node_workspace / "result"
                 local_res_dir.mkdir(parents=True, exist_ok=True)
                 try:
@@ -720,17 +709,16 @@ def create_dynamic_code_node(parent_window=None):
                 except:
                     pass
 
-                # 清理
+                # 清理和最终日志
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
                 with sftp.open(log_path, 'r') as f:
                     f.seek(last_log_pos)
                     new_data = f.read().decode('utf-8', errors='ignore')
-                    if new_data:
-                        self._log_message(self.persistent_id, new_data)
-                        last_log_pos = f.tell()
+                    if new_data: self._log_message(self.persistent_id, new_data)
                 self._log_message(self.persistent_id, "✅ 节点在ssh远程环境执行完成")
+
             except Exception as e:
-                raise Exception(f"SSH远程执行失败: {str(e)}")
+                raise Exception(f"远程执行失败: {str(e)}")
             finally:
                 if 'sftp' in locals(): sftp.close()
                 ssh.close()

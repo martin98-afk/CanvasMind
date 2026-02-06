@@ -138,4 +138,4 @@ class AskPlugin(InteractivePlugin):
         if dialog.exec():
             # 用户点击了“确认”
             result_data = dialog.get_result()
-            on_confirmed(result_data)
+            return result_data
