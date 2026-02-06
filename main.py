@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
-
-
 def enable_dpi_scale():
     """启用 DPI 缩放支持"""
     # enable dpi scale

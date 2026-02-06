@@ -101,7 +101,7 @@ def create_trigger_node(parent_window):
                         window=parent_window, z_value=z_val
                     )
                     # 下拉框切换，通常建议立即同步
-                    widget.get_custom_widget().valueChanged.connect(self._sync_services_and_ui)
+                    widget.get_custom_widget().valueChanged.connect(self._request_backend_sync)
                     self.add_custom_widget(widget, tab="properties")
                     self.set_property(prop_name, default)
 
@@ -110,7 +110,7 @@ def create_trigger_node(parent_window):
                         parent=self.view, name=prop_name, text=label, state=default,
                         window=parent_window, z_value=z_val
                     )
-                    widget.get_custom_widget().valueChanged.connect(self._sync_services_and_ui)
+                    widget.get_custom_widget().valueChanged.connect(self._request_backend_sync)
                     self.add_custom_widget(widget, tab="properties")
 
                 elif prop_type in PropertyType.TEXT:
