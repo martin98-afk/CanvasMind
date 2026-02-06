@@ -301,8 +301,11 @@ class CustomNodeItem(NodeItem):
         resize_visible = not self._is_collapsed
         self._resize_handle.setVisible(resize_visible)
 
-    def toggle_collapse(self):
-        self._is_collapsed = not self._is_collapsed
+    def toggle_collapse(self, collapse=None):
+        if collapse is not None:
+            self._is_collapsed = collapse
+        else:
+            self._is_collapsed = not self._is_collapsed
         self.collapsed_toggle.emit(self._is_collapsed)
         self._collapse_btn.icon_type = "expand" if self._is_collapsed else "collapse"
         self._update_elements_visibility()
