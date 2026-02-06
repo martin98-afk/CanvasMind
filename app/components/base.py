@@ -19,7 +19,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 from typing import List, Tuple, Type, Union, OrderedDict
-from typing import Literal
 
 import numpy as np
 import pandas as pd

@@ -234,6 +234,14 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         add_iterate = menu.addAction("创建迭代")
         add_iterate.triggered.connect(
             lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowIterateNode"))
+        menu.addSeparator()
+
+        # 示例功能 2: 节点对齐 (多选时的常用功能)
+        batch_subprocess = menu.addAction("批量转为子进程运行")
+        batch_subprocess.triggered.connect(self._on_batch_subprocess)
+
+        batch_ipython = menu.addAction("批量内存驻留")
+        batch_ipython.triggered.connect(self._on_batch_ipython)
 
         menu.addSeparator()
 
@@ -276,6 +284,18 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
 
         # 在按钮下方弹出
         menu.exec_(global_pos + QtCore.QPoint(0, 30))
+
+    def _on_batch_subprocess(self):
+        """功能：批量折叠选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, '_toggle_exec_mode'):
+                node._toggle_exec_mode("subprocess")
+
+    def _on_batch_ipython(self):
+        """功能：批量展开选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, '_toggle_exec_mode'):
+                node._toggle_exec_mode("ipython")
 
     def _on_batch_fold(self):
         """功能：批量折叠选中的节点"""
