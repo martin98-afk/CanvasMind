@@ -256,7 +256,7 @@ class PortWidget(QWidget):
     def _update_card_data(self, card, p_name, p_label, p_type, is_output):
         """填充/更新卡片业务数据"""
         ui = card.ui
-        ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type.value}")
+        ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type}")
 
         # 获取数据逻辑
         data = "暂无数据"

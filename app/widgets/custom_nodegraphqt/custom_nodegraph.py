@@ -252,6 +252,7 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         batch_unfold = menu.addAction("批量展开")
         batch_unfold.triggered.connect(self._on_batch_unfold)
 
+        menu.addSeparator()
         menu.addAction("吸附至网格").triggered.connect(
             lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
 
@@ -328,7 +329,6 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
 
         view_scale = self.viewer.transform().m11()
         # 性能优化：避免频繁调用 boundingRect().width()，使用预设常量或缓存
-        # 假设工具栏宽度是固定的（28*6 + spacing）
         tb_w = self._total_width
         tb_h = 28
 
@@ -770,13 +770,7 @@ class CustomNodeViewer(NodeViewer):
             else:
                 # 处理对齐线
                 self._handle_snapping(selected_nodes)
-                # --- 新增：更新多选虚线框和工具栏 ---
-                # 计算本次移动的增量 delta
-                delta = curr_scene_pos - prev_scene_pos
-
-                # 极致优化：不重新计算 selectedItems，直接让遮罩跟随偏移
-                if hasattr(self, '_selection_overlay'):
-                    self._selection_overlay.on_drag(delta)
+                self._selection_overlay.refresh()
         else:
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
@@ -885,7 +879,6 @@ class CustomNodeViewer(NodeViewer):
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 
         super(CustomNodeViewer, self).mouseReleaseEvent(event)
-        self._selection_overlay.refresh(full_recalc=True)
 
     def keyPressEvent(self, event):
         focused_widget = QApplication.focusWidget()
