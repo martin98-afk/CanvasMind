@@ -1109,6 +1109,44 @@ class CustomNodeViewer(NodeViewer):
             self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
 
+    def zoom_to_nodes(self, nodes, duration=500):
+        """
+        平滑缩放/移动到指定的节点列表。
+
+        Args:
+            nodes (list[AbstractNodeItem]): 目标节点列表。
+            duration (int): 动画持续时间（毫秒）。
+        """
+        if not nodes:
+            return
+
+        # 1. 计算目标区域 (Target Rect)
+        # 获取这些节点组合后的外接矩形
+        target_rect = self._combined_rect(nodes)
+
+        # 给目标区域增加一点边距 (padding)，防止节点贴边
+        padding = 40
+        target_rect.adjust(-padding, -padding, padding, padding)
+
+        # 2. 获取当前视图区域 (Start Rect)
+        start_rect = QtCore.QRectF(self._scene_range)
+
+        # 3. 创建动画
+        self._zoom_anim = QtCore.QVariantAnimation(self)
+        self._zoom_anim.setDuration(duration)
+        self._zoom_anim.setStartValue(start_rect)
+        self._zoom_anim.setEndValue(target_rect)
+        # 使用 OutCubic 插值曲线，让结尾更柔和
+        self._zoom_anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+
+        # 4. 动画更新回调
+        def n_update(value):
+            self._scene_range = value
+            self._update_scene()
+
+        self._zoom_anim.valueChanged.connect(n_update)
+        self._zoom_anim.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
+
 
 class CustomNodeGraph(NodeGraph):
 
