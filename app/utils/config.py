@@ -35,18 +35,26 @@ class QuickComponentsSerializer(ConfigSerializer):
 
 
 class Settings(QConfig):
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     @classmethod
     def get_instance(cls):
         """获取配置实例（单例模式）"""
-        cls._instance = cls()
-        CONFIG_FILE = "app.config"
-        try:
-            cls._instance.load(CONFIG_FILE)
-        except:
-            print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
+        if cls._instance is None:
+            cls._instance = cls()
+            CONFIG_FILE = "app.config"
+            try:
+                cls._instance.load(CONFIG_FILE)
+            except:
+                # 首次运行，保存默认配置
+                cls._instance.save(CONFIG_FILE)
+                print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
         return cls._instance
-    #
+
     @classmethod
     def save_config(cls):
         """保存配置"""

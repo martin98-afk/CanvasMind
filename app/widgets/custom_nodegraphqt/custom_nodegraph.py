@@ -194,6 +194,7 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
     def _on_auto_layout(self):
         """功能：自动排布节点"""
         NodeLayoutHandler.auto_layout(self.viewer.graph)
+        self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_comment(self):
         """功能：为选中的节点创建一个 Backdrop (背景框)"""
@@ -1109,43 +1110,128 @@ class CustomNodeViewer(NodeViewer):
             self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
 
-    def zoom_to_nodes(self, nodes, duration=500):
-        """
-        平滑缩放/移动到指定的节点列表。
-
-        Args:
-            nodes (list[AbstractNodeItem]): 目标节点列表。
-            duration (int): 动画持续时间（毫秒）。
-        """
+    def zoom_to_nodes(self, nodes, duration=800):
         if not nodes:
             return
 
-        # 1. 计算目标区域 (Target Rect)
-        # 获取这些节点组合后的外接矩形
-        target_rect = self._combined_rect(nodes)
+        # 动画期间暂时关闭高开销的渲染提示
+        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
 
-        # 给目标区域增加一点边距 (padding)，防止节点贴边
-        padding = 40
+        # 2. 安全清理旧动画 (逻辑保持不变)
+        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
+            try:
+                if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
+                    self._zoom_anim_group.stop()
+            except RuntimeError:
+                pass
+            self._zoom_anim_group = None
+
+        # 3. 计算位置 (完全保留你原本的参数)
+        start_rect = QtCore.QRectF(self._scene_range)
+        target_rect = self._combined_rect(nodes)
+        padding = 60
         target_rect.adjust(-padding, -padding, padding, padding)
 
-        # 2. 获取当前视图区域 (Start Rect)
-        start_rect = QtCore.QRectF(self._scene_range)
+        dist = (start_rect.center() - target_rect.center()).manhattanLength()
+        needs_flyover = dist > start_rect.width() * 2.5
 
-        # 3. 创建动画
-        self._zoom_anim = QtCore.QVariantAnimation(self)
-        self._zoom_anim.setDuration(duration)
-        self._zoom_anim.setStartValue(start_rect)
-        self._zoom_anim.setEndValue(target_rect)
-        # 使用 OutCubic 插值曲线，让结尾更柔和
-        self._zoom_anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        # 4. 创建动画组
+        self._zoom_anim_group = QtCore.QSequentialAnimationGroup(self)
 
-        # 4. 动画更新回调
+        # 动画结束还原设置：保证静止后画质依然清晰
+        def on_finished():
+            self.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            setattr(self, '_zoom_anim_group', None)
+
+        self._zoom_anim_group.finished.connect(on_finished)
+
         def n_update(value):
-            self._scene_range = value
-            self._update_scene()
+            try:
+                self._scene_range = value
+                self._update_scene()
+            except RuntimeError:
+                pass
 
-        self._zoom_anim.valueChanged.connect(n_update)
-        self._zoom_anim.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
+        # 5. 动画构建 (保留你原本的 OutCubic 速率感)
+        if needs_flyover:
+            # Flyover 逻辑
+            overview_rect = start_rect.united(target_rect)
+            overview_rect.adjust(-200, -200, 200, 200)
+
+            anim_out = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_out.setDuration(int(duration * 0.45))
+            anim_out.setStartValue(start_rect)
+            anim_out.setEndValue(overview_rect)
+            # 恢复为你原本的 Easing，保证速率一致
+            anim_out.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_out.valueChanged.connect(n_update)
+
+            anim_in = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_in.setDuration(int(duration * 0.55))
+            anim_in.setStartValue(overview_rect)
+            anim_in.setEndValue(target_rect)
+            anim_in.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_in.valueChanged.connect(n_update)
+
+            self._zoom_anim_group.addAnimation(anim_out)
+            self._zoom_anim_group.addPause(20)
+            self._zoom_anim_group.addAnimation(anim_in)
+        else:
+            # 直接平移逻辑
+            anim_direct = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_direct.setDuration(duration)
+            anim_direct.setStartValue(start_rect)
+            anim_direct.setEndValue(target_rect)
+            anim_direct.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_direct.valueChanged.connect(n_update)
+            self._zoom_anim_group.addAnimation(anim_direct)
+
+        self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
+
+    def add_node(self, node, pos=None):
+        pos = pos or (self._previous_pos.x(), self._previous_pos.y())
+        node.pre_init(self, pos)
+        self.scene().addItem(node)
+        node.post_init(self, pos)
+
+        # 1. 准备动画环境
+        rect = node.boundingRect()
+        node.setTransformOriginPoint(rect.center())
+        node.setScale(0.1)
+
+        anim = QtCore.QVariantAnimation(self)
+        anim.setDuration(300)
+        anim.setStartValue(0.1)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QtCore.QEasingCurve.OutBack)
+
+        def update_all_pipes():
+            # 获取节点上所有的端口
+            all_ports = node.inputs + node.outputs if hasattr(node, 'inputs') else []
+            for port in all_ports:
+                for pipe in port.connected_pipes:
+                    # 修复报错：传入 pipe 记录的起始端口和结束位置
+                    # 根据 NodeGraphQt 的实现，draw_path 通常需要 start_port 和 end_port 或 pos
+                    if pipe.input_port and pipe.output_port:
+                        pipe.draw_path(pipe.input_port, pipe.output_port)
+
+        def UpdateNodeStep(val):
+            node.setScale(val)
+            update_all_pipes()
+
+        anim.valueChanged.connect(UpdateNodeStep)
+
+        def on_finished():
+            # 固化变换矩阵，防止后续偏移
+            final_transform = node.transform()
+            node.setTransform(final_transform)
+            node.setScale(1.0)
+            node.setTransformOriginPoint(0, 0)
+
+            update_all_pipes()
+
+        anim.finished.connect(on_finished)
+        anim.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
 
 class CustomNodeGraph(NodeGraph):

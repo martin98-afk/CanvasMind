@@ -407,7 +407,7 @@ class SubgraphTemplatePanel(QWidget):
         try:
             graph._undo_stack.beginMacro('Apply Subgraph Template')
             graph.clear_selection()
-            pasted_nodes, _ = graph._deserialize(nodes_data, relative_pos=True, adjust_graph_style=True)
+            pasted_nodes, _ = graph._deserialize(nodes_data, relative_pos=True, adjust_graph_style=False)
 
             if pasted_nodes:
                 # 寻找中心点用于偏移

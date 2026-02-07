@@ -442,6 +442,7 @@ class CanvasPage(QWidget):
         self.config.canvas_grid_mode.valueChanged.connect(self.ui_manager._setup_pipeline_style)
         self.config.canvas_pipelayout.valueChanged.connect(self.ui_manager._setup_pipeline_style)
         self.config.canvas_direction.valueChanged.connect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_auto_collapse.valueChanged.connect(self.ui_manager._setup_pipeline_style)
         # 面板刷新信号
         self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
         self.canvas_runner.node_vars_changed.connect(self.property_panel.refresh_node_vars_page)
