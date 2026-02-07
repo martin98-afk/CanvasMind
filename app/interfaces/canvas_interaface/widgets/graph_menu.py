@@ -311,8 +311,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
                         "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower(),
                         "in_port_count": len(node_inputs),
                         "out_port_count": len(node_outputs),
-                        "in_port_types": {port_type for _, _, _, port_type, _ in node_inputs},
-                        "out_port_types": {port_type for _, _, port_type, _ in node_outputs},
+                        "in_port_types": [port_type for _, _, _, port_type, _ in node_inputs],
+                        "out_port_types": [port_type for _, _, port_type, _ in node_outputs],
                     })
                 else:
                     collect_nodes(item)
@@ -417,18 +417,46 @@ class CustomGraphMenu(QtWidgets.QWidget):
         if self._current_mode == MenuMode.CREATE:
             self._graph.begin_undo("Create Node")
             new_node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
-            # 自动连接逻辑... (保持不变)
+
             if self.source_port_item and hasattr(self.source_port_item, 'original_node'):
                 source_node = self.source_port_item.original_node
+                req_type = self._locked_req_type
+
                 if not self._ignore_connection_filter:
                     if self.source_port_item.port_type == 'out':
+                        # 已有节点(出) -> 新节点(入)
                         source_ports = source_node.output_ports()
                         source_port = next((p for p in source_ports if p.name() == self.source_port_item.name), None)
-                        if source_port: QTimer.singleShot(0, lambda: new_node.set_input(0, source_port))
+
+                        if source_port:
+                            # 从缓存列表里找第一个匹配 req_type 的索引
+                            try:
+                                # 这里寻找第一个类型匹配的 index
+                                target_idx = data["in_port_types"].index(req_type)
+                            except (ValueError, KeyError):
+                                target_idx = 0  # 没找到就默认连第一个
+
+                            QTimer.singleShot(0, lambda: new_node.set_input(target_idx, source_port))
+
                     else:
-                        port_index = [p.name() for p in source_node.input_ports()].index(self.source_port_item.name)
-                        QTimer.singleShot(0, lambda: source_node.set_input(port_index, new_node.output_ports()[0]))
+                        # 新节点(出) -> 已有节点(入)
+                        input_ports = source_node.input_ports()
+                        # 获取已有节点当前点击的那个输入端口的物理索引
+                        try:
+                            port_index = [p.name() for p in input_ports].index(self.source_port_item.name)
+                            # 从缓存列表里找新节点第一个匹配的输出端口索引
+                            try:
+                                target_out_idx = data["out_port_types"].index(req_type)
+                            except (ValueError, KeyError):
+                                target_out_idx = 0
+
+                            QTimer.singleShot(0, lambda: source_node.set_input(port_index,
+                                                                               new_node.output_ports()[target_out_idx]))
+                        except ValueError:
+                            pass
+
                 self.source_port_item = None
+
             self.parent.on_selection_changed()
             self._graph.end_undo()
 

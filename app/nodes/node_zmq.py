@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import traceback
 import zmq
 from PyQt5.QtCore import QThread, pyqtSignal, QMutex
 from loguru import logger
@@ -11,6 +10,9 @@ except ImportError:
 
 
 class NodeZmqTransceiver(QThread):
+    """
+    ZMQ 线程，用于接收和发送数据
+    """
     stream_data_received = pyqtSignal(dict)
     intervention_requested = pyqtSignal(dict)
     connection_lost = pyqtSignal(str)
@@ -29,6 +31,10 @@ class NodeZmqTransceiver(QThread):
         self._svc_socket = None
 
     def send_intervention_response(self, response_data: dict):
+        """
+        发送干预响应
+        :param response_data: 响应数据
+        """
         self._mutex.lock()
         self._response_queue.append(response_data)
         self._mutex.unlock()

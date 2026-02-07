@@ -277,6 +277,15 @@ class SettingInterface(ScrollArea):
         )
         self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
 
+        self.autoCollapseCard = SwitchSettingCard(
+            get_icon("画布"),
+            self.tr("Proxy模式自动收缩"),
+            self.tr("当节点处于隐藏控件的proxy模式下是否自动缩小节点为固定大小"),
+            configItem=self.cfg.canvas_auto_collapse,
+            parent=self.canvasGroup
+        )
+        self.autoCollapseCard.checkedChanged.connect(self.onConfigChanged)
+
         self.showGridCard = OptionsSettingCard(
             self.cfg.canvas_grid_mode,
             get_icon("画布"),
@@ -317,9 +326,10 @@ class SettingInterface(ScrollArea):
         self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.nodeResizeMemoryCard)
+        self.canvasGroup.addSettingCard(self.NodeProxyCard)
+        self.canvasGroup.addSettingCard(self.autoCollapseCard)
         self.canvasGroup.addSettingCard(self.canvasFontCard)
         self.canvasGroup.addSettingCard(self.showGridCard)
-        self.canvasGroup.addSettingCard(self.NodeProxyCard)
         self.canvasGroup.addSettingCard(self.pipelayoutCard)
 
         self.vBoxLayout.addWidget(self.canvasGroup)

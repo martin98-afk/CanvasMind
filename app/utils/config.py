@@ -91,6 +91,7 @@ class Settings(QConfig):
 
     # ========== 画布显示设置 ==========
     canvas_resize_memory = ConfigItem("CanvasDisplay", "ResizeMemory", True, BoolValidator())
+    canvas_auto_collapse = ConfigItem("CanvasDisplay", "AutoCollapse", False, BoolValidator())
     canvas_grid_mode = OptionsConfigItem("CanvasDisplay", "ShowGrid", "线网格",
                                          OptionsValidator(["线网格", "点网格", "无网格"]))
     node_proxy_size = RangeConfigItem("CanvasDisplay", "NodeProxySize", 120, RangeValidator(70, 300))

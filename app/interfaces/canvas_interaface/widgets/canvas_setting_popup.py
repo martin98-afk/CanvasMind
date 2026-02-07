@@ -138,6 +138,14 @@ class CanvasSettingPopup(QWidget):
             parent=group
         )
         self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
+        self.autoCollapseCard = SwitchSettingCard(
+            get_icon("画布"),
+            self.tr("Proxy模式自动收缩"),
+            configItem=self.cfg.canvas_auto_collapse,
+            parent=group
+        )
+        self.autoCollapseCard.checkedChanged.connect(self.onConfigChanged)
+
         self.showGridCard = OptionsSettingCard(self.cfg.canvas_grid_mode, get_icon("画布"), "显示网格",
                                                texts=["线网格", "点网格", "无网格"], parent=group)
         self.pipelayoutCard = OptionsSettingCard(self.cfg.canvas_pipelayout, get_icon("画布"), "连线类型",
@@ -151,6 +159,7 @@ class CanvasSettingPopup(QWidget):
 
         group.addSettingCard(self.nodeResizeMemoryCard)
         group.addSettingCard(self.NodeProxyCard)
+        group.addSettingCard(self.autoCollapseCard)
         group.addSettingCard(self.showGridCard)
         group.addSettingCard(self.pipelayoutCard)
         group.addSettingCard(self.canvasFontCard)

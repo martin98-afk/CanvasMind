@@ -208,6 +208,7 @@ class CustomNodeItem(NodeItem):
 
         self._port_height = 0.0
         self._widget_height = 0.0
+        self._widget_width = 0.0
 
     def _init_base_components(self):
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
@@ -320,10 +321,14 @@ class CustomNodeItem(NodeItem):
         if self._size_initialized: return
         if width is not None and height is not None:
             if float(width) > 0 and float(height) > 0:
-                self._user_width = float(width)
-                self._user_height = float(height)
-                self._properties['width'] = self._user_width
-                self._properties['height'] = self._user_height
+                min_w, min_h = self._calc_size_horizontal(ignore_user_size=True)
+                if width == min_w or height == min_h:
+                    self.reset_to_auto_size()
+                else:
+                    self._user_width = float(width)
+                    self._user_height = float(height)
+                    self._properties['width'] = self._user_width
+                    self._properties['height'] = self._user_height
                 self._size_initialized = True
                 self._draw_node_horizontal()
 
@@ -379,38 +384,58 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _calc_size_horizontal(self, ignore_user_size=False):
-        # 1. 计算内容所需尺寸
+        # 1. 计算内容所需尺寸 (Ports)
         p_input_h = (len(self._input_items) * 22.0) + 10.0 if self._input_items else 0.0
         p_output_h = (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
         port_height = max(p_input_h, p_output_h)
+        self._port_height = max(port_height, 10.0)
 
         in_txt_w = max([t.boundingRect().width() for t in self._input_items.values()] + [0])
         out_txt_w = max([t.boundingRect().width() for t in self._output_items.values()] + [0])
         p_width = in_txt_w + out_txt_w + 50.0
 
+        # --- 关键修正：区分 Proxy 模式和普通隐藏 ---
         widget_height = 0.0
         w_width = 0.0
-        if not self._is_collapsed:
+
+        # 只有在非 Proxy 且非折叠状态下，才去累加 Widget 高度
+        if not self._is_collapsed and not self._proxy_mode:
             for widget in self._widgets.values():
+                # 只有用户主动隐藏的控件才不计入高度
+                if not widget.isVisible():
+                    continue
+
                 real = widget.widget()
                 sz = real.sizeHint() if real else widget.boundingRect().size()
                 w_width = max(w_width, sz.width())
                 widget_height += sz.height() + 8.0
             if widget_height > 0: widget_height += 10.0
-
-        self._port_height = port_height
-        self._widget_height = widget_height
-
-        min_width = max(self._text_item.boundingRect().width() + 120, p_width, w_width + 20, 200)
+            self._widget_height = widget_height
+            self._widget_width = w_width
+        # 2. 确定最小宽高边界
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
-        final_port_height = max(port_height, 10.0)
-        min_height = header_height + final_port_height + widget_height
 
-        # 2. 决策最终尺寸
-        if self._is_collapsed or ignore_user_size:
+        if self._proxy_mode and Settings().get_instance().canvas_auto_collapse.value:
+            min_width = self._user_width if self._user_width > 0 else 200
+            min_height = self._user_height if self._user_height > 0 else 120
+        elif self._proxy_mode:
+            min_width = self._user_width if self._user_width > 0 else max(self._text_item.boundingRect().width() + 120,
+                                                                          p_width, self._widget_width + 20, 200)
+            min_height = self._user_height if self._user_height > 0 else header_height + self._port_height + self._widget_height
+        else:
+            min_width = max(self._text_item.boundingRect().width() + 120, p_width, self._widget_width + 20, 200)
+            min_height = header_height + self._port_height + widget_height
+
+        # 3. 最终尺寸决策
+        # 如果是折叠模式，强制收缩到 Header 高度
+        if self._is_collapsed:
+            return min_width, header_height + self._port_height
+
+        # 如果是 Proxy 模式或者忽略用户尺寸请求
+        if ignore_user_size:
             return min_width, min_height
 
-        # 如果 _user_width > 0 则是手动模式，否则是自动模式
+        # 正常/手动模式
         final_w = max(min_width, self._user_width) if self._user_width > 0 else min_width
         final_h = max(min_height, self._user_height) if self._user_height > 0 else min_height
 
