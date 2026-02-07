@@ -24,6 +24,7 @@ from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvas
 from app.node_plugins.plugin_manager import NodePluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
+from app.trigger_plugins import *
 from app.trigger_plugins.base_trigger import load_trigger_plugins
 from app.utils.config import Settings
 from app.utils.utils import get_icon

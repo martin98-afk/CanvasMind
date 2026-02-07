@@ -17,11 +17,6 @@ except ImportError:
     print("错误: 当前环境未安装 spyder")
     sys.exit(1)
 
-# 2. 【核心优化】动态搜寻插件依赖
-# 自动找出 app.trigger_plugins 下的所有子模块，告诉 PyInstaller 必须包含它们
-plugin_hidden_imports = collect_submodules('app.trigger_plugins')
-logger_hidden_imports = ['loguru']  # 确保日志库被包含
-
 # 3. 构造参数列表
 params = [
     'main.py',
@@ -42,9 +37,6 @@ params = [
     '--copy-metadata=jupyter_client',
 ]
 
-# 批量添加插件隐藏导入
-for imp in plugin_hidden_imports + logger_hidden_imports:
-    params.append(f'--hidden-import={imp}')
 
 # 运行时配置
 params.extend([
