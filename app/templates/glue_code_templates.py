@@ -10,19 +10,14 @@ DEFAULT_CODE_TEMPLATE = '''def run(self, params, inputs=None):
     # 处理逻辑
     result = f"处理结果: {input_data} + {param1}"
     return {
-        "output": result
+        "output1": result
     }
 '''
 
 # ===== 胶水代码模板库 =====
 GLUE_CODE_TEMPLATES = {
-    "default": {
-        "name": "空白模板",
-        "code": DEFAULT_CODE_TEMPLATE.strip()
-    },
-    "intervention": {
-        "name": "人工干预",
-        "code": '''def run(self, params, inputs):
+    "空白模板": DEFAULT_CODE_TEMPLATE.strip(),
+    "人工干预": '''def run(self, params, inputs):
     # 逻辑处理...
     result = self.emit_interactive_message(
         method="ask_user",
@@ -40,10 +35,8 @@ GLUE_CODE_TEMPLATES = {
     return {
         "output1": result
     }
-'''},
-    "variable_clear": {
-        "name": "节点变量清理",
-        "code": '''def run(self, params, inputs=None):
+''',
+    "节点变量清理": '''def run(self, params, inputs=None):
     """
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
@@ -55,11 +48,8 @@ GLUE_CODE_TEMPLATES = {
                 "value": "变量名"
             }
     )
-'''
-    },
-    "node_variable_add": {
-        "name": "节点端口变量加入全局变量",
-        "code": '''def run(self, params, inputs=None):
+''',
+    "节点端口变量加入全局变量": '''def run(self, params, inputs=None):
     """
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
@@ -69,11 +59,8 @@ GLUE_CODE_TEMPLATES = {
         params={"value": "output1"}
     )
     return {"output1": "test"}
-'''
-    },
-    "node_variable_remove": {
-        "name": "节点端口变量移除全局变量",
-        "code": '''def run(self, params, inputs=None):
+''',
+    "节点端口变量移除全局变量": '''def run(self, params, inputs=None):
     """
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
@@ -83,11 +70,8 @@ GLUE_CODE_TEMPLATES = {
         params={"value": "output1"}
     )
     return {"output1": "test"}
-'''
-    },
-    "stream_output": {
-        "name": "实时结果使用示例",
-        "code": '''def run(self, params, inputs=None):
+''',
+    "实时结果使用示例": '''def run(self, params, inputs=None):
     """
     params: 节点属性（来自UI）
     inputs: 上游输入（key=输入端口名）
@@ -106,11 +90,8 @@ GLUE_CODE_TEMPLATES = {
     return {
         "output1": result
     }
-'''
-    },
-    "json_parse": {
-        "name": "JSON 解析/序列化",
-        "code": '''def run(self, params, inputs=None):
+''',
+    "JSON 解析/序列化": '''def run(self, params, inputs=None):
     """
     params: {mode: "parse" 或 "serialize"}
     inputs: {"input_data": str 或 dict}
@@ -134,11 +115,8 @@ GLUE_CODE_TEMPLATES = {
 
     return {
         "output_data": output_data
-    }'''
-    },
-    "filter_list": {
-        "name": "按字段过滤列表",
-        "code": '''def run(self, params, inputs=None):
+    }''',
+    "按字段过滤列表": '''def run(self, params, inputs=None):
     """
     params: {field: "score", threshold: 80}
     inputs: {"input_data": list of dict}
@@ -157,11 +135,8 @@ GLUE_CODE_TEMPLATES = {
 
     return {
         "output_data": output_data
-    }'''
-    },
-    "rename_fields": {
-        "name": "字段重命名",
-        "code": '''def run(self, params, inputs=None):
+    }''',
+    "字段重命名": '''def run(self, params, inputs=None):
     """
     params: {mapping: {"old": "new"}}
     inputs: {"input_data": dict or list of dict}
@@ -181,11 +156,8 @@ GLUE_CODE_TEMPLATES = {
 
     return {
         "output_data": output_data
-    }'''
-    },
-    "listdir": {
-        "name": "列出指定目录全部文件",
-        "code": '''def run(self, params, inputs=None):
+    }''',
+    "列出指定目录全部文件": '''def run(self, params, inputs=None):
     """
     params: 节点属性（来自UI）
     inputs: 目标文件夹
@@ -197,5 +169,4 @@ GLUE_CODE_TEMPLATES = {
     return {
         "output": projects
     }'''
-    }
 }

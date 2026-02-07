@@ -122,6 +122,17 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
             painter.drawLine(QtCore.QPointF(cx - 8, cy - 2), QtCore.QPointF(cx + 8, cy - 2))
             painter.drawLine(QtCore.QPointF(cx - 4, cy + 2), QtCore.QPointF(cx - 2, cy + 4))
             painter.drawLine(QtCore.QPointF(cx - 2, cy + 4), QtCore.QPointF(cx - 4, cy + 6))
+        elif self.icon_type == 'more':
+            # 绘制三个水平圆点
+            dot_size = 3.0
+            painter.setBrush(painter.pen().color())
+            painter.setPen(QtCore.Qt.NoPen)
+            # 左点
+            painter.drawEllipse(QtCore.QRectF(cx - 7, cy - dot_size / 2, dot_size, dot_size))
+            # 中点
+            painter.drawEllipse(QtCore.QRectF(cx - dot_size / 2, cy - dot_size / 2, dot_size, dot_size))
+            # 右点
+            painter.drawEllipse(QtCore.QRectF(cx + 7 - dot_size, cy - dot_size / 2, dot_size, dot_size))
         painter.restore()
 
     def hoverEnterEvent(self, event):
@@ -135,6 +146,8 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             event.accept()
-            if self.clicked_func: self.clicked_func()
+            if self.clicked_func:
+                self.clicked_func()
+                self.update() # 点击后立刻强制刷新一次状态
         else:
             event.ignore()

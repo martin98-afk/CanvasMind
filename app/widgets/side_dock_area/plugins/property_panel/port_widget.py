@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+import orjson
+import pandas as pd
+import json
 import os
 import re
 import shutil
 import traceback
 from pathlib import Path
-import pandas as pd
-from PyQt5.QtCore import Qt, QSize, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QSize, QThread, pyqtSignal, QObject, QPoint
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
 from qfluentwidgets import (CardWidget, PushButton, ListWidget, SegmentedWidget,
@@ -254,7 +256,7 @@ class PortWidget(QWidget):
     def _update_card_data(self, card, p_name, p_label, p_type, is_output):
         """填充/更新卡片业务数据"""
         ui = card.ui
-        ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type.value}")
+        ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type}")
 
         # 获取数据逻辑
         data = "暂无数据"
@@ -318,7 +320,6 @@ class PortWidget(QWidget):
 
     def _refresh_card_actions(self, card, p_name, p_label, p_type, is_output):
         container = card.ui['action_container']
-        # 注意：清理时不要删掉 progress_bar
         for i in reversed(range(container.count())):
             item = container.itemAt(i)
             widget = item.widget()
@@ -326,10 +327,70 @@ class PortWidget(QWidget):
                 widget.deleteLater()
 
         if p_type == ArgumentType.UPLOAD and is_output:
+            # 创建水平布局容纳两个按钮
+            h_layout = QHBoxLayout()
+            h_layout.setSpacing(4)
+
             upload_btn = PushButton(FluentIcon.UP, f"上传文件到 {p_label}", self)
             upload_btn.setFixedHeight(30)
             upload_btn.clicked.connect(lambda: self._select_upload_file(p_name, upload_btn, card.ui['progress_bar']))
-            container.addWidget(upload_btn)
+
+            # 历史按钮
+            history_btn = TransparentToolButton(FluentIcon.HISTORY, self)
+            history_btn.setFixedSize(30, 30)
+            history_btn.setToolTip("历史上传记录")
+            history_btn.clicked.connect(lambda: self._show_history_menu(p_name, history_btn))
+
+            h_layout.addWidget(upload_btn, 1)
+            h_layout.addWidget(history_btn)
+
+            # 将水平布局添加到主容器（需要先包一层 QWidget 或直接添加布局）
+            btn_group_widget = QWidget()
+            btn_group_widget.setLayout(h_layout)
+            container.addWidget(btn_group_widget)
+
+    def _show_history_menu(self, port_name, btn):
+        history = self._get_history()
+        if not history:
+            InfoBar.warning("提示", "暂无历史记录", parent=self.main_window, duration=1500)
+            return
+
+        menu = RoundMenu(parent=self)
+        for path in history:
+            file_name = os.path.basename(path)
+            action = Action(FluentIcon.DOCUMENT, file_name, self)
+            action.setToolTip(path)
+            action.triggered.connect(lambda checked, p=path: self._apply_history_selection(port_name, p))
+            menu.addAction(action)
+
+        # --- 核心修改部分 ---
+        # 1. 获取菜单建议的尺寸
+        menu_width = menu.sizeHint().width()
+        # 2. 计算偏移量：x = 按钮宽 - 菜单宽， y = 按钮高
+        # 这样菜单的右边缘就会和按钮的右边缘重合
+        offset_x = btn.width() - menu_width
+        offset_y = btn.height()
+
+        # 3. 映射到全局坐标并显示
+        pos = btn.mapToGlobal(QPoint(offset_x, offset_y))
+        menu.exec_(pos)
+
+    def _apply_history_selection(self, port_name, file_path):
+        """将历史记录中的文件应用到节点"""
+        if not os.path.exists(file_path):
+            InfoBar.error("错误", "该历史文件已不存在", parent=self.main_window)
+            return
+
+        self.node.set_output_value(port_name, file_path)
+        try:
+            self.node.model.add_property(f"{port_name}_upload", file_path)
+        except:
+            self.node.model.set_property(f"{port_name}_upload", file_path)
+
+        if port_name in self._text_edit_widgets:
+            self._text_edit_widgets[port_name].set_data(file_path, port_name)
+
+        InfoBar.success("已选择", f"已切换至: {os.path.basename(file_path)}", parent=self.main_window)
 
     # =================================================================
     # 核心优化：异步文件选择与处理
@@ -371,6 +432,7 @@ class PortWidget(QWidget):
 
             if success:
                 self.node.set_output_value(port_name, final_path)
+                self._add_to_history(final_path)
                 try:
                     self.node.model.add_property(f"{port_name}_upload", final_path)
                 except:
@@ -496,3 +558,36 @@ class PortWidget(QWidget):
                               triggered=lambda: self.copy_as_expression_func("node_vars",
                                                                              f"{self.node.name()}__{p_name}")))
         menu.exec_(card.mapToGlobal(pos))
+
+    def _get_history(self):
+        """从 JSON 读取历史记录"""
+        history_file = "canvas_files/upload_index.json"
+        if not os.path.exists(history_file):
+            return []
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                data = orjson.loads(f.read())
+                return data if isinstance(data, list) else []
+        except Exception as e:
+            logger.error(f"读取历史记录失败: {e}")
+            return []
+
+    def _add_to_history(self, file_path):
+        """添加文件到历史记录 (去重并保留最近15条)"""
+        os.makedirs("canvas_files", exist_ok=True)
+        history_file = "canvas_files/upload_index.json"
+        history = self._get_history()
+
+        # 转换路径为字符串并去重
+        file_path = str(file_path)
+        if file_path in history:
+            history.remove(file_path)
+
+        history.insert(0, file_path)  # 新的排在前面
+        history = history[:15]  # 限制数量
+
+        try:
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"保存历史记录失败: {e}")

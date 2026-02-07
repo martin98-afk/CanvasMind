@@ -195,8 +195,8 @@ class MessagePusher(BaseComponent):
 
     def run(self, params, inputs=None):
         import json
-        trigger = inputs.get("image")
-        message_content = inputs.get("message")
+        trigger = inputs.get("image", "")
+        message_content = inputs.get("message", "")
         title = params.get("title", "通知")
         if isinstance(message_content, dict) or isinstance(message_content, list):
             message_content = json.dumps(message_content, indent=2, ensure_ascii=False)

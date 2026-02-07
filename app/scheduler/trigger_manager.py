@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 from uuid import uuid4
@@ -10,6 +11,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
 
@@ -214,3 +217,86 @@ class SchedulerManager:
     def stop(self):
         if self.scheduler.running:
             self.scheduler.shutdown()
+
+
+class FileWatcherHandler(FileSystemEventHandler):
+    """自定义事件处理器，当文件发生变动时触发回调"""
+    def __init__(self, callback, node_id, canvas_name):
+        self.callback = callback
+        self.node_id = node_id
+        self.canvas_name = canvas_name
+
+    def on_created(self, event):
+        if not event.is_directory:
+            data = {"event_type": "created", "path": event.src_path, "filename": os.path.basename(event.src_path)}
+            self.callback(data, uuid4().hex)
+
+
+class FileWatcherManager:
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(FileWatcherManager, cls).__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        self.observer = Observer()
+        self.observer.start()
+        # 记录 node_id 与其对应的 watch 对象 { node_id: watch_handle }
+        self.active_watches = {}
+        # 画布与 node_id 的映射 { canvas_name: {node_id1, node_id2} }
+        self.canvas_map: Dict[str, set] = {}
+        self._initialized = True
+        logger.info("FileWatcher 监听器已启动")
+
+    def add_watcher(self, canvas_name: str, node_id: str, callback: Callable, watch_path: str):
+        """注册文件夹监听"""
+        try:
+            if not os.path.exists(watch_path):
+                logger.error(f"[Watcher] 路径不存在: {watch_path}")
+                return
+
+            # 如果该节点已经有监听，先移除
+            self.remove_watcher(node_id)
+
+            handler = FileWatcherHandler(callback, node_id, canvas_name)
+            # schedule 返回一个 watch 对象
+            watch = self.observer.schedule(handler, watch_path, recursive=False)
+            self.active_watches[node_id] = watch
+
+            if canvas_name not in self.canvas_map:
+                self.canvas_map[canvas_name] = set()
+            self.canvas_map[canvas_name].add(node_id)
+
+            logger.info(f"[Watcher] 画布 '{canvas_name}' 节点 {node_id} 正在监听: {watch_path}")
+        except Exception as e:
+            logger.error(f"[Watcher] 注册监听失败: {e}")
+
+    def remove_watcher(self, node_id: str):
+        """移除单个节点的监听"""
+        if node_id in self.active_watches:
+            watch = self.active_watches.pop(node_id)
+            self.observer.unschedule(watch)
+            # 清理画布映射
+            for node_ids in self.canvas_map.values():
+                node_ids.discard(node_id)
+            logger.info(f"[Watcher] 监听已注销: {node_id}")
+
+    def remove_by_canvas(self, canvas_name: str):
+        """清理特定画布的所有监听任务"""
+        if canvas_name in self.canvas_map:
+            node_ids = list(self.canvas_map[canvas_name])
+            for nid in node_ids:
+                self.remove_watcher(nid)
+            del self.canvas_map[canvas_name]
+            logger.info(f"[Watcher] 已清理画布 '{canvas_name}' 的所有监听 ({len(node_ids)} 个)")
+
+    def stop(self):
+        self.observer.stop()
+        self.observer.join()

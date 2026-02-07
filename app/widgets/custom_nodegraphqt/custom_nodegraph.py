@@ -26,6 +26,7 @@ from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
+from app.widgets.custom_nodegraphqt.node_layout_handler import NodeLayoutHandler
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 # --- 常量配置 ---
@@ -78,47 +79,62 @@ class CustomNodeScene(NodeScene):
                 node.setSelected(True)
 
 
-class SelectionLabelItem(QtWidgets.QGraphicsWidget):
-    """左上角显示选中数量"""
+class SelectionOverlayItem(QtWidgets.QGraphicsItem):
+    """
+    高性能悬浮遮罩项
+    将虚线框和工具栏整合，减少 Scene 管理开销
+    """
 
-    def __init__(self, parent=None):
-        super(SelectionLabelItem, self).__init__(parent)
-        self.setZValue(Z_VAL_PIPE + 201)
-        self.count = 0
-        self.bg_color = QtGui.QColor(30, 30, 35, 200)
-        self.border_color = QtGui.QColor(255, 180, 0, 255)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
-        self.label = QtWidgets.QGraphicsTextItem(self)
-        self.label.setDefaultTextColor(QtGui.QColor(255, 255, 255, 220))
-        font = QtGui.QFont("Segoe UI", 9, QtGui.QFont.Bold)
-        self.label.setFont(font)
+    def __init__(self, viewer):
+        super().__init__()
+        self.viewer = viewer
+        self.setZValue(Z_VAL_PIPE + 190)
+        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
 
-    def update_count(self, count):
-        self.count = count
-        self.label.setPlainText(f" {count} NODES SELECTED ")
-        self.prepareGeometryChange()
+        # 内部状态缓存
+        self._current_rect = QtCore.QRectF()
+        self._padding = 20
+        self._visible = False
+
+        # 笔刷缓存
+        self._pen = QtGui.QPen(QtGui.QColor(255, 180, 0, 150), 1.5, QtCore.Qt.DashLine)
+        self._pen.setCosmetic(True)  # 极致性能的关键：缩放时不重绘线宽
 
     def boundingRect(self):
-        return self.label.boundingRect().adjusted(0, 0, 10, 0)
+        return self._current_rect.adjusted(-2, -2, 2, 2)
 
     def paint(self, painter, option, widget):
-        painter.save()
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        rect = self.boundingRect()
+        if not self._visible or self._current_rect.isEmpty():
+            return
+        painter.setPen(self._pen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.drawRoundedRect(self._current_rect, 10, 10)
 
-        # 1. 绘制背景矩形 (传入 QRectF 对象以支持 float)
-        painter.setBrush(self.bg_color)
-        painter.setPen(QtGui.QPen(self.border_color, 1.0))
-        painter.drawRoundedRect(rect, 5, 5)
+    def update_geometry(self, selected_nodes):
+        """仅在节点增减或停止移动时调用：重算并集矩形"""
+        if not selected_nodes:
+            self._visible = False
+            self.hide()
+            return
 
-        # 2. 绘制左侧的小装饰条 (修复点：使用 QRectF 包裹参数)
-        painter.setBrush(self.border_color)
-        painter.setPen(QtCore.Qt.NoPen)
-        # 错误原因修复：drawRect 需要 (QRectF) 或 (int, int, int, int)
-        side_bar = QtCore.QRectF(rect.left(), rect.top() + 4, 3, rect.height() - 8)
-        painter.drawRect(side_bar)
+        self.prepareGeometryChange()
 
-        painter.restore()
+        # 优化：直接获取第一个节点的并集，减少循环内开销
+        rect = selected_nodes[0].sceneBoundingRect()
+        for i in range(1, len(selected_nodes)):
+            rect = rect.united(selected_nodes[i].sceneBoundingRect())
+
+        rect.adjust(-self._padding, -self._padding, self._padding, self._padding)
+        self._current_rect = rect
+        self._visible = True
+        self.show()
+        self.update()
+
+    def quick_move(self, delta):
+        """拖拽节点时调用：仅平移，不重算矩形并集"""
+        self.prepareGeometryChange()
+        self._current_rect.translate(delta)
+        self.update()
 
 
 class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
@@ -132,13 +148,11 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsFocusable, False)
+        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         # --- 1. 创建按钮并绑定点击函数 ---
         # 执行：执行选中节点
         self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", False)
         self.btn_run.clicked_func = self.on_run
-        # 注释：创建背景框
-        self.btn_comment = NodeActionButton(self, "comment", "添加注释背景", "#34495e", "#2c3e50", True)
-        self.btn_comment.clicked_func = self._on_comment
 
         # 居中：聚焦选中区域
         self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", True)
@@ -152,10 +166,13 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", True)
         self.btn_template.clicked_func = self._on_template
 
+        self.btn_more = NodeActionButton(self, "more", "更多操作", "#7f8c8d", "#95a5a6", True)
+        self.btn_more.clicked_func = self._on_more_menu
+
         self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", False)
         self._close_btn.clicked_func = self._on_close
         # --- 2. 布局逻辑 (保持不变) ---
-        self.buttons = [self.btn_run, self.btn_comment, self.btn_center, self.btn_clone, self.btn_template, self._close_btn]
+        self.buttons = [self.btn_run, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
         spacing = 6
         btn_w = 28
         for i, btn in enumerate(self.buttons):
@@ -190,11 +207,144 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
             ops._copy_selected_nodes()
             ops._paste_nodes()
             # 粘贴后更新一下多选框
-            self.viewer._selection_overlay.update()
+            self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_template(self):
         """功能：将当前选择保存为代码段/模板库"""
         self.viewer.home_window.add_template()
+
+    def _on_more_menu(self):
+        """弹出更现代化的功能菜单"""
+        menu = QtWidgets.QMenu()
+
+        # 启用无边框和透明效果（可选，视操作系统支持情况）
+        # 2. 设置属性：点击外部自动消失
+        menu.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
+        menu.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+        # --- 现代化的 QSS 样式 ---
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: rgba(45, 45, 45, 230); /* 半透明深灰 */
+                color: #E0E0E0;
+                border: 1px solid #555555;
+                border-radius: 8px;
+                padding: 6px 0px;
+            }
+            QMenu::item {
+                padding: 8px 28px 8px 15px;
+                background-color: transparent;
+                margin: 2px 6px;
+                border-radius: 4px;
+                font-size: 13px;
+            }
+            QMenu::item:selected {
+                background-color: #3d77ff; /* 现代感蓝色 */
+                color: white;
+            }
+            QMenu::item:disabled {
+                color: #666;
+            }
+            /* 重点：美化分割线 */
+            QMenu::separator {
+                height: 1px;
+                background-color: #555555;
+                margin: 6px 12px; /* 上下外边距6px，左右内缩12px */
+            }
+            /* 子菜单箭头 */
+            QMenu::right-arrow {
+                width: 10px;
+                height: 10px;
+                right: 10px;
+                /* 如果你有资源文件可以使用图标: image: url(:/icons/arrow_right.png); */
+            }
+        """)
+
+        # --- 添加动作 (保持逻辑不变，增加图标/描述感) ---
+        # 添加注释
+        add_note = menu.addAction("📝 添加注释背景")
+        add_note.triggered.connect(self._on_comment)
+
+        # 循环控制组
+        menu.addSeparator()
+        add_loop = menu.addAction("🔄 创建循环结构")
+        add_loop.triggered.connect(
+            lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowLoopNode"))
+
+        add_iterate = menu.addAction("🔁 创建迭代结构")
+        add_iterate.triggered.connect(
+            lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowIterateNode"))
+
+        menu.addSeparator()
+
+        # 执行模式组
+        batch_subprocess = menu.addAction("📦 批量转为子进程")
+        batch_subprocess.triggered.connect(self._on_batch_subprocess)
+
+        batch_ipython = menu.addAction("⚡ 批量内存驻留")
+        batch_ipython.triggered.connect(self._on_batch_ipython)
+
+        menu.addSeparator()
+        expand_all = menu.addAction("➕ 批量展开节点")
+        # 假设你原本的逻辑是通过 viewer 调用的
+        expand_all.triggered.connect(self._on_batch_unfold)
+
+        collapse_all = menu.addAction("➖ 批量折叠节点")
+        collapse_all.triggered.connect(self._on_batch_fold)
+
+        # 视图操作组
+        menu.addAction("📏 吸附至网格").triggered.connect(lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
+
+        # --- 子菜单样式也会继承父级 ---
+        align_menu = menu.addMenu("📐 对齐方式")
+        align_menu.addAction("左对齐").triggered.connect(
+            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'left'))
+        align_menu.addAction("右对齐").triggered.connect(
+            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'right'))
+        align_menu.addAction("顶对齐").triggered.connect(
+            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'top'))
+        align_menu.addAction("底对齐").triggered.connect(
+            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'bottom'))
+        align_menu.addAction("水平居中").triggered.connect(
+            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'center_h'))
+
+        dist_menu = menu.addMenu("↔️ 等间距排列")
+        dist_menu.addAction("水平等距").triggered.connect(
+            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'horizontal'))
+        dist_menu.addAction("垂直等距").triggered.connect(
+            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'vertical'))
+
+        # 计算弹出位置
+        button_scene_pos = self.btn_more.scenePos()
+        view_pos = self.viewer.mapFromScene(button_scene_pos)
+        global_pos = self.viewer.viewport().mapToGlobal(view_pos)
+
+        # 弹出菜单（非阻塞）
+        menu.exec_(global_pos + QtCore.QPoint(0, 30))
+
+    def _on_batch_subprocess(self):
+        """功能：批量折叠选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, '_toggle_exec_mode'):
+                node._toggle_exec_mode("subprocess")
+
+    def _on_batch_ipython(self):
+        """功能：批量展开选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, '_toggle_exec_mode'):
+                node._toggle_exec_mode("ipython")
+
+    def _on_batch_fold(self):
+        """功能：批量折叠选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, 'toggle_collapse'):
+                node.toggle_collapse(True)
+
+    def _on_batch_unfold(self):
+        """功能：批量展开选中的节点"""
+        for node in self.viewer.selected_nodes():
+            if hasattr(node, 'toggle_collapse'):
+                node.toggle_collapse(False)
 
     def _on_close(self):
         """功能：删除选中的节点"""
@@ -204,28 +354,45 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
             # 删除节点
             self.viewer.home_window.node_operations.delete_selected_nodes(self.viewer.graph)
             # 更新多选框
-            self.viewer._selection_overlay.update()
+            self.viewer._selection_overlay.refresh(full_recalc=False)
+
+    def update_position(self, scene_rect):
+        """
+        scene_rect: 当前多选框在场景中的矩形
+        """
+        if not self.isVisible():
+            return
+
+        view_scale = self.viewer.transform().m11()
+        # 性能优化：避免频繁调用 boundingRect().width()，使用预设常量或缓存
+        tb_w = self._total_width
+        tb_h = 28
+
+        # 锚点计算：场景坐标 = 矩形边缘 - (像素尺寸 / 缩放)
+        # 解决“对齐不准”：使用 QPointF 确保精度，减少取整造成的抖动
+        target_x = scene_rect.right() - (tb_w / view_scale)
+        target_y = scene_rect.top() - (10 / view_scale) - (tb_h / view_scale)
+
+        self.setPos(target_x, target_y)
 
 
 class SelectionOverlayManager:
     def __init__(self, viewer):
         self.viewer = viewer
         self.scene = viewer.scene()
-        self._visible = False
-        # 1. 虚线框
-        self.rect_item = QtWidgets.QGraphicsPathItem()
-        self.rect_item.setZValue(Z_VAL_PIPE + 190)
-        pen = QtGui.QPen(QtGui.QColor(255, 180, 0, 150), 1.5, QtCore.Qt.DashLine)
-        pen.setCosmetic(True)
-        self.rect_item.setPen(pen)
+        self._visible = False  # <<< 确保这个属性存在
+
+        # 1. 虚线框项 (使用之前建议的高性能 Item)
+        self.rect_item = SelectionOverlayItem(viewer)
         self.scene.addItem(self.rect_item)
-        self.rect_item.hide()
-        # 3. 右上角动作栏
+
+        # 2. 工具栏
         self.toolbar = SelectionActionToolbar(viewer)
         self.scene.addItem(self.toolbar)
-        self.toolbar.hide()
 
-    def update(self):
+        self.hide()  # 初始状态隐藏
+
+    def refresh(self, full_recalc=True):
         selected_nodes = [
             i for i in self.scene.selectedItems()
             if isinstance(i, AbstractNodeItem) and i.isVisible()
@@ -234,45 +401,31 @@ class SelectionOverlayManager:
         if len(selected_nodes) < 2:
             self.hide()
             return
+
+        # 更新状态
         self._visible = True
-        # 1. 计算场景中的并集矩形
-        rect = selected_nodes[0].sceneBoundingRect()
-        for node in selected_nodes[1:]:
-            rect = rect.united(node.sceneBoundingRect())
 
-        # 虚线框跟随场景缩放，所以 padding 使用场景单位
-        padding = 20
-        rect.adjust(-padding, -padding, padding, padding)
+        if full_recalc:
+            self.rect_item.update_geometry(selected_nodes)
 
-        # 2. 更新虚线框路径
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(rect, 10, 10)
-        self.rect_item.setPath(path)
-        self.rect_item.show()
-
-        # 3. 计算当前的视图缩放比例 (Scale)
-        # transform().m11() 返回的是当前的缩放倍数
-        view_scale = self.viewer.transform().m11()
-
-        # 在场景中的间距 = 屏幕像素 / 缩放比例
-        scene_gap = 10 / view_scale
-
-        # --- 更新右上角工具栏位置 ---
-        toolbar_w_pixel = self.toolbar.boundingRect().width()
-        toolbar_h_pixel = self.toolbar.boundingRect().height()
-
-        # x轴位置：矩形右侧 - (自身像素宽度 / view_scale)
-        toolbar_x = rect.right() - (toolbar_w_pixel / view_scale)
-        # y轴位置：矩形上方
-        toolbar_y = rect.top() - scene_gap - (toolbar_h_pixel / view_scale)
-
-        self.toolbar.setPos(toolbar_x, toolbar_y)
         self.toolbar.show()
+        # 传入当前的矩形区域进行位置锚定
+        self.toolbar.update_position(self.rect_item._current_rect)
+
+    def on_drag(self, delta):
+        """节点拖动时的极速刷新"""
+        if self._visible:
+            self.rect_item.quick_move(delta)
+            self.toolbar.update_position(self.rect_item._current_rect)
 
     def hide(self):
+        self._visible = False
         self.rect_item.hide()
         self.toolbar.hide()
-        self._visible = False
+
+    def is_visible(self):
+        """安全获取可见性状态"""
+        return self._visible
 
 
 class CustomNodeViewer(NodeViewer):
@@ -486,8 +639,8 @@ class CustomNodeViewer(NodeViewer):
             self._set_viewer_zoom(delta, pos=event.pos())
         except AttributeError:
             self._set_viewer_zoom(delta, pos=event.position().toPoint())
-        if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
-            self._selection_overlay.update()
+        if self._selection_overlay.is_visible():
+            self._selection_overlay.refresh(full_recalc=False)
 
     def establish_connection(self, start_port, end_port):
         # 保持你原本的逻辑不变
@@ -577,20 +730,27 @@ class CustomNodeViewer(NodeViewer):
                         node.selected = not node.selected
                         if node.selected:
                             selection.add(node)
+                self._selection_overlay.refresh(full_recalc=True)
             elif self.CTRL_state:
                 if items and backdrop == items[0]:
                     backdrop.selected = False
                 else:
                     for node in nodes:
                         node.selected = False
+                self._selection_overlay.refresh(full_recalc=True)
             else:
+                select_changed = False
                 if backdrop:
                     selection.add(backdrop)
                     for n in backdrop.get_nodes():
                         selection.add(n)
+                        select_changed = True
                 for node in nodes:
                     if node.selected:
                         selection.add(node)
+                        select_changed = True
+                if select_changed:
+                    self._selection_overlay.refresh(full_recalc=False)
 
         selection.update(self.selected_nodes())
         self._node_positions.update({n: n.xy_pos for n in selection})
@@ -620,6 +780,7 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        prev_scene_pos = self.mapToScene(self._previous_pos)
         # 1. 注入导航模式下的平移逻辑
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
@@ -629,7 +790,7 @@ class CustomNodeViewer(NodeViewer):
 
         # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
         super(CustomNodeViewer, self).mouseMoveEvent(event)
-
+        curr_scene_pos = self.mapToScene(event.pos())
         # 3. 判定是否正在拖拽节点
         is_dragging_nodes = (
                 self.LMB_state and
@@ -652,15 +813,14 @@ class CustomNodeViewer(NodeViewer):
             else:
                 # 处理对齐线
                 self._handle_snapping(selected_nodes)
-                # --- 新增：更新多选虚线框和工具栏 ---
-                self._selection_overlay.update()
+                self._selection_overlay.refresh()
         else:
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
 
             # 如果是在拉框选择，实时更新虚线框 (体验更好)
             if self._rubber_band.isActive:
-                self._selection_overlay.update()
+                self._selection_overlay.refresh(full_recalc=True)
 
     # ---------------------------------------------
 
@@ -762,7 +922,6 @@ class CustomNodeViewer(NodeViewer):
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
 
         super(CustomNodeViewer, self).mouseReleaseEvent(event)
-        # self._selection_overlay.update()
 
     def keyPressEvent(self, event):
         focused_widget = QApplication.focusWidget()
@@ -940,7 +1099,7 @@ class CustomNodeViewer(NodeViewer):
     def resizeEvent(self, event):
         self.home_window.ui_manager.update_position()
         if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
-            self._selection_overlay.update()
+            self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
 
 

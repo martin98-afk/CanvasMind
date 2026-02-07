@@ -129,7 +129,7 @@ class CustomPipeItem(PipeItem):
 
         layout = self.viewer_pipe_layout()
 
-        # 1. 曲线模式
+        # 1. 曲线模式 (保持原样，曲线通常不强调物理避让)
         if layout == PipeLayoutEnum.CURVED.value:
             dx = pos2.x() - pos1.x()
             ctr_offset = max(abs(dx) * 0.5, 40.0)
@@ -142,47 +142,66 @@ class CustomPipeItem(PipeItem):
                 cp2 = QtCore.QPointF(pos2.x() + ctr_offset, pos2.y())
             path.cubicTo(cp1, cp2, pos2)
 
-        # 2. 折线模式 (还原避让逻辑)
+        # 2. 折线模式 (增强版避让算法)
         elif layout == PipeLayoutEnum.ANGLE.value:
-            def calc_node_height(node):
-                if hasattr(node, "view"):  # NodeGraphQt 内部通常可以通过 view 获取
-                    return node.view.boundingRect().height()
-                return node.boundingRect().height()
+            points = []
 
-            dx = abs(pos1.x() - pos2.x())
-            points = [pos1]
-            side_margin = min(40.0, dx * 0.4) if dx > 5 else 5.0
+            # 获取端口方向
+            # 1 表示向右出, -1 表示向左出
+            direction = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
 
-            is_forward = False
-            if start_port.port_type == PortTypeEnum.OUT.value:
-                is_forward = pos2.x() > pos1.x() + (side_margin * 2)
-            else:
-                is_forward = pos2.x() < pos1.x() - (side_margin * 2)
+            # 基础间距
+            margin_x = 30.0
+
+            # 计算逻辑：
+            # 如果是正常向前连线 (Output 在 Input 左侧)
+            is_forward = (pos2.x() > pos1.x() + margin_x * 2) if direction == 1 else (
+                        pos2.x() < pos1.x() - margin_x * 2)
 
             if is_forward:
+                # 三段式 (Z型)
                 mid_x = pos1.x() + (pos2.x() - pos1.x()) / 2
-                points.append(QtCore.QPointF(mid_x, pos1.y()))
-                points.append(QtCore.QPointF(mid_x, pos2.y()))
+                points = [
+                    pos1,
+                    QtCore.QPointF(mid_x, pos1.y()),
+                    QtCore.QPointF(mid_x, pos2.y()),
+                    pos2
+                ]
             else:
-                # 避让逻辑
-                node_h = calc_node_height(start_port.node)
-                y_offset = -130 if pos1.y() > pos2.y() else node_h
-                direct = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
+                # 五段式避让 (U型绕路)
+                # 1. 获取节点信息
+                node_item = start_port.node
+                node_rect = node_item.sceneBoundingRect()
 
-                p1_ext = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y())
-                p1_bypass = QtCore.QPointF(pos1.x() + side_margin * direct, pos1.y() + y_offset)
-                p2_bypass = QtCore.QPointF(pos2.x() - side_margin * direct, pos1.y() + y_offset)
-                p2_ext = QtCore.QPointF(pos2.x() - side_margin * direct, pos2.y())
-                points.extend([p1_ext, p1_bypass, p2_bypass, p2_ext])
+                # 2. 决定向上绕还是向下绕
+                # 如果终点在起点上方，则从上方绕行；反之亦然
+                padding = 20.0
+                if pos2.y() < pos1.y():
+                    # 向上避让：节点的顶部再往上一点
+                    bypass_y = node_rect.top() - padding
+                else:
+                    # 向下避让：节点的底部再往下一点
+                    bypass_y = node_rect.bottom() + padding
 
-            points.append(pos2)
+                # 3. 计算5个关键转折点
+                # p1: 出口水平延伸
+                p1 = QtCore.QPointF(pos1.x() + margin_x * direction, pos1.y())
+                # p2: 垂直转折到避让高度
+                p2 = QtCore.QPointF(pos1.x() + margin_x * direction, bypass_y)
+                # p3: 水平跨越节点，到达终点前的水平位置
+                p3 = QtCore.QPointF(pos2.x() - margin_x * direction, bypass_y)
+                # p4: 垂直转折到终点高度
+                p4 = QtCore.QPointF(pos2.x() - margin_x * direction, pos2.y())
 
-            # 过滤并画圆角
+                points = [pos1, p1, p2, p3, p4, pos2]
+
+            # 过滤重合点并绘制圆角
             clean_points = [points[0]]
             for i in range(1, len(points)):
-                if (points[i] - clean_points[-1]).manhattanLength() > 0.5:
+                if (points[i] - clean_points[-1]).manhattanLength() > 0.1:
                     clean_points.append(points[i])
-            self._draw_rounded_path(path, clean_points, radius=16.0)
+
+            self._draw_rounded_path(path, clean_points, radius=12.0)
 
         self.setPath(path)
 

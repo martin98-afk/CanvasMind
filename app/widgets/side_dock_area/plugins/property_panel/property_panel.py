@@ -443,8 +443,19 @@ class PropertyPanel(QWidget):
             comp_cls = self.main_window.component_map.get(full_path)
             if comp_cls:
                 comp_ports = getattr(comp_cls, 'inputs' if is_input else 'outputs', [])
-                return [(p.name, p.label, p.type) for p in comp_ports]
-        return [(p.name(), p.name(), ArgumentType.JSON) for p in
+                return [(p.name, p.label, p.type.value) for p in comp_ports]
+        try:
+            if is_input:
+                port_config = node.get_property("input_ports")
+            else:
+                port_config = node.get_property("output_ports")
+            return [
+                (port.get("name"), port.get("name"), port.get("type"))
+                for port in port_config
+            ]
+        except:
+            pass
+        return [(p.name(), p.name(), ArgumentType.JSON.value) for p in
                 (node.input_ports() if is_input else node.output_ports())]
 
     def get_node_description(self, node):

@@ -6,6 +6,7 @@ import json
 import os
 import pickle
 import re
+import socket
 import stat
 import sys
 import tarfile
@@ -387,6 +388,12 @@ def str_to_bool(value):
     if isinstance(value, bool):
         return value
     return str(value).lower() in ("true", "1", "yes", "on")
+
+
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
 
 
 def serialize_for_json(obj, large_list_threshold=1000):
