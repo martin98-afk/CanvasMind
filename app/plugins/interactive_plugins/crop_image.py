@@ -348,4 +348,4 @@ class CropImagePlugin(InteractivePlugin):
 
         dialog = CropImageDialog(title, image, node.parent_window)
         if dialog.exec():
-            on_confirmed(dialog.get_result())
+            return dialog.get_result()

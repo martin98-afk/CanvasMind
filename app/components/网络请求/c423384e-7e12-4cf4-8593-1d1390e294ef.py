@@ -97,15 +97,10 @@ class HttpComponent(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        """
-        params: 节点属性（来自UI）
-        inputs: 上游输入（key=输入端口名）
-        return: 输出数据（key=输出端口名）
-        """
         import httpx
         import json
+        import base64
 
-        # 从 params 中获取各配置项
         url = params.url
         method = params.method
         timeout = float(params.timeout)
@@ -113,23 +108,18 @@ class HttpComponent(BaseComponent):
         auth_type = params.auth_type
         auth_value = params.auth_value
 
-        # 获取动态表单数据（headers、params、request_body）
-        headers = {header.key:header.value for header in params.headers}
-        params_query = {param.key:param.value for param in params.params}
+        headers = {header.key: header.value for header in params.headers}
+        params_query = {param.key: param.value for param in params.params}
         json_body = inputs.request_body
 
-        # 认证处理
+        # 认证逻辑 (保持不变...)
         auth = None
         if auth_type == "Basic":
-            if ":" not in auth_value:
-                raise ValueError("Basic 认证需要格式为 '用户名:密码'")
             username, password = auth_value.split(":", 1)
             auth = httpx.BasicAuth(username, password)
         elif auth_type == "Bearer":
             headers["Authorization"] = f"Bearer {auth_value}"
-        # 其他认证方式（None）不处理
 
-        # 发起请求
         try:
             response = httpx.request(
                 method=method,
@@ -139,22 +129,37 @@ class HttpComponent(BaseComponent):
                 headers=headers,
                 auth=auth,
                 timeout=timeout,
-                verify=verify_ssl
+                verify=verify_ssl,
+                follow_redirects=True # 1. 解决 302 重定向报错
             )
             response.raise_for_status()
-        except httpx.RequestError as e:
-            self.logger.error(f"请求失败: {e}")
-            raise
-        except httpx.HTTPStatusError as e:
-            self.logger.error(f"HTTP 错误: {e.response.status_code} - {e.response.text}")
-            raise
+            
+            # 2. 智能处理返回内容
+            content_type = response.headers.get("Content-Type", "")
+            
+            if "application/json" in content_type:
+                # 如果是 JSON，直接解析
+                result_data = response.json()
+            elif "image/" in content_type:
+                # 如果是图片，返回图片的 URL 和 Base64 编码，方便下游解析
+                result_data = {
+                    "url": str(response.url),
+                    "content_type": content_type,
+                    "base64": base64.b64encode(response.content).decode('utf-8')
+                }
+            else:
+                # 其他情况返回文本
+                result_data = {"text": response.text, "url": str(response.url)}
 
-        # 返回结果
-        return {
-            "response": response.json(),
-            "status_code": response.status_code,
-            "headers": dict(response.headers)
-        }
+            return {
+                "response": result_data,
+                "status_code": response.status_code,
+                "headers": dict(response.headers)
+            }
+
+        except Exception as e:
+            self.logger.error(f"请求执行异常: {str(e)}")
+            raise
 
 
 if __name__ == "__main__":

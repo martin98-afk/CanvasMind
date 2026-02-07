@@ -214,49 +214,89 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         self.viewer.home_window.add_template()
 
     def _on_more_menu(self):
-        """弹出更多功能菜单"""
+        """弹出更现代化的功能菜单"""
         menu = QtWidgets.QMenu()
-        # 设置菜单样式（可选，匹配你的深色主题）
+
+        # 启用无边框和透明效果（可选，视操作系统支持情况）
+        # 2. 设置属性：点击外部自动消失
+        menu.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
+        menu.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+        # --- 现代化的 QSS 样式 ---
         menu.setStyleSheet("""
-            QMenu { background-color: #2b2b2b; color: white; border: 1px solid #555; }
-            QMenu::item:selected { background-color: #444; }
+            QMenu {
+                background-color: rgba(45, 45, 45, 230); /* 半透明深灰 */
+                color: #E0E0E0;
+                border: 1px solid #555555;
+                border-radius: 8px;
+                padding: 6px 0px;
+            }
+            QMenu::item {
+                padding: 8px 28px 8px 15px;
+                background-color: transparent;
+                margin: 2px 6px;
+                border-radius: 4px;
+                font-size: 13px;
+            }
+            QMenu::item:selected {
+                background-color: #3d77ff; /* 现代感蓝色 */
+                color: white;
+            }
+            QMenu::item:disabled {
+                color: #666;
+            }
+            /* 重点：美化分割线 */
+            QMenu::separator {
+                height: 1px;
+                background-color: #555555;
+                margin: 6px 12px; /* 上下外边距6px，左右内缩12px */
+            }
+            /* 子菜单箭头 */
+            QMenu::right-arrow {
+                width: 10px;
+                height: 10px;
+                right: 10px;
+                /* 如果你有资源文件可以使用图标: image: url(:/icons/arrow_right.png); */
+            }
         """)
 
-        # 示例功能 1: 加入模板库 (原本在工具栏，如果按钮位不够可以收进这里)
-        add_note = menu.addAction("添加注释背景")
+        # --- 添加动作 (保持逻辑不变，增加图标/描述感) ---
+        # 添加注释
+        add_note = menu.addAction("📝 添加注释背景")
         add_note.triggered.connect(self._on_comment)
 
-        # 创建循环节点
-        add_loop = menu.addAction("创建循环")
+        # 循环控制组
+        menu.addSeparator()
+        add_loop = menu.addAction("🔄 创建循环结构")
         add_loop.triggered.connect(
             lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowLoopNode"))
 
-        add_iterate = menu.addAction("创建迭代")
+        add_iterate = menu.addAction("🔁 创建迭代结构")
         add_iterate.triggered.connect(
             lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowIterateNode"))
+
         menu.addSeparator()
 
-        # 示例功能 2: 节点对齐 (多选时的常用功能)
-        batch_subprocess = menu.addAction("批量转为子进程运行")
+        # 执行模式组
+        batch_subprocess = menu.addAction("📦 批量转为子进程")
         batch_subprocess.triggered.connect(self._on_batch_subprocess)
 
-        batch_ipython = menu.addAction("批量内存驻留")
+        batch_ipython = menu.addAction("⚡ 批量内存驻留")
         batch_ipython.triggered.connect(self._on_batch_ipython)
 
         menu.addSeparator()
+        expand_all = menu.addAction("➕ 批量展开节点")
+        # 假设你原本的逻辑是通过 viewer 调用的
+        expand_all.triggered.connect(self._on_batch_unfold)
 
-        # 示例功能 2: 节点对齐 (多选时的常用功能)
-        batch_fold = menu.addAction("批量折叠")
-        batch_fold.triggered.connect(self._on_batch_fold)
+        collapse_all = menu.addAction("➖ 批量折叠节点")
+        collapse_all.triggered.connect(self._on_batch_fold)
 
-        batch_unfold = menu.addAction("批量展开")
-        batch_unfold.triggered.connect(self._on_batch_unfold)
+        # 视图操作组
+        menu.addAction("📏 吸附至网格").triggered.connect(lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
 
-        menu.addSeparator()
-        menu.addAction("吸附至网格").triggered.connect(
-            lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
-
-        align_menu = menu.addMenu("对齐方式")
+        # --- 子菜单样式也会继承父级 ---
+        align_menu = menu.addMenu("📐 对齐方式")
         align_menu.addAction("左对齐").triggered.connect(
             lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'left'))
         align_menu.addAction("右对齐").triggered.connect(
@@ -268,22 +308,18 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         align_menu.addAction("水平居中").triggered.connect(
             lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'center_h'))
 
-        # 2. 分布子菜单
-        dist_menu = menu.addMenu("等间距排列")
+        dist_menu = menu.addMenu("↔️ 等间距排列")
         dist_menu.addAction("水平等距").triggered.connect(
             lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'horizontal'))
         dist_menu.addAction("垂直等距").triggered.connect(
             lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'vertical'))
 
-        # 计算弹出位置：将按钮的场景坐标映射到全局屏幕坐标
-        # 1. 获取按钮在 Scene 中的位置
+        # 计算弹出位置
         button_scene_pos = self.btn_more.scenePos()
-        # 2. 将场景坐标映射到 Viewer (QGraphicsView) 的视口坐标
         view_pos = self.viewer.mapFromScene(button_scene_pos)
-        # 3. 将视口坐标映射到全局屏幕坐标
         global_pos = self.viewer.viewport().mapToGlobal(view_pos)
 
-        # 在按钮下方弹出
+        # 弹出菜单（非阻塞）
         menu.exec_(global_pos + QtCore.QPoint(0, 30))
 
     def _on_batch_subprocess(self):
@@ -694,20 +730,27 @@ class CustomNodeViewer(NodeViewer):
                         node.selected = not node.selected
                         if node.selected:
                             selection.add(node)
+                self._selection_overlay.refresh(full_recalc=True)
             elif self.CTRL_state:
                 if items and backdrop == items[0]:
                     backdrop.selected = False
                 else:
                     for node in nodes:
                         node.selected = False
+                self._selection_overlay.refresh(full_recalc=True)
             else:
+                select_changed = False
                 if backdrop:
                     selection.add(backdrop)
                     for n in backdrop.get_nodes():
                         selection.add(n)
+                        select_changed = True
                 for node in nodes:
                     if node.selected:
                         selection.add(node)
+                        select_changed = True
+                if select_changed:
+                    self._selection_overlay.refresh(full_recalc=False)
 
         selection.update(self.selected_nodes())
         self._node_positions.update({n: n.xy_pos for n in selection})
