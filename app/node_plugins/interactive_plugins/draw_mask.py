@@ -12,13 +12,13 @@ from PyQt5.QtGui import (
     QImage, QPixmap, QPainter, QPen, QColor
 )
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QDialog
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QDialog
 )
 from loguru import logger
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, ToolButton, Slider, FluentIcon, StrongBodyLabel, \
+from qfluentwidgets import ToolButton, Slider, FluentIcon, StrongBodyLabel, \
     PrimaryPushButton
 
-from app.plugins.base import InteractivePlugin
+from app.node_plugins.base import InteractivePlugin
 from app.utils.utils import get_icon, ssh_send_file
 
 

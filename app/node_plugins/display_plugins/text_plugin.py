@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from app.plugins.base import DisplayPlugin
+from app.node_plugins.base import DisplayPlugin
 from app.widgets.node_widget.propeprty_widgets.text_edit_widget import TextWidgetWrapper
 from app.components.base import PropertyType
 

@@ -4,7 +4,7 @@ import base64
 import requests
 from PyQt5.QtGui import QImage
 
-from app.plugins.base import DisplayPlugin
+from app.node_plugins.base import DisplayPlugin
 from app.widgets.node_widget.display_widgets.image_widget import ImageWidgetWrapper
 
 

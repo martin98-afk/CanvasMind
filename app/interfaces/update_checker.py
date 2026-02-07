@@ -156,13 +156,40 @@ class UpdateChecker(QWidget):
         InfoBar.error(title, content, position=InfoBarPosition.TOP_RIGHT, duration=5000, parent=self.parent or self)
 
     def _compare_versions(self, v1, v2):
-        """版本比对"""
+        """
+        改进的版本比对：支持 v0.3.5 > v0.3.5-beta
+        规则：如果数字部分相同，有后缀的（预发布版）小于无后缀的（正式版）
+        """
         import re
-        def parse(v):
-            return [int(x) for x in re.sub(r'[^0-9.]', '', v).split('.') if x]
+
+        def split_version(v):
+            # 提取前面的数字部分和后面的后缀部分
+            # 如 "0.3.5-beta" -> ([0, 3, 5], "-beta")
+            match = re.match(r'^v?([\d.]+)(.*)', v.strip().lower())
+            if not match:
+                return [], ""
+            nums = [int(x) for x in match.group(1).split('.') if x]
+            suffix = match.group(2)
+            return nums, suffix
 
         try:
-            p1, p2 = parse(v1), parse(v2)
-            return (p1 > p2) - (p1 < p2)
-        except:
+            p1_nums, p1_suffix = split_version(v1)
+            p2_nums, p2_suffix = split_version(v2)
+
+            # 1. 首先比较数字部分 [0, 3, 5]
+            if p1_nums != p2_nums:
+                return (p1_nums > p2_nums) - (p1_nums < p2_nums)
+
+            # 2. 如果数字相同，检查后缀
+            # 原则：无后缀 > 有后缀 (正式版 > 预览版)
+            if not p1_suffix and p2_suffix:
+                return 1
+            if p1_suffix and not p2_suffix:
+                return -1
+
+            # 3. 如果都有后缀，按字母序比较 (如 beta < rc)
+            return (p1_suffix > p2_suffix) - (p1_suffix < p2_suffix)
+
+        except Exception:
+            # 后备方案：纯字符串比较
             return (v1 > v2) - (v1 < v2)

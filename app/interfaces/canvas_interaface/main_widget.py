@@ -25,7 +25,7 @@ from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
 from app.scan_components import ComponentScanner
-from app.scheduler.trigger_manager import WebhookManager, SchedulerManager
+from app.trigger_plugins.base_trigger import ALL_MANAGERS
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
@@ -676,8 +676,12 @@ class CanvasPage(QWidget):
             self.clean_canvas()
 
         # 清除注册的触发器
-        WebhookManager().unregister_by_canvas(self.workflow_name)
-        SchedulerManager().remove_by_canvas(self.workflow_name)
+        for manager in ALL_MANAGERS:
+            try:
+                manager.remove_by_canvas(self.workflow_name)
+                logger.info(f"已清理管理器 [{manager.manager_name}] 中的画布: {self.workflow_name}")
+            except Exception as e:
+                logger.error(f"清理管理器 {manager.manager_name} 失败: {e}")
         # 定时器关闭
         self._auto_saver.stop()
         self.ipython_kernel.stop_kernel()

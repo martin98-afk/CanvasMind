@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from app.plugins.base import VariableOperatePlugin
+from app.node_plugins.base import VariableOperatePlugin
 
 
 class AddVariablePlugin(VariableOperatePlugin):

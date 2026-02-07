@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from app.plugins.base import DisplayPlugin
+from app.node_plugins.base import DisplayPlugin
 from app.widgets.node_widget.display_widgets.progress_bar import ProgressBarWrapper
 
 

@@ -3,7 +3,7 @@ import os
 
 from PyQt5.QtGui import QImage
 
-from app.plugins.base import DisplayPlugin
+from app.node_plugins.base import DisplayPlugin
 from app.widgets.node_widget.display_widgets.image_gallery_widget import ImageGalleryWidgetWrapper
 
 

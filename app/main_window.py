@@ -21,10 +21,10 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
-from app.plugins.plugin_manager import NodePluginManager
+from app.node_plugins.plugin_manager import NodePluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
-from app.scheduler.trigger_manager import WebhookManager
+from app.trigger_plugins.base_trigger import load_trigger_plugins
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
@@ -79,11 +79,10 @@ class LowCodeWindow(FluentWindow):
         ComponentScanner()  # 日志实时监控服务
         # ------------插件预加载
         plugin_manager = NodePluginManager()
-        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins"))
+        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "node_plugins"))
         plugin_manager.load_plugins(plugin_dir)
-        # ------------触发器初始化
-        WebhookManager().start()
-
+        # ------------加载触发器插件
+        load_trigger_plugins()
         # ------------加载配置
         self.config = Settings.get_instance()
         setFontFamilies([self.config.canvas_font_type.value])
