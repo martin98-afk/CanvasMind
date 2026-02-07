@@ -95,6 +95,28 @@ def create_trigger_node(parent_window):
 
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self.view.delete_signal.connect(self.on_deleted)
+            # 获取原始的 draw_node 方法
+            original_draw_node = self.view._draw_node_horizontal
+
+            def patched_draw_node(*args, **kwargs):
+                """
+                重写绘制逻辑：在执行原始 draw_node 之前，
+                确保只有符合当前 trigger_type 的 widget 参与布局计算。
+                """
+                if not self.view._proxy_mode:
+                    trigger_type = self.get_property("trigger_type")
+
+                    # 显式控制可见性（双重保险）
+                    if self.web_hook_widget:
+                        self.web_hook_widget.setVisible(trigger_type == "Webhook触发")
+                    if self.crontab_widget:
+                        self.crontab_widget.setVisible(trigger_type == "定时触发")
+                    if self.watch_folder_widget:
+                        self.watch_folder_widget.setVisible(trigger_type == "文件夹监听触发")
+                return original_draw_node(*args, **kwargs)
+
+            # 绑定补丁
+            self.view._draw_node_horizontal = patched_draw_node
 
         def _generate_parms_widget(self):
             custom_widgets_num = len(self.property_defs) + 10
@@ -155,24 +177,15 @@ def create_trigger_node(parent_window):
         def _request_backend_sync(self):
             """当用户在输入时，重置定时器，只有停顿 500ms 后才执行后台同步"""
             # 先处理 UI 的显隐（立即执行）
-            self._update_ui_visibility()
+            self.view._draw_node_horizontal()
             # 重置定时器
             self._ui_sync_timer.stop()
             self._ui_sync_timer.start(500)  # 500 毫秒防抖
 
         def _sync_services_and_ui(self):
             """立即执行 UI 更新，并立即触发一次后台同步（用于下拉框/勾选框）"""
-            self._update_ui_visibility()
+            self.view._draw_node_horizontal()
             self._do_backend_sync()
-
-        def _update_ui_visibility(self):
-            """立即更新 UI 组件的可见性，不涉及后台注册"""
-            trigger_type = self.get_property("trigger_type")
-
-            if self.web_hook_widget: self.web_hook_widget.setVisible(trigger_type == "Webhook触发")
-            if self.crontab_widget: self.crontab_widget.setVisible(trigger_type == "定时触发")
-            if self.watch_folder_widget: self.watch_folder_widget.setVisible(trigger_type == "文件夹监听触发")
-            self.view.draw_node()
 
         def _do_backend_sync(self):
             """真正执行后台服务注册/注销的操作"""
