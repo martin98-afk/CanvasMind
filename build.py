@@ -46,4 +46,10 @@ if not os.path.exists(spyder_dir):
 # 5. 执行打包
 if __name__ == "__main__":
     PyInstaller.__main__.run(params)
+    if os.path.exists("dist/CanvasMind"):
+        shutil.rmtree("dist/CanvasMind")
+    shutil.move("dist/main", "dist/CanvasMind")
+    shutil.rmtree("dist/CanvasMind/_internal/scipy")
+    shutil.rmtree("dist/CanvasMind/_internal/scipy.libs")
+    shutil.rmtree("dist/CanvasMind/_internal/spinx")
     print("打包完成！")

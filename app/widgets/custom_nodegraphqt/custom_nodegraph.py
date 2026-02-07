@@ -1110,7 +1110,7 @@ class CustomNodeViewer(NodeViewer):
             self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
 
-    def zoom_to_nodes(self, nodes, duration=800):
+    def zoom_to_nodes(self, nodes, duration=None):
         if not nodes:
             return
 
@@ -1134,6 +1134,16 @@ class CustomNodeViewer(NodeViewer):
 
         dist = (start_rect.center() - target_rect.center()).manhattanLength()
         needs_flyover = dist > start_rect.width() * 2.5
+        if duration is None:
+            # 计算位移距离
+            dist = (start_rect.center() - target_rect.center()).manhattanLength()
+
+            # 计算缩放差异 (起始宽度与目标宽度的比例)
+            zoom_diff = abs(start_rect.width() - target_rect.width())
+
+            # 综合计算一个“感知距离” 近距离约 300ms，超远距离最高不超过 1200ms
+            calc_duration = 400 + (dist * 0.2) + (zoom_diff * 0.1)
+            duration = int(max(500, min(calc_duration, 1300)))
 
         # 4. 创建动画组
         self._zoom_anim_group = QtCore.QSequentialAnimationGroup(self)
