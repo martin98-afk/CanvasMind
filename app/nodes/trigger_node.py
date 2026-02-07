@@ -103,7 +103,7 @@ def create_trigger_node(parent_window):
                 重写绘制逻辑：在执行原始 draw_node 之前，
                 确保只有符合当前 trigger_type 的 widget 参与布局计算。
                 """
-                if not self.view._proxy_mode:
+                if not self.view._proxy_mode and not self.view._is_collapsed:
                     trigger_type = self.get_property("trigger_type")
 
                     # 显式控制可见性（双重保险）

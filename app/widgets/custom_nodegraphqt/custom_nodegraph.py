@@ -151,28 +151,31 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         # --- 1. 创建按钮并绑定点击函数 ---
         # 执行：执行选中节点
-        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", False)
+        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", True)
         self.btn_run.clicked_func = self.on_run
 
         # 居中：聚焦选中区域
-        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", True)
+        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", False)
         self.btn_center.clicked_func = self._on_center
 
+        self.auto_layout = NodeActionButton(self, "layout", "自动排布节点", "#3498db", "#2980b9", False)
+        self.auto_layout.clicked_func = self._on_auto_layout
+
         # 克隆：复制并粘贴
-        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", True)
+        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", False)
         self.btn_clone.clicked_func = self._on_clone
 
         # 模板：保存到模板库
-        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", True)
+        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", False)
         self.btn_template.clicked_func = self._on_template
 
         self.btn_more = NodeActionButton(self, "more", "更多操作", "#7f8c8d", "#95a5a6", True)
         self.btn_more.clicked_func = self._on_more_menu
 
-        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", False)
+        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", True)
         self._close_btn.clicked_func = self._on_close
         # --- 2. 布局逻辑 (保持不变) ---
-        self.buttons = [self.btn_run, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
+        self.buttons = [self.btn_run, self.auto_layout, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
         spacing = 6
         btn_w = 28
         for i, btn in enumerate(self.buttons):
@@ -187,6 +190,10 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
     def on_run(self):
         """功能：执行选中的节点"""
         self.viewer.home_window.canvas_runner.run_workflow()
+
+    def _on_auto_layout(self):
+        """功能：自动排布节点"""
+        NodeLayoutHandler.auto_layout(self.viewer.graph)
 
     def _on_comment(self):
         """功能：为选中的节点创建一个 Backdrop (背景框)"""
