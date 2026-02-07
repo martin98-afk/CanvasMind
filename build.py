@@ -51,5 +51,5 @@ if __name__ == "__main__":
     shutil.move("dist/main", "dist/CanvasMind")
     shutil.rmtree("dist/CanvasMind/_internal/scipy")
     shutil.rmtree("dist/CanvasMind/_internal/scipy.libs")
-    shutil.rmtree("dist/CanvasMind/_internal/spinx")
+    shutil.rmtree("dist/CanvasMind/_internal/sphinx")
     print("打包完成！")

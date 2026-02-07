@@ -100,14 +100,30 @@ class NodeLayoutHandler:
 
     @staticmethod
     def auto_layout(graph, spacing=(100, 50)):
-        """智能拓扑自动布局：基于层级感知的全自动整理"""
+        """智能拓扑自动布局：原地整理并防止子图重叠"""
         nodes = graph.selected_nodes()
         if not nodes: return
-        graph._undo_stack.beginMacro("Auto Layout Flow")
-        groups = NodeLayoutHandler._get_connected_groups(nodes)
 
-        current_y_offset = 0
+        graph._undo_stack.beginMacro("Auto Layout Flow")
+        # 将子图按原始位置的 Y 轴排序，确保从上往下排，逻辑更自然
+        groups = NodeLayoutHandler._get_connected_groups(nodes)
+        groups.sort(key=lambda g: min(n.pos()[1] for n in g))
+
+        # 记录已经排布过的区域底部，用于避让
+        last_group_bottom = None
+
         for group in groups:
+            # 1. 确定当前组的原始锚点
+            orig_x = min(n.pos()[0] for n in group)
+            orig_y = min(n.pos()[1] for n in group)
+
+            # --- 避让逻辑 ---
+            # 如果这不是第一组，且它的起始位置比上一组的底部还要高，就强制推下去
+            if last_group_bottom is not None:
+                if orig_y < last_group_bottom + spacing[1] * 2:
+                    orig_y = last_group_bottom + spacing[1] * 2
+            # ----------------
+
             node_to_level = {}
 
             def get_level(n):
@@ -120,24 +136,35 @@ class NodeLayoutHandler:
                 return level
 
             levels = collections.defaultdict(list)
-            for n in group: levels[get_level(n)].append(n)
+            for n in group:
+                levels[get_level(n)].append(n)
 
-            curr_x = 0
-            group_top = current_y_offset
+            # 2. 执行排布
+            curr_x = orig_x
+            current_group_max_y = orig_y  # 用于记录本组排完后的最底部
+
             for l in sorted(levels.keys()):
                 level_nodes = levels[l]
-                curr_y = group_top
+                level_nodes.sort(key=lambda x: x.pos()[1])
+
+                curr_y = orig_y
                 max_w = 0
                 for n in level_nodes:
                     rect = n.view.boundingRect()
                     n.set_pos(curr_x, curr_y)
+
+                    # 更新当前节点占用的底部位置
+                    node_bottom = curr_y + rect.height()
+                    if node_bottom > current_group_max_y:
+                        current_group_max_y = node_bottom
+
                     curr_y += rect.height() + spacing[1]
                     max_w = max(max_w, rect.width())
+
                 curr_x += max_w + spacing[0]
 
-            # 为下一个子图计算垂直偏移，防止重叠
-            group_bottom = max(n.pos()[1] + n.view.boundingRect().height() for n in group)
-            current_y_offset = group_bottom + spacing[1] * 2
+            # 更新全局底部记录，供下一组参考
+            last_group_bottom = current_group_max_y
 
         graph._undo_stack.endMacro()
 

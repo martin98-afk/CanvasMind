@@ -833,9 +833,6 @@ class CustomNodeViewer(NodeViewer):
     # ---------------------------------------------
 
     def mouseReleaseEvent(self, event):
-        # --- 对齐功能：鼠标松开，立即隐藏对齐线 ---
-        self._snap_lines_item.hide()
-        self._snap_lines_item.setPath(QtGui.QPainterPath())  # 清空路径
         # -------------------------------------
         # 1. 记录拉线状态
         live_pipe_active = self._LIVE_PIPE.isVisible()
@@ -1204,9 +1201,14 @@ class CustomNodeViewer(NodeViewer):
         self.scene().addItem(node)
         node.post_init(self, pos)
 
-        # 1. 准备动画环境
+        # --- 1. 记录原始状态 ---
         rect = node.boundingRect()
-        node.setTransformOriginPoint(rect.center())
+        # 记录节点原本的 Pos (post_init 已经根据 pos 设置好了)
+        original_pos = node.pos()
+
+        # 为了让缩放从中心开始，我们计算中心偏移
+        center = rect.center()
+        node.setTransformOriginPoint(center)
         node.setScale(0.1)
 
         anim = QtCore.QVariantAnimation(self)
@@ -1216,12 +1218,11 @@ class CustomNodeViewer(NodeViewer):
         anim.setEasingCurve(QtCore.QEasingCurve.OutBack)
 
         def update_all_pipes():
-            # 获取节点上所有的端口
-            all_ports = node.inputs + node.outputs if hasattr(node, 'inputs') else []
-            for port in all_ports:
+            # 安全获取端口
+            inputs = getattr(node, 'inputs', [])
+            outputs = getattr(node, 'outputs', [])
+            for port in inputs + outputs:
                 for pipe in port.connected_pipes:
-                    # 修复报错：传入 pipe 记录的起始端口和结束位置
-                    # 根据 NodeGraphQt 的实现，draw_path 通常需要 start_port 和 end_port 或 pos
                     if pipe.input_port and pipe.output_port:
                         pipe.draw_path(pipe.input_port, pipe.output_port)
 
@@ -1232,12 +1233,19 @@ class CustomNodeViewer(NodeViewer):
         anim.valueChanged.connect(UpdateNodeStep)
 
         def on_finished():
-            # 固化变换矩阵，防止后续偏移
-            final_transform = node.transform()
-            node.setTransform(final_transform)
+            # --- 2. 彻底重置变换状态 (关键修复) ---
+            # 停止动画后，先取消 Scale 和 OriginPoint
+            # 否则后续拖拽会基于这个 center 计算偏移
             node.setScale(1.0)
             node.setTransformOriginPoint(0, 0)
 
+            # 确保位置依然是原始位置
+            node.setPos(original_pos)
+
+            # 清除任何可能残留的 Transform 矩阵
+            node.setTransform(QtGui.QTransform())
+
+            # 刷新连线
             update_all_pipes()
 
         anim.finished.connect(on_finished)
