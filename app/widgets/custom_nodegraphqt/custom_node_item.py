@@ -415,10 +415,13 @@ class CustomNodeItem(NodeItem):
         # 2. 确定最小宽高边界
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
 
-        if self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
+        if self._is_collapsed:
+            min_width = max(self._text_item.boundingRect().width() + 120, p_width, 200)
+            min_height = header_height + self._port_height
+        elif self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
             min_width = self._user_width if self._user_width > 0 else 200
             min_height = self._user_height if self._user_height > 0 else 120
-        elif self._proxy_mode:
+        elif self._proxy_mode and not self._is_collapsed:
             min_width = self._user_width if self._user_width > 0 else max(self._text_item.boundingRect().width() + 120,
                                                                           p_width, self._widget_width + 20, 200)
             min_height = self._user_height if self._user_height > 0 else header_height + self._port_height + self._widget_height

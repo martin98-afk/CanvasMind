@@ -24,7 +24,7 @@ class Component(BaseComponent):
         PortDefinition(
             name="trigger",
             label="触发信号",
-            type=ArgumentType.TEXT,
+            type=ArgumentType.INT,
             connection=ConnectionType.SINGLE
         )
     ]
@@ -53,7 +53,7 @@ class Component(BaseComponent):
         import time
 
         # 获取等待时间（秒）
-        wait_time = float(params.seconds)
+        wait_time = float(inputs.trigger or params.seconds)
 
         # 记录开始时间
         self.logger.info(f"开始等待 {wait_time} 秒...")

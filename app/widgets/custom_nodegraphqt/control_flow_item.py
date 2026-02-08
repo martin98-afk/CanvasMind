@@ -103,7 +103,7 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self._icon_item.setTransformationMode(QtCore.Qt.SmoothTransformation)
 
         self._collapse_btn = BackdropActionButton(self, 'collapse', '折叠/展开区域')
-        self._collapse_btn.clicked_func = self.toggle_collapse
+        # self._collapse_btn.clicked_func = self.toggle_collapse
 
         self.setZValue(Z_VAL_BACKDROP)
         self.setAcceptHoverEvents(True)  # 显式开启 Hover
@@ -159,30 +159,30 @@ class ControlFlowBackdropNodeItem(BackdropNodeItem):
         self._properties['visible'] = visible
         self.setVisible(visible)
 
-    def toggle_collapse(self):
-        self._is_collapsed = not self._is_collapsed
-        self._collapse_btn.icon_type = 'expand' if self._is_collapsed else 'collapse'
-
-        backdrop_node = self.node
-        if backdrop_node:
-            if self._is_collapsed:
-                # 1. 折叠前：获取并缓存所有内部节点
-                self._nodes_to_restore = backdrop_node.nodes()
-                self._pre_collapse_height = self.height
-                # 2. 设置隐藏（传入刚才获取的节点列表）
-                self._set_internal_elements_visible(False)
-                # 3. 改变 UI 高度
-                self.height = self._header_height
-            else:
-                # 1. 先恢复 UI 高度
-                self.height = self._pre_collapse_height
-                # 2. 设置显示（使用缓存的节点列表进行恢复）
-                self._set_internal_elements_visible(True)
-                # 3. 清理缓存
-                self._nodes_to_restore = []
-
-        self.update_layout()
-        self.update()
+    # def toggle_collapse(self):
+    #     self._is_collapsed = not self._is_collapsed
+    #     self._collapse_btn.icon_type = 'expand' if self._is_collapsed else 'collapse'
+    #
+    #     backdrop_node = self.node
+    #     if backdrop_node:
+    #         if self._is_collapsed:
+    #             # 1. 折叠前：获取并缓存所有内部节点
+    #             self._nodes_to_restore = backdrop_node.nodes()
+    #             self._pre_collapse_height = self.height
+    #             # 2. 设置隐藏（传入刚才获取的节点列表）
+    #             self._set_internal_elements_visible(False)
+    #             # 3. 改变 UI 高度
+    #             self.height = self._header_height
+    #         else:
+    #             # 1. 先恢复 UI 高度
+    #             self.height = self._pre_collapse_height
+    #             # 2. 设置显示（使用缓存的节点列表进行恢复）
+    #             self._set_internal_elements_visible(True)
+    #             # 3. 清理缓存
+    #             self._nodes_to_restore = []
+    #
+    #     self.update_layout()
+    #     self.update()
 
     def _set_internal_elements_visible(self, visible):
         """控制区域内所有节点、端口、连线的可见性"""

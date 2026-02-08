@@ -283,6 +283,8 @@ class ControlFlowBackdrop(BackdropNode, StatusNode):
         execute_nodes = []
         input_proxy, output_proxy = None, None
         for node in self.nodes():
+            if node is None:
+                continue
             if node.type_ == "control_flow.ControlFlowInputPort":
                 input_proxy = node
             elif node.type_ == "control_flow.ControlFlowOutputPort":
