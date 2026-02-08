@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "支持多目标推送：自动识别配置类型（钉钉/飞书）并推送消息，支持图片上传（需Gitee配置）",
   "category": "消息推送",
-  "updated_at": "2026-02-07 12:11:23",
+  "updated_at": "2026-02-08 19:57:53",
   "author": "black"
 }

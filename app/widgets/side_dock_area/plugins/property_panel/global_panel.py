@@ -6,7 +6,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, QApplication
 from loguru import logger
-from qfluentwidgets import CardWidget, SegmentedWidget, \
+from qfluentwidgets import SimpleCardWidget, SegmentedWidget, \
     FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
     TransparentDropDownToolButton, BodyLabel, StrongBodyLabel, CaptionLabel, ToolButton
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
@@ -347,7 +347,7 @@ class GlobalPanelWidget:
 
     def _create_node_group_card_enhanced(self, node_name: str, node_var_items: list):
         """增强版节点组卡片：支持折叠、定位、计数"""
-        card = CardWidget(self.parent_panel)
+        card = SimpleCardWidget(self.parent_panel)
         outer_layout = QVBoxLayout(card)
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)

@@ -114,7 +114,7 @@ class RedisTriggerPlugin(BaseTriggerPlugin):
     NAME = "Redis 订阅"
     manager = RedisTriggerManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "redis_host": {
                 "type": PropertyType.TEXT,

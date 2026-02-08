@@ -1109,6 +1109,8 @@ class CustomNodeViewer(NodeViewer):
         return super().resizeEvent(event)
 
     def zoom_to_nodes(self, nodes, duration=None):
+        if not Settings.get_instance().node_animation.value:
+            return super().zoom_to_nodes(nodes)
         if not nodes:
             return
 
@@ -1260,62 +1262,6 @@ class CustomNodeViewer(NodeViewer):
             self._zoom_anim_group.addAnimation(anim_direct)
 
         self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
-
-    def add_node(self, node, pos=None):
-        pos = pos or (self._previous_pos.x(), self._previous_pos.y())
-        node.pre_init(self, pos)
-        self.scene().addItem(node)
-        node.post_init(self, pos)
-
-        # --- 1. 记录原始状态 ---
-        rect = node.boundingRect()
-        # 记录节点原本的 Pos (post_init 已经根据 pos 设置好了)
-        original_pos = node.pos()
-
-        # 为了让缩放从中心开始，我们计算中心偏移
-        center = rect.center()
-        node.setTransformOriginPoint(center)
-        node.setScale(0.1)
-
-        anim = QtCore.QVariantAnimation(self)
-        anim.setDuration(300)
-        anim.setStartValue(0.1)
-        anim.setEndValue(1.0)
-        anim.setEasingCurve(QtCore.QEasingCurve.OutBack)
-
-        def update_all_pipes():
-            # 安全获取端口
-            inputs = getattr(node, 'inputs', [])
-            outputs = getattr(node, 'outputs', [])
-            for port in inputs + outputs:
-                for pipe in port.connected_pipes:
-                    if pipe.input_port and pipe.output_port:
-                        pipe.draw_path(pipe.input_port, pipe.output_port)
-
-        def UpdateNodeStep(val):
-            node.setScale(val)
-            update_all_pipes()
-
-        anim.valueChanged.connect(UpdateNodeStep)
-
-        def on_finished():
-            # --- 2. 彻底重置变换状态 (关键修复) ---
-            # 停止动画后，先取消 Scale 和 OriginPoint
-            # 否则后续拖拽会基于这个 center 计算偏移
-            node.setScale(1.0)
-            node.setTransformOriginPoint(0, 0)
-
-            # 确保位置依然是原始位置
-            node.setPos(original_pos)
-
-            # 清除任何可能残留的 Transform 矩阵
-            node.setTransform(QtGui.QTransform())
-
-            # 刷新连线
-            update_all_pipes()
-
-        anim.finished.connect(on_finished)
-        anim.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
 
 class CustomNodeGraph(NodeGraph):

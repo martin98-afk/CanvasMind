@@ -138,6 +138,13 @@ class CanvasSettingPopup(QWidget):
             parent=group
         )
         self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
+        self.nodeAnimationCard = SwitchSettingCard(
+            get_icon("画布"),
+            self.tr("节点动画"),
+            configItem=self.cfg.node_animation,
+            parent=group
+        )
+        self.nodeAnimationCard.checkedChanged.connect(self.onConfigChanged)
         self.autoCollapseCard = SwitchSettingCard(
             get_icon("画布"),
             self.tr("Proxy模式自动收缩"),
@@ -159,6 +166,7 @@ class CanvasSettingPopup(QWidget):
 
         group.addSettingCard(self.nodeResizeMemoryCard)
         group.addSettingCard(self.NodeProxyCard)
+        group.addSettingCard(self.nodeAnimationCard)
         group.addSettingCard(self.autoCollapseCard)
         group.addSettingCard(self.showGridCard)
         group.addSettingCard(self.pipelayoutCard)

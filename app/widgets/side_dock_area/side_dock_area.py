@@ -99,6 +99,8 @@ class SideDockArea(QWidget):
 
     def _show_top_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
+        if hasattr(view, "set_allowed_update"):
+            view.set_allowed_update(True)
         if self.top_stack.indexOf(view) == -1:
             self.top_stack.addWidget(view)
         self.top_stack.setCurrentWidget(view)
@@ -107,12 +109,17 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _hide_top_tool(self, tool_name):
+        view = self.get_tool_instance(tool_name)
+        if hasattr(view, "set_allowed_update"):
+            view.set_allowed_update(False)
         self.top_stack.hide()
         self._top_visible = False
         self._update_splitter()
 
     def _show_bottom_tool(self, tool_name):
         view = self.get_tool_instance(tool_name)
+        if hasattr(view, "set_allowed_update"):
+            view.set_allowed_update(True)
         if self.bottom_stack.indexOf(view) == -1:
             self.bottom_stack.addWidget(view)
         self.bottom_stack.setCurrentWidget(view)
@@ -121,6 +128,9 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _hide_bottom_tool(self, tool_name):
+        view = self.get_tool_instance(tool_name)
+        if hasattr(view, "set_allowed_update"):
+            view.set_allowed_update(False)
         self.bottom_stack.hide()
         self._bottom_visible = False
         self._update_splitter()

@@ -372,7 +372,6 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
         self.ui_manager.update_position(True)
 
     def _on_workflow_error(self, msg=""):
@@ -642,7 +641,7 @@ class CanvasPage(QWidget):
 
     def _delayed_fit_view(self):
         self.graph._viewer.zoom_to_nodes(self.graph._viewer.all_nodes())
-        self.property_panel.set_allowed_update(True)
+        # self.property_panel.set_allowed_update(True)
         QTimer.singleShot(100, lambda: self.property_panel.update_properties(None))
 
     def _undo(self):

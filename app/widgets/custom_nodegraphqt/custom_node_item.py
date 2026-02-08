@@ -322,7 +322,7 @@ class CustomNodeItem(NodeItem):
         if width is not None and height is not None:
             if float(width) > 0 and float(height) > 0:
                 min_w, min_h = self._calc_size_horizontal(ignore_user_size=True)
-                if width == min_w or height == min_h:
+                if abs(width - min_w) + abs(height - min_h) < 1:
                     self.reset_to_auto_size()
                 else:
                     self._user_width = float(width)

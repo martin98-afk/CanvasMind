@@ -425,6 +425,7 @@ class CanvasUISetUp:
             self.saved_splitter_sizes = self.splitter.sizes()
             total_width = sum(self.saved_splitter_sizes)
             self.splitter.setSizes([0, total_width, 0])
+
             self.btn_zen_mode.setIcon(get_icon("画布2"))
             self.is_zen_mode = True
         else:

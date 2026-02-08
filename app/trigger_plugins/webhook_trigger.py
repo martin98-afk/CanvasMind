@@ -152,9 +152,14 @@ class WebhookPlugin(BaseTriggerPlugin):
     NAME = "Webhook触发"
     manager = WebhookManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
-            "webhook_endpoint": {"type": PropertyType.TEXT, "label": "接口路由", "default": ""}
+            "webhook_endpoint":
+                {
+                    "type": PropertyType.TEXT,
+                    "label": "接口路由",
+                    "default": f"/api/v1/trigger/{parent_node.persistent_id}"
+                }
         }
 
     def activate(self, canvas_name, node_id, callback, props):

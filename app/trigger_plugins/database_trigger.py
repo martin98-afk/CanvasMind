@@ -114,7 +114,7 @@ class SQLTriggerPlugin(BaseTriggerPlugin):
     NAME = "数据库变更"
     manager = SQLWatchManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "db_url": {
                 "type": PropertyType.TEXT,

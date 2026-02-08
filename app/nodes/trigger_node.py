@@ -78,7 +78,7 @@ def create_trigger_node(parent_window):
 
             # 2. 循环处理每个插件的专属属性
             for p_name, plugin in self.plugins.items():
-                props = plugin.get_properties()
+                props = plugin.get_properties(self)
                 for i, (name, conf) in enumerate(props.items()):
                     # 将生成的 widget 存入对应插件的列表中
                     widget = self._create_and_add_widget(name, conf, 100 - i)
@@ -147,7 +147,7 @@ def create_trigger_node(parent_window):
             if curr_type in self.plugins:
                 plugin = self.plugins[curr_type]
                 # 只提取属于该插件定义的属性
-                props = {k: self.get_property(k) for k in plugin.get_properties()}
+                props = {k: self.get_property(k) for k in plugin.get_properties(self)}
                 plugin.activate(canvas, self.persistent_id, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
 
