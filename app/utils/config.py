@@ -146,6 +146,7 @@ class Settings(QConfig):
     canvas_auto_save_interval = RangeConfigItem("CanvasIO", "AutoSaveInterval", 60, RangeValidator(15, 300))
 
     # ========== 画布显示设置 ==========
+    node_animation = ConfigItem("CanvasDisplay", "NodeAnimation", False, BoolValidator())
     canvas_resize_memory = ConfigItem("CanvasDisplay", "ResizeMemory", True, BoolValidator())
     canvas_auto_collapse = ConfigItem("CanvasDisplay", "AutoCollapse", False, BoolValidator())
     canvas_grid_mode = OptionsConfigItem("CanvasDisplay", "ShowGrid", "线网格",

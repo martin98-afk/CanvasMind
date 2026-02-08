@@ -372,7 +372,6 @@ class CanvasPage(QWidget):
         self.run_btn.show()
         self.pause_btn.hide()
         self.stop_btn.hide()
-        MessageManager.success(self.tr("完成"), self.tr("工作流执行完成!"), self)
         self.ui_manager.update_position(True)
 
     def _on_workflow_error(self, msg=""):

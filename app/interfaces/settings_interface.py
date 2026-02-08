@@ -268,6 +268,14 @@ class SettingInterface(ScrollArea):
         """画布显示设置"""
         self.canvasGroup = SettingCardGroup(self.tr("画布显示设置"), self.view)
 
+        self.nodeAnimationCard = SwitchSettingCard(
+            get_icon("画布"),
+            self.tr("节点动画"),
+            self.tr("开关节点缩放、新建动画"),
+            configItem=self.cfg.node_animation,
+            parent=self.canvasGroup
+        )
+        self.nodeAnimationCard.checkedChanged.connect(self.onConfigChanged)
         self.nodeResizeMemoryCard = SwitchSettingCard(
             get_icon("画布"),
             self.tr("节点缩放记忆"),
@@ -327,6 +335,7 @@ class SettingInterface(ScrollArea):
 
         self.canvasGroup.addSettingCard(self.nodeResizeMemoryCard)
         self.canvasGroup.addSettingCard(self.NodeProxyCard)
+        self.canvasGroup.addSettingCard(self.nodeAnimationCard)
         self.canvasGroup.addSettingCard(self.autoCollapseCard)
         self.canvasGroup.addSettingCard(self.canvasFontCard)
         self.canvasGroup.addSettingCard(self.showGridCard)

@@ -1109,6 +1109,8 @@ class CustomNodeViewer(NodeViewer):
         return super().resizeEvent(event)
 
     def zoom_to_nodes(self, nodes, duration=None):
+        if not Settings.get_instance().node_animation.value:
+            return super().zoom_to_nodes(nodes)
         if not nodes:
             return
 
@@ -1262,6 +1264,8 @@ class CustomNodeViewer(NodeViewer):
         self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
     def add_node(self, node, pos=None):
+        if not Settings.get_instance().node_animation.value:
+            return super().add_node(node, pos)
         pos = pos or (self._previous_pos.x(), self._previous_pos.y())
         node.pre_init(self, pos)
         self.scene().addItem(node)
