@@ -133,7 +133,7 @@ class SingleFileTriggerPlugin(BaseTriggerPlugin):
     NAME = "文件内容变更触发"
     manager = SingleFileManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "target_file_path": {
                 "type": PropertyType.FILE,  # 前端通常渲染为文件选择器或文本框

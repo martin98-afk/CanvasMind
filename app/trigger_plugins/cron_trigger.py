@@ -73,7 +73,7 @@ class CronTriggerPlugin(BaseTriggerPlugin):
     NAME = "定时触发"
     manager = SchedulerManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "cron_expression": {
                 "type": PropertyType.TEXT,

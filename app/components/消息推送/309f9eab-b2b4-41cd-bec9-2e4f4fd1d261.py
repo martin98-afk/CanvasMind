@@ -201,10 +201,6 @@ class MessagePusher(BaseComponent):
         if isinstance(message_content, dict) or isinstance(message_content, list):
             message_content = json.dumps(message_content, indent=2, ensure_ascii=False)
         content = params.get("content", "") + "\n\n" + message_content
-        
-        # 1. 检查触发源
-        if not self._has_value(trigger):
-            return {"log": "Skip (Empty Trigger)"}
 
         # 2. 解析配置列表
         # dynamic form 返回的是一个列表，每个对象包含我们定义的 schema 属性

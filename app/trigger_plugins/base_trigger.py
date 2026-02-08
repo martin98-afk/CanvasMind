@@ -16,7 +16,7 @@ class BaseTriggerPlugin(ABC):
         pass
 
     @abstractmethod
-    def get_properties(self) -> Dict[str, Dict[str, Any]]:
+    def get_properties(self, parent_node=None) -> Dict[str, Dict[str, Any]]:
         """返回该触发器需要的属性定义"""
         return {}
 

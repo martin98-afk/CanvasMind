@@ -115,7 +115,7 @@ class FileWatcherPlugin(BaseTriggerPlugin):
     NAME = "文件夹监听触发"
     manager = FileWatcherManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "watch_folder_path": {"type": PropertyType.FILE, "label": "监听路径", "default": "folder"}
         }

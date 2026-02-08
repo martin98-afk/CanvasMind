@@ -129,7 +129,7 @@ class EmailTriggerPlugin(BaseTriggerPlugin):
     NAME = "收到邮件时"
     manager = EmailTriggerManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "email_server": {
                 "type": PropertyType.TEXT,

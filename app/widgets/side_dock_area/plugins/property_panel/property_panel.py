@@ -5,7 +5,8 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import (Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty,
                           pyqtSignal, QTimer, QRectF, QLineF)
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
-from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect)
+from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect,
+                             QScrollArea)
 from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 
 # 保持业务相关的引用
@@ -429,11 +430,16 @@ class PropertyPanel(QWidget):
         return node.name(), getattr(node.view, "icon", FluentIcon.INFO)
 
     def set_scrollbar(self, widget):
-        scroll = SmoothScrollArea()
+        scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.viewport().setStyleSheet("background-color: transparent;")
-        scroll.setStyleSheet("SmoothScrollArea { background-color: transparent; border: none; }")
+        scroll.setStyleSheet("""
+        QScrollArea { background-color: transparent; border: none; }
+        QScrollBar:vertical { background: transparent; width: 6px; margin-right: 2px; }
+        QScrollBar::handle:vertical { background: rgba(120, 120, 120, 150); border-radius: 4px; }
+        QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
+        """)
         scroll.setWidget(widget)
         return scroll
 

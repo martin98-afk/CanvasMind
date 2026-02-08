@@ -13,7 +13,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QTreeWidgetItem,
-    QHeaderView, QStyledItemDelegate, QFrame, QHBoxLayout, QLabel, QStyle
+    QHeaderView, QStyledItemDelegate, QFrame, QHBoxLayout, QLabel, QStyle, QTreeWidget
 )
 from loguru import logger
 # === Fluent Widgets ===
@@ -384,7 +384,7 @@ class VariableDetailPopup(QWidget):
 # 4. 主树控件 (VariableTreeWidget - Optimized)
 # ==========================================
 
-class VariableTreeWidget(TreeWidget):
+class VariableTreeWidget(QTreeWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setHeaderLabels(["Name", "Value"])
@@ -408,6 +408,9 @@ class VariableTreeWidget(TreeWidget):
             QTreeWidget::item:hover { background-color: #3e3e42; }
             QTreeWidget::item:selected { background-color: #37373d; }
             QHeaderView::section { background-color: #252526; color: #d4d4d4; padding: 0px; border: none; }
+            QScrollBar:horizontal { background: transparent; width: 4px; margin-right: 2px; }
+            QScrollBar::handle:horizontal { background: rgba(120, 120, 120, 180); border-radius: 4px; }
+            QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
         """)
 
     def set_data(self, data: Any, root_name: str = "Variables"):

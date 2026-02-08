@@ -118,7 +118,7 @@ class MqttTriggerPlugin(BaseTriggerPlugin):
     NAME = "MQTT 消息"
     manager = MqttManager()
 
-    def get_properties(self):
+    def get_properties(self, parent_node=None):
         return {
             "mqtt_host": {
                 "type": PropertyType.TEXT,
