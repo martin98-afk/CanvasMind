@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "LTX文本编码器加载"
     category = "comfyui节点/模型加载器"
     description = ""
-    requirements = "numpy,comfy,folder_paths,torch"
+    requirements = "numpy,#comfy,#folder_paths,torch"
     inputs = [
     ]
     outputs = [

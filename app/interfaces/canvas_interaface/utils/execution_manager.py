@@ -14,7 +14,7 @@ class ExecutionRecord:
     trigger_type: str
     start_time: float
     end_time: Optional[float] = None
-    status: str = "running"  # running, success, failed, cancelled
+    status: str = "waiting"  # waiting, running, success, failed, cancelled
     input_data: Any = None
     output_data: dict = field(default_factory=dict)
     error_msg: Optional[str] = None

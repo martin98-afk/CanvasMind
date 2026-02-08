@@ -254,7 +254,7 @@ def get_pinyin_search_keys(text):
     first_letters = "".join([i[0][0] for i in pinyin(text, style=Style.FIRST_LETTER)])
     # 提取全拼 (Style.NORMAL)
     full_pinyin = "".join([i[0] for i in pinyin(text, style=Style.NORMAL)])
-    return f"{first_letters} {full_pinyin}".lower()
+    return f"{first_letters} {full_pinyin} {text}".lower()
 
 
 def kill_proc_tree(pid):

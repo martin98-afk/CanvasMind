@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVSeparateAVLatent(BaseComponent):
-    requirements = "comfy,torch"
+    requirements = "#comfy,torch"
     name = "LTX2音视频分离"
     category = "comfyui节点/LTX模型适配"
     description = "将合并的 AV Latent 拆分为独立的视频和音频潜空间。"
@@ -28,7 +28,6 @@ class LTXVSeparateAVLatent(BaseComponent):
     ]
 
     def run(self, params, inputs):
-        import torch
         import comfy.nested_tensor
         av_latent = inputs.get("latent")
         if av_latent is None:

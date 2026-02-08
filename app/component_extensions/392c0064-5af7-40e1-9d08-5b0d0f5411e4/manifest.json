@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "设置视频的帧率元数据，影响生成动作的节奏。",
   "category": "comfyui节点/LTX模型适配",
-  "main": "main.py",
-  "updated_at": "2026-01-26 15:47:25",
+  "updated_at": "2026-02-08 22:14:34",
   "author": "mading"
 }

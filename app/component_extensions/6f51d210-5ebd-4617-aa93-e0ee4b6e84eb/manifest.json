@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "",
   "category": "comfyui节点/LTX模型适配",
-  "main": "main.py",
-  "updated_at": "2026-01-26 22:00:38",
+  "updated_at": "2026-02-08 22:13:48",
   "author": "black"
 }

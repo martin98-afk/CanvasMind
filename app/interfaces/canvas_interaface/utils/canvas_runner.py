@@ -105,6 +105,13 @@ class CanvasRunner(QObject):
     def _enqueue(self, task: ExecutionTask):
         """任务入队并尝试启动"""
         self._task_queue.append(task)
+        # 1. 创建执行记录
+        self.execution_storage.create_record(
+            exec_id=task.task_id,
+            canvas_name=self.parent.workflow_name,
+            trigger_type=task.mode,
+            input_data=task.triggered_data
+        )
         self.queue_size_changed.emit(len(self._task_queue))
         logger.info(f"[Runner] 任务入队: {task.mode}. 当前队列长度: {len(self._task_queue)}")
 
@@ -122,13 +129,8 @@ class CanvasRunner(QObject):
         self._is_running = True
         self._current_task = self._task_queue.popleft()
         self.queue_size_changed.emit(len(self._task_queue))
-
-        # 1. 创建执行记录
-        self.execution_storage.create_record(
-            exec_id=self._current_task.task_id,
-            canvas_name=self.parent.workflow_name,
-            trigger_type=self._current_task.mode,
-            input_data=self._current_task.triggered_data
+        self.execution_storage.update_record(
+            self._current_task.task_id, "running", output_data={}
         )
 
         # 2. 通知 UI 启动
