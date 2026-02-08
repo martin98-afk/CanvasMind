@@ -23,7 +23,7 @@ class ComfySAM3Segmenter(BaseComponent):
     name = "SAM3统一分割器"
     category = "comfyui节点/SAM3模型"
     description = "集成了SAM3的文本描述分割(Grounding)和点击互动分割(Segmentation)功能"
-    requirements = "Pillow,comfy-env>0.0.1,comfy-test>0.0.1,# comfyui-sam3,einops>=0.6.0,ftfy==6.1.1,huggingface_hub,iopath>=0.1.10,# nodes,numpy>=1.26,opencv-python>=4.8.0,psutil>=5.9.0,pycocotools>=2.0.6,regex,safetensors>=0.4.0,scikit-image>=0.19.0,timm>=1.0.17,tqdm,typing_extensions,sam3_nodes,torch"
+    requirements = "Pillow,comfy-env>0.0.1,comfy-test>0.0.1,# comfyui-sam3,einops>=0.6.0,ftfy==6.1.1,huggingface_hub,iopath>=0.1.10,# nodes,numpy>=1.26,opencv-python>=4.8.0,psutil>=5.9.0,pycocotools>=2.0.6,regex,safetensors>=0.4.0,scikit-image>=0.19.0,timm>=1.0.17,tqdm,typing_extensions,# sam3_nodes,torch"
     
     outputs = [
         PortDefinition(name="mask", label="MASK", type=ArgumentType.IMAGE),
