@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
+import watchdog
+import uvicorn
+import apscheduler
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -24,8 +27,7 @@ from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvas
 from app.node_plugins.plugin_manager import NodePluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
-from app.trigger_plugins import *
-from app.trigger_plugins.base_trigger import load_trigger_plugins
+from app.trigger_plugins.plugin_manager import TriggerPluginManager
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
@@ -83,7 +85,9 @@ class LowCodeWindow(FluentWindow):
         plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "node_plugins"))
         plugin_manager.load_plugins(plugin_dir)
         # ------------加载触发器插件
-        load_trigger_plugins()
+        trigger_manager = TriggerPluginManager()
+        trigger_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "trigger_plugins"))
+        trigger_manager.load_plugins(trigger_dir)
         # ------------加载配置
         self.config = Settings.get_instance()
         setFontFamilies([self.config.canvas_font_type.value])
@@ -307,4 +311,5 @@ class LowCodeWindow(FluentWindow):
             # 点击了 CancelButton (退出程序)
             event.accept()  # 接受关闭事件
             self.tray_icon.setVisible(False)
+            self.config.save()
             qApp.quit()  # 强制退出进程

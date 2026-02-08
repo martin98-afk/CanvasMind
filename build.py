@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
-import shutil
 import os
-import sys
+import shutil
+from pathlib import Path
+
 import PyInstaller.__main__
-from PyInstaller.utils.hooks import collect_submodules
+import spyder
 
 # 1. 基础路径配置
 base_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 自动定位 spyder 路径
-try:
-    import spyder
-
-    spyder_dir = os.path.dirname(spyder.__file__)
-except ImportError:
-    print("错误: 当前环境未安装 spyder")
-    sys.exit(1)
+env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
+extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil"]
 
 # 3. 构造参数列表
 params = [
@@ -26,7 +20,6 @@ params = [
     '--icon=' + os.path.join(base_dir, 'icons', 'logoico.ico'),
 
     # 数据文件包含
-    f'--add-data={spyder_dir}{os.pathsep}spyder',
     f'--add-data=app{os.pathsep}app',
     f'--add-data=resource{os.pathsep}resource',
     f'--add-data=examples{os.pathsep}examples',
@@ -37,6 +30,8 @@ params = [
     '--copy-metadata=jupyter_client',
 ]
 
+for module in extra_modules:
+    params.append(f'--add-data={env_dir}/{module}{os.pathsep}{module}')
 
 # 运行时配置
 params.extend([
@@ -74,7 +69,6 @@ def post_build_cleanup(dist_path):
 
 if __name__ == "__main__":
     print(f"Starting build for CanvasMind...")
-    print(f"Spyder directory: {spyder_dir}")
 
     # 执行打包
     PyInstaller.__main__.run(params)

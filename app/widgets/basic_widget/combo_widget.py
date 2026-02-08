@@ -1,10 +1,9 @@
 # coding:utf-8
-import sys
-from PyQt5.QtCore import Qt, QPoint, QSize, QRect
-from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QBrush
+from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtGui import QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import (
     QComboBox, QStyle, QStyleOptionComboBox, QStyleFactory,
-    QStyledItemDelegate, QAbstractItemView, QFrame
+    QStyledItemDelegate, QFrame
 )
 from qfluentwidgets import isDarkTheme, themeColor
 

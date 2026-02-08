@@ -144,3 +144,7 @@ opencv-python
 pyecharts
 sshtunnel
 apscheduler
+paho-mqtt
+redis
+sqlalchemy
+psutil

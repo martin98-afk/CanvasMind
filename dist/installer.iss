@@ -6,7 +6,7 @@
 #define MyAppVersion "v0.3.5-beta"
 #define MyAppPublisher "Jinshan Psychiatric Hospital"
 #define MyAppURL "https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/"
-#define MyAppExeName "main.exe"
+#define MyAppExeName "CanvasMind.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".workflow.json"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt

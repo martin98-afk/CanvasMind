@@ -4,7 +4,7 @@ import uuid
 from PyQt5 import QtCore
 from app.components.base import PropertyType
 from app.nodes.status_node import StatusNode
-from app.trigger_plugins.base_trigger import TRIGGER_PLUGINS
+from app.trigger_plugins.plugin_manager import TriggerPluginManager
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port
@@ -29,7 +29,7 @@ def create_trigger_node(parent_window):
             self.set_icon(":/icons/触发器.svg")
 
             # 加载插件注册表
-            self.plugins = TRIGGER_PLUGINS
+            self.plugins = TriggerPluginManager().plugins
             # 核心修改：按插件存储 Widget 列表 { "插件名": [widget1, widget2] }
             self.plugin_widgets = {name: [] for name in self.plugins.keys()}
 
@@ -101,7 +101,8 @@ def create_trigger_node(parent_window):
                 w = FileSelectWrapper(self.view, name, label, conf["default"], self.parent_window, z_value)
             elif p_type == PropertyType.FLOAT:
                 w = NumberWidgetWrapper(self.view, name, label, conf["default"], "float", self.parent_window, z_value)
-
+            elif p_type == PropertyType.INT:
+                w = NumberWidgetWrapper(self.view, name, label, conf["default"], "int", self.parent_window, z_value)
             if w:
                 w.get_custom_widget().valueChanged.connect(self._request_sync)
                 self.add_custom_widget(w, tab="Properties")

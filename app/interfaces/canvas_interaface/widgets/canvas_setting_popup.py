@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QSizePolicy
 from qfluentwidgets import (ScrollArea, SettingCardGroup, SimpleCardWidget,
                             SwitchSettingCard, RangeSettingCard, OptionsSettingCard, InfoBar)

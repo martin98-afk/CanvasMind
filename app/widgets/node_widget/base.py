@@ -164,7 +164,7 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def _get_font_family(self):
         try:
-            return Settings().get_instance().canvas_font_type.value
+            return Settings.get_instance().canvas_font_type.value
         except Exception:
             return "Arial"
 

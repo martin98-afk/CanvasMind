@@ -217,7 +217,7 @@ class CustomNodeItem(NodeItem):
             self._icon_item.setPixmap(pixmap)
         self._properties['icon'] = self.ICON_NODE_BASE
         self._icon_item.setZValue(self.zValue() + 1)
-        font_type = Settings().get_instance().canvas_font_type.value
+        font_type = Settings.get_instance().canvas_font_type.value
         self._text_item = NodeTextItem(self.name, self)
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
 
@@ -415,7 +415,7 @@ class CustomNodeItem(NodeItem):
         # 2. 确定最小宽高边界
         header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
 
-        if self._proxy_mode and Settings().get_instance().canvas_auto_collapse.value:
+        if self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
             min_width = self._user_width if self._user_width > 0 else 200
             min_height = self._user_height if self._user_height > 0 else 120
         elif self._proxy_mode:
