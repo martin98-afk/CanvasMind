@@ -12,6 +12,7 @@ from NodeGraphQt.qgraphics.pipe import PipeItem
 from NodeGraphQt.qgraphics.slicer import SlicerPipeItem
 from NodeGraphQt.widgets.scene import NodeScene
 from NodeGraphQt.widgets.viewer import NodeViewer
+from PyQt5 import sip
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
 from Qt import QtGui, QtCore, QtWidgets
@@ -1111,85 +1112,150 @@ class CustomNodeViewer(NodeViewer):
         if not nodes:
             return
 
-        # 动画期间暂时关闭高开销的渲染提示
+        # --- 优化 1: 性能设置 ---
+        # 动画期间不仅关闭抗锯齿，建议暂时将视口更新模式设为全视口更新或智能更新，防止局部重绘闪烁
+        # 注意：这里假设 self 是 QGraphicsView 的子类
+        original_render_hint = self.renderHints()
         self.setRenderHint(QtGui.QPainter.Antialiasing, False)
+        # 这一步能显著提高大场景缩放时的帧率
+        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
 
-        # 2. 安全清理旧动画 (逻辑保持不变)
+        # --- 优化 2: 安全清理旧动画 ---
         if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
-            try:
-                if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
-                    self._zoom_anim_group.stop()
-            except RuntimeError:
-                pass
+            if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
+                self._zoom_anim_group.stop()
+            # 显式删除以防内存泄漏
+            self._zoom_anim_group.deleteLater()
             self._zoom_anim_group = None
 
-        # 3. 计算位置 (完全保留你原本的参数)
+        # --- 优化 3: 精确计算可见区域 (解决对齐问题) ---
+        def get_tight_bbox(item_list):
+            rect = QtCore.QRectF()
+            first = True
+            for node in item_list:
+                # 获取节点自身在场景中的坐标
+                node_scene_rect = node.sceneBoundingRect()
+
+                # 关键修复：如果节点是组或包含子项，我们需要排除隐藏的子项
+                # 这里我们手动遍历一级子项来确定更紧凑的边界
+                # 如果您的节点结构非常复杂，这里逻辑是：取“节点自身”与“可见子项”的并集
+
+                # 1. 先拿节点自身的 boundingRect (通常是背景框)
+                tight_rect = node.mapRectToScene(node.boundingRect())
+
+                # 2. 遍历子项，只合并可见的
+                if hasattr(node, 'childItems'):
+                    for child in node.childItems():
+                        if child.isVisible():
+                            # 将子项的包围盒映射到场景并合并
+                            tight_rect = tight_rect.united(child.sceneBoundingRect())
+                else:
+                    # 如果没有子项接口，回退到默认
+                    tight_rect = node_scene_rect
+
+                if first:
+                    rect = tight_rect
+                    first = False
+                else:
+                    rect = rect.united(tight_rect)
+            return rect
+
         start_rect = QtCore.QRectF(self._scene_range)
-        target_rect = self._combined_rect(nodes)
-        padding = 60
+        target_rect = get_tight_bbox(nodes)
+
+        # 如果没有选中有效节点，直接返回
+        if target_rect.isNull():
+            self.setRenderHints(original_render_hint)
+            return
+
+        # 增加 Padding (根据目标大小动态调整，而不是固定的 60，视觉更舒适)
+        # 基础 Padding 50px，外加目标宽度的 5%
+        padding = 50 + (target_rect.width() * 0.05)
         target_rect.adjust(-padding, -padding, padding, padding)
 
+        # --- 修正视口比例 (防止变形或过度贴边) ---
+        # 确保 target_rect 的长宽比至少匹配视口，这样缩放后节点会居中而不是靠在角落
+        view_rect = self.viewport().rect()
+        if view_rect.width() > 0 and view_rect.height() > 0:
+            view_ratio = view_rect.width() / view_rect.height()
+            target_ratio = target_rect.width() / target_rect.height()
+
+            if target_ratio > view_ratio:
+                # 目标太宽，增加高度以匹配视口比例
+                new_height = target_rect.width() / view_ratio
+                delta = (new_height - target_rect.height()) / 2
+                target_rect.adjust(0, -delta, 0, delta)
+            else:
+                # 目标太高，增加宽度以匹配视口比例
+                new_width = target_rect.height() * view_ratio
+                delta = (new_width - target_rect.width()) / 2
+                target_rect.adjust(-delta, 0, delta, 0)
+
+        # --- 优化 4: 智能时长计算 ---
         dist = (start_rect.center() - target_rect.center()).manhattanLength()
-        needs_flyover = dist > start_rect.width() * 2.5
+        needs_flyover = dist > start_rect.width() * 2.0  # 稍微降低 Flyover 的触发阈值
+
         if duration is None:
-            # 计算位移距离
-            dist = (start_rect.center() - target_rect.center()).manhattanLength()
-
-            # 计算缩放差异 (起始宽度与目标宽度的比例)
             zoom_diff = abs(start_rect.width() - target_rect.width())
+            # 稍微加快节奏：减少基础时间，增加距离权重
+            # 让短距离极快(350ms)，长距离平滑(最长 1000ms)
+            calc_duration = 350 + (dist * 0.15) + (zoom_diff * 0.05)
+            duration = int(max(400, min(calc_duration, 1000)))
 
-            # 综合计算一个“感知距离” 近距离约 300ms，超远距离最高不超过 1200ms
-            calc_duration = 400 + (dist * 0.2) + (zoom_diff * 0.1)
-            duration = int(max(500, min(calc_duration, 1300)))
-
-        # 4. 创建动画组
         self._zoom_anim_group = QtCore.QSequentialAnimationGroup(self)
 
-        # 动画结束还原设置：保证静止后画质依然清晰
         def on_finished():
-            self.setRenderHint(QtGui.QPainter.Antialiasing, True)
-            setattr(self, '_zoom_anim_group', None)
+            # 恢复原始渲染提示
+            self.setRenderHints(original_render_hint)
+            # 强制刷新一次以确保抗锯齿生效
+            self.viewport().update()
+            self._zoom_anim_group = None
 
         self._zoom_anim_group.finished.connect(on_finished)
 
         def n_update(value):
-            try:
+            # 直接更新属性，减少 try-except 开销（除非多线程销毁）
+            if not sip.isdeleted(self):
                 self._scene_range = value
                 self._update_scene()
-            except RuntimeError:
-                pass
 
-        # 5. 动画构建 (保留你原本的 OutCubic 速率感)
+                # --- 优化 5: 动画曲线与构建 ---
+
+        # 使用 OutQuart 或 OutExpo 替代 OutCubic，这会让动画在结尾处“刹车”得更干脆，
+        # 中间过程更快，给人的“流畅感”更强。
+        easing_curve = QtCore.QEasingCurve.OutQuart
+
         if needs_flyover:
-            # Flyover 逻辑
+            # Flyover: 先拉远再推近
             overview_rect = start_rect.united(target_rect)
-            overview_rect.adjust(-200, -200, 200, 200)
+            # 动态调整拉远的范围，不要拉得太远导致看不清
+            margin = overview_rect.width() * 0.1
+            overview_rect.adjust(-margin, -margin, margin, margin)
 
             anim_out = QtCore.QVariantAnimation(self._zoom_anim_group)
-            anim_out.setDuration(int(duration * 0.45))
+            anim_out.setDuration(int(duration * 0.4))  # 拉远稍快
             anim_out.setStartValue(start_rect)
             anim_out.setEndValue(overview_rect)
-            # 恢复为你原本的 Easing，保证速率一致
-            anim_out.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_out.setEasingCurve(QtCore.QEasingCurve.OutQuad)  # 拉远用 Quad，比较柔和
             anim_out.valueChanged.connect(n_update)
 
             anim_in = QtCore.QVariantAnimation(self._zoom_anim_group)
-            anim_in.setDuration(int(duration * 0.55))
+            anim_in.setDuration(int(duration * 0.6))  # 推近稍慢，便于人眼聚焦
             anim_in.setStartValue(overview_rect)
             anim_in.setEndValue(target_rect)
-            anim_in.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_in.setEasingCurve(QtCore.QEasingCurve.OutQuart)  # 推近用 Quart，精准停靠
             anim_in.valueChanged.connect(n_update)
 
             self._zoom_anim_group.addAnimation(anim_out)
-            self._zoom_anim_group.addPause(20)
+            # 移除暂停或极大缩短暂停，暂停会产生卡顿感
             self._zoom_anim_group.addAnimation(anim_in)
         else:
-            # 直接平移逻辑
+            # 直接平移
             anim_direct = QtCore.QVariantAnimation(self._zoom_anim_group)
             anim_direct.setDuration(duration)
             anim_direct.setStartValue(start_rect)
             anim_direct.setEndValue(target_rect)
-            anim_direct.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_direct.setEasingCurve(easing_curve)
             anim_direct.valueChanged.connect(n_update)
             self._zoom_anim_group.addAnimation(anim_direct)
 

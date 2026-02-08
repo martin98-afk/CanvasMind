@@ -111,7 +111,7 @@ class VarComboBoxWidget(QtWidgets.QWidget):
             all_vars = get_vars_func()
             if all_vars:
                 # 过滤并排序，保证显示整齐
-                unique_vars = list(set(all_vars))
+                unique_vars = list(all_vars)
                 self.combobox.addItems(unique_vars)
         except Exception as e:
             logger.exception(f"Refresh options error: {e}")
