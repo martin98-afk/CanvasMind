@@ -76,7 +76,6 @@ class BaseTriggerManager(ABC):
 
             if canvas_name in self.canvas_mapping:
                 del self.canvas_mapping[canvas_name]
-            logger.info(f"[{self.manager_name}] 已清理画布 '{canvas_name}' 的所有触发项")
 
     @abstractmethod
     def stop(self):
