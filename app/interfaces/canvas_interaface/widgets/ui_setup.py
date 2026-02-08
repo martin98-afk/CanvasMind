@@ -268,7 +268,7 @@ class CanvasUISetUp:
         # ... (内部代码保持不变) ...
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setContentsMargins(4, 8, 4, 8)
-        self.node_layout.setSpacing(6)
+        self.node_layout.setSpacing(3)
 
         self.iterate_node = self._build_tool_btn(get_icon("更新"), "创建迭代")
         self.loop_node = self._build_tool_btn(get_icon("无限"), "创建循环")
@@ -286,7 +286,7 @@ class CanvasUISetUp:
 
         self.visible_quick_container = QWidget(self.nodes_container)
         self.visible_quick_layout = QVBoxLayout(self.visible_quick_container)
-        self.visible_quick_layout.setSpacing(6)
+        self.visible_quick_layout.setSpacing(3)
         self.visible_quick_layout.setContentsMargins(0, 0, 0, 0)
         self.node_layout.addWidget(self.visible_quick_container)
 

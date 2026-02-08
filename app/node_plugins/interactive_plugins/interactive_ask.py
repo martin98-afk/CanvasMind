@@ -7,7 +7,7 @@ import uuid
 from qfluentwidgets import (MessageBoxBase, SubtitleLabel, BodyLabel, ComboBox, CheckBox, DoubleSpinBox, SpinBox,
                             TextEdit)
 
-from app.plugins.base import InteractivePlugin
+from app.node_plugins.base import InteractivePlugin
 from app.utils.utils import ssh_send_file
 
 

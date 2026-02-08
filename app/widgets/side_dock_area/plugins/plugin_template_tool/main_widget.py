@@ -6,13 +6,13 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit
 )
 from qfluentwidgets import (
-    StrongBodyLabel, CaptionLabel, SearchLineEdit,
+    CaptionLabel, SearchLineEdit,
     InfoBar, TransparentToolButton, FluentIcon,
     SingleDirectionScrollArea, CardWidget, SubtitleLabel,
     setFont, isDarkTheme, InfoBarPosition
 )
 
-from app.plugins.plugin_manager import NodePluginManager
+from app.node_plugins.plugin_manager import NodePluginManager
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 

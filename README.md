@@ -32,29 +32,19 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 ## 🌟 Why Choose CanvasMind?
 
-| Traditional Low-Code Tools | CanvasMind |
-|---------------------------|-----------|
-| Static component assembly | **Dynamic expressions + global variables** drive parameters |
-| Only serial execution | Full **conditional branching, iteration, and loops** |
-| No custom logic | **Embedded code editor** for writing Python components freely |
-| Execution = endpoint | **One-click export** to standalone projects (API, CLI, Docker) |
-| AI disconnected from canvas | **Deep LLM integration**: yellow jump / purple create buttons for canvas-aware intelligent completion |
-| Fixed Runtime Environment | Supports remote execution via SSH: Features integrated Python environment management for SSH servers and supports dispatching nodes to the server-side for execution. |
+| Traditional Low-Code Tools                    | CanvasMind |
+|-----------------------------------------------|-----------|
+| Static component assembly                     | **Dynamic expressions + global variables** drive parameters |
+| Only serial execution                         | Full **conditional branching, iteration, and loops** |
+| No custom logic                               | **Embedded code editor** for writing Python components freely |
+| Execution = endpoint                          | **One-click export** to standalone projects (API, CLI, Docker) |
+| AI disconnected from canvas                   | **Deep LLM integration**: yellow jump / purple create buttons for canvas-aware intelligent completion |
+| Fixed Runtime Environment                     | Supports remote execution via SSH: Features integrated Python environment management for SSH servers and supports dispatching nodes to the server-side for execution. |
+| No Trigger Node or Hard-coded Trigger Options | Extensible Plugin Trigger System: Decoupled architecture allowing dynamic loading of Cron, Webhook, and File-watchers; UI auto-syncs with backend logic |
 
 ---
 
 ## 🌟 Key Features
-
-### 🎨 Modern UI
-- **Fluent Design** – Built with `qfluentwidgets` for a polished, native look  
-- **Dark Theme** – Eye-friendly dark mode by default  
-- **Responsive Layout** – Adapts to various screen sizes  
-
-### 🧩 Visual Programming
-- **Drag-and-Drop Nodes** – Drag components from the panel onto the canvas  
-- **Dataflow Connections** – Connect output and input ports to define dependencies  
-- **Backdrop Grouping** – Visually group related nodes using Backdrop nodes  
-- **Context Menus** – Full right-click menu for node operations  
 
 ### ⚡ Distributed & Hybrid Execution Engine
 *   **Parallel DAG Execution** – Independent branches are executed concurrently via a high-performance task scheduler, maximizing CPU/GPU utilization across the workflow.
@@ -99,6 +89,13 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 - **Safe Execution** – Runs in isolated subprocesses with timeout control, error capture, and retry support  
 - **Developer-Friendly Editor** – Professional code editor with dark theme, syntax highlighting, intelligent autocomplete, folding, and error diagnostics  
 
+### ⚡ Plugin-based Trigger System
+
+* **Dynamic Plugin Loading** – Decoupled architecture that automatically discovers and registers new trigger types (Cron, Webhook, File Watcher) from the plugin directory without restarting.
+* **Auto-Adaptive UI** – Node property panels dynamically reconstruct their input widgets based on the selected plugin, ensuring a clean, context-aware interface.
+* **Event-Driven Execution** – Transition from manual execution to automated workflows by reacting to external HTTP requests, schedule patterns, or file system changes.
+* **Lifecycle Management** – Built-in safety logic that automatically unregisters backend listeners when a canvas is closed or a node is deleted to prevent resource leaks.
+
 ### 📊 Node Management
 - **Dynamic Loading** – Auto-scans `components/` directory and loads new components  
 - **Pydantic Schemas** – Define inputs, outputs, and properties using Pydantic models  
@@ -122,10 +119,6 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 ## 🚀 Quick Start
 
-### Requirements
-- Python 3.8+
-- PyQt5 or PySide2
-
 ### Install Dependencies
 ```bash
 pip install -r requirements.txt
@@ -138,7 +131,7 @@ python main.py
 
 ### Package with PyInstaller
 ```bash
-pyinstaller --onedir --windowed --add-data "app;app" --add-data "icons;icons" -i icons/logo3.png main.py
+python build.py
 ```
 
 ---

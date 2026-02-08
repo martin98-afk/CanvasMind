@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import sys
+from copy import deepcopy
 from enum import Enum
 from uuid import uuid4
 
+from loguru import logger
 from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, RangeValidator, \
     OptionsConfigItem, ConfigValidator, RangeConfigItem
 
@@ -35,26 +38,79 @@ class QuickComponentsSerializer(ConfigSerializer):
 
 
 class Settings(QConfig):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     @classmethod
     def get_instance(cls):
         """获取配置实例（单例模式）"""
-        cls._instance = cls()
-        CONFIG_FILE = "app.config"
-        try:
-            cls._instance.load(CONFIG_FILE)
-        except:
-            print(f"✅ 已创建默认配置文件: {CONFIG_FILE}")
+        if cls._instance is None:
+            cls._instance = cls()
+            CONFIG_FILE = "app.config"
+            try:
+                cls._instance.load(CONFIG_FILE)
+            except:
+                logger.exception("无法加载配置文件")
         return cls._instance
-    #
+
     @classmethod
     def save_config(cls):
         """保存配置"""
-        if cls._instance:
-            cls._instance.save()
+        pass
+
+    def set(self, item, value, save=False, copy=True):
+        """ set the value of config item
+
+        Parameters
+        ----------
+        item: ConfigItem
+            config item
+
+        value:
+            the new value of config item
+
+        save: bool
+            whether to save the change to config file
+
+        copy: bool
+            whether to deep copy the new value
+        """
+        if item.value == value:
+            return
+
+        # deepcopy new value
+        try:
+            item.value = deepcopy(value) if copy else value
+        except:
+            item.value = value
+
+        if save:
+            self.save()
+
+        if item.restart:
+            self._cfg.appRestartSig.emit()
+
+        if item is self._cfg.themeMode:
+            self.theme = value
+            self._cfg.themeChanged.emit(value)
+
+        if item is self._cfg.themeColor:
+            self._cfg.themeColorChanged.emit(value)
+
+    def save(self):
+        """ save config """
+        # 确保目录存在
+        self.file.parent.mkdir(parents=True, exist_ok=True)
+        # 写入文件
+        with open(self.file, "w", encoding="utf-8") as f:
+            json.dump(self.toDict(), f, ensure_ascii=False, indent=4)
 
     # 版本信息
-    current_version = "v0.3.4"
+    current_version = "v0.3.5-beta"
     user_name = ConfigItem("General", "UserName", str(uuid4().hex))
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

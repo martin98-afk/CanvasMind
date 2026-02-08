@@ -3,7 +3,7 @@ from pyecharts import options as opts
 from pyecharts.charts import Line
 from pyecharts.globals import ThemeType
 
-from app.plugins.base import DisplayPlugin
+from app.node_plugins.base import DisplayPlugin
 from app.widgets.node_widget.display_widgets.html_widget import HtmlWidgetWrapper
 
 

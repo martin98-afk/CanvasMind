@@ -35,7 +35,7 @@ class NodePluginManager:
             for filename in files:
                 if filename.endswith(".py") and not filename.startswith("__"):
                     # 计算相对路径并转为模块路径
-                    # 例如: /app/plugins/display/image_plugin.py -> app.plugins.display.image_plugin
+                    # 例如: /app/node_plugins/display/image_plugin.py -> app.node_plugins.display.image_plugin
                     rel_path = os.path.relpath(os.path.join(root, filename), root_dir)
                     module_rel_name = rel_path[:-3].replace(os.path.sep, ".")
                     full_module_name = f"{base_package_path}.{module_rel_name}"

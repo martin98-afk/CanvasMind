@@ -4,7 +4,6 @@ import os
 import pickle
 import tempfile
 import uuid
-from io import BytesIO
 
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QByteArray, QBuffer, QIODevice
 from PyQt5.QtGui import (
@@ -18,7 +17,7 @@ from qfluentwidgets import (
     Slider, StrongBodyLabel, PrimaryPushButton
 )
 
-from app.plugins.base import InteractivePlugin
+from app.node_plugins.base import InteractivePlugin
 from app.utils.utils import ssh_send_file
 
 

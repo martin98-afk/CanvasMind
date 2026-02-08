@@ -55,7 +55,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             # 标签
             label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:", self)
             child_font = label_widget.font()
-            child_font.setFamily(Settings().get_instance().canvas_font_type.value)
+            child_font.setFamily(Settings.get_instance().canvas_font_type.value)
             child_font.setPointSize(9)
             child_font.setBold(True)
             label_widget.setFont(child_font)

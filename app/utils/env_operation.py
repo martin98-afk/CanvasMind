@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import platform
 import re
 import shutil
-import traceback
-import os
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl, QByteArray
+from PyQt5.QtCore import QObject, pyqtSignal, QProcess, QTimer, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from loguru import logger
 

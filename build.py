@@ -1,49 +1,81 @@
+# -*- coding: utf-8 -*-
+import os
 import shutil
+from pathlib import Path
 
 import PyInstaller.__main__
-import os
-import sys
-import spyder  # 先导入，用于自动定位路径
+import spyder
 
-# 1. 自动获取 spyder 库的安装路径
-# os.path.dirname(spyder.__file__) 通常指向 .../site-packages/spyder
-spyder_dir = os.path.dirname(spyder.__file__)
-
-# 2. 定义项目根目录（确保相对路径正确）
+# 1. 基础路径配置
 base_dir = os.path.dirname(os.path.abspath(__file__))
+env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
+extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil"]
 
 # 3. 构造参数列表
 params = [
     'main.py',
     '--onedir',
     '--windowed',
-    '--icon=' + os.path.join('icons', 'logoico.ico'),
+    '--name=CanvasMind',  # 直接指定名称，省去后期改名麻烦
+    '--icon=' + os.path.join(base_dir, 'icons', 'logoico.ico'),
 
-    # 动态添加 Spyder 数据文件夹
-    # 格式： "源路径;目标名" (Windows下用分号)
-    f'--add-data={spyder_dir}{os.pathsep}spyder',
-
-    # 其他固定数据文件夹
+    # 数据文件包含
     f'--add-data=app{os.pathsep}app',
     f'--add-data=resource{os.pathsep}resource',
     f'--add-data=examples{os.pathsep}examples',
 
-    # 元数据和隐藏导入
-    '--copy-metadata=jupyter_client',
+    # 隐藏导入：合并基础依赖与动态搜寻到的插件
     '--hidden-import=jupyter_client.provisioning.local',
     '--hidden-import=ipykernel',
-    # 建议加上 --clean 清理之前的缓存，避免路径残留
-    '--clean',
-    '--noconfirm',
+    '--copy-metadata=jupyter_client',
 ]
 
-# 4. 运行前检查一下关键路径是否存在（调试用）
-print(f"Checking Spyder path: {spyder_dir}")
-if not os.path.exists(spyder_dir):
-    print(f"错误: 找不到 Spyder 路径: {spyder_dir}")
-    sys.exit(1)
+for module in extra_modules:
+    params.append(f'--add-data={env_dir}/{module}{os.pathsep}{module}')
 
-# 5. 执行打包
+# 运行时配置
+params.extend([
+    '--clean',
+    '--noconfirm',
+])
+
+
+def post_build_cleanup(dist_path):
+    """打包后的精简逻辑"""
+    internal_path = os.path.join(dist_path, "_internal")
+    if not os.path.exists(internal_path):
+        # 兼容不同版本的打包结构
+        internal_path = dist_path
+
+    # 需要删除的冗余库列表
+    to_remove = [
+        'scipy', 'scipy.libs', 'sphinx',
+        # 'matplotlib', 'PIL.ImageQt'  # 如果没用到这些巨无霸库也可以考虑删掉
+    ]
+
+    print("正在精简打包体积...")
+    for folder in to_remove:
+        target = os.path.join(internal_path, folder)
+        if os.path.exists(target):
+            try:
+                if os.path.isfile(target):
+                    os.remove(target)
+                else:
+                    shutil.rmtree(target)
+                print(f"  - 已移除: {folder}")
+            except Exception as e:
+                print(f"  - 移除 {folder} 失败: {e}")
+
+
 if __name__ == "__main__":
+    print(f"Starting build for CanvasMind...")
+
+    # 执行打包
     PyInstaller.__main__.run(params)
-    print("打包完成！")
+
+    # 4. 后置处理
+    dist_final = os.path.join("dist", "CanvasMind")
+    if os.path.exists(dist_final):
+        post_build_cleanup(dist_final)
+
+    print("\n✅ 打包任务顺利完成！")

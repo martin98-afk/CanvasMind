@@ -151,28 +151,31 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         # --- 1. 创建按钮并绑定点击函数 ---
         # 执行：执行选中节点
-        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", False)
+        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", True)
         self.btn_run.clicked_func = self.on_run
 
         # 居中：聚焦选中区域
-        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", True)
+        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", False)
         self.btn_center.clicked_func = self._on_center
 
+        self.auto_layout = NodeActionButton(self, "layout", "自动排布节点", "#3498db", "#2980b9", False)
+        self.auto_layout.clicked_func = self._on_auto_layout
+
         # 克隆：复制并粘贴
-        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", True)
+        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", False)
         self.btn_clone.clicked_func = self._on_clone
 
         # 模板：保存到模板库
-        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", True)
+        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", False)
         self.btn_template.clicked_func = self._on_template
 
         self.btn_more = NodeActionButton(self, "more", "更多操作", "#7f8c8d", "#95a5a6", True)
         self.btn_more.clicked_func = self._on_more_menu
 
-        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", False)
+        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", True)
         self._close_btn.clicked_func = self._on_close
         # --- 2. 布局逻辑 (保持不变) ---
-        self.buttons = [self.btn_run, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
+        self.buttons = [self.btn_run, self.auto_layout, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
         spacing = 6
         btn_w = 28
         for i, btn in enumerate(self.buttons):
@@ -187,6 +190,11 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
     def on_run(self):
         """功能：执行选中的节点"""
         self.viewer.home_window.canvas_runner.run_workflow()
+
+    def _on_auto_layout(self):
+        """功能：自动排布节点"""
+        NodeLayoutHandler.auto_layout(self.viewer.graph)
+        self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_comment(self):
         """功能：为选中的节点创建一个 Backdrop (背景框)"""
@@ -825,9 +833,6 @@ class CustomNodeViewer(NodeViewer):
     # ---------------------------------------------
 
     def mouseReleaseEvent(self, event):
-        # --- 对齐功能：鼠标松开，立即隐藏对齐线 ---
-        self._snap_lines_item.hide()
-        self._snap_lines_item.setPath(QtGui.QPainterPath())  # 清空路径
         # -------------------------------------
         # 1. 记录拉线状态
         live_pipe_active = self._LIVE_PIPE.isVisible()
@@ -1101,6 +1106,150 @@ class CustomNodeViewer(NodeViewer):
         if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
             self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
+
+    def zoom_to_nodes(self, nodes, duration=None):
+        if not nodes:
+            return
+
+        # 动画期间暂时关闭高开销的渲染提示
+        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
+
+        # 2. 安全清理旧动画 (逻辑保持不变)
+        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
+            try:
+                if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
+                    self._zoom_anim_group.stop()
+            except RuntimeError:
+                pass
+            self._zoom_anim_group = None
+
+        # 3. 计算位置 (完全保留你原本的参数)
+        start_rect = QtCore.QRectF(self._scene_range)
+        target_rect = self._combined_rect(nodes)
+        padding = 60
+        target_rect.adjust(-padding, -padding, padding, padding)
+
+        dist = (start_rect.center() - target_rect.center()).manhattanLength()
+        needs_flyover = dist > start_rect.width() * 2.5
+        if duration is None:
+            # 计算位移距离
+            dist = (start_rect.center() - target_rect.center()).manhattanLength()
+
+            # 计算缩放差异 (起始宽度与目标宽度的比例)
+            zoom_diff = abs(start_rect.width() - target_rect.width())
+
+            # 综合计算一个“感知距离” 近距离约 300ms，超远距离最高不超过 1200ms
+            calc_duration = 400 + (dist * 0.2) + (zoom_diff * 0.1)
+            duration = int(max(500, min(calc_duration, 1300)))
+
+        # 4. 创建动画组
+        self._zoom_anim_group = QtCore.QSequentialAnimationGroup(self)
+
+        # 动画结束还原设置：保证静止后画质依然清晰
+        def on_finished():
+            self.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            setattr(self, '_zoom_anim_group', None)
+
+        self._zoom_anim_group.finished.connect(on_finished)
+
+        def n_update(value):
+            try:
+                self._scene_range = value
+                self._update_scene()
+            except RuntimeError:
+                pass
+
+        # 5. 动画构建 (保留你原本的 OutCubic 速率感)
+        if needs_flyover:
+            # Flyover 逻辑
+            overview_rect = start_rect.united(target_rect)
+            overview_rect.adjust(-200, -200, 200, 200)
+
+            anim_out = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_out.setDuration(int(duration * 0.45))
+            anim_out.setStartValue(start_rect)
+            anim_out.setEndValue(overview_rect)
+            # 恢复为你原本的 Easing，保证速率一致
+            anim_out.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_out.valueChanged.connect(n_update)
+
+            anim_in = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_in.setDuration(int(duration * 0.55))
+            anim_in.setStartValue(overview_rect)
+            anim_in.setEndValue(target_rect)
+            anim_in.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_in.valueChanged.connect(n_update)
+
+            self._zoom_anim_group.addAnimation(anim_out)
+            self._zoom_anim_group.addPause(20)
+            self._zoom_anim_group.addAnimation(anim_in)
+        else:
+            # 直接平移逻辑
+            anim_direct = QtCore.QVariantAnimation(self._zoom_anim_group)
+            anim_direct.setDuration(duration)
+            anim_direct.setStartValue(start_rect)
+            anim_direct.setEndValue(target_rect)
+            anim_direct.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim_direct.valueChanged.connect(n_update)
+            self._zoom_anim_group.addAnimation(anim_direct)
+
+        self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
+
+    def add_node(self, node, pos=None):
+        pos = pos or (self._previous_pos.x(), self._previous_pos.y())
+        node.pre_init(self, pos)
+        self.scene().addItem(node)
+        node.post_init(self, pos)
+
+        # --- 1. 记录原始状态 ---
+        rect = node.boundingRect()
+        # 记录节点原本的 Pos (post_init 已经根据 pos 设置好了)
+        original_pos = node.pos()
+
+        # 为了让缩放从中心开始，我们计算中心偏移
+        center = rect.center()
+        node.setTransformOriginPoint(center)
+        node.setScale(0.1)
+
+        anim = QtCore.QVariantAnimation(self)
+        anim.setDuration(300)
+        anim.setStartValue(0.1)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QtCore.QEasingCurve.OutBack)
+
+        def update_all_pipes():
+            # 安全获取端口
+            inputs = getattr(node, 'inputs', [])
+            outputs = getattr(node, 'outputs', [])
+            for port in inputs + outputs:
+                for pipe in port.connected_pipes:
+                    if pipe.input_port and pipe.output_port:
+                        pipe.draw_path(pipe.input_port, pipe.output_port)
+
+        def UpdateNodeStep(val):
+            node.setScale(val)
+            update_all_pipes()
+
+        anim.valueChanged.connect(UpdateNodeStep)
+
+        def on_finished():
+            # --- 2. 彻底重置变换状态 (关键修复) ---
+            # 停止动画后，先取消 Scale 和 OriginPoint
+            # 否则后续拖拽会基于这个 center 计算偏移
+            node.setScale(1.0)
+            node.setTransformOriginPoint(0, 0)
+
+            # 确保位置依然是原始位置
+            node.setPos(original_pos)
+
+            # 清除任何可能残留的 Transform 矩阵
+            node.setTransform(QtGui.QTransform())
+
+            # 刷新连线
+            update_all_pipes()
+
+        anim.finished.connect(on_finished)
+        anim.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
 
 class CustomNodeGraph(NodeGraph):

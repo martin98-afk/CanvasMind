@@ -122,6 +122,43 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
             painter.drawLine(QtCore.QPointF(cx - 8, cy - 2), QtCore.QPointF(cx + 8, cy - 2))
             painter.drawLine(QtCore.QPointF(cx - 4, cy + 2), QtCore.QPointF(cx - 2, cy + 4))
             painter.drawLine(QtCore.QPointF(cx - 2, cy + 4), QtCore.QPointF(cx - 4, cy + 6))
+        elif self.icon_type == 'layout':
+            # 图标：三层节点阶梯分布感 (象征拓扑自动排布)
+            # 绘制三个代表节点的小方块，并用折线连接，体现层级流动感
+            s_size = 4.0  # 方块大小
+
+            # 1. 绘制三个代表节点的小矩形（左一右二布局）
+            # 左侧“父”节点
+            rect_parent = QtCore.QRectF(cx - 8, cy - s_size / 2, s_size, s_size)
+            # 右侧“子”节点1
+            rect_child1 = QtCore.QRectF(cx + 4, cy - 7, s_size, s_size)
+            # 右侧“子”节点2
+            rect_child2 = QtCore.QRectF(cx + 4, cy + 3, s_size, s_size)
+
+            # 填充方块（悬浮时高亮）
+            if self._hovered or self.is_permanent:
+                painter.setBrush(painter.pen().color())
+
+            painter.drawRect(rect_parent)
+            painter.drawRect(rect_child1)
+            painter.drawRect(rect_child2)
+
+            # 2. 绘制连接折线
+            painter.setBrush(QtCore.Qt.NoBrush)
+            line_pen = QtGui.QPen(painter.pen().color(), 1.2)
+            painter.setPen(line_pen)
+
+            # 从父节点引出的折线
+            path = QtGui.QPainterPath()
+            path.moveTo(cx - 4, cy)  # 父节点右侧中点
+            path.lineTo(cx, cy)  # 向右延伸
+            path.lineTo(cx, cy - 5)  # 向上折
+            path.lineTo(cx + 4, cy - 5)  # 连向子1
+
+            path.moveTo(cx, cy)  # 回到转折点
+            path.lineTo(cx, cy + 5)  # 向下折
+            path.lineTo(cx + 4, cy + 5)  # 连向子2
+            painter.drawPath(path)
         elif self.icon_type == 'more':
             # 绘制三个水平圆点
             dot_size = 3.0
