@@ -672,26 +672,28 @@ class CanvasPage(QWidget):
 
     # --- 画布关闭逻辑 ---
     def close_current_canvas(self):
-        if not self.file_path.exists():
-            self.clean_canvas()
+        try:
+            if not self.file_path.exists():
+                self.clean_canvas()
 
-        # 清除注册的触发器
-        for manager in ALL_MANAGERS:
-            try:
-                manager.remove_by_canvas(self.workflow_name)
-                logger.info(f"已清理管理器 [{manager.manager_name}] 中的画布: {self.workflow_name}")
-            except Exception as e:
-                logger.error(f"清理管理器 {manager.manager_name} 失败: {e}")
+            # 清除注册的触发器
+            for manager in ALL_MANAGERS:
+                try:
+                    manager.remove_by_canvas(self.workflow_name)
+                except Exception as e:
+                    logger.exception(f"清理管理器 {manager.manager_name} 失败: {e}")
         # 定时器关闭
-        self._auto_saver.stop()
-        self.ipython_kernel.stop_kernel()
-        self._disconnect_signals()
-        self.ui_manager.destroy_all()
-        self.canvas_runner.stop_workflow()
-        self.graph.deleteLater()
-        self.canvas_deleted.emit()
-        self.parent.removeInterface(self)
-        self.deleteLater()
+            self._auto_saver.stop()
+            self.ipython_kernel.stop_kernel()
+            self._disconnect_signals()
+            self.ui_manager.destroy_all()
+            self.canvas_runner.stop_workflow()
+            self.graph.deleteLater()
+            self.canvas_deleted.emit()
+            self.parent.removeInterface(self)
+            self.deleteLater()
+        except:
+            logger.exception("关闭画布时发生错误")
 
     def clean_canvas(self):
         def cleanup_task():

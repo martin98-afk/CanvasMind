@@ -1,3 +1,4 @@
+import os
 import uuid
 from loguru import logger
 
@@ -30,30 +31,6 @@ class LocalConnectWorker(QThread):
                 self.finished.emit(False, "本地内核启动失败，请检查 Python 路径")
         except Exception as e:
             self.finished.emit(False, str(e))
-
-
-class KernelShutdownWorker(QThread):
-    """
-    后台关闭工人：负责在不阻塞 UI 的情况下关闭内核。
-    """
-    finished = pyqtSignal()
-
-    def __init__(self, kernel_manager, kernel_client):
-        super().__init__()
-        self.km = kernel_manager
-        self.kc = kernel_client
-
-    def run(self):
-        try:
-            if self.kc:
-                self.kc.stop_channels()
-            if self.km:
-                # now=True 表示立即发送 SIGKILL，不等待内核优雅退出
-                self.km.shutdown_kernel(now=True)
-        except Exception as e:
-            logger.error(f"后台关闭内核失败: {e}")
-        finally:
-            self.finished.emit()
 
 
 class IPythonKernelManager:
@@ -146,34 +123,34 @@ class IPythonKernelManager:
                 logger.error(f"中断 kernel 失败: {e}")
         return False
 
-    def shutdown_kernel(self, async_mode=True):
+    def shutdown_kernel(self, **kwargs):
         """
-        关闭内核
-        :param async_mode: 是否使用线程异步关闭。UI 调用时务必设为 True。
+        [同步关闭]
+        因为使用了 now=True，这通常是发送 SIGKILL，速度非常快（<10ms）。
+        在此处使用 QThread 是过度设计，且是导致崩溃的根源。
         """
-        km = self.kernel_manager
-        kc = self.kernel_client
+        try:
+            if self.kernel_client:
+                # 停止通道必须在创建它的线程（主线程）调用
+                self.kernel_client.stop_channels()
+                self.kernel_client = None
 
-        # 清空当前引用，防止重复操作
-        self.kernel_manager = None
-        self.kernel_client = None
+            if self.kernel_manager:
+                # now=True 表示强制杀进程，不要等待
+                if self.kernel_manager.has_kernel:
+                    self.kernel_manager.shutdown_kernel(now=True)
+                self.kernel_manager = None
 
-        if not km:
-            return
+            # 清理临时文件
+            if self.connection_file and os.path.exists(self.connection_file):
+                try:
+                    os.remove(self.connection_file)
+                except:
+                    pass
 
-        if async_mode:
-            # 开启后台线程处理
-            self._shutdown_worker = KernelShutdownWorker(km, kc)
-            # 线程结束后自动清理引用
-            self._shutdown_worker.finished.connect(lambda: setattr(self, '_shutdown_worker', None))
-            self._shutdown_worker.start()
-        else:
-            # 同步模式（仅在非 UI 线程中使用）
-            try:
-                if kc: kc.stop_channels()
-                km.shutdown_kernel(now=True)
-            except:
-                pass
+            logger.info("内核已关闭")
+        except Exception as e:
+            logger.error(f"关闭内核时出错: {e}")
 
     def is_alive(self):
         """内核是否存活"""
