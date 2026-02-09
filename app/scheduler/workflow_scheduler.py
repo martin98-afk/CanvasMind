@@ -114,6 +114,29 @@ class WorkflowScheduler(QObject):
         """强制执行单个节点（即使 disabled）"""
         self._execute_nodes([node])
 
+    def run_subgraph(self, node):
+        """
+        运行节点所在的整个连通子图
+        1. 找到所有逻辑上连通的节点（不分上下游）
+        2. 若连通节点在 Backdrop 中，则包含整个 Backdrop 及其内部节点
+        3. 过滤出顶层可执行节点并排序执行
+        """
+        # 1. 获取所有连通的“原始”节点集合
+        all_connected = self._get_connected_nodes(node)
+
+        # 2. 转换为执行器需要的顶层节点列表（排除 Backdrop 内部节点，保留 Backdrop 自身）
+        # 这里直接复用你已有的 get_executable_nodes
+        executable_nodes = self.get_executable_nodes(list(all_connected))
+
+        # 3. 拓扑排序
+        execution_order = topological_sort(executable_nodes)
+        if execution_order is None:
+            self.error.emit("该子图检测到循环依赖，无法执行")
+            return
+
+        logger.info(f"执行连通子图: 找到 {len(execution_order)} 个顶层执行单元")
+        self._execute_nodes(execution_order)
+
     def run_to(self, target_node):
         """执行到目标节点（含所有上游）"""
         nodes = self._get_ancestors_and_self(target_node)
@@ -167,6 +190,59 @@ class WorkflowScheduler(QObject):
 
         dfs(node)
         return result
+
+    def _get_connected_nodes(self, start_node):
+        """使用无向遍历查找所有连通节点，并处理 Backdrop 包含关系"""
+        all_nodes = self.graph.all_nodes()
+
+        # 预计算：节点 -> 所属 Backdrop 的映射
+        node_to_backdrop = {}
+        backdrops = [n for n in all_nodes if isinstance(n, BackdropNode)]
+        for b in backdrops:
+            for internal_node in b.nodes():
+                node_to_backdrop[internal_node] = b
+
+        visited = set()
+        stack = [start_node]
+
+        while stack:
+            curr = stack.pop()
+            if curr in visited:
+                continue
+            visited.add(curr)
+
+            # --- 扩展逻辑 A: 处理 Backdrop 关联 ---
+            # 情况1: 如果当前节点在某个 Backdrop 里，把 Backdrop 及其内部所有节点都标记为连通
+            if curr in node_to_backdrop:
+                b = node_to_backdrop[curr]
+                if b not in visited:
+                    stack.append(b)
+                for internal in b.nodes():
+                    if internal not in visited:
+                        stack.append(internal)
+
+            # # 情况2: 如果当前节点本身就是 Backdrop，把内部所有节点加进来
+            # if isinstance(curr, BackdropNode):
+            #     for internal in curr.nodes():
+            #         if internal not in visited:
+            #             stack.append(internal)
+
+            # --- 扩展逻辑 B: 处理 端口 物理连接 (无向) ---
+            # 检查所有输入端口（找上游）
+            for port in curr.input_ports():
+                for conn_port in port.connected_ports():
+                    neighbor = get_port_node(conn_port)
+                    if neighbor and neighbor not in visited:
+                        stack.append(neighbor)
+
+            # 检查所有输出端口（找下游）
+            for port in curr.output_ports():
+                for conn_port in port.connected_ports():
+                    neighbor = get_port_node(conn_port)
+                    if neighbor and neighbor not in visited:
+                        stack.append(neighbor)
+
+        return visited
 
     def _execute_nodes(self, nodes: List):
         """启动执行：先解锁所有节点，再执行 active 节点"""

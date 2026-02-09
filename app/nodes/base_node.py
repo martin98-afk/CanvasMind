@@ -18,7 +18,7 @@ from loguru import logger
 from typing import Dict, Any, Set
 
 # 导入业务相关的组件协议
-from app.components.base import ComponentMessage
+from app.components.base import ComponentMessage, PROGRESS_MARKER
 from app.node_plugins.plugin_manager import NodePluginManager
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
@@ -215,22 +215,52 @@ class BasicNodeWithGlobalProperty(NodeObject):
     def _log_message(self, node_id, message):
         """
         处理来自 Subprocess 的日志输出（优化了字符串拼接性能）
-        保留此方法以兼容文本日志文件记录
         """
-        # 使用 buffer 存储而不是直接字符串相加，避免 O(n^2) 拷贝
-        self._log_buffer.append(message)
+        # 1. 解析拦截协议
+        clean_text = self._parse_and_filter_logs(message)
 
-        # 2. 通过 scheduler 推送日志
-        if hasattr(self, '_log_message_emitter'):
-            run_id = getattr(self, '_current_run_id', "default")
-            self._log_message_emitter(run_id, message + "\n")
+        if clean_text:
+            # 使用 buffer 存储而不是直接字符串相加，避免 O(n^2) 拷贝
+            self._log_buffer.append(clean_text)
 
-        # 3. 同步到弹窗窗口
-        if hasattr(self, 'log_capture') and self.log_capture and self.log_capture.log_window:
-            try:
-                self.log_capture.log_window.add_log_entry(message)
-            except Exception as e:
-                logger.error(f"Error sending log to window: {e}")
+            # 2. 通过 scheduler 推送日志
+            if hasattr(self, '_log_message_emitter'):
+                run_id = getattr(self, '_current_run_id', "default")
+                self._log_message_emitter(run_id, clean_text + "\n")
+
+            # 3. 同步到弹窗窗口
+            if hasattr(self, 'log_capture') and self.log_capture and self.log_capture.log_window:
+                try:
+                    self.log_capture.log_window.add_log_entry(clean_text)
+                except Exception as e:
+                    logger.error(f"Error sending log to window: {e}")
+
+    def _parse_and_filter_logs(self, raw_text: str) -> str:
+        """
+        极速解析逻辑：增加信号节流和高性能 JSON 解析
+        """
+        if not raw_text:
+            return ""
+
+        clean_lines = []
+        lines = raw_text.splitlines()
+
+        for line in lines:
+            if PROGRESS_MARKER in line:
+                try:
+                    json_str = line.split(PROGRESS_MARKER)[1].strip()
+                    # --- 信号节流：如果数据与上次完全一致，则不发射信号 ---
+                    if json_str != self._last_intercepted_data:
+                        # 使用 orjson 解析或标准 json
+                        data = json.loads(json_str)
+                        self.signals.intercepted_msg_signal.emit(data)
+                        self._last_intercepted_data = json_str
+                    continue
+                except Exception as e:
+                    logger.error(f"解析拦截消息失败: {e}")
+            clean_lines.append(line)
+
+        return "\n".join(clean_lines)
 
     def get_logs(self):
         """优先从 buffer 获取最新日志，buffer 满了从文件读"""

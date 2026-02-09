@@ -14,7 +14,7 @@ class ExecutionRecord:
     trigger_type: str
     start_time: float
     end_time: Optional[float] = None
-    status: str = "running"  # running, success, failed, cancelled
+    status: str = "waiting"  # waiting, running, success, failed, cancelled
     input_data: Any = None
     output_data: dict = field(default_factory=dict)
     error_msg: Optional[str] = None
@@ -59,11 +59,10 @@ class ExecutionManager:
             record.status = status
             record.end_time = time.time()
             if output_data is not None:
-                record.output_data = output_data
+                record.output_data.update(output_data)
             if error_msg is not None:
                 record.error_msg = error_msg
             self.signal.execution_updated.emit()
-            logger.info(f"执行完成: {exec_id} | 状态: {status}")
 
     def clear_records(self):
         self._records.clear()

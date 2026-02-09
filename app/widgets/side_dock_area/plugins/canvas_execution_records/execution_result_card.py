@@ -234,7 +234,7 @@ class ExecutionResultCard(CardWidget):
             self.status_icon.setIcon(FluentIcon.COMPLETED)
             self.name_label.setStyleSheet("font-weight: bold; font-size: 13px; color: #FFFFFF;")
         elif status == "failed":
-            self.status_icon.setIcon(get_icon("失败") or FluentIcon.ERROR)
+            self.status_icon.setIcon(get_icon("失败"))
             self.name_label.setStyleSheet("font-weight: bold; font-size: 13px; color: #F44336;")
         else:
             self.status_icon.setIcon(FluentIcon.CANCEL)

@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyCheckpointLoader(BaseComponent):
-    requirements = "comfy,folder_paths,torch"
+    requirements = "#comfy,#folder_paths,torch"
     name = "Checkpoint加载器"
     category = "comfyui节点/模型加载器"
     description = "加载单文件检查点(.safetensors/.ckpt)，自动识别并拆分 MODEL, CLIP 和 VAE。"

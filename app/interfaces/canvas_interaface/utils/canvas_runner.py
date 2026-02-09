@@ -13,7 +13,7 @@ from app.scheduler.workflow_scheduler import WorkflowScheduler
 @dataclass
 class ExecutionTask:
     """封装执行任务的实体"""
-    mode: str  # 'full', 'to', 'from', 'node', 'workflow'
+    mode: str  # 'full', ‘subgraph', 'to', 'from', 'node', 'selected'
     target: Any  # node or list of nodes
     sort: bool = True
     triggered_data: dict = None
@@ -83,13 +83,16 @@ class CanvasRunner(QObject):
     def run_workflow(self):
         nodes = self.parent.property_panel.get_current_execution_order()
         if nodes:
-            self._enqueue(ExecutionTask('workflow', nodes, sort=False))
+            self._enqueue(ExecutionTask('selected', nodes, sort=False))
         else:
             selected_nodes = self.parent.graph.selected_nodes()
             self._enqueue(ExecutionTask('full', selected_nodes, sort=True))
 
-    def run_full(self, nodes=None, sort=True):
-        self._enqueue(ExecutionTask('full', nodes, sort=sort))
+    def run_full(self, nodes=None, triggered_data=None, task_id=None, sort=True):
+        self._enqueue(ExecutionTask('full', nodes, sort=sort, triggered_data=triggered_data, task_id=task_id))
+
+    def run_subgraph(self, nodes=None, triggered_data=None, task_id=None):
+        self._enqueue(ExecutionTask('subgraph', nodes, triggered_data=triggered_data, task_id=task_id))
 
     def run_to(self, target_node, triggered_data=None, task_id=None):
         self._enqueue(ExecutionTask('to', target_node, triggered_data=triggered_data, task_id=task_id))
@@ -105,6 +108,13 @@ class CanvasRunner(QObject):
     def _enqueue(self, task: ExecutionTask):
         """任务入队并尝试启动"""
         self._task_queue.append(task)
+        # 1. 创建执行记录
+        self.execution_storage.create_record(
+            exec_id=task.task_id,
+            canvas_name=self.parent.workflow_name,
+            trigger_type=task.mode,
+            input_data=task.triggered_data
+        )
         self.queue_size_changed.emit(len(self._task_queue))
         logger.info(f"[Runner] 任务入队: {task.mode}. 当前队列长度: {len(self._task_queue)}")
 
@@ -122,13 +132,8 @@ class CanvasRunner(QObject):
         self._is_running = True
         self._current_task = self._task_queue.popleft()
         self.queue_size_changed.emit(len(self._task_queue))
-
-        # 1. 创建执行记录
-        self.execution_storage.create_record(
-            exec_id=self._current_task.task_id,
-            canvas_name=self.parent.workflow_name,
-            trigger_type=self._current_task.mode,
-            input_data=self._current_task.triggered_data
+        self.execution_storage.update_record(
+            self._current_task.task_id, "running", output_data={}
         )
 
         # 2. 通知 UI 启动
@@ -137,9 +142,11 @@ class CanvasRunner(QObject):
         # 3. 启动执行
         task = self._current_task
         try:
-            if task.mode in ['full', 'workflow']:
+            if task.mode in ['full', 'selected']:
                 nodes = task.target or self.parent.graph.selected_nodes()
                 self._scheduler.run_full(nodes=nodes, sort=task.sort)
+            elif task.mode == 'subgraph':
+                self._scheduler.run_subgraph(task.target)
             elif task.mode == 'to':
                 self._scheduler.run_to(task.target)
             elif task.mode == 'from':
@@ -150,6 +157,9 @@ class CanvasRunner(QObject):
             logger.exception(f"[Runner] 调度器启动失败: {e}")
             self._handle_scheduler_error(str(e))
 
+    def store_output(self, output):
+        self.execution_storage.update_record(self._current_task.task_id, "running", output_data=output)
+
     # --- 内部信号处理槽 (Proxy Slots) ---
 
     def _handle_scheduler_finished(self):
@@ -159,7 +169,7 @@ class CanvasRunner(QObject):
                 self._current_task.task_id, "success", output_data={}
             )
             # 如果是 workflow 模式，执行完后刷新一次列表
-            if self._current_task.mode == 'workflow':
+            if self._current_task.mode == 'selected':
                 self._update_ui_deferred()
 
         self.workflow_finished.emit()
@@ -172,7 +182,7 @@ class CanvasRunner(QObject):
             self.execution_storage.update_record(
                 self._current_task.task_id, "failed", error_msg=msg
             )
-            if self._current_task.mode == 'workflow':
+            if self._current_task.mode == 'selected':
                 self._update_ui_deferred()
 
         self.workflow_error.emit(msg)
@@ -196,7 +206,7 @@ class CanvasRunner(QObject):
 
     def _on_status_changed_ui_update(self):
         """节点状态改变时的 UI 联动"""
-        if self._current_task and self._current_task.mode == 'workflow':
+        if self._current_task and self._current_task.mode == 'selected':
             self._update_ui_deferred()
 
     def _update_ui_deferred(self):

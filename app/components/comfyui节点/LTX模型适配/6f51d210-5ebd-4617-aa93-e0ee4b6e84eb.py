@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "LTX2空音频潜空间"
     category = "comfyui节点/LTX模型适配"
     description = ""
-    requirements = "numpy,comfy,torch"
+    requirements = "numpy,#comfy,torch"
     inputs = [
         PortDefinition(name="audio_vae", label="音频编码器", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
     ]

@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "加载单文件检查点(.safetensors/.ckpt)，自动识别并拆分 MODEL, CLIP 和 VAE。",
   "category": "comfyui节点/模型加载器",
-  "main": "main.py",
-  "updated_at": "2026-01-26 22:15:17",
+  "updated_at": "2026-02-08 22:13:17",
   "author": "black"
 }

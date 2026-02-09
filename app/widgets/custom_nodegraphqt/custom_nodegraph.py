@@ -207,6 +207,7 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
     def _on_center(self):
         """功能：将视图中心对准并缩放到选中节点"""
         self.viewer.zoom_to_nodes(self.viewer.selected_nodes())
+        self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_clone(self):
         """功能：快速克隆选中的节点"""

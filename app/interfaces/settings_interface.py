@@ -232,10 +232,21 @@ class SettingInterface(ScrollArea):
         )
         self.parallelNumCard.valueChanged.connect(self.onConfigChanged)
 
+        self.communicationMethodCard = OptionsSettingCard(
+            self.cfg.communication_method,
+            get_icon("运行模式"),
+            self.tr("节点与UI通信方式"),
+            self.tr("控制节点与UI之间通信方式，日志方式是通过节点写日志，主进程读日志来传送消息，ZMQ是通过ZMQ的push和pair机制收发消息"),
+            texts=[self.tr("ZMQ通信"), self.tr("日志通信")],
+            parent=self.canvasGroup
+        )
+        self.communicationMethodCard.optionChanged.connect(self.onConfigChanged)
+
         self.canvasGroup.addSettingCard(self.timeoutToggleCard)
         self.canvasGroup.addSettingCard(self.nodeTimeoutCard)
         self.canvasGroup.addSettingCard(self.runParallelCard)
         self.canvasGroup.addSettingCard(self.parallelNumCard)
+        self.canvasGroup.addSettingCard(self.communicationMethodCard)
 
         self.vBoxLayout.addWidget(self.canvasGroup)
 

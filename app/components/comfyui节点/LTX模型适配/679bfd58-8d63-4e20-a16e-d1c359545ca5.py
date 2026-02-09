@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVAudioVAEDecodeAndSave(BaseComponent):
-    requirements = "torchaudio,torch,numpy,comfy,soundfile"
+    requirements = "torchaudio,torch,#comfy,soundfile"
     name = "LTX2音频解码并保存"
     category = "comfyui节点/LTX模型适配"
     description = "解码音频潜空间并直接保存为本地 .wav 文件。自动处理合并后的 AV 潜空间。"
@@ -31,7 +31,6 @@ class LTXVAudioVAEDecodeAndSave(BaseComponent):
     def run(self, params, inputs):
         import torch
         import os
-        import numpy as np
         import comfy.nested_tensor
 
         latent_data = inputs.get("latent")

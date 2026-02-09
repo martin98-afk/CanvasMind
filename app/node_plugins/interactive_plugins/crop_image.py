@@ -18,6 +18,7 @@ from qfluentwidgets import (
 )
 
 from app.node_plugins.base import InteractivePlugin
+from app.utils.config import Settings
 from app.utils.utils import ssh_send_file
 
 
@@ -347,4 +348,8 @@ class CropImagePlugin(InteractivePlugin):
 
         dialog = CropImageDialog(title, image, node.parent_window)
         if dialog.exec():
-            return dialog.get_result()
+            if Settings.get_instance().communication_method.value == "ZMQ通信":
+                return dialog.get_result()
+            else:
+                on_confirmed(dialog.get_result())
+        return None

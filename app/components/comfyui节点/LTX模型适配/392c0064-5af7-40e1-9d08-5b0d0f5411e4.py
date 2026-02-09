@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVConditioning(BaseComponent):
-    requirements = "node_helpers"
+    requirements = "#node_helpers"
     name = "LTX2帧率条件调节"
     category = "comfyui节点/LTX模型适配"
     description = "设置视频的帧率元数据，影响生成动作的节奏。"

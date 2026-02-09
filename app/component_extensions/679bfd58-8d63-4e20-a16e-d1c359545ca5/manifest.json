@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "解码音频潜空间并直接保存为本地 .wav 文件。自动处理合并后的 AV 潜空间。",
   "category": "comfyui节点/LTX模型适配",
-  "main": "main.py",
-  "updated_at": "2026-01-26 20:06:09",
+  "updated_at": "2026-02-08 22:14:57",
   "author": "black"
 }

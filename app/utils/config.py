@@ -140,7 +140,8 @@ class Settings(QConfig):
     node_run_timeout = RangeConfigItem("CanvasRun", "RunTimeout", 300, RangeValidator(120, 3000))
     run_parallel = ConfigItem("CanvasRun", "RunParallel", True, BoolValidator())
     run_parallel_max_workers = RangeConfigItem("CanvasRun", "RunParallelMaxWorkers", 2, RangeValidator(1, 10))
-
+    communication_method = OptionsConfigItem("CanvasRun", "CommunicationMethod", "ZMQ通信",
+                                         OptionsValidator(["ZMQ通信", "日志通信"]))
     # ========== 画布自动保存设置 ==========
     canvas_auto_save = ConfigItem("CanvasIO", "AutoSave", True, BoolValidator())
     canvas_auto_save_interval = RangeConfigItem("CanvasIO", "AutoSaveInterval", 60, RangeValidator(15, 300))

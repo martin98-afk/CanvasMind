@@ -22,6 +22,7 @@ from app.scan_components import ComponentScanner
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.node_cleanup_script import CLEANUP_CODE
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
+from app.utils.config import Settings
 from app.utils.node_logger import NodeLogHandler
 from app.utils.utils import _safe_load_pickle, kill_proc_tree, serialize_for_json, sftp_download_dir, \
     replace_remote_paths, sftp_upload_dir, get_free_port
@@ -406,11 +407,13 @@ def create_node_class(full_path, file_path, parent_window=None):
             inputs = {k: _evaluate(v) for k, v in inputs_raw.items()}
 
             # === 2. 准备 ZMQ 环境 ===
-            remote_ip = env_data.get('host') if env_data.get('type') == 'ssh' else None
-            self._zmq_pub_port = get_free_port()
-            self._zmq_svc_port = get_free_port()
-            zmq_env_vars = self.setup_zmq_env(self._zmq_pub_port, self._zmq_svc_port, remote_ip)
-
+            if Settings.get_instance().communication_method.value == "ZMQ通信":
+                remote_ip = env_data.get('host') if env_data.get('type') == 'ssh' else None
+                self._zmq_pub_port = get_free_port()
+                self._zmq_svc_port = get_free_port()
+                zmq_env_vars = self.setup_zmq_env(self._zmq_pub_port, self._zmq_svc_port, remote_ip)
+            else:
+                zmq_env_vars = {}
             # === 3. 准备运行文件 ===
             run_id = f"run_{self.persistent_id}"
             run_dir = self.CACHE_PATH / "run_scripts" / run_id

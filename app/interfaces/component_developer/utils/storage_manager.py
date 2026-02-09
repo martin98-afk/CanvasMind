@@ -136,10 +136,10 @@ class ComponentStorageManager:
                 )
                 self._current_component_code = source_code
                 self.parent.code_editor.set_code(source_code)
-            self._current_component_file = Path(source_file)
 
             # ⚠️ 不再调用 _sync_basic_info_to_code（会覆盖代码！）
-            if self._current_component_file:
+            if source_file:
+                self._current_component_file = Path(source_file)
                 self.parent._load_history_list(self._current_component_file)
             else:
                 self.parent.history_table.setRowCount(0)

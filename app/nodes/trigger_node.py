@@ -48,7 +48,7 @@ def create_trigger_node(parent_window):
                 "run_strategy": {
                     "type": PropertyType.CHOICE,
                     "label": "运行策略",
-                    "choices": ["从此处运行", "运行到此处"],
+                    "choices": list(parent_window.run_strategies.keys()),
                     "default": "从此处运行"
                 },
                 "enable_throttle": {"type": PropertyType.BOOL, "label": "启用节流", "default": False},
@@ -162,11 +162,9 @@ def create_trigger_node(parent_window):
 
         def _on_execution_signal_received(self, data, tid):
             self._last_trigger_data = data
-            runner = getattr(self.parent_window, 'canvas_runner', None)
-            if not runner: return
-
-            method = runner.run_from if self.get_property("run_strategy") == "从此处运行" else runner.run_to
-            method(self, triggered_data=data, task_id=tid)
+            strategy = self.get_property("run_strategy")
+            method = parent_window.run_strategies.get(strategy)
+            method(self if strategy != "运行所有节点" else None, triggered_data=data, task_id=tid)
 
         def execute_sync(self, *args, **kwargs):
             self.set_output_value("output", self._last_trigger_data)
