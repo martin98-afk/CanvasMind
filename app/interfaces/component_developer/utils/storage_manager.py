@@ -112,12 +112,15 @@ class ComponentStorageManager:
                     "label": port.label,
                     "type": getattr(port, 'type', ArgumentType.TEXT),
                     "connection": getattr(port, 'connection', ConnectionType.SINGLE),
+                    "description": getattr(port, 'description', ''),
+                    "sub_type": getattr(port, 'sub_type', '')
                 }
                 for port in inputs
             ])
             outputs = getattr(component, 'outputs', [])
             self.parent.output_port_editor.set_ports([
-                {"name": port.name, "label": port.label, "type": getattr(port, 'type', 'text')}
+                {"name": port.name, "label": port.label, "type": getattr(port, 'type', ArgumentType.TEXT),
+                 "description": getattr(port, 'description', ''), "sub_type": getattr(port, 'sub_type', '')}
                 for port in outputs
             ])
             properties = getattr(component, 'properties', {})

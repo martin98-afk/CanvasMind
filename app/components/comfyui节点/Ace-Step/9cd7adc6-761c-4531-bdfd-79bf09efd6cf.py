@@ -21,10 +21,10 @@ class TextEncodeAceAudio(BaseComponent):
     description = "将文本标签和歌词编码为音频生成条件，支持歌词强度调节"
     requirements = "#comfy,torch,#node_helpers"
     inputs = [
-        PortDefinition(name="clip", label="CLIP模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="clip", label="CLIP模型", type=ArgumentType.OBJECT, sub_type="CLIP", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="conditioning", label="生成条件", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning", label="生成条件", type=ArgumentType.OBJECT, sub_type="Conditioning"),
     ]
     properties = {
         "tags": PropertyDefinition(

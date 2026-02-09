@@ -21,10 +21,10 @@ class ConditioningZeroOut(BaseComponent):
     description = "将条件向量的所有值置零，用于生成无条件引导或中和条件影响"
     requirements = "comfy,torch"
     inputs = [
-        PortDefinition(name="conditioning", label="条件向量", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning", label="条件向量", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="conditioning", label="零化条件", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning", label="零化条件", type=ArgumentType.OBJECT, sub_type="Conditioning"),
     ]
     properties = {}
 

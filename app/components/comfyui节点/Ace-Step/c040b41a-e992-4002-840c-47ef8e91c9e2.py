@@ -23,7 +23,7 @@ class Component(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="latent", label="潜空间", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="潜空间", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
         "seconds": PropertyDefinition(
@@ -35,7 +35,7 @@ class Component(BaseComponent):
             type=PropertyType.INT,
             default=1,
             label="批量数",
-            description="The number of latent images in the batch."
+            description="The number of latent images in the batch.",
         ),
     }
     def run(self, params, inputs=None):

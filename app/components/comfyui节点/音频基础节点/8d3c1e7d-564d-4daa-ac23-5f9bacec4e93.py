@@ -23,7 +23,7 @@ class AudioLoad(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT, sub_type="AUDIO"),
     ]
     properties = {
         "file_path": PropertyDefinition(

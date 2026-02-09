@@ -21,14 +21,38 @@ class LTXVScheduler(BaseComponent):
     category = "comfyui节点/LTX模型适配"
     description = "生成 LTX2 优化的时间步序列（Sigmas），支持偏移拉伸。"
     
-    inputs = [PortDefinition(name="latent", label="LATENT(可选)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE, optional=True)]
-    outputs = [PortDefinition(name="sigmas", label="SIGMAS", type=ArgumentType.OBJECT)]
+    inputs = [
+        PortDefinition(name="latent", label="LATENT(可选)", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+    ]
+    outputs = [
+        PortDefinition(name="sigmas", label="SIGMAS", type=ArgumentType.OBJECT, sub_type="SIGMAS"),
+    ]
     properties = {
-        "steps": PropertyDefinition(type=PropertyType.INT, default=20, label="步数"),
-        "max_shift": PropertyDefinition(type=PropertyType.FLOAT, default=2.05, label="Max Shift"),
-        "base_shift": PropertyDefinition(type=PropertyType.FLOAT, default=0.95, label="Base Shift"),
-        "stretch": PropertyDefinition(type=PropertyType.BOOL, default=True, label="拉伸(Stretch)"),
-        "terminal": PropertyDefinition(type=PropertyType.FLOAT, default=0.1, label="终端值"),
+        "steps": PropertyDefinition(
+            type=PropertyType.INT,
+            default=20,
+            label="步数",
+        ),
+        "max_shift": PropertyDefinition(
+            type=PropertyType.FLOAT,
+            default=2.05,
+            label="Max Shift",
+        ),
+        "base_shift": PropertyDefinition(
+            type=PropertyType.FLOAT,
+            default=0.95,
+            label="Base Shift",
+        ),
+        "stretch": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=True,
+            label="拉伸(Stretch)",
+        ),
+        "terminal": PropertyDefinition(
+            type=PropertyType.FLOAT,
+            default=0.1,
+            label="终端值",
+        ),
     }
 
     def run(self, params, inputs):

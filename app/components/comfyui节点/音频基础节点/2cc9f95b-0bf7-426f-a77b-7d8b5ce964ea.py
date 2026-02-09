@@ -21,7 +21,7 @@ class AudioSave(BaseComponent):
     description = "将音频对象保存为指定格式的音频文件（支持wav/flac/mp3/opus）"
     requirements = "torchaudio,torch,torchcodec,soundfile"
     inputs = [
-        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT, sub_type="AUDIO", connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="file_paths", label="保存路径列表", type=ArgumentType.JSON),

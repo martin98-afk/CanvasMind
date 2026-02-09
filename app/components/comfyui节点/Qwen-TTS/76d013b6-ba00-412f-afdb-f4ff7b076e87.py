@@ -22,7 +22,7 @@ class Qwen3TTSVoiceClone(BaseComponent):
     requirements = "mediapipe>=0.10.31,modelscope,numpy,tf-keras>=2.18,torch,transparent-background>=1.3.4,scipy,librosa"
 
     inputs = [
-        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, sub_type="QWEN3_TTS_MODEL", connection=ConnectionType.SINGLE),
         PortDefinition(name="ref_audio", label="参考音频文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
 
@@ -31,18 +31,42 @@ class Qwen3TTSVoiceClone(BaseComponent):
     ]
 
     properties = {
-        "text": PropertyDefinition(type=PropertyType.MULTILINE, default="你好，我是被克隆出来的声音。", label="目标生成文本"),
-        "ref_text": PropertyDefinition(type=PropertyType.MULTILINE, default="", label="参考音频文本(强烈建议填写)"),
+        "text": PropertyDefinition(
+            type=PropertyType.MULTILINE,
+            default="你好，我是被克隆出来的声音。",
+            label="目标生成文本",
+        ),
+        "ref_text": PropertyDefinition(
+            type=PropertyType.MULTILINE,
+            default="",
+            label="参考音频文本(强烈建议填写)",
+        ),
         "language": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="auto",
             label="语言",
             choices=["auto", "Chinese", "English", "Japanese", "Korean", "German", "French", "Russian", "Portuguese", "Spanish", "Italian"]
         ),
-        "temperature": PropertyDefinition(type=PropertyType.FLOAT, default=1.0, label="采样温度(0.1-2.0)"),
-        "top_p": PropertyDefinition(type=PropertyType.FLOAT, default=0.8, label="Top P"),
-        "seed": PropertyDefinition(type=PropertyType.INT, default=0, label="随机种子"),
-        "max_tokens": PropertyDefinition(type=PropertyType.INT, default=2048, label="最大Token数"),
+        "temperature": PropertyDefinition(
+            type=PropertyType.FLOAT,
+            default=1.0,
+            label="采样温度(0.1-2.0)",
+        ),
+        "top_p": PropertyDefinition(
+            type=PropertyType.FLOAT,
+            default=0.8,
+            label="Top P",
+        ),
+        "seed": PropertyDefinition(
+            type=PropertyType.INT,
+            default=0,
+            label="随机种子",
+        ),
+        "max_tokens": PropertyDefinition(
+            type=PropertyType.INT,
+            default=2048,
+            label="最大Token数",
+        ),
     }
 
     def _load_audio_safe(self, audio_input):

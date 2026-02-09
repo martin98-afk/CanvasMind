@@ -21,11 +21,11 @@ class Component(BaseComponent):
     description = "修改模型采样器，在CFG过程中自动应用Reinhard色调映射，提升生成稳定性"
     requirements = "numpy"
     inputs = [
-        PortDefinition(name="model", label="基础模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent_operation", label="潜空间操作", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="基础模型", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent_operation", label="潜空间操作", type=ArgumentType.OBJECT, sub_type="OPERATION", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="model", label="增强模型", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="增强模型", type=ArgumentType.OBJECT, sub_type="MODEL"),
     ]
     properties = {
     }

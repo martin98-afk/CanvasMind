@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "加载 Qwen3-TTS 模型，支持指定本地路径或使用标准目录下的模型",
   "category": "comfyui节点/Qwen-TTS",
-  "updated_at": "2026-02-03 22:09:48",
+  "updated_at": "2026-02-10 01:05:50",
   "author": "black"
 }

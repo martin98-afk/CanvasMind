@@ -21,11 +21,11 @@ class VAEEncodeAudio(BaseComponent):
     description = "将音频波形编码为潜空间表示，自动重采样至44100Hz"
     requirements = "torch,torchaudio"
     inputs = [
-        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="音频VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT, sub_type="AUDIO", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="音频VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="编码潜空间", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="编码潜空间", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {}
 

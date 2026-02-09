@@ -22,12 +22,12 @@ class ComfyVAEEncodeForInpaint(BaseComponent):
     description = "用于局部重绘的 VAE 编码，处理 Mask 边缘"
 
     inputs = [
-        PortDefinition(name="pixels", label="图像(IMAGE)", type=ArgumentType.OBJECT),
-        PortDefinition(name="mask", label="遮罩(MASK)", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="pixels", label="图像(IMAGE)", type=ArgumentType.OBJECT, sub_type="IMAGE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="mask", label="遮罩(MASK)", type=ArgumentType.OBJECT, sub_type="MASK", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     properties = {

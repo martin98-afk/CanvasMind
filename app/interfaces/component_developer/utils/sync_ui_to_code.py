@@ -107,8 +107,8 @@ class SyncUItoCode(QObject):
         # 2. sub_type (当类型为 OBJECT 或明确指定了 sub_type 时)
         # 即使不是 OBJECT，如果用户设置了 sub_type，同步进去也无妨，或者你可以加判断:
         # if port["type"] == ArgumentType.OBJECT and port.get("sub_type"):
-        if port.get("sub_type"):
-            args.append(f'sub_type="{port["sub_type"]}"')
+        if port["type"] == ArgumentType.OBJECT:
+            args.append(f'sub_type="{port.get("sub_type", "")}"')
 
         # 3. connection (仅 Input 有效)
         if is_input:

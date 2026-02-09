@@ -15,23 +15,6 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-# -*- coding: utf-8 -*-
-import importlib.util
-from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
-spec = importlib.util.spec_from_file_location("base", str(base_path))
-base_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base_module)
-
-# 导入所需项目
-BaseComponent = base_module.BaseComponent
-PortDefinition = base_module.PortDefinition
-PropertyDefinition = base_module.PropertyDefinition
-PropertyType = base_module.PropertyType
-ArgumentType = base_module.ArgumentType
-ConnectionType = base_module.ConnectionType
-
-
 class ComfyLoraLoader(BaseComponent):
     requirements = "torch,#comfy,#nodes,folder_paths"
     name = "Lora加载器"
@@ -39,12 +22,12 @@ class ComfyLoraLoader(BaseComponent):
     description = "加载 Lora 并应用到 Model 和 CLIP"
 
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL"),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
     ]
 
     properties = {
@@ -82,7 +65,6 @@ class ComfyLoraLoader(BaseComponent):
         self.ensure_comfy_exist()
         import os
         import comfy
-        import nodes
         import folder_paths
         
         model = inputs.get("model")

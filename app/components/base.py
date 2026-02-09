@@ -1197,9 +1197,17 @@ class BaseComponent(ABC):
         return [(port.name, port.label, port.connection, port.type, port.description) for port in cls.inputs]
 
     @classmethod
+    def get_input_sub_types(cls):
+        return [port.sub_type for port in cls.inputs]
+
+    @classmethod
     def get_outputs(cls) -> List[Tuple[str, str, ArgumentType]]:
         """返回输出端口定义：[('port_name', 'Port Label')]"""
         return [(port.name, port.label, port.type, port.description) for port in cls.outputs]
+
+    @classmethod
+    def get_output_sub_types(cls):
+        return [port.sub_type for port in cls.outputs]
 
     @classmethod
     def get_output_type(cls):

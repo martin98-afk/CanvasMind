@@ -21,13 +21,13 @@ class KSampler(BaseComponent):
     description = "使用指定模型和条件对潜空间进行降噪采样，生成最终图像潜变量"
     requirements = "comfy,torch,latent_preview"
     inputs = [
-        PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT),
-        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT),
-        PortDefinition(name="latent_image", label="输入潜空间", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent_image", label="输入潜空间", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="输出潜空间", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="输出潜空间", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
         "seed": PropertyDefinition(

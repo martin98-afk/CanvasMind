@@ -16,13 +16,14 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyCLIPLoader(BaseComponent):
+    inputs = []
     name = "CLIP加载器"
     category = "comfyui节点/模型加载器"
     description = "加载 CLIP 文本编码器，支持 SD1.5/SDXL/SD3/Flux/LTX 等多种架构"
     requirements = "comfyui,torch,comfy,folder_paths"
 
     outputs = [
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
     ]
 
     properties = {

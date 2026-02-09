@@ -22,14 +22,14 @@ class ComfyWanVideoSamplerAdvanced(BaseComponent):
     description = "高级K采样器，支持精确步数控制(Start/End Step)和噪声注入控制，适用于图生视频或多重采样工作流。"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="视频画布(Latent)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="视频画布(Latent)", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="first_frame_image", label="首帧预览图", type=ArgumentType.IMAGE),
     ]
     
@@ -38,21 +38,19 @@ class ComfyWanVideoSamplerAdvanced(BaseComponent):
             type=PropertyType.CHOICE,
             default="enable",
             label="注入噪声",
-            choices=["enable", "disable"],
-            description="disable用于重绘或二次采样时不破坏原有画面结构"
+            description="disable用于重绘或二次采样时不破坏原有画面结构",
+            choices=["enable", "disable"]
         ),
         "seed": PropertyDefinition(
             type=PropertyType.INT,
             default=-1,
             label="噪声种子",
-            description="-1 为随机种子"
+            description="-1 为随机种子",
         ),
         "steps": PropertyDefinition(
             type=PropertyType.INT,
             default=30,
             label="总步数",
-            min=1,
-            max=10000
         ),
         "cfg": PropertyDefinition(
             type=PropertyType.RANGE,
@@ -78,24 +76,20 @@ class ComfyWanVideoSamplerAdvanced(BaseComponent):
             type=PropertyType.INT,
             default=0,
             label="开始步数",
-            min=0,
-            max=10000,
-            description="从第几步开始采样（用于跳过初始加噪阶段）"
+            description="从第几步开始采样（用于跳过初始加噪阶段）",
         ),
         "end_at_step": PropertyDefinition(
             type=PropertyType.INT,
             default=10000,
             label="结束步数",
-            min=0,
-            max=10000,
-            description="在第几步停止（通常大于等于总步数表示跑完）"
+            description="在第几步停止（通常大于等于总步数表示跑完）",
         ),
         "return_with_leftover_noise": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="disable",
             label="保留剩余噪声",
-            choices=["disable", "enable"],
-            description="enable表示不进行最后一步去噪，用于将输出传递给下一个采样器"
+            description="enable表示不进行最后一步去噪，用于将输出传递给下一个采样器",
+            choices=["disable", "enable"]
         ),
         "preview_step": PropertyDefinition(
             type=PropertyType.INT,

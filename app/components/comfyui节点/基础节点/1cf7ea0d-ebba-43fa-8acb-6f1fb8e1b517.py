@@ -22,12 +22,12 @@ class ComfyUniversalVideoEncode(BaseComponent):
     requirements = "torch,numpy,Pillow"
     
     inputs = [
-        PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
-        PortDefinition(name="reference_latent", label="参考画布", type=ArgumentType.OBJECT), # 连空潜空间节点
+        PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="reference_latent", label="参考画布", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     properties = {

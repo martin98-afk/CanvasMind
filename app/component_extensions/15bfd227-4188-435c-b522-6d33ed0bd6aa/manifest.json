@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "直接从本地 nodes 模块加载 SAM3 模型",
   "category": "comfyui节点/SAM3模型",
-  "updated_at": "2026-02-08 16:19:08",
+  "updated_at": "2026-02-10 01:00:57",
   "author": "black"
 }

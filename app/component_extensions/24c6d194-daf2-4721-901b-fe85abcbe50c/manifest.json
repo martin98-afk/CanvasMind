@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "ComfyUI 采样器封装，支持实时发送 Latent 预览图",
   "category": "comfyui节点/基础节点",
-  "updated_at": "2026-02-09 20:42:32",
+  "updated_at": "2026-02-10 00:33:17",
   "author": "black"
 }

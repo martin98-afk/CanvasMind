@@ -22,23 +22,39 @@ class ComfyWanImageToVideo(BaseComponent):
     description = "为 Wan (2.0/2.1) 模型准备图生视频条件。自动补齐 Latent 时间轴并生成对应掩码。"
 
     inputs = [
-        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="start_latent", label="起始 Latent", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="clip_vision_output", label="视觉特征", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="start_latent", label="起始 Latent", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="clip_vision_output", label="视觉特征", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
 
     outputs = [
-        PortDefinition(name="positive", label="正向条件(注入后)", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向条件(注入后)", type=ArgumentType.OBJECT),
-        PortDefinition(name="latent", label="Latent (用于采样)", type=ArgumentType.OBJECT),
+        PortDefinition(name="positive", label="正向条件(注入后)", type=ArgumentType.OBJECT, sub_type="Conditioning"),
+        PortDefinition(name="negative", label="负向条件(注入后)", type=ArgumentType.OBJECT, sub_type="Conditioning"),
+        PortDefinition(name="latent", label="Latent (用于采样)", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     properties = {
-        "widt": PropertyDefinition(type=PropertyType.INT, default=832, label="输出宽度"),
-        "heigh": PropertyDefinition(type=PropertyType.INT, default=480, label="输出高度"),
-        "length": PropertyDefinition(type=PropertyType.INT, default=81, label="总帧数"),
-        "batch_size": PropertyDefinition(type=PropertyType.INT, default=1, label="批次大小"),
+        "widt": PropertyDefinition(
+            type=PropertyType.INT,
+            default=832,
+            label="输出宽度",
+        ),
+        "heigh": PropertyDefinition(
+            type=PropertyType.INT,
+            default=480,
+            label="输出高度",
+        ),
+        "length": PropertyDefinition(
+            type=PropertyType.INT,
+            default=81,
+            label="总帧数",
+        ),
+        "batch_size": PropertyDefinition(
+            type=PropertyType.INT,
+            default=1,
+            label="批次大小",
+        ),
     }
 
     def ensure_comfy_exist(self):

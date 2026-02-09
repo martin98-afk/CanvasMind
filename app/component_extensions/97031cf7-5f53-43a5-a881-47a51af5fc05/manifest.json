@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "生成 LTX2 优化的时间步序列（Sigmas），支持偏移拉伸。",
   "category": "comfyui节点/LTX模型适配",
-  "updated_at": "2026-02-05 08:58:28",
+  "updated_at": "2026-02-10 00:59:43",
   "author": "mading"
 }

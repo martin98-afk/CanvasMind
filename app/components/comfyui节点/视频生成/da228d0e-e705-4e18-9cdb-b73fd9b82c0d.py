@@ -21,9 +21,10 @@ class ComfyWan21VideoLatent(BaseComponent):
     description = "生成适用于 Wan 2.1 的 16通道、8倍压缩的 5D 视频潜空间"
     requirements = "torch,numpy"
 
-    inputs = []
+    inputs = [
+    ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     properties = {

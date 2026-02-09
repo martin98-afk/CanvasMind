@@ -26,8 +26,8 @@ class ComfyLoadImage(BaseComponent):
     ]
     
     outputs = [
-        PortDefinition(name="image", label="IMAGE", type=ArgumentType.OBJECT),
-        PortDefinition(name="mask", label="MASK", type=ArgumentType.OBJECT),
+        PortDefinition(name="image", label="IMAGE", type=ArgumentType.OBJECT, sub_type="IMAGE"),
+        PortDefinition(name="mask", label="MASK", type=ArgumentType.OBJECT, sub_type="MASK"),
     ]
 
     properties = {

@@ -22,22 +22,35 @@ class ComfyLatentUpscale(BaseComponent):
     description = "直接缩放 Latent 尺寸 (常用于 Hires Fix)"
 
     inputs = [
-        PortDefinition(name="samples", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="samples", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     properties = {
         "upscale_method": PropertyDefinition(
-            type=PropertyType.CHOICE, 
-            default="nearest-exact", 
+            type=PropertyType.CHOICE,
+            default="nearest-exact",
             label="缩放算法",
             choices=["nearest-exact", "bilinear", "area", "bicubic", "bislerp"]
         ),
-        "widt": PropertyDefinition(type=PropertyType.INT, default=1024, label="目标宽度", step=8),
-        "heigh": PropertyDefinition(type=PropertyType.INT, default=1024, label="目标高度", step=8),
-        "crop": PropertyDefinition(type=PropertyType.CHOICE, default="disabled", label="裁剪方式", choices=["disabled", "center"]),
+        "widt": PropertyDefinition(
+            type=PropertyType.INT,
+            default=1024,
+            label="目标宽度",
+        ),
+        "heigh": PropertyDefinition(
+            type=PropertyType.INT,
+            default=1024,
+            label="目标高度",
+        ),
+        "crop": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="disabled",
+            label="裁剪方式",
+            choices=["disabled", "center"]
+        ),
     }
 
     def ensure_comfy_exist(self):

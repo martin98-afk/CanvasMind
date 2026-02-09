@@ -23,7 +23,7 @@ class Component(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="latent_operation", label="潜空间操作", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent_operation", label="潜空间操作", type=ArgumentType.OBJECT, sub_type="OPERATION"),
     ]
     properties = {
         "multiplier": PropertyDefinition(

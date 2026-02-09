@@ -21,10 +21,10 @@ class AudioTrim(BaseComponent):
     description = "按起始时间和时长裁剪音频片段，支持负数起始时间（从末尾倒数）"
     requirements = "torch"
     inputs = [
-        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio", label="音频对象", type=ArgumentType.OBJECT, sub_type="AUDIO", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="audio", label="裁剪后音频", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio", label="裁剪后音频", type=ArgumentType.OBJECT, sub_type="AUDIO"),
     ]
     properties = {
         "start_seconds": PropertyDefinition(
