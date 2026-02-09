@@ -7,6 +7,7 @@ import uuid
 from qfluentwidgets import (MessageBoxBase, SubtitleLabel, BodyLabel, ComboBox, CheckBox, DoubleSpinBox, SpinBox,
                             TextEdit)
 
+from app.utils.config import Settings
 from app.node_plugins.base import InteractivePlugin
 from app.utils.utils import ssh_send_file
 
@@ -136,6 +137,8 @@ class AskPlugin(InteractivePlugin):
         dialog.cancelButton.hide()
 
         if dialog.exec():
-            # 用户点击了“确认”
-            result_data = dialog.get_result()
-            return result_data
+            if Settings.get_instance().communication_method.value == "ZMQ通信":
+                return dialog.get_result()
+            else:
+                on_confirmed(dialog.get_result())
+        return None

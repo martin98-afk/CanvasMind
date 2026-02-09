@@ -99,7 +99,9 @@ class CanvasSettingPopup(QWidget):
                               parent=group),
             RangeSettingCard(self.cfg.node_run_timeout, get_icon("运行模式"), "超时时间", parent=group),
             SwitchSettingCard(get_icon("运行模式"), "启用并行运行", configItem=self.cfg.run_parallel, parent=group),
-            RangeSettingCard(self.cfg.run_parallel_max_workers, get_icon("运行模式"), "并行度", parent=group)
+            RangeSettingCard(self.cfg.run_parallel_max_workers, get_icon("运行模式"), "并行度", parent=group),
+            OptionsSettingCard(self.cfg.communication_method, get_icon("运行模式"), "通信方式",
+                               texts=["ZMQ通信", "日志通信"], parent=group)
         ]
         for card in cards:
             group.addSettingCard(card)

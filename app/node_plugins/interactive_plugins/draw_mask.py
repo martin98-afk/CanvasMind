@@ -18,6 +18,7 @@ from loguru import logger
 from qfluentwidgets import ToolButton, Slider, FluentIcon, StrongBodyLabel, \
     PrimaryPushButton
 
+from app.utils.config import Settings
 from app.node_plugins.base import InteractivePlugin
 from app.utils.utils import get_icon, ssh_send_file
 
@@ -489,4 +490,8 @@ class DrawMaskPlugin(InteractivePlugin):
 
         dialog = MaskDrawDialog(title, image, node.parent_window)
         if dialog.exec():
-            return dialog.get_result()
+            if Settings.get_instance().communication_method.value == "ZMQ通信":
+                return dialog.get_result()
+            else:
+                on_confirmed(dialog.get_result())
+        return None

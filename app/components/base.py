@@ -745,7 +745,6 @@ class DataHandler:
                         search_candidates.append(base_path / input_value)
                     except:
                         pass
-
                 # 执行查找
                 for candidate in search_candidates:
                     if candidate.exists():
@@ -1391,12 +1390,13 @@ class BaseComponent(ABC):
 
         pub_sock, _ = self._get_zmq_sockets()
         if not pub_sock:
-            return
-        final_msg = {
-            "type": "stream_data",
-            "payload": msg.dict()
-        }
-        pub_sock.send_string(json.dumps(final_msg))
+            print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
+        else:
+            final_msg = {
+                "type": "stream_data",
+                "payload": msg.dict()
+            }
+            pub_sock.send_string(json.dumps(final_msg))
 
     def emit_interactive_message(
             self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}) -> Any:
@@ -1408,40 +1408,99 @@ class BaseComponent(ABC):
         """
         _, svc_sock = self._get_zmq_sockets()
         if not svc_sock:
-            return
-        # === ZMQ 交互模式 ===
-        req_id = str(uuid.uuid4())
-        self.logger.info(f"等待人工干预 [ZMQ ID: {req_id}]...")
-        msg = ComponentMessage(
-            method=method,
-            params=params,
-            extra=extra
-        )
-        # 构造请求，匹配 UI 端 NodeZmqTransceiver 的期望格式
-        # UI 端逻辑：msg.get("type") == "intervention_request" -> emit(payload)
-        req_msg = {
-            "type": "intervention_request",
-            "req_id": req_id,
-            "payload": msg.dict()  # 直接将业务参数作为 payload 发送给 UI 弹窗
-        }
+            # 日志通信方式
+            request_id = str(uuid.uuid4())
+            # 1. 确保目录存在 (由节点侧保证，防止 UI 还没来得及创建)
+            run_dir = Path(".").resolve() / "jrpc_response" / self.node_id
+            run_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            # 1. 发送请求
-            svc_sock.send_string(json.dumps(req_msg))
+            response_path = run_dir / f"response_{request_id}.pkl"
 
-            # 2. 阻塞等待回复
-            # 使用 poll 轮询防止死锁，虽然 PAIR 是 1-to-1，但加个超时机制更安全（此处设为无限循环但可被中断）
-            while True:
-                if svc_sock.poll(500):  # 0.5秒轮询一次
-                    resp_bytes = svc_sock.recv()
-                    resp = json.loads(resp_bytes)
-                    # 校验响应类型
-                    if resp.get("type") == "intervention_response":
-                        self.logger.info(f"收到人工干预响应")
-                        return resp.get("payload")
-                # 可以在此处添加检查外部中断信号的逻辑
-        except Exception as e:
-            raise ComponentError(f"ZMQ 人工干预通信失败: {e}")
+            # 2. 准备发送给 UI 的指令
+            emit_messages = {
+                "request_id": request_id,
+                "response_file": str(response_path),
+            }
+            emit_messages.update(params)
+
+            # 通过日志流发送信号
+            self.emit_message(method, emit_messages, level=level, extra=extra)
+            self.logger.info(f"等待人工干预 [ID: {request_id}]...")
+
+            # 3. 优化轮询逻辑
+            start_wait = time.time()
+            timeout = 3600  # 1小时超时
+
+            # 初始轮询间隔设短一点（如0.1s），让 UI 自动跳过确认时极快响应后期进入稳定等待状态
+            check_interval = 0.1
+
+            data = None
+            try:
+                while True:
+                    # A. 检查超时
+                    if time.time() - start_wait > timeout:
+                        raise ComponentError(f"人工干预超时 ({timeout} 秒)")
+
+                    # B. 检查文件是否存在
+                    if response_path.exists():
+                        # 稍微给一点点时间（或通过重试逻辑）确保主进程文件已经写完并关闭
+                        # 在 Windows 上，如果主进程还在写，open 会报错
+                        try:
+                            # 使用 rb 模式读取
+                            with open(response_path, 'rb') as f:
+                                data = pickle.load(f)
+                            break  # 读取成功，跳出循环
+                        except (EOFError, pickle.UnpicklingError, PermissionError):
+                            # 如果文件正在写入，可能会报 EOF 或权限错误，等待下一轮重试
+                            time.sleep(0.05)
+                            continue
+                    # D. 动态调整轮询频率：前 5 秒 0.1s 检查一次，之后 0.5s 检查一次
+                    if time.time() - start_wait > 5:
+                        check_interval = 0.5
+
+                    time.sleep(check_interval)
+                return data
+            finally:
+                # 4. 无论成功失败，确保清理掉自己的这个临时文件，保持 jrpc_response 目录干净
+                if response_path.exists():
+                    try:
+                        os.remove(response_path)
+                    except:
+                        pass
+        else:
+            # === ZMQ 交互模式 ===
+            req_id = str(uuid.uuid4())
+            self.logger.info(f"等待人工干预 [ZMQ ID: {req_id}]...")
+            msg = ComponentMessage(
+                method=method,
+                params=params,
+                extra=extra
+            )
+            # 构造请求，匹配 UI 端 NodeZmqTransceiver 的期望格式
+            # UI 端逻辑：msg.get("type") == "intervention_request" -> emit(payload)
+            req_msg = {
+                "type": "intervention_request",
+                "req_id": req_id,
+                "payload": msg.dict()  # 直接将业务参数作为 payload 发送给 UI 弹窗
+            }
+
+            try:
+                # 1. 发送请求
+                svc_sock.send_string(json.dumps(req_msg))
+
+                # 2. 阻塞等待回复
+                # 使用 poll 轮询防止死锁，虽然 PAIR 是 1-to-1，但加个超时机制更安全（此处设为无限循环但可被中断）
+                while True:
+                    if svc_sock.poll(500):  # 0.5秒轮询一次
+                        resp_bytes = svc_sock.recv()
+                        resp = json.loads(resp_bytes)
+                        # 校验响应类型
+                        if resp.get("type") == "intervention_response":
+                            self.logger.info(f"收到人工干预响应")
+                            return resp.get("payload")
+                    # 可以在此处添加检查外部中断信号的逻辑
+            except Exception as e:
+                raise ComponentError(f"ZMQ 人工干预通信失败: {e}")
 
     # ---------------- 变量解析逻辑 ----------------
     def _resolve_value(self, key, value: Any, prop_type: PropertyType) -> Any:
