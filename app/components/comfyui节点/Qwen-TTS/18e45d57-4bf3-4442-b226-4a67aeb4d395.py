@@ -23,7 +23,7 @@ class Qwen3TTSVoiceDesign(BaseComponent):
     requirements = "mediapipe>=0.10.31,modelscope,numpy,tf-keras>=2.18,torch,transparent-background>=1.3.4,scipy"
     
     inputs = [
-        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, sub_type="QWEN3_TTS_MODEL", connection=ConnectionType.SINGLE),
     ]
 
     # 建议将后缀改为 .wav 以保证文件头与内容匹配，兼容性最好

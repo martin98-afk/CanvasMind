@@ -22,14 +22,14 @@ class ComfyWanVideoSampler(BaseComponent):
     description = "专为 Wan 优化的视频采样器，支持首尾帧 Latent 注入和实时单帧预览"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="视频画布(空Latent)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="视频画布(空Latent)", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="first_frame_image", label="首帧预览图", type=ArgumentType.IMAGE),
     ]
     

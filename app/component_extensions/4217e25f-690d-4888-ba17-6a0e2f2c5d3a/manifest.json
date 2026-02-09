@@ -1,11 +1,11 @@
 {
   "id": "com.canvasmind.4217e25f-690d-4888-ba17-6a0e2f2c5d3a",
   "uuid": "4217e25f-690d-4888-ba17-6a0e2f2c5d3a",
-  "name": "Wan首尾帧视频控制",
+  "name": "Wan视频遮罩生成器",
   "version": "1.0.0",
   "api_version": "2.0",
-  "description": "Wan 视频生成专用组件，支持指定首帧(Start Image)和尾帧(End Image)来控制视频生成内容，同时注入 CLIP Vision 特征。",
+  "description": "为视频Latent生成时空遮罩，用于保护首尾帧不被重绘(图生视频必备)",
   "category": "comfyui节点/视频生成",
-  "updated_at": "2026-01-30 23:44:06",
+  "updated_at": "2026-02-10 01:10:11",
   "author": "black"
 }

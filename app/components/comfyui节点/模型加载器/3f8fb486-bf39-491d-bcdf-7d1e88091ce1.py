@@ -19,7 +19,7 @@ class ComfySD3CLIPLoader(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
     ]
     description = ""
     requirements = "comfy"

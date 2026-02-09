@@ -16,13 +16,14 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyEmptyLatent(BaseComponent):
+    inputs = []
     description = ""
     requirements = "torch,#nodes"
     name = "图像空潜空间生成"
     category = "comfyui节点/潜空间处理"
     
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     
     properties = {

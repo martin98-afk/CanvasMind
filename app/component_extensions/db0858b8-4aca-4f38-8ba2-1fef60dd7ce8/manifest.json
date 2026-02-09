@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "加载 CLIP 文本编码器，支持 SD1.5/SDXL/SD3/Flux/LTX 等多种架构",
   "category": "comfyui节点/模型加载器",
-  "updated_at": "2026-01-31 11:01:49",
+  "updated_at": "2026-02-10 01:01:57",
   "author": "black"
 }

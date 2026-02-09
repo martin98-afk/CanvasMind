@@ -10,12 +10,12 @@ import traceback
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, Dict, Type, Optional, List
+from typing import Tuple, Dict, Type, Optional, List, Counter
 
 from PyQt5.QtCore import QTimer
 from loguru import logger
 
-from app.components.base import COMPONENT_IMPORT_CODE
+from app.components.base import COMPONENT_IMPORT_CODE, ArgumentType
 from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 
 try:
@@ -143,6 +143,12 @@ class ComponentScanner:
     _pending_changes: List[Tuple[Change, Path]] = list()  # 暂存待处理的变更
     _lock = threading.Lock()  # 保护 pending_changes
     _main_loop: Optional[asyncio.AbstractEventLoop] = None
+    # ✅ 新增：引用计数器
+    _subtype_counter: Counter = Counter()
+    # ✅ 新增：文件到类型的反向映射 {file_path_str: [sub_type1, sub_type2]}
+    _file_subtypes_map: Dict[str, List[str]] = {}
+    # ✅ 缓存最终列表，避免每次 get 都 keys()
+    _cached_subtype_list: List[str] = []
     _callbacks = []  # 存储外部注册的回调函数
     _qtimers = []
 
@@ -307,7 +313,7 @@ class ComponentScanner:
     def _remove_component_from_cache(self, py_file: Path, comp_map: Dict, file_map: Dict):
         """精准清理缓存，不再产生误伤"""
         resolved_path = py_file.resolve()
-
+        self._update_subtype_stats(resolved_path, is_delete=True)
         # 1. 清理 file_map 和 comp_map
         keys_to_remove = [k for k, v in file_map.items() if v.resolve() == resolved_path]
         for k in keys_to_remove:
@@ -427,6 +433,7 @@ class ComponentScanner:
         if comp_cls is None:
             raise ValueError(f"文件 {py_file.name} 中未找到有效组件类（缺少 category 属性）")
 
+        self._update_subtype_stats(py_file, comp_cls=comp_cls)
         # 3. 【核心优化】处理 UUID 冲突但 Category 不同的情况
         current_uuid = py_file.stem
         current_category = getattr(comp_cls, 'category', 'Default')
@@ -493,3 +500,55 @@ class ComponentScanner:
         self._uuid_map[current_uuid] = comp_cls
 
         return comp_cls
+
+    def _update_subtype_stats(self, file_path: Path, comp_cls: Type = None, is_delete: bool = False):
+        """
+        增量更新子类型统计
+        :param file_path: 组件文件路径
+        :param comp_cls: 新加载的组件类（如果是删除操作则为 None）
+        :param is_delete: 是否是删除操作
+        """
+        path_key = str(file_path.resolve())
+
+        # 1. 清理旧数据（如果是修改或删除）
+        # 如果这个文件之前已经记录过类型，先从全局计数器中减去
+        if path_key in self._file_subtypes_map:
+            old_types = self._file_subtypes_map[path_key]
+            self._subtype_counter.subtract(old_types)
+            # 清理计数 <= 0 的项（保持 Counter 干净，虽然不清理也不影响逻辑，但为了内存）
+            # 注意：Counter 的 subtract 可能导致 0 或 负数
+            del self._file_subtypes_map[path_key]
+
+        # 如果纯粹是删除操作，处理完旧数据就结束
+        if is_delete or comp_cls is None:
+            self._refresh_cached_list()
+            return
+
+        # 2. 添加新数据
+        new_types = set()
+
+        # 扫描 Inputs
+        for port in getattr(comp_cls, 'inputs', []):
+            if getattr(port, 'type', None) == ArgumentType.OBJECT:
+                st = getattr(port, 'sub_type', None)
+                if st:
+                    new_types.add(st)
+
+        # 扫描 Outputs
+        for port in getattr(comp_cls, 'outputs', []):
+            if getattr(port, 'type', None) == ArgumentType.OBJECT:
+                st = getattr(port, 'sub_type', None)
+                if st:
+                    new_types.add(st)
+
+        if new_types:
+            type_list = list(new_types)
+            self._file_subtypes_map[path_key] = type_list
+            self._subtype_counter.update(type_list)
+
+        self._refresh_cached_list()
+
+    def _refresh_cached_list(self):
+        """更新对外提供的缓存列表（仅保留计数 > 0 的类型）"""
+        # +Counter() 会自动移除 0 和负数，但这里为了性能直接列表推导
+        self._cached_subtype_list = sorted([k for k, v in self._subtype_counter.items() if v > 0])

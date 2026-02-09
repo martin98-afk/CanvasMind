@@ -22,14 +22,14 @@ class ComfyKSamplerWithPreview(BaseComponent):
     description = "ComfyUI 采样器封装，支持实时发送 Latent 预览图"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT), # 预览必须用到 VAE
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="image", label="最终图像", type=ArgumentType.IMAGE),
     ]
     

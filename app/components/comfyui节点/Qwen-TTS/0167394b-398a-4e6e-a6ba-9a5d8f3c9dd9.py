@@ -22,7 +22,7 @@ class Qwen3TTSCustomVoice(BaseComponent):
     requirements = "mediapipe>=0.10.31,modelscope,numpy,tf-keras>=2.18,torch,transparent-background>=1.3.4,scipy"
 
     inputs = [
-        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, sub_type="QWEN3_TTS_MODEL", connection=ConnectionType.SINGLE),
     ]
 
     outputs = [

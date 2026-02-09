@@ -22,12 +22,12 @@ class LTXVImageToVideoConditioner(BaseComponent):
     description = "将参考图注入到潜空间的首帧，并生成噪声掩码。"
     
     inputs = [
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="image", label="参考图像", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="画布LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="image", label="参考图像", type=ArgumentType.OBJECT, sub_type="IMAGE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="画布LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="已注入LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="已注入LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
         "strength": PropertyDefinition(

@@ -22,8 +22,8 @@ class Qwen3TTSDialogueInference(BaseComponent):
     requirements = "numpy,torch,scipy"
 
     inputs = [
-        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="role_bank", label="角色库(RoleBank)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="输入模型", type=ArgumentType.OBJECT, sub_type="QWEN3_TTS_MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="role_bank", label="角色库(RoleBank)", type=ArgumentType.OBJECT, sub_type="", connection=ConnectionType.SINGLE),
     ]
 
     outputs = [

@@ -16,13 +16,14 @@ ConnectionType = base_module.ConnectionType
 
 
 class Qwen3TTSModelLoader(BaseComponent):
+    inputs = []
     name = "Qwen3 TTS 模型加载"
     category = "comfyui节点/Qwen-TTS"
     description = "加载 Qwen3-TTS 模型，支持指定本地路径或使用标准目录下的模型"
     requirements = "# _qwen_tts_haigc,# comfy_qwen_tts,# folder_paths,librosa,mediapipe>=0.10.31,modelscope,onnxruntime,sox,tf-keras>=2.18,torch,torchaudio,transformers==4.57.3,transparent-background>=1.3.4"
 
     outputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="QWEN3_TTS_MODEL"),
     ]
 
     properties = {

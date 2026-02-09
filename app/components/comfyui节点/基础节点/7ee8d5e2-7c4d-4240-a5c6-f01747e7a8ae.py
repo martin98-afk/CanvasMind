@@ -22,11 +22,11 @@ class ComfyConditioningCombine(BaseComponent):
     description = "将两个 Conditioning 合并 (例如连接多段提示词)"
 
     inputs = [
-        PortDefinition(name="conditioning_1", label="条件1", type=ArgumentType.OBJECT),
-        PortDefinition(name="conditioning_2", label="条件2", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning_1", label="条件1", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="conditioning_2", label="条件2", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="conditioning", label="合并后条件", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning", label="合并后条件", type=ArgumentType.OBJECT, sub_type="Conditioning"),
     ]
     properties = {}
 

@@ -22,11 +22,10 @@ class ComfyVAEDecode(BaseComponent):
     description = "将潜空间数据解码为可视化图像"
     
     inputs = [
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        # 这里的 type 取决于你平台定义的 IMAGE 类型（通常对应 PIL.Image 或文件路径）
         PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
     ]
     
@@ -41,12 +40,10 @@ class ComfyVAEDecode(BaseComponent):
         sys.path.append(self.global_variable.comfy_extension)
         
     def run(self, params, inputs):
-        import torch
         import numpy as np
         from PIL import Image
 
         # 1. 获取输入并校验
-        import comfy.model_management as mm
         vae = inputs.get("vae")
         
         latent = inputs.get("latent")

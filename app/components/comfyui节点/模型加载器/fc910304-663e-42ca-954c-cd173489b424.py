@@ -16,15 +16,17 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyCheckpointLoader(BaseComponent):
+    inputs = [
+    ]
     requirements = "#comfy,#folder_paths,torch"
     name = "Checkpoint加载器"
     category = "comfyui节点/模型加载器"
     description = "加载单文件检查点(.safetensors/.ckpt)，自动识别并拆分 MODEL, CLIP 和 VAE。"
     
     outputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL"),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE"),
     ]
     
     properties = {
@@ -32,6 +34,7 @@ class ComfyCheckpointLoader(BaseComponent):
             type=PropertyType.FILE,
             default="",
             label="检查点文件",
+            description="The name of the checkpoint (model) to load.",
         ),
     }
 
@@ -52,8 +55,6 @@ class ComfyCheckpointLoader(BaseComponent):
         self.logger.info(f"正在加载检查点: {ckpt_path}")
 
         # 2. 调用源码中的核心加载函数
-        # 该函数返回元组: (model_patcher, clip, vae, clipvision)
-        # 对应源码第 898 行: load_checkpoint_guess_config
         try:
             out = comfy.sd.load_checkpoint_guess_config(
                 ckpt_path, 

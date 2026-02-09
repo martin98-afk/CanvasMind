@@ -16,15 +16,23 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVPreprocess(BaseComponent):
-    requirements = "av,torch,numpy"
+    requirements = "av,torch,numpy,Pillow"
     name = "LTX2图像预处理器"
     category = "comfyui节点/LTX模型适配"
     description = "对输入图像进行特定的视频压缩模拟，提高 I2V 生成的一致性。"
     
-    inputs = [PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE)]
-    outputs = [PortDefinition(name="image", label="预处理IMAGE", type=ArgumentType.OBJECT)]
+    inputs = [
+        PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+    ]
+    outputs = [
+        PortDefinition(name="image", label="预处理IMAGE", type=ArgumentType.OBJECT, sub_type="IMAGE"),
+    ]
     properties = {
-        "compression": PropertyDefinition(type=PropertyType.INT, default=35, min=0, max=100, label="压缩强度(CRF)"),
+        "compression": PropertyDefinition(
+            type=PropertyType.INT,
+            default=35,
+            label="压缩强度(CRF)",
+        ),
     }
 
     def run(self, params, inputs):

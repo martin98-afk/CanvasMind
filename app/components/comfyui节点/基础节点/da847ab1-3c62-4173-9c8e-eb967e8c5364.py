@@ -22,10 +22,10 @@ class ComfyClipTextEncode(BaseComponent):
     requirements = ""
     
     inputs = [
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="conditioning", label="条件控制", type=ArgumentType.OBJECT),
+        PortDefinition(name="conditioning", label="条件控制", type=ArgumentType.OBJECT, sub_type="Conditioning"),
     ]
     
     properties = {

@@ -22,12 +22,12 @@ class ComfyWanMaskGenerator(BaseComponent):
     requirements = "torch,numpy"
     
     inputs = [
-        PortDefinition(name="latent", label="视频Latent", type=ArgumentType.OBJECT),
-        PortDefinition(name="start_frame_latent", label="首帧图像潜变量", type=ArgumentType.OBJECT),
-        PortDefinition(name="end_frame_latent", label="尾帧图像潜变量", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="视频Latent", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="start_frame_latent", label="首帧图像潜变量", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="end_frame_latent", label="尾帧图像潜变量", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="带遮罩Latent", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="带遮罩Latent", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     
     properties = {

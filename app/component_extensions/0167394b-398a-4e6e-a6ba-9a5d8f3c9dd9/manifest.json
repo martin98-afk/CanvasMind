@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "使用预设说话人ID生成 (需 CustomVoice 模型)",
   "category": "comfyui节点/Qwen-TTS",
-  "main": "main.py",
-  "updated_at": "2026-01-25 16:52:28",
+  "updated_at": "2026-02-10 01:06:36",
   "author": "black"
 }

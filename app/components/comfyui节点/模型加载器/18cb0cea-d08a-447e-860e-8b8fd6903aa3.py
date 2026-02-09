@@ -16,13 +16,14 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyGGUFClipLoader(BaseComponent):
+    inputs = []
     name = "GGUF CLIP加载器(多模态)"
     category = "comfyui节点/模型加载器"
     description = "加载 GGUF 或常规 CLIP 模型，支持单/双/三/四 CLIP 加载 (如 SDXL/SD3/Flux)"
     requirements = "# comfy_gguf,# folder_paths,gguf>=0.13.0,protobuf,sentencepiece"
     
     outputs = [
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
     ]
     
     properties = {

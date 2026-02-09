@@ -22,22 +22,11 @@ class ComfyModelSamplingSD3(BaseComponent):
     description = "基于 DiscreteFlow 针对 SD3/Flux 等模型调整采样 Shift 和 Multiplier 参数。"
 
     inputs = [
-        PortDefinition(
-            name="model", 
-            label="模型", 
-            type=ArgumentType.OBJECT, 
-            connection=ConnectionType.SINGLE,
-            description="输入的 Stable Diffusion 3 模型"
-        ),
+        PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
     ]
 
     outputs = [
-        PortDefinition(
-            name="model", 
-            label="模型", 
-            type=ArgumentType.OBJECT,
-            description="修改采样参数后的模型副本"
-        ),
+        PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT, sub_type="MODEL"),
     ]
 
     properties = {
