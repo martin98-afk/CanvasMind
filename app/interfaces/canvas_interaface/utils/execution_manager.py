@@ -58,12 +58,10 @@ class ExecutionManager:
             record = self._records[exec_id]
             record.status = status
             record.end_time = time.time()
-            if output_data is not None:
-                record.output_data = output_data
+            record.output_data.update(output_data)
             if error_msg is not None:
                 record.error_msg = error_msg
             self.signal.execution_updated.emit()
-            logger.info(f"执行完成: {exec_id} | 状态: {status}")
 
     def clear_records(self):
         self._records.clear()

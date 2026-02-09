@@ -157,6 +157,9 @@ class CanvasRunner(QObject):
             logger.exception(f"[Runner] 调度器启动失败: {e}")
             self._handle_scheduler_error(str(e))
 
+    def store_output(self, output):
+        self.execution_storage.update_record(self._current_task.task_id, "running", output_data=output)
+
     # --- 内部信号处理槽 (Proxy Slots) ---
 
     def _handle_scheduler_finished(self):
