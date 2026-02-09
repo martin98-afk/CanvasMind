@@ -95,6 +95,15 @@ class CanvasPage(QWidget):
         self.node_operations.setup_context_menu()
 
     @property
+    def run_strategies(self):
+        return {
+            "从此处运行": self.canvas_runner.run_from,
+            "运行到此处": self.canvas_runner.run_to,
+            "运行所在子图": self.canvas_runner.run_subgraph,
+            "运行所有节点": self.canvas_runner.run_full
+        }
+
+    @property
     def graph(self):
         return self.ui_manager.canvas_manager.current_graph()
 

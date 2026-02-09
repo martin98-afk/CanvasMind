@@ -464,7 +464,6 @@ def create_node_class(full_path, file_path, parent_window=None):
                         workflow_path=str(self.CACHE_PATH),
                         is_memory_resident=self.view.current_mode == "ipython"
                     )
-                    print(script_content)
                     with open(local_script_path, 'w', encoding='utf-8') as f:
                         f.write(script_content)
 
