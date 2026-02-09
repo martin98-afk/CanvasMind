@@ -155,6 +155,7 @@ class PortDefinition(BaseModel):
     name: str
     label: str
     type: ArgumentType = ArgumentType.TEXT
+    sub_type: Optional[str] = None  # 用于标识 Object 具体类型的字段
     connection: ConnectionType = ConnectionType.SINGLE
     description: str = ""
 

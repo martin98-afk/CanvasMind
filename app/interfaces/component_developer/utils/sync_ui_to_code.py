@@ -12,14 +12,11 @@ from app.interfaces.component_developer.utils.message_manager import MessageMana
 
 
 class SyncUItoCode(QObject):
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.editor = parent.code_editor
-        # --- 添加一个标志，防止循环更新 ---
-        self._updating_requirements_from_analysis = False
-        self._saving = False  # 防止重复保存
         self._property_sync_timer = QTimer()
         self._property_sync_timer.setSingleShot(True)
         self._property_sync_timer.setInterval(300)  # 300ms 防抖
@@ -36,7 +33,7 @@ class SyncUItoCode(QObject):
         description = component_info.get("description", "")
         requirements = component_info.get("requirements", "")
         return self._update_basic_info_in_code(code, name, category, description, requirements)
-    
+
     def _sync_basic_info_to_code(self):
         try:
             current_code = self.editor.get_code()
@@ -50,12 +47,11 @@ class SyncUItoCode(QObject):
                 self.parent.requirements_edit.toPlainText().replace("\n", ",")
             )
             if updated_code != current_code:
-                # ✅ 直接替换，不 suspend_sync
                 self.editor.replace_text_preserving_view(updated_code)
                 self._current_component_code = updated_code
         except Exception as e:
             logger.error(f"同步基本信息失败: {e}")
-            
+
     def _sync_properties_to_code(self):
         try:
             current_code = self.editor.get_code()
@@ -69,12 +65,12 @@ class SyncUItoCode(QObject):
                 self.editor.suspend_sync()
                 try:
                     self.editor.replace_text_preserving_view(updated_code)
-                    self._current_component_code = updated_code  # ✅ 关键
+                    self._current_component_code = updated_code
                 finally:
                     self.editor.resume_sync()
         except Exception as e:
             MessageManager.error(f"同步属性到代码失败: {e}", "", self.parent)
-            
+
     def _sync_ports_to_code(self):
         try:
             current_code = self.editor.get_code()
@@ -89,57 +85,101 @@ class SyncUItoCode(QObject):
                 self.editor.suspend_sync()
                 try:
                     self.editor.replace_text_preserving_view(updated_code)
-                    self._current_component_code = updated_code  # ✅ 关键：更新缓存
+                    self._current_component_code = updated_code
                 finally:
                     self.editor.resume_sync()
         except Exception as e:
             traceback.print_exc()
             MessageManager.error(f"同步端口到代码失败: {e}", "", self.parent)
 
+    def _generate_port_def_code(self, port, is_input=True):
+        """辅助方法：生成单个端口定义的 Python 代码字符串"""
+        if not isinstance(port["type"], ArgumentType):
+            return ""
+
+        # 1. 基础字段
+        args = [
+            f'name="{port["name"]}"',
+            f'label="{port["label"]}"',
+            f'type=ArgumentType.{port["type"].name}'
+        ]
+
+        # 2. sub_type (当类型为 OBJECT 或明确指定了 sub_type 时)
+        # 即使不是 OBJECT，如果用户设置了 sub_type，同步进去也无妨，或者你可以加判断:
+        # if port["type"] == ArgumentType.OBJECT and port.get("sub_type"):
+        if port.get("sub_type"):
+            args.append(f'sub_type="{port["sub_type"]}"')
+
+        # 3. connection (仅 Input 有效)
+        if is_input:
+            conn = port.get('connection', ConnectionType.SINGLE)
+            # 兼容处理：conn 可能是 Enum 对象，也可能是默认值
+            conn_name = getattr(conn, 'name', ConnectionType.SINGLE.name)
+            args.append(f'connection=ConnectionType.{conn_name}')
+
+        # 4. description (如果有且不为空)
+        desc = port.get("description", "")
+        if desc:
+            # 防止描述中包含双引号导致代码语法错误
+            safe_desc = desc.replace('"', '\\"')
+            args.append(f'description="{safe_desc}"')
+
+        return f"        PortDefinition({', '.join(args)}),"
+
     def _update_ports_in_code(self, code, input_ports, output_ports):
+        """更新代码中的 inputs 和 outputs 列表"""
         lines = code.split('\n')
         new_lines = []
         i = 0
         inputs_replaced = False
         outputs_replaced = False
+
         while i < len(lines):
             line = lines[i]
+
+            # --- 处理 Inputs ---
             if (not inputs_replaced and re.search(r'^\s*inputs\s*=\s*\[', line)):
                 new_lines.append("    inputs = [")
                 for port in input_ports:
-                    if isinstance(port["type"], ArgumentType):
-                        new_lines.append(
-                            f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\", "
-                            f"type=ArgumentType.{port['type'].name}, "
-                            f"connection=ConnectionType.{port.get('connection', ConnectionType.SINGLE.value).name}),"
-                        )
+                    port_code = self._generate_port_def_code(port, is_input=True)
+                    if port_code:
+                        new_lines.append(port_code)
                 new_lines.append("    ]")
                 inputs_replaced = True
+
+                # 跳过旧的代码块直到 ']'
                 bracket_count = line.count('[') - line.count(']')
                 j = i + 1
                 while j < len(lines) and bracket_count > 0:
                     bracket_count += lines[j].count('[') - lines[j].count(']')
                     j += 1
                 i = j
+
+            # --- 处理 Outputs ---
             elif (not outputs_replaced and re.search(r'^\s*outputs\s*=\s*\[', line)):
                 new_lines.append("    outputs = [")
                 for port in output_ports:
-                    if isinstance(port["type"], ArgumentType):
-                        new_lines.append(
-                            f"        PortDefinition(name=\"{port['name']}\", label=\"{port['label']}\","
-                            f" type=ArgumentType.{port['type'].name}),"
-                        )
+                    # Output 一般不需要 connection，这里 is_input=False
+                    port_code = self._generate_port_def_code(port, is_input=False)
+                    if port_code:
+                        new_lines.append(port_code)
                 new_lines.append("    ]")
                 outputs_replaced = True
+
+                # 跳过旧的代码块直到 ']'
                 bracket_count = line.count('[') - line.count(']')
                 j = i + 1
                 while j < len(lines) and bracket_count > 0:
                     bracket_count += lines[j].count('[') - lines[j].count(']')
                     j += 1
                 i = j
+
             else:
                 new_lines.append(line)
                 i += 1
+
+        # --- 如果代码中原来没有 inputs/outputs 定义，则尝试插入 ---
+        # 插入逻辑保持不变：在 class 定义后插入
         if not inputs_replaced:
             for idx, l in enumerate(new_lines):
                 if l.strip().startswith('class '):
@@ -147,12 +187,21 @@ class SyncUItoCode(QObject):
                     break
         if not outputs_replaced:
             for idx, l in enumerate(new_lines):
-                if l.strip().startswith('class ') and (idx + 1 < len(new_lines) and 'inputs' in new_lines[idx + 1]):
-                    new_lines.insert(idx + 2, "    outputs = []")
+                # 尝试插在 inputs 后面
+                if l.strip().startswith('class '):
+                    # 简单的启发式查找：如果在 inputs 定义后插入
+                    insert_pos = idx + 1
+                    if idx + 1 < len(new_lines) and 'inputs' in new_lines[idx + 1]:
+                        # 如果下一行就是 inputs，还要算上 inputs 的长度吗？
+                        # 原代码这里的逻辑比较简单，假设 inputs 是一行。
+                        # 更稳妥的是再次扫描，但这里保持原逻辑微调
+                        # 建议直接放在 properties 前面或者 inputs 后面
+                        # 这里简单处理：如果没找到 outputs，强行插在 inputs 后面
+                        new_lines.insert(insert_pos + 1, "    outputs = []")
+                    else:
+                        new_lines.insert(insert_pos + 1, "    outputs = []")
                     break
-                elif l.strip().startswith('class '):
-                    new_lines.insert(idx + 1, "    outputs = []")
-                    break
+
         return '\n'.join(new_lines)
 
     def _update_properties_in_code(self, code, properties):
@@ -166,11 +215,12 @@ class SyncUItoCode(QObject):
                 if not properties_replaced and re.search(r'^\s*properties\s*=\s*\{', line):
                     new_lines.append("    properties = {")
                     for prop_name, prop_def in properties.items():
+                        # 兼容 dict 和 对象 两种传参方式
                         if isinstance(prop_def, dict):
                             prop_type = prop_def.get('type', PropertyType.TEXT)
                             default_value = prop_def.get('default', '')
                             label = prop_def.get('label', prop_name)
-                            description = prop_def.get('description', '')  # 1. 提取 description (dict)
+                            description = prop_def.get('description', '')
                             choices = prop_def.get('choices', [])
                             schema = prop_def.get('schema', {})
                             min_val = prop_def.get('min', 0)
@@ -186,11 +236,12 @@ class SyncUItoCode(QObject):
                             min_val = getattr(prop_def, 'min', 0)
                             max_val = getattr(prop_def, 'max', 100)
                             step_val = getattr(prop_def, 'step', 1)
+
                         if prop_type == PropertyType.DYNAMICFORM:
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.DYNAMICFORM,')
                             new_lines.append(f'            label="{label}",')
-                            if description:  # 2. 写入 description (DYNAMICFORM)
+                            if description:
                                 new_lines.append(f'            description="{description}",')
                             if schema:
                                 new_lines.append('            schema={')
@@ -200,17 +251,19 @@ class SyncUItoCode(QObject):
                                     field_type = field_def.get('type', PropertyType.TEXT)
                                     field_default = field_def.get('default', '')
                                     field_label = field_def.get('label', field_name)
-                                    field_description = field_def.get('description', '')  # 3. 提取子表单 description
+                                    field_description = field_def.get('description', '')
                                     field_choices = field_def.get('choices', [])
                                     new_lines.append(f'                "{field_name}": PropertyDefinition(')
                                     new_lines.append(f'                    type=PropertyType.{field_type.name},')
+
+                                    # 处理默认值格式化
                                     if field_type == PropertyType.INT:
                                         fv = str(int(field_default)) if field_default else "0"
                                     elif field_type == PropertyType.FLOAT:
                                         fv = str(float(field_default)) if field_default else "0.0"
                                     elif field_type == PropertyType.BOOL:
                                         fv = "True" if str(field_default).lower() in ("true", "1", "yes") else "False"
-                                    elif prop_type == PropertyType.LONGTEXT:
+                                    elif field_type == PropertyType.LONGTEXT:
                                         if field_default:
                                             safe_text = field_default.replace('"""', '\\"\\"\\"')
                                             fv = '"""' + textwrap.dedent(safe_text) + '"""'
@@ -218,9 +271,10 @@ class SyncUItoCode(QObject):
                                             fv = '""""""'
                                     else:
                                         fv = f'"{field_default}"'
+
                                     new_lines.append(f'                    default={fv},')
                                     new_lines.append(f'                    label="{field_label}",')
-                                    if field_description:  # 4. 写入子表单 description
+                                    if field_description:
                                         new_lines.append(f'                    description="{field_description}",')
                                     if field_type == PropertyType.CHOICE and field_choices:
                                         choices_str = ', '.join([f'"{c}"' for c in field_choices])
@@ -233,6 +287,7 @@ class SyncUItoCode(QObject):
                                 new_lines.append('            }')
                             new_lines.append('        ),')
                         else:
+                            # 处理普通属性默认值
                             if prop_type == PropertyType.INT:
                                 dv = str(int(default_value)) if default_value else "0"
                             elif prop_type == PropertyType.FLOAT:
@@ -247,11 +302,12 @@ class SyncUItoCode(QObject):
                                     dv = '""""""'
                             else:
                                 dv = f'"{default_value}"'
+
                             new_lines.append(f'        "{prop_name}": PropertyDefinition(')
                             new_lines.append(f'            type=PropertyType.{prop_type.name},')
                             new_lines.append(f'            default={dv},')
                             new_lines.append(f'            label="{label}",')
-                            if description:  # 5. 写入普通属性 description
+                            if description:
                                 new_lines.append(f'            description="{description}",')
                             if prop_type == PropertyType.CHOICE and choices:
                                 choices_str = ', '.join([f'"{c}"' for c in choices])
@@ -275,7 +331,10 @@ class SyncUItoCode(QObject):
             if not properties_replaced:
                 for idx, l in enumerate(new_lines):
                     if l.strip().startswith('class '):
-                        new_lines.insert(idx + 3, "    properties = {}")
+                        # 尝试插在 outputs 后面，如果找不到 outputs 则插在 class 定义后较远位置
+                        # 这里简单插在第4行（假设有 name/category/inputs/outputs）
+                        # 最好是找到最后一个字段赋值的地方
+                        new_lines.insert(idx + 5, "    properties = {}")
                         break
             return '\n'.join(new_lines)
         except Exception as e:
@@ -319,7 +378,7 @@ class SyncUItoCode(QObject):
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
                         if isinstance(target, ast.Name) and target.id in basic_fields:
-                            start_line = stmt.lineno - 1  # 0-based index
+                            start_line = stmt.lineno - 1
                             if target.id == "description":
                                 end_line = self._find_triple_quote_end(lines, start_line)
                                 if '\n' in description or '"""' in description or '"' in description or "'" in description:
@@ -339,12 +398,10 @@ class SyncUItoCode(QObject):
                                 if value_str is not None:
                                     replacements.append((start_line, start_line, [value_str]))
 
-            # 从后往前执行替换
             new_lines = lines[:]
             for start, end, new_content in sorted(replacements, reverse=True):
                 new_lines = new_lines[:start] + new_content + new_lines[end + 1:]
 
-            # 检查是否缺失字段（仅当完全不存在时才插入）
             final_code = '\n'.join(new_lines)
             missing = []
             if '    name = ' not in final_code:
@@ -361,7 +418,7 @@ class SyncUItoCode(QObject):
                 missing.append(f'    requirements = "{requirements}"')
 
             if missing:
-                class_lineno = target_class.lineno - 1  # 0-based
+                class_lineno = target_class.lineno - 1
                 new_lines = new_lines[:class_lineno + 1] + missing + new_lines[class_lineno + 1:]
 
             return '\n'.join(new_lines)
