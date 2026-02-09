@@ -874,14 +874,13 @@ class DataHandler:
 
     def _read_file_data(self, data: Any) -> Path:
         """返回文件路径，如果是内容则存入临时文件"""
-        if isinstance(data, (str, Path)) and os.path.exists(data):
-            return str(data)
-        dst = self.result_dir / f"input_file_{datetime.now().strftime('%H%M%S')}.bin"
-        if isinstance(data, bytes):
-            dst.write_bytes(data)
-        else:
-            dst.write_text(str(data), encoding='utf-8')
-        return dst
+        if not isinstance(data, (str, Path)):
+            raise Exception("文件数据必须是字符串或路径")
+        elif not os.path.exists(data):
+            logger.warning(f"文件不存在: {data}")
+
+        return str(data)
+
 
     def _fetch_from_memory(self, ref_str: str) -> Any:
         """

@@ -58,7 +58,8 @@ class ExecutionManager:
             record = self._records[exec_id]
             record.status = status
             record.end_time = time.time()
-            record.output_data.update(output_data)
+            if output_data is not None:
+                record.output_data.update(output_data)
             if error_msg is not None:
                 record.error_msg = error_msg
             self.signal.execution_updated.emit()
