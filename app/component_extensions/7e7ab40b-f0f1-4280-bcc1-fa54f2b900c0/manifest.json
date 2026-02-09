@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "加载 LTXV 专用的音频 VAE 模型，用于音频与潜空间的转换。",
   "category": "comfyui节点/模型加载器",
-  "main": "main.py",
-  "updated_at": "2026-01-26 19:23:00",
+  "updated_at": "2026-02-09 20:55:42",
   "author": "mading"
 }

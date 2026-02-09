@@ -32,6 +32,7 @@ class ComfyCheckpointLoader(BaseComponent):
             type=PropertyType.FILE,
             default="",
             label="检查点文件",
+            description="The name of the checkpoint (model) to load."
         ),
     }
 
@@ -52,8 +53,6 @@ class ComfyCheckpointLoader(BaseComponent):
         self.logger.info(f"正在加载检查点: {ckpt_path}")
 
         # 2. 调用源码中的核心加载函数
-        # 该函数返回元组: (model_patcher, clip, vae, clipvision)
-        # 对应源码第 898 行: load_checkpoint_guess_config
         try:
             out = comfy.sd.load_checkpoint_guess_config(
                 ckpt_path, 
