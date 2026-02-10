@@ -49,8 +49,8 @@ def post_build_cleanup(dist_path):
 
     # 需要删除的冗余库列表
     to_remove = [
-        'scipy', 'scipy.libs', 'sphinx',
-        # 'matplotlib', 'PIL.ImageQt'  # 如果没用到这些巨无霸库也可以考虑删掉
+        'scipy', 'scipy.libs', 'sphinx', 'matplotlib'
+        # 'PIL.ImageQt'  # 如果没用到这些巨无霸库也可以考虑删掉
     ]
 
     print("正在精简打包体积...")

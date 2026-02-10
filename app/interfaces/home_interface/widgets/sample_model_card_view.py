@@ -41,8 +41,8 @@ class SampleModelCardView(SimpleCardWidget):
         self.layout_timer.timeout.connect(self._recalc_width)
 
         self.examples = [
-            {"icon": get_icon("大模型"), "title": self.tr("自动组件生成"), "content": self.tr("Agent自动生成工作流"),
-             "key": "自动组件生成"},
+            {"icon": get_icon("AI音乐"), "title": self.tr("ACE-STEP1.5音乐生成"), "content": self.tr("使用ACE-STEP1.5模型生成AI音乐"),
+             "key": "ace-step1.5"},
             {"icon": get_icon("多轮对话"), "title": self.tr("AI辩论赛"), "content": self.tr("大模型+TTS辩论"),
              "key": "AI辩论赛"},
             {"icon": get_icon("AI绘画"), "title": self.tr("AI扩图"), "content": self.tr("SD+超分图像扩充"),

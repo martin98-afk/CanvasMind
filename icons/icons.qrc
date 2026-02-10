@@ -2,6 +2,7 @@
 <RCC version="1.0">
 <qresource prefix="/icons">
     <file>AI绘画.svg</file>
+    <file>AI音乐.svg</file>
     <file>API测试.svg</file>
     <file>Global.svg</file>
     <file>HTTP请求.svg</file>
