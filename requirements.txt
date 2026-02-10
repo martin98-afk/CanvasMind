@@ -140,7 +140,7 @@ orjson
 paramiko
 watchfiles
 simplejson
-opencv-python
+opencv-python-headless
 pyecharts
 sshtunnel
 apscheduler

@@ -3,128 +3,18 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint, QTimer
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
 from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
+from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_pinyin_search_keys
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
-
-
-class DraggableTreePanel(QWidget):
-    """带搜索框的组件树面板"""
-    filter_changed_signal = QtCore.pyqtSignal(set)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("draggableTree")
-        self.parent_window = parent
-        self.category_filter_dialog = None
-        self._setup_ui()
-
-    def _setup_ui(self):
-        self.setMinimumWidth(210)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(3, 4, 3, 4)
-        layout.setSpacing(4)
-
-        # 第一行：控制栏
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(4)
-
-        # 类别选择按钮
-        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, self.tr("类别"), self)
-        self.category_button.setFixedHeight(28)
-        self.category_button.setToolTip(self.tr("类别筛选"))
-        self.category_button.clicked.connect(lambda: self._show_category_dialog())
-
-        # 时间排序按钮
-        self.time_toggle = TransparentToggleToolButton(FIF.HISTORY, self)
-        self.time_toggle.setFixedSize(24, 28)
-        self.time_toggle.setToolTip(self.tr("按最后使用时间排序"))
-        self.time_toggle.toggled.connect(self._on_time_toggled)
-
-        # 收藏按钮
-        self.favorite_toggle = TransparentToggleToolButton(FIF.EXPRESSIVE_INPUT_ENTRY, self)
-        self.favorite_toggle.setFixedSize(24, 28)
-        self.favorite_toggle.setToolTip(self.tr("只显示收藏组件"))
-        self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
-
-        # 搜索 toggle 按钮
-        self.search_toggle = TransparentToggleToolButton(FIF.SEARCH, self)
-        self.search_toggle.setFixedSize(24, 28)
-        self.search_toggle.setToolTip(self.tr("搜索组件"))
-        self.search_toggle.toggled.connect(self._on_search_toggled)
-
-        control_layout.addWidget(self.category_button)
-        control_layout.addWidget(self.search_toggle)
-        control_layout.addWidget(self.time_toggle)
-        control_layout.addWidget(self.favorite_toggle)
-
-        # 搜索框（默认隐藏）
-        self.search_box = SearchLineEdit(self)
-        self.search_box.setPlaceholderText(self.tr("🔍 搜索组件..."))
-        self.search_box.setClearButtonEnabled(True)
-        FluentStyleSheet.LINE_EDIT.apply(self.search_box)
-        self.search_box.textChanged.connect(self._on_search_text_changed)
-        self.search_box.searchSignal.connect(self._on_search_text_changed)
-        self.search_box.clearSignal.connect(self._on_search_text_changed)
-        self.search_box.hide()  # 初始隐藏
-
-        # 组件树
-        self.tree = DraggableTreeWidget(self.parent_window)
-        self.tree.setHeaderHidden(True)
-
-        layout.addLayout(control_layout)
-        layout.addWidget(self.search_box)
-        layout.addWidget(self.tree)
-
-        # 初始化类别列表
-        self._init_categories()
-
-    def _on_search_toggled(self, checked: bool):
-        if checked:
-            self.search_box.show()
-            self.search_box.setFocus()
-        else:
-            self.search_box.hide()
-            self.search_box.clear()
-            self.tree.filter_items("")
-
-    def _init_categories(self):
-        """初始化类别列表"""
-        self.category_filter_dialog = CategoryFilterDialog(self.parent_window)
-        self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
-
-    def _show_category_dialog(self):
-        """显示类别筛选对话框"""
-        if self.category_filter_dialog:
-            pos = self.category_button.mapToGlobal(QPoint(10, self.category_button.height()))
-            self.category_filter_dialog.show_at(pos)
-
-    def _on_categories_changed(self, selected_categories):
-        """类别选择变化回调"""
-        self.tree._selected_categories = selected_categories
-        self.tree.refresh_components()
-        self.filter_changed_signal.emit(selected_categories)
-
-    def _on_time_toggled(self, checked):
-        """时间排序切换"""
-        self.tree._show_time_sorted = checked
-        self.tree.refresh_components()
-
-    def _on_favorite_toggled(self, checked):
-        """收藏过滤切换"""
-        self.tree._show_only_favorites = checked
-        self.tree.refresh_components()
-
-    def _on_search_text_changed(self, text: str):
-        self.tree.filter_items(text)
 
 
 class DraggableTreeWidget(TreeWidget):
@@ -141,7 +31,10 @@ class DraggableTreeWidget(TreeWidget):
         self._show_time_sorted = False
         self._show_only_favorites = False
         self._selected_categories = set()
-
+        # 开启鼠标追踪
+        self.setMouseTracking(True)
+        self.viewport().setAttribute(Qt.WA_Hover)
+        self.viewport().installEventFilter(self)
         self._init_components()
 
     def _load_usage_stats(self):
@@ -363,6 +256,7 @@ class DraggableTreeWidget(TreeWidget):
             logger.error(self.tr("刷新组件失败: {}").format(e))
 
     def startDrag(self, supportedActions):
+        self._hide_preview()  # 拖拽开始时立刻关闭预览
         item = self.currentItem()
         if item and item.parent():
             full_path = item.data(0, Qt.UserRole + 1)
@@ -572,3 +466,187 @@ class DraggableTreeWidget(TreeWidget):
                     p.setHidden(False)
                     p.setExpanded(True)
                     p = p.parent()
+
+    # ========== 悬浮预览相关方法 ==========
+
+    def eventFilter(self, obj, event):
+        if obj == self.viewport():
+            if event.type() == QtCore.QEvent.MouseMove:
+                item = self.itemAt(event.pos())
+                full_path = item.data(0, Qt.UserRole + 1) if item else None
+
+                if full_path:
+                    # 获取数据
+                    data = self._get_component_data(full_path)
+                    if data:
+                        # 计算位置：显示在Item右侧，而不是鼠标位置，这样更稳定
+                        rect = self.visualItemRect(item)
+                        global_pos = self.viewport().mapToGlobal(QPoint(rect.right(), rect.top()))
+
+                        # 调用单例管理器
+                        PreviewManager.get_instance().show_preview(
+                            data,
+                            global_pos,
+                            self,
+                            delay=300  # 300ms 延迟
+                        )
+                else:
+                    # 移到空白处或文件夹，请求隐藏
+                    PreviewManager.get_instance().hide_preview()
+
+            elif event.type() == QtCore.QEvent.Leave:
+                PreviewManager.get_instance().hide_preview()
+
+            # 当滚动发生时，立即隐藏以避免错位
+            elif event.type() == QtCore.QEvent.Wheel:
+                PreviewManager.get_instance().hide_preview()
+
+        return super().eventFilter(obj, event)
+
+    def _get_component_data(self, full_path):
+        """辅助方法：提取组件信息"""
+        comp_map, _ = ComponentScanner().get_components()
+        comp_cls = comp_map.get(full_path)
+        if not comp_cls:
+            return None
+
+        return {
+            'name': getattr(comp_cls, 'name', None) or comp_cls.__name__,
+            'category': getattr(comp_cls, 'category', 'General'),
+            'description': getattr(comp_cls, 'description', ''),
+            'inputs': getattr(comp_cls, 'get_inputs', lambda: [])(),
+            'outputs': getattr(comp_cls, 'get_outputs', lambda: [])(),
+            'input_sub_types': getattr(comp_cls, 'get_input_sub_types', lambda: {})(),
+            'output_sub_types': getattr(comp_cls, 'get_output_sub_types', lambda: {})(),
+        }
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        PreviewManager.get_instance().hide_preview()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        PreviewManager.get_instance().hide_preview()
+
+    def _hide_preview(self):
+        PreviewManager.get_instance().hide_preview()
+
+    def scrollContentsBy(self, dx, dy):
+        super().scrollContentsBy(dx, dy)
+        self._hide_preview()
+
+    def __del__(self):
+        """清理预览窗口"""
+        if hasattr(self, '_preview_widget') and self._preview_widget:
+            self._preview_widget.deleteLater()
+
+
+class DraggableTreePanel(QWidget):
+    """带搜索框的组件树面板"""
+    filter_changed_signal = QtCore.pyqtSignal(set)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("draggableTree")
+        self.parent_window = parent
+        self.category_filter_dialog = None
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setMinimumWidth(210)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(3, 4, 3, 4)
+        layout.setSpacing(4)
+
+        # 第一行：控制栏
+        control_layout = QHBoxLayout()
+        control_layout.setSpacing(4)
+
+        # 类别选择按钮
+        self.category_button = DropDownPushButton(FIF.BOOK_SHELF, self.tr("类别"), self)
+        self.category_button.setFixedHeight(28)
+        self.category_button.setToolTip(self.tr("类别筛选"))
+        self.category_button.clicked.connect(lambda: self._show_category_dialog())
+
+        # 时间排序按钮
+        self.time_toggle = TransparentToggleToolButton(FIF.HISTORY, self)
+        self.time_toggle.setFixedSize(24, 28)
+        self.time_toggle.setToolTip(self.tr("按最后使用时间排序"))
+        self.time_toggle.toggled.connect(self._on_time_toggled)
+
+        # 收藏按钮
+        self.favorite_toggle = TransparentToggleToolButton(FIF.EXPRESSIVE_INPUT_ENTRY, self)
+        self.favorite_toggle.setFixedSize(24, 28)
+        self.favorite_toggle.setToolTip(self.tr("只显示收藏组件"))
+        self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
+
+        # 搜索 toggle 按钮
+        self.search_toggle = TransparentToggleToolButton(FIF.SEARCH, self)
+        self.search_toggle.setFixedSize(24, 28)
+        self.search_toggle.setToolTip(self.tr("搜索组件"))
+        self.search_toggle.toggled.connect(self._on_search_toggled)
+
+        control_layout.addWidget(self.category_button)
+        control_layout.addWidget(self.search_toggle)
+        control_layout.addWidget(self.time_toggle)
+        control_layout.addWidget(self.favorite_toggle)
+
+        # 搜索框（默认隐藏）
+        self.search_box = SearchLineEdit(self)
+        self.search_box.setPlaceholderText(self.tr("🔍 搜索组件..."))
+        self.search_box.setClearButtonEnabled(True)
+        FluentStyleSheet.LINE_EDIT.apply(self.search_box)
+        self.search_box.textChanged.connect(self._on_search_text_changed)
+        self.search_box.searchSignal.connect(self._on_search_text_changed)
+        self.search_box.clearSignal.connect(self._on_search_text_changed)
+        self.search_box.hide()  # 初始隐藏
+
+        # 组件树
+        self.tree = DraggableTreeWidget(self.parent_window)
+        self.tree.setHeaderHidden(True)
+
+        layout.addLayout(control_layout)
+        layout.addWidget(self.search_box)
+        layout.addWidget(self.tree)
+
+        # 初始化类别列表
+        self._init_categories()
+
+    def _on_search_toggled(self, checked: bool):
+        if checked:
+            self.search_box.show()
+            self.search_box.setFocus()
+        else:
+            self.search_box.hide()
+            self.search_box.clear()
+            self.tree.filter_items("")
+
+    def _init_categories(self):
+        """初始化类别列表"""
+        self.category_filter_dialog = CategoryFilterDialog(self.parent_window)
+        self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
+
+    def _show_category_dialog(self):
+        """显示类别筛选对话框"""
+        if self.category_filter_dialog:
+            pos = self.category_button.mapToGlobal(QPoint(10, self.category_button.height()))
+            self.category_filter_dialog.show_at(pos)
+
+    def _on_categories_changed(self, selected_categories):
+        """类别选择变化回调"""
+        self.tree._selected_categories = selected_categories
+        self.tree.refresh_components()
+        self.filter_changed_signal.emit(selected_categories)
+
+    def _on_time_toggled(self, checked):
+        """时间排序切换"""
+        self.tree._show_time_sorted = checked
+        self.tree.refresh_components()
+
+    def _on_favorite_toggled(self, checked):
+        """收藏过滤切换"""
+        self.tree._show_only_favorites = checked
+        self.tree.refresh_components()
+
+    def _on_search_text_changed(self, text: str):
+        self.tree.filter_items(text)

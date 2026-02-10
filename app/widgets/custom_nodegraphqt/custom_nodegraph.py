@@ -6,6 +6,7 @@ import traceback
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
     Z_VAL_PIPE, ViewerEnum, )
+from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
 from NodeGraphQt.qgraphics.pipe import PipeItem
@@ -790,7 +791,6 @@ class CustomNodeViewer(NodeViewer):
             super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        prev_scene_pos = self.mapToScene(self._previous_pos)
         # 1. 注入导航模式下的平移逻辑
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
@@ -800,7 +800,6 @@ class CustomNodeViewer(NodeViewer):
 
         # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
         super(CustomNodeViewer, self).mouseMoveEvent(event)
-        curr_scene_pos = self.mapToScene(event.pos())
         # 3. 判定是否正在拖拽节点
         is_dragging_nodes = (
                 self.LMB_state and
@@ -844,7 +843,7 @@ class CustomNodeViewer(NodeViewer):
         # 2. 检测释放位置是否是空白处
         scene_pos = self.mapToScene(event.pos())
         items = self.scene().items(scene_pos)
-        from NodeGraphQt.qgraphics.port import PortItem
+
         on_port = any(isinstance(i, PortItem) for i in items)
 
         # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处

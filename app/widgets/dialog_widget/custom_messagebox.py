@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QVBoxLayout, QSplitter, QWidget
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox, BodyLabel, PlainTextEdit, TextEdit, \
-    EditableComboBox
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox
+
+from app.widgets.basic_widget.searchable_editable_combobox import SearchableEditableComboBox
 
 
 class CustomInputDialog(MessageBoxBase):
@@ -36,7 +35,7 @@ class CustomEditableComboDialog(MessageBoxBase):
     def __init__(self, title: str, placeholder: str = "", items: list = [], parent=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel(title)
-        self.lineEdit = EditableComboBox()
+        self.lineEdit = SearchableEditableComboBox()
         self.lineEdit.addItems(items)
         self.lineEdit.setPlaceholderText(placeholder)
         self.lineEdit.setClearButtonEnabled(True)

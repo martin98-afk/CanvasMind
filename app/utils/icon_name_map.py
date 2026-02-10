@@ -2,6 +2,7 @@
 ICON_NAME_TO_FILE = {
     "ai模型": "ai模型.svg",
     "AI绘画": "AI绘画.svg",
+    "AI音乐": "AI音乐.svg",
     "API测试": "API测试.svg",
     "banner": "banner.png",
     "bilibili": "bilibili.svg",
