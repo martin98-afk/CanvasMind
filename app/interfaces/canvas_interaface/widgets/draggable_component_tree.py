@@ -23,7 +23,7 @@ from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 # ----------------------------------------------------------------
 def get_canvas_font(size=10, bold=False):
     try:
-        from app.common.config import Settings
+        from app.utils.config import Settings
         font_family = Settings.get_instance().canvas_font_type.value
     except Exception:
         font_family = "Segoe UI"
@@ -107,7 +107,7 @@ class ComponentPreviewWidget(QWidget):
         # 解决残影的核心属性
         self.setAttribute(Qt.WA_NoSystemBackground, True)
 
-        self.setFixedWidth(340)
+        self.setMinimumWidth(340)
 
         # 阴影
         self.shadow = QGraphicsDropShadowEffect(self)
@@ -219,14 +219,16 @@ class ComponentPreviewWidget(QWidget):
 
         # 填充
         inputs = info.get('inputs', [])
+        input_sub_types = info.get('input_sub_types', [])
         self.in_title.setVisible(bool(inputs))
-        for i in inputs[:10]:
-            self.in_vbox.addWidget(PortRow(i[0], i[1], True))
+        for i, i_type in zip(inputs[:10], input_sub_types[:10]):
+            self.in_vbox.addWidget(PortRow(i[1], i_type or i[-2].value, True))
 
         outputs = info.get('outputs', [])
+        output_sub_types = info.get('output_sub_types', [])
         self.out_title.setVisible(bool(outputs))
-        for o in outputs[:10]:
-            self.out_vbox.addWidget(PortRow(o[0], o[1], False))
+        for o, o_type in zip(outputs[:10], output_sub_types[:10]):
+            self.out_vbox.addWidget(PortRow(o[1], o_type or o[-2].value, False))
 
         # 强制重新计算大小并刷新重绘
         self.adjustSize()
@@ -732,27 +734,37 @@ class DraggableTreeWidget(TreeWidget):
         return super().eventFilter(obj, event)
 
     def _show_preview(self):
-        if not self._hovered_item: return
+        # 再次校验逻辑：防止计时器触发时鼠标已经移走
+        if not self._hovered_item:
+            return
+
+        # 获取当前鼠标下的项，二次确认
+        current_item = self.itemAt(self.viewport().mapFromGlobal(QtGui.QCursor.pos()))
+        if current_item != self._hovered_item:
+            return
 
         full_path = self._hovered_item.data(0, Qt.UserRole + 1)
         comp_map, _ = ComponentScanner().get_components()
         comp_cls = comp_map.get(full_path)
-        if not comp_cls: return
+
+        if not comp_cls:
+            return
 
         # 构造信息
         info = {
-            'name': getattr(comp_cls, 'name', comp_cls.__name__),
+            'name': getattr(comp_cls, 'name', None) or comp_cls.__name__,
             'category': getattr(comp_cls, 'category', 'General'),
             'description': getattr(comp_cls, 'description', ''),
             'inputs': getattr(comp_cls, 'get_inputs', lambda: [])(),
             'outputs': getattr(comp_cls, 'get_outputs', lambda: [])(),
-            'is_favorite': self.is_favorite(full_path)
+            'input_sub_types': getattr(comp_cls, 'get_input_sub_types', lambda: {})(),
+            'output_sub_types': getattr(comp_cls, 'get_output_sub_types', lambda: {})(),
         }
 
+        # 渲染与显示
         rect = self.visualItemRect(self._hovered_item)
-        self._preview_widget.update_content(info)
-        # 传入 self (tree_widget) 用于计算右侧边缘对齐
-        self._preview_widget.show_beside_widget(self, rect)
+        self._preview_widget.update_content(info)  # 先更新内容
+        self._preview_widget.show_beside_widget(self, rect)  # 再定位显示
 
     def _hide_preview(self):
         self._hover_timer.stop()
