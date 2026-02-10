@@ -23,8 +23,10 @@ import paramiko
 import psutil
 import pyarrow as pa
 import pyarrow.feather as feather
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
 from loguru import logger
+
+from app.utils.config import Settings
 
 try:
     from pypinyin import pinyin, Style
@@ -381,6 +383,18 @@ def get_icon(icon_name: str) -> QIcon:
 
     # 3. 最终 fallback
     return QIcon()
+
+
+def get_canvas_font(size=10, bold=False):
+    try:
+        font_family = Settings.get_instance().canvas_font_type.value
+    except Exception:
+        font_family = "Segoe UI"
+
+    font = QFont(font_family, size)
+    if bold:
+        font.setBold(True)
+    return font
 
 
 def str_to_bool(value):

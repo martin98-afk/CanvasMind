@@ -2,252 +2,20 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint, QTimer
-from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics, QLinearGradient
-from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, \
-    QGraphicsDropShadowEffect
+from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
+from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
 from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
 from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
 
+from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_pinyin_search_keys
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
-
-# ----------------------------------------------------------------
-# 1. 字体工具 (从设置动态获取)
-# ----------------------------------------------------------------
-def get_canvas_font(size=10, bold=False):
-    try:
-        from app.utils.config import Settings
-        font_family = Settings.get_instance().canvas_font_type.value
-    except Exception:
-        font_family = "Segoe UI"
-
-    font = QFont(font_family, size)
-    if bold:
-        font.setBold(True)
-    return font
-
-
-# ----------------------------------------------------------------
-# 2. 精准对齐的端口行组件
-# ----------------------------------------------------------------
-
-class PortRow(QWidget):
-    def __init__(self, name: str, type_name: str, is_input: bool = True, parent=None):
-        super().__init__(parent)
-        # 核心布局：顶部对齐
-        self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(6)
-        self.layout.setAlignment(Qt.AlignTop)
-
-        # 端口小点 (使用固定上边距，对齐第一行文字的中心)
-        self.dot = QFrame()
-        self.dot.setFixedSize(6, 6)
-        color = "#4ADE80" if is_input else "#F87171"
-        self.dot.setStyleSheet(f"background-color: {color}; border-radius: 3px; border: none;")
-        # 魔法数字 6px：让圆点对齐 10pt 字体的第一行
-        self.dot.setContentsMargins(0, 6, 0, 0)
-
-        # 解决残影：必须要有一个占位的 Widget 来包住圆点
-        dot_wrapper = QWidget()
-        dot_wrapper.setFixedWidth(6)
-        dot_v_layout = QVBoxLayout(dot_wrapper)
-        dot_v_layout.setContentsMargins(0, 6, 0, 0)  # 控制圆点垂直偏移
-        dot_v_layout.addWidget(self.dot)
-        dot_v_layout.addStretch()
-
-        # 名字标签
-        self.name_lbl = QLabel(name)
-        self.name_lbl.setFont(get_canvas_font(10))
-        self.name_lbl.setStyleSheet("color: #EEEEEE; border: none; background: transparent;")
-        self.name_lbl.setWordWrap(True)
-        self.name_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-
-        # 胶囊标签 (Badge)
-        self.type_lbl = QLabel(type_name.upper())
-        self.type_lbl.setFont(get_canvas_font(8, bold=True))
-        # 解决胶囊文字看不清：增加对比度，增加左右 padding
-        self.type_lbl.setStyleSheet(f"""
-            QLabel {{
-                color: #FFFFFF;
-                background-color: rgba({(74, 222, 128) if is_input else (248, 113, 113)}, 0.4);
-                border: 1px solid {color};
-                border-radius: 4px;
-                padding: 1px 6px;
-                margin-top: 1px;
-            }}
-        """)
-
-        if is_input:
-            self.layout.addWidget(dot_wrapper)
-            self.layout.addWidget(self.name_lbl, 1)
-            self.layout.addWidget(self.type_lbl, 0, Qt.AlignTop)
-        else:
-            self.layout.addWidget(self.type_lbl, 0, Qt.AlignTop)
-            self.layout.addWidget(self.name_lbl, 1, Qt.AlignRight | Qt.AlignTop)
-            self.layout.addWidget(dot_wrapper)
-
-
-# ----------------------------------------------------------------
-# 3. 侧边磨砂预览窗 (解决残影 & 顶部对齐)
-# ----------------------------------------------------------------
-
-class ComponentPreviewWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        # 解决残影的核心属性
-        self.setAttribute(Qt.WA_NoSystemBackground, True)
-
-        self.setMinimumWidth(340)
-
-        # 阴影
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(30)
-        self.shadow.setColor(QColor(0, 0, 0, 220))
-        self.shadow.setOffset(0, 8)
-        self.setGraphicsEffect(self.shadow)
-
-        self._setup_ui()
-
-    def _setup_ui(self):
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(15)
-
-        # 1. 标题
-        self.title_label = QLabel()
-        self.title_label.setFont(get_canvas_font(16, bold=True))
-        self.title_label.setStyleSheet("color: #FFFFFF; background: transparent;")
-        self.title_label.setWordWrap(True)
-        self.main_layout.addWidget(self.title_label)
-
-        # 2. 类别
-        self.category_label = QLabel()
-        self.category_label.setFont(get_canvas_font(9, bold=True))
-        self.category_label.setStyleSheet("color: #888888; text-transform: uppercase; letter-spacing: 1.2px;")
-        self.main_layout.addWidget(self.category_label)
-
-        # 3. 描述
-        self.description_label = QLabel()
-        self.description_label.setFont(get_canvas_font(11))
-        self.description_label.setStyleSheet("color: #BBBBBB; line-height: 1.4; background: transparent;")
-        self.description_label.setWordWrap(True)
-        self.main_layout.addWidget(self.description_label)
-
-        # 分割线
-        line = QFrame()
-        line.setStyleSheet("background: rgba(255, 255, 255, 0.1); max-height: 1px;")
-        self.main_layout.addWidget(line)
-
-        # 4. 端口容器 (必须顶部对齐)
-        self.ports_area = QWidget()
-        self.ports_layout = QHBoxLayout(self.ports_area)
-        self.ports_layout.setContentsMargins(0, 0, 0, 0)
-        self.ports_layout.setSpacing(15)
-        self.ports_layout.setAlignment(Qt.AlignTop)  # 整体顶部对齐
-
-        # 输入列
-        self.in_vbox = QVBoxLayout()
-        self.in_vbox.setAlignment(Qt.AlignTop)
-        self.in_vbox.setSpacing(10)
-        self.in_title = QLabel("INPUTS")
-        self.in_title.setFont(get_canvas_font(9, bold=True))
-        self.in_title.setStyleSheet("color: #4ADE80; margin-bottom: 2px;")
-        self.in_vbox.addWidget(self.in_title)
-
-        # 输出列
-        self.out_vbox = QVBoxLayout()
-        self.out_vbox.setAlignment(Qt.AlignTop)
-        self.out_vbox.setSpacing(10)
-        self.out_title = QLabel("OUTPUTS")
-        self.out_title.setFont(get_canvas_font(9, bold=True))
-        self.out_title.setStyleSheet("color: #F87171; margin-bottom: 2px;")
-        self.out_vbox.addWidget(self.out_title)
-
-        self.ports_layout.addLayout(self.in_vbox, 1)
-        self.ports_layout.addLayout(self.out_vbox, 1)
-        self.main_layout.addWidget(self.ports_area)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        # 清除所有内容，解决残影
-        painter.setCompositionMode(QPainter.CompositionMode_Source)
-        painter.fillRect(event.rect(), Qt.transparent)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-
-        # 背景渐变
-        grad = QLinearGradient(0, 0, 0, self.height())
-        grad.setColorAt(0, QColor(30, 30, 32, 245))
-        grad.setColorAt(1, QColor(15, 15, 17, 252))
-
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 12, 12)
-        painter.fillPath(path, grad)
-
-        # 描边
-        painter.setPen(QPen(QColor(255, 255, 255, 25), 1))
-        painter.drawPath(path)
-
-    def update_content(self, info: Dict):
-        # 核心：更新前先隐藏，并清除内容，彻底解决残影
-        self.hide()
-
-        self.title_label.setText(info.get('name', 'Unknown').upper())
-        self.category_label.setText(f"📁 {info.get('category', 'General')}")
-        self.description_label.setText(info.get('description') or "No details available.")
-
-        # 清理旧 Widget
-        def clear_layout(layout):
-            while layout.count() > 1:
-                item = layout.takeAt(1)
-                if item.widget():
-                    item.widget().deleteLater()
-
-        clear_layout(self.in_vbox)
-        clear_layout(self.out_vbox)
-
-        # 填充
-        inputs = info.get('inputs', [])
-        input_sub_types = info.get('input_sub_types', [])
-        self.in_title.setVisible(bool(inputs))
-        for i, i_type in zip(inputs[:10], input_sub_types[:10]):
-            self.in_vbox.addWidget(PortRow(i[1], i_type or i[-2].value, True))
-
-        outputs = info.get('outputs', [])
-        output_sub_types = info.get('output_sub_types', [])
-        self.out_title.setVisible(bool(outputs))
-        for o, o_type in zip(outputs[:10], output_sub_types[:10]):
-            self.out_vbox.addWidget(PortRow(o[1], o_type or o[-2].value, False))
-
-        # 强制重新计算大小并刷新重绘
-        self.adjustSize()
-        self.update()
-
-    def show_beside_widget(self, tree_widget: QWidget, item_rect: QRectF):
-        tree_pos = tree_widget.mapToGlobal(QPoint(0, 0))
-        target_x = tree_pos.x() + tree_widget.width() + 12
-        target_y = tree_widget.mapToGlobal(item_rect.topLeft()).y() - 10
-
-        screen = QtGui.QGuiApplication.primaryScreen().availableGeometry()
-        if target_x + self.width() > screen.right():
-            target_x = tree_pos.x() - self.width() - 12
-
-        if target_y + self.height() > screen.bottom():
-            target_y = screen.bottom() - self.height() - 15
-
-        self.move(target_x, max(target_y, screen.top() + 10))
-        self.show()
 
 class DraggableTreeWidget(TreeWidget):
 
@@ -263,16 +31,9 @@ class DraggableTreeWidget(TreeWidget):
         self._show_time_sorted = False
         self._show_only_favorites = False
         self._selected_categories = set()
+        # 开启鼠标追踪
         self.setMouseTracking(True)
         self.viewport().setAttribute(Qt.WA_Hover)
-
-        self._preview_widget = ComponentPreviewWidget()
-        self._hovered_item = None
-
-        self._hover_timer = QTimer(self)
-        self._hover_timer.setSingleShot(True)
-        self._hover_timer.timeout.connect(self._show_preview)
-
         self.viewport().installEventFilter(self)
         self._init_components()
 
@@ -711,47 +472,45 @@ class DraggableTreeWidget(TreeWidget):
     def eventFilter(self, obj, event):
         if obj == self.viewport():
             if event.type() == QtCore.QEvent.MouseMove:
-                pos = event.pos()
-                item = self.itemAt(pos)
-
-                # 只有带数据的叶子节点（组件）才处理
+                item = self.itemAt(event.pos())
                 full_path = item.data(0, Qt.UserRole + 1) if item else None
 
-                if item and full_path:
-                    if item != self._hovered_item:
-                        # --- 核心修复：彻底重置状态 ---
-                        self._hover_timer.stop()  # 停止旧计时器
-                        self._preview_widget.hide()  # 立即隐藏旧卡片
-                        self._hovered_item = item  # 切换当前追踪项
-                        self._hover_timer.start(350)  # 重新开始计时
+                if full_path:
+                    # 获取数据
+                    data = self._get_component_data(full_path)
+                    if data:
+                        # 计算位置：显示在Item右侧，而不是鼠标位置，这样更稳定
+                        rect = self.visualItemRect(item)
+                        global_pos = self.viewport().mapToGlobal(QPoint(rect.right(), rect.top()))
+
+                        # 调用单例管理器
+                        PreviewManager.get_instance().show_preview(
+                            data,
+                            global_pos,
+                            self,
+                            delay=300  # 300ms 延迟
+                        )
                 else:
-                    # 划到空白处或文件夹，立即清理
-                    self._hide_preview()
+                    # 移到空白处或文件夹，请求隐藏
+                    PreviewManager.get_instance().hide_preview()
 
             elif event.type() == QtCore.QEvent.Leave:
-                self._hide_preview()
+                PreviewManager.get_instance().hide_preview()
+
+            # 当滚动发生时，立即隐藏以避免错位
+            elif event.type() == QtCore.QEvent.Wheel:
+                PreviewManager.get_instance().hide_preview()
 
         return super().eventFilter(obj, event)
 
-    def _show_preview(self):
-        # 再次校验逻辑：防止计时器触发时鼠标已经移走
-        if not self._hovered_item:
-            return
-
-        # 获取当前鼠标下的项，二次确认
-        current_item = self.itemAt(self.viewport().mapFromGlobal(QtGui.QCursor.pos()))
-        if current_item != self._hovered_item:
-            return
-
-        full_path = self._hovered_item.data(0, Qt.UserRole + 1)
+    def _get_component_data(self, full_path):
+        """辅助方法：提取组件信息"""
         comp_map, _ = ComponentScanner().get_components()
         comp_cls = comp_map.get(full_path)
-
         if not comp_cls:
-            return
+            return None
 
-        # 构造信息
-        info = {
+        return {
             'name': getattr(comp_cls, 'name', None) or comp_cls.__name__,
             'category': getattr(comp_cls, 'category', 'General'),
             'description': getattr(comp_cls, 'description', ''),
@@ -761,28 +520,19 @@ class DraggableTreeWidget(TreeWidget):
             'output_sub_types': getattr(comp_cls, 'get_output_sub_types', lambda: {})(),
         }
 
-        # 渲染与显示
-        rect = self.visualItemRect(self._hovered_item)
-        self._preview_widget.update_content(info)  # 先更新内容
-        self._preview_widget.show_beside_widget(self, rect)  # 再定位显示
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        PreviewManager.get_instance().hide_preview()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        PreviewManager.get_instance().hide_preview()
 
     def _hide_preview(self):
-        self._hover_timer.stop()
-        self._preview_widget.hide()
-        self._hovered_item = None
+        PreviewManager.get_instance().hide_preview()
 
     def scrollContentsBy(self, dx, dy):
         super().scrollContentsBy(dx, dy)
-        self._hide_preview()
-
-    def leaveEvent(self, event):
-        """离开树时隐藏预览"""
-        super().leaveEvent(event)
-        self._hide_preview()
-
-    def hideEvent(self, event):
-        """隐藏树时隐藏预览"""
-        super().hideEvent(event)
         self._hide_preview()
 
     def __del__(self):
