@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, QRectF, QPoint, QTimer, QObject, QRect
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen, QFont, QFontMetrics, QLinearGradient
+from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen, QFont, QFontMetrics, QLinearGradient, QPixmap
 from PyQt5.QtWidgets import QWidget, QGraphicsDropShadowEffect, QApplication
 
 from app.utils.utils import get_canvas_font
@@ -14,8 +14,7 @@ class NodePreviewCard(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(
-            Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WA_TransparentForMouseEvents)
+        self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
@@ -268,10 +267,107 @@ class NodePreviewCard(QWidget):
                                      Qt.AlignRight | Qt.AlignVCenter, p_name)
 
 
+class ImagePreviewCard(QWidget):
+    """
+    【图片预览卡片】
+    专门用于显示子图模板的截图
+    特点：支持大图、保持比例、纯净展示
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+
+        self._data = {}
+        self._base_width = 400  # 图片预览默认宽一点
+        self._padding = 12
+        self._title_height = 30
+        self.title_font = get_canvas_font(11, True)
+
+        # 阴影
+        self.shadow = QGraphicsDropShadowEffect(self)
+        self.shadow.setBlurRadius(20)
+        self.shadow.setColor(QColor(0, 0, 0, 150))
+        self.shadow.setOffset(0, 4)
+        self.setGraphicsEffect(self.shadow)
+
+    def set_data(self, info: dict):
+        """
+        info: { 'name': str, 'image_path': str }
+        """
+        self._data = info
+        self._calculate_layout()
+        self.update()
+
+    def _calculate_layout(self):
+        img_path = self._data.get('image_path')
+        if not img_path:
+            self.resize(self._base_width, 100)
+            return
+
+        pix = QPixmap(img_path)
+        if pix.isNull():
+            self.resize(self._base_width, 100)
+            return
+
+        # 计算自适应高度
+        # 限制图片最大宽高，避免遮挡整个屏幕
+        max_img_w = 350
+        max_img_h = 400
+
+        available_w = min(self._base_width, max_img_w) - self._padding * 2
+
+        # 按比例缩放
+        scaled = pix.scaled(int(available_w), max_img_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        content_h = self._padding + self._title_height + scaled.height() + self._padding
+        self.resize(int(available_w + self._padding * 2), int(content_h))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        w, h = self.width(), self.height()
+
+        # 1. 背景
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(2, 2, w - 4, h - 4), 10, 10)
+        grad = QLinearGradient(0, 0, 0, h)
+        grad.setColorAt(0, QColor(45, 45, 48, 250))  # 图片预览稍微不透明一点
+        grad.setColorAt(1, QColor(30, 30, 32, 252))
+        painter.fillPath(path, grad)
+        painter.setPen(QPen(QColor(255, 255, 255, 30), 1.5))
+        painter.drawPath(path)
+
+        # 2. 标题
+        painter.setPen(QColor(230, 230, 230))
+        painter.setFont(self.title_font)
+        painter.drawText(QRect(self._padding, self._padding, w - self._padding * 2, 20),
+                         Qt.AlignLeft | Qt.AlignVCenter, self._data.get('name', 'Preview'))
+
+        # 3. 图片
+        img_path = self._data.get('image_path')
+        if img_path:
+            pix = QPixmap(img_path)
+            if not pix.isNull():
+                y_start = self._padding + self._title_height
+                available_w = w - self._padding * 2
+                available_h = h - y_start - self._padding
+
+                scaled = pix.scaled(int(available_w), int(available_h), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+                # 居中绘制
+                x_offset = self._padding + (available_w - scaled.width()) / 2
+                painter.drawPixmap(int(x_offset), int(y_start), scaled)
+
+
 class PreviewManager(QObject):
     """
-    全局预览管理器 (Singleton)
-    解决多个组件同时触发预览导致的冲突、残影问题
+    【预览管理器】
+    调度中心：根据数据类型，决定显示 NodeCard 还是 ImageCard
     """
     _instance = None
 
@@ -283,67 +379,95 @@ class PreviewManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self._card = NodePreviewCard()
+        # 实例化两张卡片
+        self._node_card = NodePreviewCard()
+        self._image_card = ImagePreviewCard()
+
+        # 当前正在显示的卡片引用
+        self._active_card = None
+
         self._timer = QTimer()
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._real_show)
 
         self._pending_data = None
         self._pending_pos = None
-        self._target_widget = None
 
     def show_preview(self, data: dict, global_pos: QPoint, target_widget: QWidget, delay=350):
         """
-        请求显示预览
-        :param data: 组件数据字典
-        :param global_pos: 鼠标或控件的全局坐标
-        :param target_widget: 触发来源组件 (用于判断生命周期)
-        :param delay: 延迟毫秒数 (防抖)
+        :param data:
+            如果是节点: {'name':..., 'inputs':...}
+            如果是图片: {'name':..., 'image_path':...}
         """
-        if self._card.isVisible() and self._pending_data == data:
-            return  # 已经是当前内容，忽略
+        # 如果正在显示且内容没变，跳过
+        if self._active_card and self._active_card.isVisible() and self._pending_data == data:
+            return
 
         self._pending_data = data
         self._pending_pos = global_pos
-        self._target_widget = target_widget
 
-        # 重置计时器，防抖动
-        self._timer.start(delay)
+        # 重置定时器防抖
+        self._timer.stop()
+        if delay > 0:
+            self._timer.start(delay)
+        else:
+            self._real_show()
 
     def hide_preview(self):
-        """立即隐藏"""
         self._timer.stop()
-        self._card.hide()
+        if self._node_card.isVisible():
+            self._node_card.hide()
+        if self._image_card.isVisible():
+            self._image_card.hide()
+        self._active_card = None
         self._pending_data = None
 
     def _real_show(self):
-        """实际执行显示逻辑"""
         if not self._pending_data:
             return
 
-        # 1. 更新内容
-        self._card.set_data(self._pending_data)
+        # 1. 决定使用哪张卡片
+        if 'image_path' in self._pending_data:
+            self._active_card = self._image_card
+            self._node_card.hide()  # 确保另一张隐藏
+        else:
+            self._active_card = self._node_card
+            self._image_card.hide()
 
-        # 2. 智能定位 (防止超出屏幕)
+        # 2. 设置数据 & 调整大小
+        self._active_card.set_data(self._pending_data)
+
+        # 3. 智能定位
+        self._move_card_smartly(self._active_card, self._pending_pos)
+
+        # 4. 显示
+        self._active_card.show()
+
+    def _move_card_smartly(self, card, pos):
+        """计算位置，防止溢出屏幕"""
         screen_geo = QApplication.primaryScreen().availableGeometry()
-        card_w, card_h = self._card.width(), self._card.height()
+        card_w, card_h = card.width(), card.height()
 
-        x = self._pending_pos.x() + 20  # 默认在鼠标右侧
-        y = self._pending_pos.y() + 10
+        x = pos.x() + 20
+        y = pos.y() + 10
 
-        # 如果右侧放不下，放左侧
+        # 右侧溢出 -> 放左侧
         if x + card_w > screen_geo.right():
-            x = self._pending_pos.x() - card_w - 20
+            x = pos.x() - card_w - 40
 
-        # 如果底部放不下，向上偏移
+        # 底部溢出 -> 向上提
         if y + card_h > screen_geo.bottom():
             y = screen_geo.bottom() - card_h - 10
 
-        # 顶部防溢出
-        y = max(y, screen_geo.top() + 10)
+        # 顶部溢出 -> 顶格
+        if y < screen_geo.top():
+            y = screen_geo.top() + 10
 
-        self._card.move(x, y)
-        self._card.show()
+        # 左侧溢出 (极少情况) -> 顶格
+        if x < screen_geo.left():
+            x = screen_geo.left() + 10
+
+        card.move(int(x), int(y))
 
 
 # 全局快捷访问

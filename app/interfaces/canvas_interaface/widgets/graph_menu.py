@@ -3,10 +3,12 @@ from pathlib import Path
 
 import orjson
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
+from PyQt5.QtWidgets import QApplication
 from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.components.base import ArgumentType
+from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_pinyin_search_keys, get_icon
 from app.widgets.basic_widget.style_sheet import StyleSheet
@@ -200,10 +202,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget.itemActivated.connect(self.on_item_confirmed)
         self.search_line.returnPressed.connect(self.on_return_pressed)
         self.search_line.installEventFilter(self)
-
+        self.list_widget.viewport().installEventFilter(self)
+        self.list_widget.currentItemChanged.connect(self._on_current_item_changed)
         self.setFixedSize(460, 480)
 
-    # ... (toggle_mode 保持不变) ...
     def toggle_mode(self):
         self._current_mode = (self._current_mode + 1) % 3
 
@@ -363,6 +365,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
         for tid_dir in self._template_dir.iterdir():
             if not tid_dir.is_dir(): continue
             meta_file = tid_dir / "meta.json"
+            # 【新增】获取图片路径
+            preview_file = tid_dir / "preview.png"
+
             if meta_file.exists():
                 try:
                     with open(meta_file, 'r', encoding='utf-8') as f:
@@ -378,6 +383,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                         "name": name,
                         "category": "子图模板",
                         "tags": tags,
+                        "preview_path": str(preview_file) if preview_file.exists() else None,
                         "search_keys": f"{name} {tag_str} {py_keys}".lower()
                     })
                 except Exception:
@@ -454,6 +460,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 self._visible_items.append(data)
 
         self._update_list_widget()
+        if self.list_widget.count() > 0:
+            self.list_widget.setCurrentRow(0)
+        else:
+            self._hide_preview()
 
     def on_item_confirmed(self, item):
         data = item.data(Qt.UserRole)
@@ -644,15 +654,182 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         return None, None, None
 
-    def eventFilter(self, source, event):
-        if event.type() == QtCore.QEvent.KeyPress:
+    def focusOutEvent(self, event):
+        """阻止因预览卡片显示导致的自动关闭"""
+        # 检查新获得焦点的窗口是否是预览卡片
+        active_window = QApplication.activeWindow()
+        preview_card = PreviewManager.get_instance()._card
+
+        if active_window and preview_card and preview_card.isAncestorOf(active_window):
+            # 预览卡片获得焦点 → 忽略
+            event.ignore()
+            return
+
+        # 其他情况：正常处理（如点击画布等）
+        super().focusOutEvent(event)
+
+    def eventFilter(self, obj, event):
+        # 修复：只保留一个 eventFilter，处理所有事件
+        if obj == self.list_widget.viewport():
+            if event.type() == QtCore.QEvent.MouseMove:
+                self._handle_preview_on_mouse_move(event.pos())
+                return False
+
+            elif event.type() == QtCore.QEvent.Leave:
+                self._hide_preview()
+                return False
+
+            elif event.type() == QtCore.QEvent.Wheel:
+                self._hide_preview()
+                return False
+
+        elif obj == self.search_line and event.type() == QtCore.QEvent.KeyPress:
             if event.key() == Qt.Key_Tab:
                 self.toggle_mode()
                 return True
             if event.key() == Qt.Key_Escape:
                 self.close()
                 return True
-            if source is self.search_line and event.key() in (Qt.Key_Down, Qt.Key_Up):
+            if event.key() in (Qt.Key_Down, Qt.Key_Up):
                 self.list_widget.setFocus()
                 return True
-        return super(CustomGraphMenu, self).eventFilter(source, event)
+
+        return super(CustomGraphMenu, self).eventFilter(obj, event)
+
+    def _on_current_item_changed(self, current, previous):
+        # 【核心修复】如果菜单还没显示（例如正在后台构建列表），直接忽略，防止预览乱飘
+        if not self.isVisible():
+            return
+
+        if current:
+            # 键盘操作响应快一点
+            self._show_preview_for_item(current, delay=50)
+        else:
+            self._hide_preview()
+
+    def _handle_preview_on_mouse_move(self, pos):
+        """处理鼠标悬浮预览"""
+        if not self.isVisible():
+            return
+
+        item = self.list_widget.itemAt(pos)
+        # 鼠标悬浮时延迟稍长（200ms），避免划过时闪烁
+        self._show_preview_for_item(item, delay=200)
+
+    def _show_preview_for_item(self, item, delay=200):
+        """通用的显示预览方法，基于 Item 的位置而不是鼠标位置"""
+        if not item:
+            self._hide_preview()
+            return
+
+        # 【核心修改】允许 CREATE (节点) 和 TEMPLATE (模板) 模式显示预览
+        # NAVIGATE 模式通常不需要预览
+        if self._current_mode == MenuMode.NAVIGATE:
+            self._hide_preview()
+            return
+
+        data = item.data(Qt.UserRole)
+        if not data or data.get("_is_placeholder"):
+            self._hide_preview()
+            return
+
+        # 构造数据
+        preview_data = self._build_preview_data(data)
+        # 如果没有数据（比如模板没有图片，或者节点解析失败），则不显示
+        if not preview_data:
+            self._hide_preview()
+            return
+
+        # === 基于 Item 的几何位置计算预览位置 ===
+        screen_geo = QApplication.primaryScreen().availableGeometry()
+        item_rect = self.list_widget.visualItemRect(item)
+        global_item_pos = self.list_widget.viewport().mapToGlobal(item_rect.topLeft())
+
+        item_width = item_rect.width()
+
+        # 默认显示在左侧
+        preview_width = 350  # 如果是图片，管理器会自动调整宽度，这里只是估算位移
+        preview_x = global_item_pos.x() - preview_width - 10
+
+        if preview_x < screen_geo.left() + 10:
+            preview_x = global_item_pos.x() + item_width + 10
+            if preview_x + preview_width > screen_geo.right() - 10:
+                preview_x = screen_geo.left() + 10
+
+        preview_y = global_item_pos.y()
+        estimated_h = 250
+        if preview_y + estimated_h > screen_geo.bottom():
+            preview_y = screen_geo.bottom() - estimated_h - 10
+        if preview_y < screen_geo.top():
+            preview_y = screen_geo.top() + 10
+
+        preview_pos = QPoint(int(preview_x), int(preview_y))
+
+        PreviewManager.get_instance().show_preview(
+            preview_data,
+            preview_pos,
+            self,
+            delay=delay
+        )
+
+    def _build_preview_data(self, data):
+        """构建预览所需数据（区分节点和模板）"""
+        try:
+            # 1. 如果是模板类型
+            if data.get('type') == 'template':
+                # 如果没有图片路径，返回 None，这样就不会弹出预览窗
+                if not data.get('preview_path'):
+                    return None
+
+                # 返回符合 ImagePreviewCard 要求的数据结构
+                return {
+                    'name': data.get('name'),
+                    'image_path': data.get('preview_path')
+                }
+
+            # 2. 如果是节点类型 (CREATE 模式)
+            elif data.get('type') == 'node':
+                return {
+                    'name': data['name'],
+                    'category': data['category'],
+                    'description': self._get_node_description(data['id']),
+                    'inputs': [(ptype, pname) for pname, _, _, ptype, _ in data.get('in_ports_raw', [])]
+                    if 'in_ports_raw' in data else
+                    [(ptype, f"input_{i}") for i, ptype in enumerate(data.get('in_port_types', []))],
+                    'outputs': [(ptype, pname) for pname, _, ptype, _ in data.get('out_ports_raw', [])]
+                    if 'out_ports_raw' in data else
+                    [(ptype, f"output_{i}") for i, ptype in enumerate(data.get('out_port_types', []))],
+                    'input_sub_types': data.get('in_port_sub_types', []),
+                    'output_sub_types': data.get('out_port_sub_types', [])
+                }
+
+            return None
+        except Exception:
+            return None
+
+    def _get_node_description(self, node_id):
+        """从组件扫描器获取节点描述（缓存优化）"""
+        try:
+            scanner = ComponentScanner()
+            node_factory = self._graph._node_factory.nodes
+            node_class = node_factory.get(node_id)
+            if not node_class:
+                return ""
+
+            node_uuid = node_class.__name__.split("StatusDynamicNode_")[1]
+            comp = scanner.get_component_by_uuid(node_uuid)
+            return getattr(comp, 'description', 'No description available.')[:200]
+        except Exception:
+            return "No description available."
+
+    def _hide_preview(self):
+        """统一隐藏预览的入口"""
+        PreviewManager.get_instance().hide_preview()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._hide_preview()  # 确保菜单关闭时预览也隐藏
+
+    def closeEvent(self, event):
+        super().closeEvent(event)
+        self._hide_preview()
