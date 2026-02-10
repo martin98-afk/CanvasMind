@@ -11,8 +11,8 @@ import paramiko
 from PyQt5 import QtCore
 from loguru import logger
 
-from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, ComponentMessage, resource_path, \
-    ConnectionType
+from app.utils.config import Settings
+from app.components.base import PropertyType, GlobalVariableContext, ArgumentType, resource_path, ConnectionType
 from app.scheduler.expression_engine import ExpressionEngine
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
@@ -489,10 +489,14 @@ def create_dynamic_code_node(parent_window=None):
 
                 inputs = {k: _evaluate(v) for k, v in inputs_raw.items()}
                 # === 准备 ZMQ 环境 ===
-                remote_ip = env_data.get('host') if env_data.get('type') == 'ssh' else None
-                self._zmq_pub_port = get_free_port()
-                self._zmq_svc_port = get_free_port()
-                zmq_env_vars = self.setup_zmq_env(self._zmq_pub_port, self._zmq_svc_port, remote_ip)
+                # === 2. 准备 ZMQ 环境 ===
+                if Settings.get_instance().communication_method.value == "ZMQ通信":
+                    remote_ip = env_data.get('host') if env_data.get('type') == 'ssh' else None
+                    self._zmq_pub_port = get_free_port()
+                    self._zmq_svc_port = get_free_port()
+                    zmq_env_vars = self.setup_zmq_env(self._zmq_pub_port, self._zmq_svc_port, remote_ip)
+                else:
+                    zmq_env_vars = {}
 
                 with open(params_path, 'wb') as f:
                     pickle.dump(({}, inputs, global_variable), f)

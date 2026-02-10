@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-from typing import Optional
 from PyQt5.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer
 from PyQt5.QtGui import QFont, QTextOption
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFormLayout, QToolButton, QFrame, QSizePolicy, QApplication
 from qfluentwidgets import (
     LineEdit, BodyLabel, TextEdit,
-    FluentIcon, setFont, EditableComboBox, SmoothScrollArea
+    FluentIcon, setFont, SmoothScrollArea
 )
 
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_icon
+from app.widgets.basic_widget.searchable_editable_combobox import SearchableEditableComboBox
 from app.widgets.side_dock_area.plugins.component_info.port_editory_widget import PortEditorWidget
 from app.widgets.side_dock_area.plugins.component_info.property_editory_widget import PropertyEditorWidget
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -201,7 +201,7 @@ class ComponentInfoWindow(ToolWindow):
         self._name_edit = LineEdit()
         self._name_edit.setPlaceholderText("请输入组件名称")
 
-        self._category_edit = EditableComboBox()
+        self._category_edit = SearchableEditableComboBox()
         self._category_edit.setMaxVisibleItems(12)
         self._category_edit.setToolTip("可输入新分类名称")
         ComponentScanner.register_on_change(self.refresh_category_combobox)

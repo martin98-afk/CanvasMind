@@ -4,7 +4,6 @@ import pickle
 import platform
 import re
 import shutil
-import socket
 import subprocess
 import time
 from pathlib import Path

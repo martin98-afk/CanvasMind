@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QFormLayout, QWidget
-from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase, TextEdit, EditableComboBox
+from qfluentwidgets import LineEdit, BodyLabel, MessageBoxBase, TextEdit
 
 from app.scan_components import ComponentScanner
+from app.widgets.basic_widget.searchable_editable_combobox import SearchableEditableComboBox
 
 
 class NewComponentDialog(MessageBoxBase):
@@ -32,7 +33,7 @@ class NewComponentDialog(MessageBoxBase):
         if self._default_name:
             self.name_edit.setText(self._default_name)
         # 组件类别定义
-        self.category_edit = EditableComboBox()
+        self.category_edit = SearchableEditableComboBox()
         self.category_edit.setMaxVisibleItems(12)
         compoent_map, _ = ComponentScanner().get_components()
         categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
