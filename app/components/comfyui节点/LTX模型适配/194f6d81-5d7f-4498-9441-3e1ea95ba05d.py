@@ -22,14 +22,14 @@ class LTXVSampler(BaseComponent):
     description = "LTX2 专用采样器，支持进度回调、首帧预览以及 AV 潜空间处理。"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="结果LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="结果LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="preview", label="首帧预览", type=ArgumentType.IMAGE),
     ]
     properties = {

@@ -16,17 +16,17 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVAudioVAEEncodeFromFile(BaseComponent):
-    requirements = "torchaudio,TorchCodec"
+    requirements = "torchaudio,TorchCodec,torch,numpy,soundfile"
     name = "LTX2音频编码(文件输入)"
     category = "comfyui节点/LTX模型适配"
     description = "直接从音频文件读取并编码为 LTX2 潜空间。"
     
     inputs = [
-        PortDefinition(name="audio_vae", label="音频VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_vae", label="音频VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
         PortDefinition(name="audio_file", label="音频文件", type=ArgumentType.FILE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="音频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="音频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
     }

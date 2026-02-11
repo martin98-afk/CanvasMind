@@ -21,15 +21,11 @@ class ComfyUNETLoader(BaseComponent):
     category = "comfyui节点/模型加载器"
     description = "加载单独的 Diffusion Model (UNet/DiT)，支持 FP8 量化设置以降低显存占用。"
 
-    inputs = []
+    inputs = [
+    ]
 
     outputs = [
-        PortDefinition(
-            name="model", 
-            label="模型", 
-            type=ArgumentType.OBJECT,
-            description="加载完成的扩散模型对象"
-        ),
+        PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT, sub_type="MODEL"),
     ]
 
     properties = {

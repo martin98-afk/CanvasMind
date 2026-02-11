@@ -22,16 +22,16 @@ class LTXVAddGuide(BaseComponent):
     description = "在视频的指定位置插入参考帧（Keyframes），支持多图引导。"
 
     inputs = [
-        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="画布LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="画布LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
         PortDefinition(name="image", label="引导图像/视频", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning"),
+        PortDefinition(name="negative", label="负向条件", type=ArgumentType.OBJECT, sub_type="Conditioning"),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
         "frame_idx": PropertyDefinition(

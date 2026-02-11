@@ -22,11 +22,11 @@ class LTXVModelConfigurator(BaseComponent):
     description = "为 LTX2 模型应用动态 Shift 修正。这是 LTX2 能够生成高质量视频的关键。"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="参考Latent(用于计算Token数)", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="参考Latent(用于计算Token数)", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="model", label="已修正MODEL", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="已修正MODEL", type=ArgumentType.OBJECT, sub_type="MODEL"),
     ]
     properties = {
         "max_shift": PropertyDefinition(
