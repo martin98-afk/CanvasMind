@@ -160,6 +160,12 @@ class CanvasRunner(QObject):
     def store_output(self, output):
         self.execution_storage.update_record(self._current_task.task_id, "running", output_data=output)
 
+    def get_trigger_data(self, task_id: str) -> dict:
+        """根据 task_id 获取触发数据"""
+        # 优先从当前任务对象获取
+        if self._current_task and self._current_task.task_id == task_id:
+            return self._current_task.triggered_data or {}
+
     # --- 内部信号处理槽 (Proxy Slots) ---
 
     def _handle_scheduler_finished(self):

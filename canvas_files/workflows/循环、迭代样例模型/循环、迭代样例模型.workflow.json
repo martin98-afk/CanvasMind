@@ -11,14 +11,14 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1cb689b5900": {
+      "0x180b3857810": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -39,7 +39,7 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1282.3735869982756,
+          -1282.497288076333,
           -675.8663492928697
         ],
         "layout_direction": 0,
@@ -48,18 +48,20 @@
         "custom": {
           "persistent_id": "a4f5b7a2-726a-43f8-823c-9ad4459e26d1",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb689b67a0": {
+      "0x180b385ded0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -80,8 +82,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          -545.2214381121387,
-          -209.81750415371403
+          -474.497288076333,
+          -595.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -89,18 +91,20 @@
         "custom": {
           "persistent_id": "2ddbb9ac-ad95-4531-9f4b-5eca1fd64a14",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.LANG"
         }
       },
-      "0x1cb689b5690": {
+      "0x180b38603d0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -121,8 +125,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          294.0794948891404,
-          -477.8061278193884
+          428.502711923667,
+          -675.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -130,18 +134,20 @@
         "custom": {
           "persistent_id": "f75fef39-bac1-4728-a283-559af9a9d642",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb689b6440": {
+      "0x180b3861cd0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -163,7 +169,7 @@
         "height": 279.0,
         "pos": [
           -1427.7173033673757,
-          -45.82842183150356
+          122.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -171,18 +177,20 @@
         "custom": {
           "persistent_id": "af61c25e-f907-4798-badc-b02096a4ffa5",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb689b7490": {
+      "0x180b3863850": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -203,8 +211,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          -454.0485156484625,
-          360.12471469060563
+          -607.7173033673757,
+          202.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -212,11 +220,13 @@
         "custom": {
           "persistent_id": "6cb8599c-ec10-4a84-b87f-eab6e63c4240",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.LANG"
         }
       },
-      "0x1cb689b7eb0": {
+      "0x180b3868e90": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -244,8 +254,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          993.2213469498338,
-          688.9954872694827
+          567.9860618878613,
+          1294.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -253,18 +263,20 @@
         "custom": {
           "persistent_id": "a96cf177-a323-4fc0-ae11-91f7d2d08bc3",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb685f02b0": {
+      "0x180b386a110": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 2",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -285,8 +297,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1420.7830957111823,
-          268.4111006310435
+          -1427.7173033673757,
+          496.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -294,18 +306,20 @@
         "custom": {
           "persistent_id": "795ff325-cf70-43f7-a3f0-d4cb416adf68",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb685f1150": {
+      "0x180b386b7d0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 3",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -326,8 +340,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1381.7622385871534,
-          613.2754602913665
+          -1427.7173033673757,
+          870.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -335,18 +349,20 @@
         "custom": {
           "persistent_id": "6dc54266-e78d-449a-b8dc-e9e95e6473e8",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容文本内容文本内容"
         }
       },
-      "0x1cb685f20e0": {
+      "0x180b3874cd0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 2",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -367,8 +383,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          173.43287395899415,
-          360.12471469060563
+          -7.7173033673757345,
+          202.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -376,18 +392,20 @@
         "custom": {
           "persistent_id": "a38c4bbc-2370-4fdb-ac81-f07ab631f638",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x1cb685f1960": {
+      "0x180b3876490": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 3",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -408,8 +426,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          789.7748687344812,
-          352.6511006310435
+          592.2826966326243,
+          202.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -417,18 +435,20 @@
         "custom": {
           "persistent_id": "3efcd86a-0e6a-49f7-aca9-ce5d4be491e9",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "custom.test"
         }
       },
-      "0x1cb685f2ce0": {
+      "0x180b3877a90": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 4",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -449,8 +469,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          -776.4917898015907,
-          1564.174461086811
+          -1216.588542340264,
+          2069.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -458,18 +478,20 @@
         "custom": {
           "persistent_id": "63c9e462-4f4a-4870-b492-f12bd99f4aa9",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x1cb685f3ca0": {
+      "0x180b3885390": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 5",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -490,8 +512,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          -174.42824843224253,
-          1578.3655389268763
+          -616.588542340264,
+          2069.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -499,18 +521,20 @@
         "custom": {
           "persistent_id": "1a9c39cc-bb48-44e4-95c4-7cb9a4d4d472",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x1cb685f38e0": {
+      "0x180b3886ad0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 6",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -531,8 +555,8 @@
         "width": 490.0,
         "height": 117.0,
         "pos": [
-          -515.0957592540981,
-          1834.9655306419206
+          -1216.588542340264,
+          2281.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -540,18 +564,20 @@
         "custom": {
           "persistent_id": "a89709ec-7524-49ce-a2f7-c5d2ad684ff9",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop1": "env.TZ"
         }
       },
-      "0x1cb685f1ab0": {
+      "0x180c24e3290": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 4",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -573,7 +599,7 @@
         "height": 279.0,
         "pos": [
           -2036.588542340264,
-          1403.323438457828
+          1989.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -581,18 +607,20 @@
         "custom": {
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb686190c0": {
+      "0x180b388d690": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 2",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -613,8 +641,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          831.9813743255004,
-          1433.9722497380947
+          298.411457659736,
+          1989.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -622,18 +650,20 @@
         "custom": {
           "persistent_id": "17e65534-3b29-4905-93f3-eeb52813f142",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb685f25f0": {
+      "0x180b388e810": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 3",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -654,8 +684,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          918.5078603933857,
-          888.7195204921405
+          567.9860618878613,
+          1509.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -663,11 +693,13 @@
         "custom": {
           "persistent_id": "b7a9b3fd-47e5-49d6-b917-cea2a5f030be",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb68618dc0": {
+      "0x180b388fcd0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 4",
@@ -695,8 +727,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          764.1915011289412,
-          1145.3452318173124
+          567.9860618878613,
+          1724.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -704,18 +736,20 @@
         "custom": {
           "persistent_id": "20bd0bf3-4030-40c8-8a10-eb8e105ba96b",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb6861b250": {
+      "0x180b38951d0": {
         "type_": "dynamic.StatusDynamicNode_bd25adc1-1abc-4192-9598-6a82696dea83",
         "icon": null,
         "name": "知识库查询",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -736,8 +770,8 @@
         "width": 456.0,
         "height": 182.0,
         "pos": [
-          1544.748300196913,
-          888.7195204921405
+          1061.9860618878613,
+          1294.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -745,19 +779,21 @@
         "custom": {
           "persistent_id": "5b629dcd-53b3-4555-bfdf-f45c6988eaec",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
-          "top_k": "3",
+          "top_k": 3,
           "knowledge_base_id": "default_kb"
         }
       },
-      "0x1cb68618f70": {
+      "0x180b3896ed0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 5",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -779,7 +815,7 @@
         "height": 279.0,
         "pos": [
           -1282.497288076333,
-          -372.45490039431076
+          -301.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -787,18 +823,20 @@
         "custom": {
           "persistent_id": "a4f5b7a2-726a-43f8-823c-9ad4459e26d1",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb6863cbe0": {
+      "0x180b38a4a50": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 5",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -819,8 +857,8 @@
         "width": 384.0,
         "height": 120.0,
         "pos": [
-          1961.93565080511,
-          240.3611569953876
+          1507.2826966326243,
+          122.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -828,18 +866,20 @@
         "custom": {
           "persistent_id": "3de3a575-68e7-4997-bec1-02092bfdf83f",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "prop_0": "text"
         }
       },
-      "0x1cb6861a1d0": {
+      "0x180b38a5c50": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 6",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -860,8 +900,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1986.588542340264,
-          1453.323438457828
+          -2036.588542340264,
+          2363.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -869,18 +909,20 @@
         "custom": {
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb6863d570": {
+      "0x180b38a7390": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 7",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -901,8 +943,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1936.588542340264,
-          1503.323438457828
+          -2036.588542340264,
+          2737.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -910,18 +952,20 @@
         "custom": {
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb6863f0d0": {
+      "0x180b38b08d0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 8",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -942,8 +986,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1886.588542340264,
-          1553.323438457828
+          -2036.588542340264,
+          3111.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -951,18 +995,20 @@
         "custom": {
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb6863c070": {
+      "0x180b38b1d90": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 9",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -983,8 +1029,8 @@
         "width": 395.0,
         "height": 279.0,
         "pos": [
-          -1836.588542340264,
-          1603.323438457828
+          -2036.588542340264,
+          3485.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -992,18 +1038,20 @@
         "custom": {
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
           "input": "文本内容"
         }
       },
-      "0x1cb6865c250": {
+      "0x180b38b31d0": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
         "icon": null,
         "name": "获取全局变量",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1025,7 +1073,7 @@
         "height": 117.0,
         "pos": [
           -498.0139381121387,
-          688.9954872694827
+          1294.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1033,52 +1081,14 @@
         "custom": {
           "persistent_id": "2255b045-900b-442b-9cba-ea7f93fc65af",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "version": "latest",
+          "var_name": "无",
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x1cb6863e5c0": {
-        "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
-        "icon": null,
-        "name": "获取全局变量 1",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 423.0,
-        "height": 117.0,
-        "pos": [
-          994.6076228867041,
-          -1199.227526769603
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "0a4c299c-da66-4fe2-b37d-b3fa248ef42f",
-          "_collapsed": false,
-          "version": "latest",
-          "prop1": "custom.大模型配置"
-        }
-      },
-      "0x1cb6865d1b0": {
+      "0x180b38b5d50": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1106,8 +1116,8 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          -613.6030705449075,
-          -426.0103548692857
+          -727.497288076333,
+          -595.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1117,7 +1127,7 @@
           "_collapsed": false
         }
       },
-      "0x1cb6865d270": {
+      "0x180b38b6610": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1145,8 +1155,8 @@
         "width": 153.0,
         "height": 60,
         "pos": [
-          -200.60307054490755,
-          -426.0103548692857
+          125.502711923667,
+          -595.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1156,14 +1166,14 @@
           "_collapsed": false
         }
       },
-      "0x1cb6865d480": {
+      "0x180b38b6d10": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1181,11 +1191,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 646.0,
-        "height": 413.1928507155717,
+        "width": 1106.0,
+        "height": 292.0,
         "pos": [
-          -653.6030705449075,
-          -466.0103548692857
+          -777.497288076333,
+          -675.8663492928697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1193,16 +1203,19 @@
         "custom": {
           "persistent_id": "5ffb722b-6a16-478b-b66a-7f5c12bb43a5",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "backdrop_text": "",
           "current_index": 2,
           "current_key": "",
           "loop_nums": 2,
           "max_iterations": 1000,
           "loop_condition": "",
-          "loop_mode": "count"
+          "loop_mode": "count",
+          "parallel_count": 1
         }
       },
-      "0x1cb6861aa10": {
+      "0x180b38b7e50": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 1",
@@ -1230,8 +1243,8 @@
         "width": 165.0,
         "height": 60,
         "pos": [
-          -736.4917898015907,
-          296.1398214540095
+          -872.7173033673757,
+          202.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1241,7 +1254,7 @@
           "_collapsed": false
         }
       },
-      "0x1cb6861bfa0": {
+      "0x180b38c8690": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 1",
@@ -1269,8 +1282,8 @@
         "width": 165.0,
         "height": 60,
         "pos": [
-          1379.9249977511363,
-          278.76115699538764
+          1192.2826966326243,
+          202.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1280,14 +1293,14 @@
           "_collapsed": false
         }
       },
-      "0x1cb6861bee0": {
+      "0x180b38c8e50": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1305,11 +1318,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 2361.416787552727,
-        "height": 278.363557695218,
+        "width": 2330.0,
+        "height": 292.0,
         "pos": [
-          -776.4917898015907,
-          238.76115699538764
+          -922.7173033673757,
+          122.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1317,16 +1330,19 @@
         "custom": {
           "persistent_id": "6b86cb12-c940-40c8-bd6f-3bfea61ecc93",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "backdrop_text": "",
           "current_index": 6,
           "current_key": "",
           "loop_nums": 6,
           "max_iterations": 1000,
           "loop_condition": "$len(node_vars.添加字符串_2__output1)<80$",
-          "loop_mode": "condition"
+          "loop_mode": "condition",
+          "parallel_count": 1
         }
       },
-      "0x1cb6863ee60": {
+      "0x180b38c9e90": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 3",
@@ -1354,8 +1370,8 @@
         "width": 165.0,
         "height": 60,
         "pos": [
-          -1010.2191278618382,
-          1470.2440427220524
+          -1481.588542340264,
+          2069.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1365,7 +1381,7 @@
           "_collapsed": false
         }
       },
-      "0x1cb6863ed40": {
+      "0x180b38ca690": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 2",
@@ -1393,8 +1409,8 @@
         "width": 165.0,
         "height": 60,
         "pos": [
-          423.9585250028026,
-          1470.2440427220524
+          -16.588542340263984,
+          2069.13365070713
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1404,14 +1420,14 @@
           "_collapsed": false
         }
       },
-      "0x1cb6863ebf0": {
+      "0x180b38cae90": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1429,11 +1445,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 1679.1776528646408,
-        "height": 561.7214879198682,
+        "width": 1730.0,
+        "height": 504.0,
         "pos": [
-          -1050.2191278618382,
-          1430.2440427220524
+          -1531.588542340264,
+          1989.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1441,23 +1457,26 @@
         "custom": {
           "persistent_id": "cf87e455-f640-4df2-b45b-5172480db998",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "backdrop_text": "",
           "current_index": 5,
           "current_key": "",
           "loop_nums": 5,
           "max_iterations": 1000,
           "loop_condition": "",
-          "loop_mode": "count"
+          "loop_mode": "count",
+          "parallel_count": 1
         }
       },
-      "0x1cb6863e200": {
+      "0x180b38cacd0": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
         "name": "条件分支",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1475,11 +1494,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 678.0,
-        "height": 338.0,
+        "width": 423.0,
+        "height": 117.0,
         "pos": [
-          49.79349895899418,
-          688.9954872694827
+          34.9860618878613,
+          1294.1336507071303
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -1521,6 +1540,8 @@
         "custom": {
           "persistent_id": "e3f9a56a-705f-4539-ac48-c551d2a646d9",
           "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
           "conditions": [
             {
               "expr": "$input.input=='0'$",
@@ -1539,291 +1560,291 @@
     "connections": [
       {
         "out": [
-          "0x1cb689b5900",
+          "0x180b3857810",
           "text"
         ],
         "in": [
-          "0x1cb6865d480",
+          "0x180b38b6d10",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1cb689b67a0",
+          "0x180b385ded0",
           "input1"
         ],
         "out": [
-          "0x1cb6865d1b0",
+          "0x180b38b5d50",
           "output"
         ]
       },
       {
         "out": [
-          "0x1cb689b67a0",
+          "0x180b385ded0",
           "output1"
         ],
         "in": [
-          "0x1cb6865d270",
+          "0x180b38b6610",
           "input"
         ]
       },
       {
         "in": [
-          "0x1cb689b5690",
+          "0x180b38603d0",
           "input1"
         ],
         "out": [
-          "0x1cb6865d480",
+          "0x180b38b6d10",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1cb689b6440",
+          "0x180b3861cd0",
           "text"
         ],
         "in": [
-          "0x1cb6861bee0",
+          "0x180b38c8e50",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1cb689b7490",
+          "0x180b3863850",
           "input1"
         ],
         "out": [
-          "0x1cb6861aa10",
+          "0x180b38b7e50",
           "output"
         ]
       },
       {
         "out": [
-          "0x1cb689b7490",
+          "0x180b3863850",
           "output1"
         ],
         "in": [
-          "0x1cb685f20e0",
+          "0x180b3874cd0",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1cb689b7eb0",
+          "0x180b3868e90",
           "input1"
         ],
         "out": [
-          "0x1cb6863e200",
+          "0x180b38cacd0",
           "test_port"
         ]
       },
       {
         "out": [
-          "0x1cb685f02b0",
+          "0x180b386a110",
           "text"
         ],
         "in": [
-          "0x1cb6861bee0",
+          "0x180b38c8e50",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb685f1150",
+          "0x180b386b7d0",
           "text"
         ],
         "in": [
-          "0x1cb6861bee0",
+          "0x180b38c8e50",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb685f20e0",
+          "0x180b3874cd0",
           "output1"
         ],
         "in": [
-          "0x1cb685f1960",
+          "0x180b3876490",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1cb685f1960",
+          "0x180b3876490",
           "output1"
         ],
         "in": [
-          "0x1cb6861bfa0",
+          "0x180b38c8690",
           "input"
         ]
       },
       {
         "in": [
-          "0x1cb685f2ce0",
+          "0x180b3877a90",
           "input1"
         ],
         "out": [
-          "0x1cb6863ee60",
+          "0x180b38c9e90",
           "output"
         ]
       },
       {
         "out": [
-          "0x1cb685f2ce0",
+          "0x180b3877a90",
           "output1"
         ],
         "in": [
-          "0x1cb685f3ca0",
+          "0x180b3885390",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1cb685f3ca0",
+          "0x180b3885390",
           "output1"
         ],
         "in": [
-          "0x1cb6863ed40",
+          "0x180b38ca690",
           "input"
         ]
       },
       {
         "in": [
-          "0x1cb685f38e0",
+          "0x180b3886ad0",
           "input1"
         ],
         "out": [
-          "0x1cb6863ee60",
+          "0x180b38c9e90",
           "output"
         ]
       },
       {
         "out": [
-          "0x1cb685f38e0",
+          "0x180b3886ad0",
           "output1"
         ],
         "in": [
-          "0x1cb6863ed40",
+          "0x180b38ca690",
           "input"
         ]
       },
       {
         "out": [
-          "0x1cb685f1ab0",
+          "0x180c24e3290",
           "text"
         ],
         "in": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1cb686190c0",
+          "0x180b388d690",
           "input1"
         ],
         "out": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "outputs"
         ]
       },
       {
         "in": [
-          "0x1cb685f25f0",
+          "0x180b388e810",
           "input1"
         ],
         "out": [
-          "0x1cb6863e200",
+          "0x180b38cacd0",
           "branch2"
         ]
       },
       {
         "out": [
-          "0x1cb685f25f0",
+          "0x180b388e810",
           "output1"
         ],
         "in": [
-          "0x1cb6861b250",
+          "0x180b38951d0",
           "query"
         ]
       },
       {
         "in": [
-          "0x1cb68618dc0",
+          "0x180b388fcd0",
           "input1"
         ],
         "out": [
-          "0x1cb6863e200",
+          "0x180b38cacd0",
           "else"
         ]
       },
       {
         "out": [
-          "0x1cb68618f70",
+          "0x180b3896ed0",
           "text"
         ],
         "in": [
-          "0x1cb6865d480",
+          "0x180b38b6d10",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1cb6863cbe0",
+          "0x180b38a4a50",
           "input1"
         ],
         "out": [
-          "0x1cb6861bee0",
+          "0x180b38c8e50",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1cb6861a1d0",
+          "0x180b38a5c50",
           "text"
         ],
         "in": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb6863d570",
+          "0x180b38a7390",
           "text"
         ],
         "in": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb6863f0d0",
+          "0x180b38b08d0",
           "text"
         ],
         "in": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb6863c070",
+          "0x180b38b1d90",
           "text"
         ],
         "in": [
-          "0x1cb6863ebf0",
+          "0x180b38cae90",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1cb6865c250",
+          "0x180b38b31d0",
           "output1"
         ],
         "in": [
-          "0x1cb6863e200",
+          "0x180b38cacd0",
           "input"
         ]
       }
@@ -1837,80 +1858,78 @@
     },
     "environment_exe": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x1cb689b5900": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
-      "0x1cb689b67a0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串",
-      "0x1cb689b5690": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装",
-      "0x1cb689b6440": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
-      "0x1cb689b7490": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1",
-      "0x1cb689b7eb0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1",
-      "0x1cb685f02b0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2",
-      "0x1cb685f1150": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3",
-      "0x1cb685f20e0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2",
-      "0x1cb685f1960": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3",
-      "0x1cb685f2ce0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4",
-      "0x1cb685f3ca0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5",
-      "0x1cb685f38e0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6",
-      "0x1cb685f1ab0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4",
-      "0x1cb686190c0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2",
-      "0x1cb685f25f0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3",
-      "0x1cb68618dc0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4",
-      "0x1cb6861b250": "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询",
-      "0x1cb68618f70": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5",
-      "0x1cb6863cbe0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5",
-      "0x1cb6861a1d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6",
-      "0x1cb6863d570": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7",
-      "0x1cb6863f0d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8",
-      "0x1cb6863c070": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9",
-      "0x1cb6865c250": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
-      "0x1cb6863e5c0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1",
-      "0x1cb6865d1b0": "unknown||输入端口",
-      "0x1cb6865d270": "unknown||输出端口",
-      "0x1cb6865d480": "unknown||迭代控制流区域",
-      "0x1cb6861aa10": "unknown||输入端口 1",
-      "0x1cb6861bfa0": "unknown||输出端口 1",
-      "0x1cb6861bee0": "unknown||循环控制流区域",
-      "0x1cb6863ee60": "unknown||输入端口 3",
-      "0x1cb6863ed40": "unknown||输出端口 2",
-      "0x1cb6863ebf0": "unknown||迭代控制流区域 1",
-      "0x1cb6863e200": "unknown||条件分支"
+      "0x180b3857810": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x180b385ded0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串",
+      "0x180b38603d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装",
+      "0x180b3861cd0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
+      "0x180b3863850": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1",
+      "0x180b3868e90": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1",
+      "0x180b386a110": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2",
+      "0x180b386b7d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3",
+      "0x180b3874cd0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2",
+      "0x180b3876490": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3",
+      "0x180b3877a90": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4",
+      "0x180b3885390": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5",
+      "0x180b3886ad0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6",
+      "0x180c24e3290": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4",
+      "0x180b388d690": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2",
+      "0x180b388e810": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3",
+      "0x180b388fcd0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4",
+      "0x180b38951d0": "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询",
+      "0x180b3896ed0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5",
+      "0x180b38a4a50": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5",
+      "0x180b38a5c50": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6",
+      "0x180b38a7390": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7",
+      "0x180b38b08d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8",
+      "0x180b38b1d90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9",
+      "0x180b38b31d0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
+      "0x180b38b5d50": "unknown||输入端口",
+      "0x180b38b6610": "unknown||输出端口",
+      "0x180b38b6d10": "unknown||迭代控制流区域",
+      "0x180b38b7e50": "unknown||输入端口 1",
+      "0x180b38c8690": "unknown||输出端口 1",
+      "0x180b38c8e50": "unknown||循环控制流区域",
+      "0x180b38c9e90": "unknown||输入端口 3",
+      "0x180b38ca690": "unknown||输出端口 2",
+      "0x180b38cae90": "unknown||迭代控制流区域 1",
+      "0x180b38cacd0": "unknown||条件分支"
     },
     "node_states": {
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": "last_success",
+      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": "last_success",
       "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1": "disabled",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": "last_success",
+      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": "last_success",
+      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": "last_success",
+      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": "last_success",
       "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4": "disabled",
-      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": "success",
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": "success",
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": "success",
+      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": "last_success",
+      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": "last_success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": "last_success",
+      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": "last_success",
       "unknown||输入端口": "unrun",
       "unknown||输出端口": "unrun",
-      "unknown||迭代控制流区域": "success",
+      "unknown||迭代控制流区域": "last_success",
       "unknown||输入端口 1": "unrun",
       "unknown||输出端口 1": "unrun",
-      "unknown||循环控制流区域": "success",
+      "unknown||循环控制流区域": "last_success",
       "unknown||输入端口 3": "unrun",
       "unknown||输出端口 2": "unrun",
-      "unknown||迭代控制流区域 1": "success",
-      "unknown||条件分支": "success"
+      "unknown||迭代控制流区域 1": "last_success",
+      "unknown||条件分支": "last_success"
     },
     "node_inputs": {
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
@@ -1938,7 +1957,6 @@
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": {},
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": {},
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
       "unknown||输入端口": {},
       "unknown||输出端口": {},
       "unknown||迭代控制流区域": {},
@@ -2044,17 +2062,6 @@
       "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {
         "output1": "0"
       },
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {
-        "output1": {
-          "模型名称": "qwen/qwen3-30b-a3b",
-          "API_URL": "http://127.0.0.1:1234/v1",
-          "API_KEY": "",
-          "温度": 0.7,
-          "最大Token": 2048,
-          "系统提示": "",
-          "是否思考": false
-        }
-      },
       "unknown||输入端口": {},
       "unknown||输出端口": {},
       "unknown||迭代控制流区域": {
@@ -2097,44 +2104,6 @@
       "unknown||条件分支": {
         "branch2": "0"
       }
-    },
-    "column_select": {
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4": {},
-      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": {},
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量": {},
-      "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量 1": {},
-      "unknown||输入端口": {},
-      "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {},
-      "unknown||输入端口 1": {},
-      "unknown||输出端口 1": {},
-      "unknown||循环控制流区域": {},
-      "unknown||输入端口 3": {},
-      "unknown||输出端口 2": {},
-      "unknown||迭代控制流区域 1": {},
-      "unknown||条件分支": {}
     }
   },
   "global_variable": {
@@ -2160,9 +2129,7 @@
     },
     "custom": {
       "test": {
-        "value": "0.,.12321",
-        "description": null,
-        "read_only": false
+        "value": "0.,.12321"
       },
       "大模型配置": {
         "value": {
@@ -2173,18 +2140,14 @@
           "最大Token": 2048,
           "系统提示": "",
           "是否思考": false
-        },
-        "description": null,
-        "read_only": false
+        }
       },
       "数据源配置 (JSON)": {
         "value": {
           "文件路径": "/path/to/data.json",
           "根级数据路径": "$.data",
           "编码": "utf-8"
-        },
-        "description": null,
-        "read_only": false
+        }
       }
     },
     "custom_order": [
@@ -2196,23 +2159,10 @@
       "添加字符串_2__output1": {
         "value": "['文本内容', '文本内容', '文本内容文本内容文本内容']en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore",
         "update_policy": "更新"
-      },
-      "获取全局变量_1__output1": {
-        "value": {
-          "模型名称": "qwen/qwen3-30b-a3b",
-          "API_URL": "http://127.0.0.1:1234/v1",
-          "API_KEY": "",
-          "温度": 0.7,
-          "最大Token": 2048,
-          "系统提示": "",
-          "是否思考": false
-        },
-        "update_policy": "更新"
       }
     },
     "node_vars_order": [
-      "添加字符串_2__output1",
-      "获取全局变量_1__output1"
+      "添加字符串_2__output1"
     ]
   }
 }
