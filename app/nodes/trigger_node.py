@@ -1,7 +1,8 @@
-import logging
 import time
 import uuid
 from PyQt5 import QtCore
+from loguru import logger
+
 from app.components.base import PropertyType
 from app.nodes.status_node import StatusNode
 from app.trigger_plugins.plugin_manager import TriggerPluginManager
@@ -34,7 +35,8 @@ def create_trigger_node(parent_window):
 
             self._active_plugin_name = None
             self._last_execution_time = 0.0
-
+            # 用于保存对 Runner 信号的引用，方便解除绑定
+            self._error_trigger_connected = False
             # 属性定义
             self.property_defs = {
                 "trigger_type": {
@@ -127,7 +129,7 @@ def create_trigger_node(parent_window):
                 if not self._error_trigger_connected:
                     runner.workflow_error.connect(self._handle_runner_error_event)
                     self._error_trigger_connected = True
-                    logging.info(f"节点 {self.NODE_NAME} 已激活失败监听。")
+                    logger.info(f"节点 {self.NODE_NAME} 已激活失败监听。")
             else:
                 if self._error_trigger_connected:
                     runner.workflow_error.disconnect(self._handle_runner_error_event)
@@ -144,11 +146,11 @@ def create_trigger_node(parent_window):
                 plugin.activate(self.parent_window.workflow_name, self.persistent_id, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
 
-            logging.info(f"触发器模式切换: {curr_type}")
+            logger.info(f"触发器模式切换: {curr_type}")
 
         def _handle_runner_error_event(self, error_msg):
             """当 Runner 报错时被调用"""
-            logging.warning(f"检测到运行失败，触发异常处理工作流: {error_msg}")
+            logger.warning(f"检测到运行失败，触发异常处理工作流: {error_msg}")
             # 携带错误信息触发
             data = {
                 "status": "error",
