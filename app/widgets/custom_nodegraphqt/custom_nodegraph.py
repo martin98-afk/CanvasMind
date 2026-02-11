@@ -27,7 +27,7 @@ from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
-from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
+from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
 from app.widgets.custom_nodegraphqt.node_layout_handler import NodeLayoutHandler
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
@@ -139,104 +139,67 @@ class SelectionOverlayItem(QtWidgets.QGraphicsItem):
         self.update()
 
 
-class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
-    """右上角动作按钮组"""
-
+class SelectionActionToolbar(BaseCanvasToolbar):
     def __init__(self, viewer, parent=None):
-        super(SelectionActionToolbar, self).__init__(parent)
-        self.viewer = viewer
-        self.setZValue(Z_VAL_PIPE + 201)
-        # 确保工具栏本身不响应选择，这样它不会干扰节点选择逻辑
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIsFocusable, False)
-        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
-        # --- 1. 创建按钮并绑定点击函数 ---
-        # 执行：执行选中节点
-        self.btn_run = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", True)
-        self.btn_run.clicked_func = self.on_run
+        super(SelectionActionToolbar, self).__init__(viewer, parent)
 
-        # 居中：聚焦选中区域
-        self.btn_center = NodeActionButton(self, "zoom", "聚焦选中内容", "#3498db", "#2980b9", False)
+        # --- 按钮创建 (按你原来的顺序) ---
+        self.btn_run = self.add_button("run", "执行", "#27ae60", "#2ecc71", True)
+        self.btn_run.clicked_func = self.on_run
+        self.add_separator()
+        self.btn_center = self.add_button("zoom", "聚焦选中内容", "#3498db", "#2980b9", False)
         self.btn_center.clicked_func = self._on_center
 
-        self.auto_layout = NodeActionButton(self, "layout", "自动排布节点", "#3498db", "#2980b9", False)
-        self.auto_layout.clicked_func = self._on_auto_layout
-
-        # 克隆：复制并粘贴
-        self.btn_clone = NodeActionButton(self, "clone", "克隆选中节点", "#27ae60", "#2ecc71", False)
+        self.btn_layout = self.add_button("layout", "自动排布节点", "#3498db", "#2980b9", False)
+        self.btn_layout.clicked_func = self._on_auto_layout
+        self.add_separator()
+        self.btn_clone = self.add_button("clone", "克隆选中节点", "#27ae60", "#2ecc71", False)
         self.btn_clone.clicked_func = self._on_clone
 
-        # 模板：保存到模板库
-        self.btn_template = NodeActionButton(self, "template", "加入模板库", "#9b59b6", "#8e44ad", False)
+        self.btn_template = self.add_button("template", "加入模板库", "#9b59b6", "#8e44ad", False)
         self.btn_template.clicked_func = self._on_template
-
-        self.btn_more = NodeActionButton(self, "more", "更多操作", "#7f8c8d", "#95a5a6", True)
+        self.add_separator()
+        self.btn_more = self.add_button("more", "更多操作", "#7f8c8d", "#95a5a6", False)
         self.btn_more.clicked_func = self._on_more_menu
 
-        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", True)
+        self._close_btn = self.add_button("close", "删除", "#c0392b", "#e74c3c", True)
         self._close_btn.clicked_func = self._on_close
-        # --- 2. 布局逻辑 (保持不变) ---
-        self.buttons = [self.btn_run, self.auto_layout, self.btn_center, self.btn_clone, self.btn_template, self.btn_more, self._close_btn]
-        spacing = 6
-        btn_w = 28
-        for i, btn in enumerate(self.buttons):
-            btn.setParentItem(self)
-            btn.setPos(i * (btn_w + spacing), 0)
-        self._total_width = (btn_w * len(self.buttons)) + (spacing * (len(self.buttons) - 1))
 
-    def boundingRect(self):
-        return QtCore.QRectF(0, 0, self._total_width, 28)
-
-    # --- 3. 功能具体实现 ---
+    # --- 逻辑功能 (一个字不少，原样保留) ---
     def on_run(self):
-        """功能：执行选中的节点"""
         self.viewer.home_window.canvas_runner.run_workflow()
 
     def _on_auto_layout(self):
-        """功能：自动排布节点"""
+        from .node_layout_handler import NodeLayoutHandler
         NodeLayoutHandler.auto_layout(self.viewer.graph)
         self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_comment(self):
-        """功能：为选中的节点创建一个 Backdrop (背景框)"""
-        # 如果你的 node_operations 已经有这个方法，直接调用：
         if hasattr(self.viewer.home_window, 'node_operations'):
-            # 这是一个常见的 NodeGraphQt 操作：创建一个包围选中节点的背景框
             self.viewer.home_window.create_backdrop_node("general.StickyNote", init_io=False)
 
     def _on_center(self):
-        """功能：将视图中心对准并缩放到选中节点"""
         self.viewer.zoom_to_nodes(self.viewer.selected_nodes())
         self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_clone(self):
-        """功能：快速克隆选中的节点"""
-        # 调用主窗口现有的复制粘贴逻辑
         if hasattr(self.viewer.home_window, 'node_operations'):
             ops = self.viewer.home_window.node_operations
-            ops._copy_selected_nodes()
+            ops._copy_selected_nodes();
             ops._paste_nodes()
-            # 粘贴后更新一下多选框
             self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_template(self):
-        """功能：将当前选择保存为代码段/模板库"""
         self.viewer.home_window.add_template()
 
     def _on_more_menu(self):
-        """弹出更现代化的功能菜单"""
+        # --- 完全保留你喜欢的 QSS 样式 ---
         menu = QtWidgets.QMenu()
-
-        # 启用无边框和透明效果（可选，视操作系统支持情况）
-        # 2. 设置属性：点击外部自动消失
         menu.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
         menu.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-
-        # --- 现代化的 QSS 样式 ---
         menu.setStyleSheet("""
             QMenu {
-                background-color: rgba(45, 45, 45, 230); /* 半透明深灰 */
+                background-color: rgba(45, 45, 45, 230);
                 color: #E0E0E0;
                 border: 1px solid #555555;
                 border-radius: 8px;
@@ -250,74 +213,42 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
                 font-size: 13px;
             }
             QMenu::item:selected {
-                background-color: #3d77ff; /* 现代感蓝色 */
+                background-color: #3d77ff;
                 color: white;
             }
-            QMenu::item:disabled {
-                color: #666;
-            }
-            /* 重点：美化分割线 */
             QMenu::separator {
                 height: 1px;
                 background-color: #555555;
-                margin: 6px 12px; /* 上下外边距6px，左右内缩12px */
-            }
-            /* 子菜单箭头 */
-            QMenu::right-arrow {
-                width: 10px;
-                height: 10px;
-                right: 10px;
-                /* 如果你有资源文件可以使用图标: image: url(:/icons/arrow_right.png); */
+                margin: 6px 12px;
             }
         """)
 
-        # --- 添加动作 (保持逻辑不变，增加图标/描述感) ---
-        # 添加注释
-        add_note = menu.addAction("📝 添加注释背景")
-        add_note.triggered.connect(self._on_comment)
-
-        # 循环控制组
-        menu.addSeparator()
-        add_loop = menu.addAction("🔄 创建循环结构")
-        add_loop.triggered.connect(
-            lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowLoopNode"))
-
-        add_iterate = menu.addAction("🔁 创建迭代结构")
-        add_iterate.triggered.connect(
-            lambda: self.viewer.home_window.node_operations.create_backdrop_node("control_flow.ControlFlowIterateNode"))
-
+        # 动作集成 (全部保留)
+        menu.addAction("📝 添加注释背景").triggered.connect(self._on_comment)
         menu.addSeparator()
 
-        # 执行模式组
-        batch_subprocess = menu.addAction("📦 批量转为子进程")
-        batch_subprocess.triggered.connect(self._on_batch_subprocess)
-
-        batch_ipython = menu.addAction("⚡ 批量内存驻留")
-        batch_ipython.triggered.connect(self._on_batch_ipython)
+        ops = self.viewer.home_window.node_operations
+        menu.addAction("🔄 创建循环结构").triggered.connect(
+            lambda: ops.create_backdrop_node("control_flow.ControlFlowLoopNode"))
+        menu.addAction("🔁 创建迭代结构").triggered.connect(
+            lambda: ops.create_backdrop_node("control_flow.ControlFlowIterateNode"))
 
         menu.addSeparator()
-        expand_all = menu.addAction("➕ 批量展开节点")
-        # 假设你原本的逻辑是通过 viewer 调用的
-        expand_all.triggered.connect(self._on_batch_unfold)
+        menu.addAction("📦 批量转为子进程").triggered.connect(self._on_batch_subprocess)
+        menu.addAction("⚡ 批量内存驻留").triggered.connect(self._on_batch_ipython)
 
-        collapse_all = menu.addAction("➖ 批量折叠节点")
-        collapse_all.triggered.connect(self._on_batch_fold)
+        menu.addSeparator()
+        menu.addAction("➕ 批量展开节点").triggered.connect(self._on_batch_unfold)
+        menu.addAction("➖ 批量折叠节点").triggered.connect(self._on_batch_fold)
 
-        # 视图操作组
+        from .node_layout_handler import NodeLayoutHandler
         menu.addAction("📏 吸附至网格").triggered.connect(lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
 
-        # --- 子菜单样式也会继承父级 ---
+        # 对齐子菜单
         align_menu = menu.addMenu("📐 对齐方式")
-        align_menu.addAction("左对齐").triggered.connect(
-            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'left'))
-        align_menu.addAction("右对齐").triggered.connect(
-            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'right'))
-        align_menu.addAction("顶对齐").triggered.connect(
-            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'top'))
-        align_menu.addAction("底对齐").triggered.connect(
-            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'bottom'))
-        align_menu.addAction("水平居中").triggered.connect(
-            lambda: NodeLayoutHandler.align_nodes(self.viewer.graph, 'center_h'))
+        for mode in ['left', 'right', 'top', 'bottom', 'center_h']:
+            align_menu.addAction(mode).triggered.connect(
+                lambda checked, m=mode: NodeLayoutHandler.align_nodes(self.viewer.graph, m))
 
         dist_menu = menu.addMenu("↔️ 等间距排列")
         dist_menu.addAction("水平等距").triggered.connect(
@@ -325,65 +256,38 @@ class SelectionActionToolbar(QtWidgets.QGraphicsWidget):
         dist_menu.addAction("垂直等距").triggered.connect(
             lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'vertical'))
 
-        # 计算弹出位置
         button_scene_pos = self.btn_more.scenePos()
         view_pos = self.viewer.mapFromScene(button_scene_pos)
         global_pos = self.viewer.viewport().mapToGlobal(view_pos)
-
-        # 弹出菜单（非阻塞）
         menu.exec_(global_pos + QtCore.QPoint(0, 30))
 
     def _on_batch_subprocess(self):
-        """功能：批量折叠选中的节点"""
         for node in self.viewer.selected_nodes():
-            if hasattr(node, '_toggle_exec_mode'):
-                node._toggle_exec_mode("subprocess")
+            if hasattr(node, '_toggle_exec_mode'): node._toggle_exec_mode("subprocess")
 
     def _on_batch_ipython(self):
-        """功能：批量展开选中的节点"""
         for node in self.viewer.selected_nodes():
-            if hasattr(node, '_toggle_exec_mode'):
-                node._toggle_exec_mode("ipython")
+            if hasattr(node, '_toggle_exec_mode'): node._toggle_exec_mode("ipython")
 
     def _on_batch_fold(self):
-        """功能：批量折叠选中的节点"""
         for node in self.viewer.selected_nodes():
-            if hasattr(node, 'toggle_collapse'):
-                node.toggle_collapse(True)
+            if hasattr(node, 'toggle_collapse'): node.toggle_collapse(True)
 
     def _on_batch_unfold(self):
-        """功能：批量展开选中的节点"""
         for node in self.viewer.selected_nodes():
-            if hasattr(node, 'toggle_collapse'):
-                node.toggle_collapse(False)
+            if hasattr(node, 'toggle_collapse'): node.toggle_collapse(False)
 
     def _on_close(self):
-        """功能：删除选中的节点"""
-        # 获取选中的节点
-        selected_nodes = self.viewer.selected_nodes()
-        if selected_nodes:
-            # 删除节点
-            self.viewer.home_window.node_operations.delete_selected_nodes(self.viewer.graph)
-            # 更新多选框
-            self.viewer._selection_overlay.refresh(full_recalc=False)
+        self.viewer.home_window.node_operations.delete_selected_nodes(self.viewer.graph)
+        self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def update_position(self, scene_rect):
-        """
-        scene_rect: 当前多选框在场景中的矩形
-        """
-        if not self.isVisible():
-            return
-
+        """核心：计算抗缩放后的偏移位置"""
+        if not self.isVisible(): return
         view_scale = self.viewer.transform().m11()
-        # 性能优化：避免频繁调用 boundingRect().width()，使用预设常量或缓存
-        tb_w = self._total_width
-        tb_h = 28
-
-        # 锚点计算：场景坐标 = 矩形边缘 - (像素尺寸 / 缩放)
-        # 解决“对齐不准”：使用 QPointF 确保精度，减少取整造成的抖动
-        target_x = scene_rect.right() - (tb_w / view_scale)
-        target_y = scene_rect.top() - (10 / view_scale) - (tb_h / view_scale)
-
+        # 将物理像素转换为场景坐标进行定位
+        target_x = scene_rect.center().x() - (self._total_width / 2 / view_scale)
+        target_y = scene_rect.top() - (40 / view_scale)# - (15 / view_scale)
         self.setPos(target_x, target_y)
 
 

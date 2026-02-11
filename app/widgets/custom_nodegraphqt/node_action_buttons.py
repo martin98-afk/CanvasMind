@@ -1,6 +1,6 @@
 # 节点悬浮快捷按钮
 from NodeGraphQt.constants import (
-    Z_VAL_NODE_WIDGET
+    Z_VAL_NODE_WIDGET, Z_VAL_PIPE
 )
 from PyQt5 import QtWidgets, QtCore, QtGui
 
@@ -170,6 +170,16 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
             painter.drawEllipse(QtCore.QRectF(cx - dot_size / 2, cy - dot_size / 2, dot_size, dot_size))
             # 右点
             painter.drawEllipse(QtCore.QRectF(cx + 7 - dot_size, cy - dot_size / 2, dot_size, dot_size))
+        elif self.icon_type == 'info':
+            # 绘制外圆圈
+            painter.drawEllipse(QtCore.QRectF(cx - 7, cy - 7, 14, 14))
+            # 绘制感叹号的上半部分
+            painter.drawLine(QtCore.QPointF(cx, cy - 3.5), QtCore.QPointF(cx, cy + 1))
+            # 绘制感叹号的下半部分点 (小矩形模拟，更清晰)
+            painter.setBrush(painter.pen().color())
+            painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+            painter.drawRect(QtCore.QRectF(cx - 0.75, cy + 2.5, 1.5, 1.5))
+
         painter.restore()
 
     def hoverEnterEvent(self, event):
@@ -188,3 +198,62 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
                 self.update() # 点击后立刻强制刷新一次状态
         else:
             event.ignore()
+
+
+class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
+    def __init__(self, viewer=None, parent=None, ignore_transform=True):
+        super(BaseCanvasToolbar, self).__init__(parent)
+        self.viewer = viewer
+        if ignore_transform:
+            self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
+        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
+
+        self.layout_items = []
+        self._padding = 8
+        self._spacing = 6
+        self._total_width = 0
+        self._height = 40
+
+    def add_button(self, icon_type, tooltip, color, hover_color, is_permanent=False):
+        btn = NodeActionButton(self, icon_type, tooltip, color, hover_color, is_permanent)
+        self._add_to_layout(btn)
+        return btn
+
+    def add_separator(self):
+        sep = QtWidgets.QGraphicsRectItem(0, 0, 1, 20, self)
+        sep.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        sep.setBrush(QtGui.QColor(255, 255, 255, 45))
+        self._add_to_layout(sep)
+
+    def _add_to_layout(self, item):
+        item.setParentItem(self)
+        self.layout_items.append(item)
+        self._recalculate_layout()
+
+    def _recalculate_layout(self):
+        self.prepareGeometryChange()  # 布局变动前通知场景
+        x = self._padding
+        for item in self.layout_items:
+            h = item.boundingRect().height()
+            item.setPos(x, (self._height - h) / 2)
+            x += item.boundingRect().width() + self._spacing
+        self._total_width = x - self._spacing + self._padding
+
+    def boundingRect(self):
+        # 核心修复：增加 5 像素的范围，防止阴影或描边在缩放移动时产生残影
+        return QtCore.QRectF(0, 0, self._total_width, self._height).adjusted(-5, -5, 5, 5)
+
+    def paint(self, painter, option, widget):
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        rect = QtCore.QRectF(0, 0, self._total_width, self._height)  # 使用不带 margin 的 rect 绘制
+
+        # 绘制阴影（增加层次感并利用 margin）
+        painter.setBrush(QtGui.QColor(0, 0, 0, 80))
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawRoundedRect(rect.adjusted(1, 1, 1, 1), 10, 10)
+
+        # 绘制背景
+        painter.setBrush(QtGui.QColor(40, 40, 45, 235))
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 45), 1.2))
+        painter.drawRoundedRect(rect, 10, 10)
