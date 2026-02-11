@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.components.base import PropertyType
+from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
 from app.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
 
 
@@ -35,8 +36,8 @@ class WebhookManager(BaseTriggerManager):
         self.port = port
 
         # self.registry 用于存放路径到回调的映射
-        # { "/api/v1/trigger/xxx": callback_func }
         self.registry: Dict[str, Callable] = {}
+        self.execution_manager = ExecutionManager()
 
         self._setup_routes()
         self._server_thread = None
@@ -48,6 +49,31 @@ class WebhookManager(BaseTriggerManager):
         @self.app.get("/health")
         async def health_check():
             return {"status": "ok", "active_canvases": list(self.canvas_mapping.keys())}
+
+        @self.app.get("/api/v1/canvases/{canvas_name}/triggers")
+        async def get_triggers_by_canvas(canvas_name: str):
+            """获取指定画布下注册的所有 Webhook 触发器及其 Endpoint"""
+            # 从基类的 canvas_mapping 中获取该画布下的所有 node_id
+            node_ids = self.canvas_mapping.get(canvas_name, [])
+
+            triggers_info = []
+            node_to_endpoint = getattr(self, '_node_to_endpoint', {})
+
+            for node_id in node_ids:
+                # 获取对应的 Webhook 路径
+                endpoint = node_to_endpoint.get(node_id)
+                if endpoint:
+                    triggers_info.append({
+                        "node_id": node_id,
+                        "endpoint": endpoint,
+                        "url": f"http://{self.host}:{self.port}{endpoint}"
+                    })
+
+            return {
+                "canvas_name": canvas_name,
+                "count": len(triggers_info),
+                "triggers": triggers_info
+            }
 
         @self.app.api_route("/api/v1/trigger/{node_id}", methods=["GET", "POST", "PUT"])
         async def handle_trigger(node_id: str, request: Request):
@@ -76,7 +102,23 @@ class WebhookManager(BaseTriggerManager):
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 
         # 这里保留你原有的 /api/v1/result/{exec_id} 路由...
-        # @self.app.get("/api/v1/result/{exec_id}") ...
+        @self.app.get("/api/v1/result/{exec_id}")
+        async def get_result(exec_id: str):
+            record = self.execution_manager.get_record(exec_id)
+            if not record:
+                return {"status": "not_found", "exec_id": exec_id}
+            status = record.status if record else "waiting"
+            if status == "success":
+                return {"status": "success", "exec_id": exec_id, "output_data": record.output_data}
+            elif status == "failed":
+                return {"status": "failed", "exec_id": exec_id, "error_msg": record.error_msg}
+            elif status == "cancelled":
+                return {"status": "cancelled", "exec_id": exec_id}
+            elif status == "waiting":
+                return {"status": "waiting", "exec_id": exec_id}
+            elif status == "running":
+                return {"status": "running", "exec_id": exec_id}
+            return {"status": "unknown", "exec_id": exec_id}
 
     def add_trigger(self, canvas_name: str, node_id: str, callback: Callable, **kwargs):
         """
