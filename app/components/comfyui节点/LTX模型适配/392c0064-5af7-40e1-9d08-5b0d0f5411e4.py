@@ -22,12 +22,12 @@ class LTXVConditioning(BaseComponent):
     description = "设置视频的帧率元数据，影响生成动作的节奏。"
     
     inputs = [
-        PortDefinition(name="positive", label="正向COND", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向COND", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向COND", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向COND", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="positive", label="正向COND", type=ArgumentType.OBJECT),
-        PortDefinition(name="negative", label="负向COND", type=ArgumentType.OBJECT),
+        PortDefinition(name="positive", label="正向COND", type=ArgumentType.OBJECT, sub_type="Conditioning"),
+        PortDefinition(name="negative", label="负向COND", type=ArgumentType.OBJECT, sub_type="Conditioning"),
     ]
     properties = {
         "frame_rate": PropertyDefinition(

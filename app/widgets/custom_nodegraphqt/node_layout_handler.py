@@ -23,6 +23,7 @@ class NodeLayoutHandler:
                 group.append(curr)
                 neighbors = []
                 # 遍历输入输出端口获取连接的节点
+                if not hasattr(curr, 'inputs'): continue
                 for port in curr.inputs().values():
                     neighbors.extend([p.node() for p in port.connected_ports()])
                 for port in curr.outputs().values():

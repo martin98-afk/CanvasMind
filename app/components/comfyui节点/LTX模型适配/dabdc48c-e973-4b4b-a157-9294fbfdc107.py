@@ -22,34 +22,63 @@ class ComfyLTXVideoSampler(BaseComponent):
     description = "专为 LTX2 优化的采样器，支持首帧图像注入、音频潜空间条件注入、实时进度和单帧预览"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="128通道画布", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        # 唱歌/数字人专用输入
-        PortDefinition(name="start_frame_latent", label="人物首帧Latent", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="audio_latent", label="音频Latent", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="128通道画布", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="start_frame_latent", label="人物首帧Latent", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_latent", label="音频Latent", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="latent", label="视频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="preview_image", label="首帧预览图", type=ArgumentType.IMAGE),
     ]
     
     properties = {
-        "steps": PropertyDefinition(type=PropertyType.INT, default=30, label="步数"),
-        "cfg": PropertyDefinition(type=PropertyType.RANGE, default="1.0", label="CFG", min=0.0, max=10.0, step=0.1),
+        "steps": PropertyDefinition(
+            type=PropertyType.INT,
+            default=30,
+            label="步数",
+        ),
+        "cfg": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="1.0",
+            label="CFG",
+            min=0.0,
+            max=10.0,
+            step=0.1,
+        ),
         "sampler_name": PropertyDefinition(
-            type=PropertyType.CHOICE, default="euler", label="采样器",
+            type=PropertyType.CHOICE,
+            default="euler",
+            label="采样器",
             choices=["euler", "uni_pc", "heun", "dpmpp_2m"]
         ),
         "scheduler": PropertyDefinition(
-            type=PropertyType.CHOICE, default="normal", label="调度器",
+            type=PropertyType.CHOICE,
+            default="normal",
+            label="调度器",
             choices=["normal", "sgm_uniform", "simple", "karras"]
         ),
-        "denoise": PropertyDefinition(type=PropertyType.RANGE, default="1.00", label="去噪强度", min=0.0, max=1.0, step=0.01),
-        "seed": PropertyDefinition(type=PropertyType.INT, default=-1, label="种子"),
-        "preview_step": PropertyDefinition(type=PropertyType.INT, default=5, label="预览频率(步)"),
+        "denoise": PropertyDefinition(
+            type=PropertyType.RANGE,
+            default="1.00",
+            label="去噪强度",
+            min=0.0,
+            max=1.0,
+            step=0.01,
+        ),
+        "seed": PropertyDefinition(
+            type=PropertyType.INT,
+            default=-1,
+            label="种子",
+        ),
+        "preview_step": PropertyDefinition(
+            type=PropertyType.INT,
+            default=5,
+            label="预览频率(步)",
+        ),
     }
 
     def ensure_comfy_exist(self):

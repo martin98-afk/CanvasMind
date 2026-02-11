@@ -21,10 +21,10 @@ class Component(BaseComponent):
     description = ""
     requirements = "numpy,#comfy,torch"
     inputs = [
-        PortDefinition(name="audio_vae", label="音频编码器", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="audio_vae", label="音频编码器", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="audio_latent", label="音频潜空间", type=ArgumentType.OBJECT),
+        PortDefinition(name="audio_latent", label="音频潜空间", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
     properties = {
         "frames_number": PropertyDefinition(

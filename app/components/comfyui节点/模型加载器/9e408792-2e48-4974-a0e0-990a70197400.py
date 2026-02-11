@@ -22,12 +22,12 @@ class ComfyWanScheduledLoraLoader(BaseComponent):
     description = "支持设置 LoRA 在采样的哪个阶段生效（高噪/低噪控制）"
     
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL"),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
     ]
     
     properties = {

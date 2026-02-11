@@ -23,9 +23,9 @@ class Component(BaseComponent):
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT),
-        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL"),
+        PortDefinition(name="clip", label="CLIP", type=ArgumentType.OBJECT, sub_type="CLIP"),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE"),
     ]
     
     properties = {

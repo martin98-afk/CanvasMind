@@ -1,7 +1,8 @@
-import logging
 import time
 import uuid
 from PyQt5 import QtCore
+from loguru import logger
+
 from app.components.base import PropertyType
 from app.nodes.status_node import StatusNode
 from app.trigger_plugins.plugin_manager import TriggerPluginManager
@@ -21,28 +22,27 @@ def create_trigger_node(parent_window):
         __identifier__ = 'general'
         NODE_NAME = '触发器'
         FULL_PATH = f"{category}/{NODE_NAME}"
-        description = "支持手动、Webhook、定时触发。具备触发节流及 UI 编辑防抖功能。"
+        description = "支持手动、Webhook、定时触发。数据由 Runner 统一管理。"
 
         def __init__(self, qgraphics_item=None):
             super().__init__(CustomNodeItem)
             self.parent_window = parent_window
             self.set_icon(":/icons/触发器.svg")
 
-            # 加载插件注册表
+            # 插件管理
             self.plugins = TriggerPluginManager().plugins
-            # 核心修改：按插件存储 Widget 列表 { "插件名": [widget1, widget2] }
             self.plugin_widgets = {name: [] for name in self.plugins.keys()}
 
             self._active_plugin_name = None
             self._last_execution_time = 0.0
-            self._last_trigger_data = {}
-
-            # 初始化基础属性定义
+            # 用于保存对 Runner 信号的引用，方便解除绑定
+            self._error_trigger_connected = False
+            # 属性定义
             self.property_defs = {
                 "trigger_type": {
                     "type": PropertyType.CHOICE,
                     "label": "触发器类型",
-                    "choices": ["停止触发", "运行时触发"] + list(self.plugins.keys()),
+                    "choices": ["停止触发", "运行时触发", "运行失败触发"] + list(self.plugins.keys()),
                     "default": "停止触发"
                 },
                 "run_strategy": {
@@ -60,7 +60,7 @@ def create_trigger_node(parent_window):
             self._ui_sync_timer.setSingleShot(True)
             self._ui_sync_timer.timeout.connect(self._do_backend_sync)
 
-            # 生成 UI
+            # 初始化 UI
             self._generate_widgets()
             self.add_input("input", multi_input=True, painter_func=draw_square_port)
             self.add_output('output')
@@ -70,27 +70,20 @@ def create_trigger_node(parent_window):
             self.view.delete_signal.connect(self.on_deleted)
             self._patch_view_drawing()
 
+        # --- UI 逻辑 (保持不变) ---
         def _generate_widgets(self):
-            """通用的 UI 生成逻辑，包含插件 Widget 的归类存储"""
-            # 1. 首先处理基础属性
             for i, (name, conf) in enumerate(self.property_defs.items()):
                 self._create_and_add_widget(name, conf, 200 - i)
-
-            # 2. 循环处理每个插件的专属属性
             for p_name, plugin in self.plugins.items():
                 props = plugin.get_properties(self)
                 for i, (name, conf) in enumerate(props.items()):
-                    # 将生成的 widget 存入对应插件的列表中
                     widget = self._create_and_add_widget(name, conf, 100 - i)
-                    if widget:
-                        self.plugin_widgets[p_name].append(widget)
+                    if widget: self.plugin_widgets[p_name].append(widget)
 
         def _create_and_add_widget(self, name, conf, z_value):
-            """内部工具：根据配置创建 Widget 并添加到节点"""
             p_type = conf["type"]
             label = conf["label"]
             w = None
-
             if p_type == PropertyType.CHOICE:
                 w = ComboBoxWidgetWrapper(self.view, name, label, conf["choices"], z_value, self.parent_window)
             elif p_type == PropertyType.BOOL:
@@ -111,66 +104,104 @@ def create_trigger_node(parent_window):
             return None
 
         def _patch_view_drawing(self):
-            """核心：根据 plugin_widgets 映射表直接控制显隐"""
             orig = self.view._draw_node_horizontal
 
             def patched(*args, **kwargs):
                 if not self.view._proxy_mode and not self.view._is_collapsed:
                     curr_type = self.get_property("trigger_type")
-
-                    # 遍历插件 Widget 映射表
                     for p_name, widgets in self.plugin_widgets.items():
-                        is_active = (curr_type == p_name)
-                        # 一个插件下的所有 widget 同步显隐
-                        for w in widgets:
-                            w.setVisible(is_active)
-
+                        for w in widgets: w.setVisible(curr_type == p_name)
                 return orig(*args, **kwargs)
 
             self.view._draw_node_horizontal = patched
 
         def _request_sync(self):
-            # 立即触发重绘以应用 setVisible 变更
             self.view._draw_node_horizontal()
-            # 延迟触发后端同步（防抖）
             self._ui_sync_timer.stop()
             self._ui_sync_timer.start(500)
 
         def _do_backend_sync(self):
             curr_type = self.get_property("trigger_type")
-            canvas = self.parent_window.workflow_name
+            runner = self.parent_window.canvas_runner
 
+            # 1. 处理失败触发器的信号绑定/解绑
+            if curr_type == "运行失败触发":
+                if not self._error_trigger_connected:
+                    runner.workflow_error.connect(self._handle_runner_error_event)
+                    self._error_trigger_connected = True
+                    logger.info(f"节点 {self.NODE_NAME} 已激活失败监听。")
+            else:
+                if self._error_trigger_connected:
+                    runner.workflow_error.disconnect(self._handle_runner_error_event)
+                    self._error_trigger_connected = False
+
+            # 2. 处理触发器插件的激活/反激活
             if self._active_plugin_name in self.plugins:
                 self.plugins[self._active_plugin_name].deactivate(self.persistent_id)
                 self._active_plugin_name = None
 
             if curr_type in self.plugins:
                 plugin = self.plugins[curr_type]
-                # 只提取属于该插件定义的属性
                 props = {k: self.get_property(k) for k in plugin.get_properties(self)}
-                plugin.activate(canvas, self.persistent_id, self.trigger_execution, props)
+                plugin.activate(self.parent_window.workflow_name, self.persistent_id, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
 
-            logging.info(f"触发器后端切换完成: {curr_type}")
+            logger.info(f"触发器模式切换: {curr_type}")
 
+        def _handle_runner_error_event(self, error_msg):
+            """当 Runner 报错时被调用"""
+            logger.warning(f"检测到运行失败，触发异常处理工作流: {error_msg}")
+            # 携带错误信息触发
+            data = {
+                "status": "error",
+                "message": error_msg,
+                "timestamp": time.time()
+            }
+            self.trigger_execution(data=data)
+
+        # --- 核心逻辑改进：生产者 ---
         def trigger_execution(self, data=None, tid=None):
+            """外部触发插件的回调：负责向 Runner 提交任务"""
             if self.get_property("enable_throttle"):
                 if time.time() - self._last_execution_time < self.get_property("throttle_interval"):
                     return
             self._last_execution_time = time.time()
-            self.signals.execution_requested.emit(data or {}, tid or uuid.uuid4().hex)
+
+            # 生成任务 ID 并发送信号
+            # 注意：此处产生的 tid 会进入 Runner 的 ExecutionTask
+            task_id = tid or f"TRIG_{uuid.uuid4().hex[:8]}"
+            self.signals.execution_requested.emit(data or {}, task_id)
 
         def _on_execution_signal_received(self, data, tid):
-            self._last_trigger_data = data
+            """由信号触发，真正调用 Runner 的执行接口"""
             strategy = self.get_property("run_strategy")
-            method = parent_window.run_strategies.get(strategy)
-            method(self if strategy != "运行所有节点" else None, triggered_data=data, task_id=tid)
+            # 这里的 parent_window.run_strategies 内部应调用 runner.run_to/run_from 等
+            method = self.parent_window.run_strategies.get(strategy)
+            if method:
+                # 传入数据和 ID，Runner 内部会封装成 ExecutionTask 入队
+                method(self if strategy != "运行所有节点" else None, triggered_data=data, task_id=tid)
 
+        # --- 核心逻辑改进：消费者 ---
         def execute_sync(self, *args, **kwargs):
-            self.set_output_value("output", self._last_trigger_data)
+            """
+            引擎执行到本节点时：
+            1. 从 kwargs 获取当前任务 ID
+            2. 向 Runner 索要属于该 ID 的触发数据
+            """
+            # 从 Runner 中领数据 (不再从节点自身变量拿)
+            trigger_data = {}
+            # 如果没有 task_id (如手动点击执行节点)，尝试获取 runner 当前正在跑的任务数据
+            if self.parent_window.canvas_runner._current_task:
+                trigger_data = self.parent_window.canvas_runner._current_task.triggered_data or {}
+
+            # 设置节点输出
+            self.set_output_value("output", trigger_data)
+
+            # 处理运行时连动触发
             if self.get_property("trigger_type") == "运行时触发":
-                self.trigger_execution(self._last_trigger_data)
-            return {"output": self._last_trigger_data}
+                self.trigger_execution(trigger_data)
+
+            return {"output": trigger_data}
 
         def on_deleted(self):
             self._ui_sync_timer.stop()

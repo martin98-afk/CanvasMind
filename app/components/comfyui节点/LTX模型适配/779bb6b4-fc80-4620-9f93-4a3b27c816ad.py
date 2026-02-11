@@ -16,12 +16,15 @@ ConnectionType = base_module.ConnectionType
 
 
 class LTXVEmptyLatentVideo(BaseComponent):
+    inputs = []
     requirements = "# comfy,torch"
     name = "LTX2空白视频潜空间"
     category = "comfyui节点/LTX模型适配"
     description = "生成 LTX2 专用的 128 通道视频画布。"
     
-    outputs = [PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT)]
+    outputs = [
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
+    ]
     properties = {
         "widt": PropertyDefinition(
             type=PropertyType.INT,

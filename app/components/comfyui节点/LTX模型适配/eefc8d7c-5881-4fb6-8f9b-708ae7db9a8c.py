@@ -21,10 +21,12 @@ class LTXVSeparateAVLatent(BaseComponent):
     category = "comfyui节点/LTX模型适配"
     description = "将合并的 AV Latent 拆分为独立的视频和音频潜空间。"
     
-    inputs = [PortDefinition(name="latent", label="合并LATENT", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE)]
+    inputs = [
+        PortDefinition(name="latent", label="合并LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+    ]
     outputs = [
-        PortDefinition(name="video_latent", label="视频LATENT", type=ArgumentType.OBJECT),
-        PortDefinition(name="audio_latent", label="音频LATENT", type=ArgumentType.OBJECT),
+        PortDefinition(name="video_latent", label="视频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
+        PortDefinition(name="audio_latent", label="音频LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
     ]
 
     def run(self, params, inputs):

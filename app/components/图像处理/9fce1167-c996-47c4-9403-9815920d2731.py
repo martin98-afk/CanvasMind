@@ -22,10 +22,11 @@ class DynamicComponent(BaseComponent):
     requirements = ""
 
     inputs = [
-        PortDefinition(name="input1", label="input1", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="image", label="图像", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="polygons", label="多边形框", type=ArgumentType.JSON, connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="output1", label="output1", type=ArgumentType.JSON),
+        PortDefinition(name="polygons", label="多边形框", type=ArgumentType.JSON),
     ]
     properties = {
 
@@ -39,7 +40,8 @@ class DynamicComponent(BaseComponent):
         """
         import base64
         from io import BytesIO
-        img = inputs.input1
+        img = inputs.image
+        polygons = inputs.polygons
         buffered = BytesIO()
         # 自动处理 RGBA 模式保存为 PNG（避免 JPEG 无法保存 alpha）
         format = "PNG"  # 强制含透明通道的图用 PNG
@@ -51,9 +53,12 @@ class DynamicComponent(BaseComponent):
             method="anchor_selector",
             params={
                 "title": "请选择关键点锚点",
-                "schema": {"image": base64_image}
+                "schema": {
+                    "image": base64_image,
+                    "polygons": polygons
+                }
             }
-        )
+        )["polygons"]
         return {
-            "output1": result
+            "polygons": result
         }

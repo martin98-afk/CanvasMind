@@ -16,13 +16,14 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyVAELoader(BaseComponent):
+    inputs = []
     name = "VAE加载器"
     category = "comfyui节点/模型加载器"
     description = "加载 VAE 模型，支持标准 VAE、TAESD (SD1/SDXL/SD3/Flux) 以及 Pixel Space"
     requirements = "torch,#comfyui,#folder_paths,#comfy"
 
     outputs = [
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE"),
     ]
 
     properties = {
