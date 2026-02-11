@@ -287,7 +287,7 @@ class SelectionActionToolbar(BaseCanvasToolbar):
         view_scale = self.viewer.transform().m11()
         # 将物理像素转换为场景坐标进行定位
         target_x = scene_rect.center().x() - (self._total_width / 2 / view_scale)
-        target_y = scene_rect.top() - (40 / view_scale)# - (15 / view_scale)
+        target_y = scene_rect.top() - (40 / view_scale) - (10 / view_scale)
         self.setPos(target_x, target_y)
 
 

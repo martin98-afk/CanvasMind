@@ -174,7 +174,6 @@ class NodeFloatingToolbar(BaseCanvasToolbar):
     def __init__(self, parent=None):
         # 节点上的 Toolbar 应该随节点缩放，所以 ignore_transform=False
         super(NodeFloatingToolbar, self).__init__(viewer=None, parent=parent, ignore_transform=False)
-        self._height = 36
         self.setZValue(Z_VAL_NODE_WIDGET + 15)
 
 
@@ -497,7 +496,7 @@ class CustomNodeItem(NodeItem):
 
         # 节点悬浮 Toolbar 定位
         tb_w = self._floating_toolbar.boundingRect().width()
-        self._floating_toolbar.setPos(rect.right() - tb_w, rect.top() - 40)
+        self._floating_toolbar.setPos(rect.right() - tb_w + 20, rect.top() - 50)
 
     def _align_widgets_stacked(self, start_y, node_width, node_height):
         if not self._widgets: return

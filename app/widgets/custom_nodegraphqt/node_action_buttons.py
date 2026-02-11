@@ -203,6 +203,7 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
 class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
     def __init__(self, viewer=None, parent=None, ignore_transform=True):
         super(BaseCanvasToolbar, self).__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET + 9)
         self.viewer = viewer
         if ignore_transform:
             self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
@@ -210,10 +211,10 @@ class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
 
         self.layout_items = []
-        self._padding = 8
+        self._padding = 10
         self._spacing = 6
         self._total_width = 0
-        self._height = 40
+        self._height = 44  # 稍微加高，增加高级感
 
     def add_button(self, icon_type, tooltip, color, hover_color, is_permanent=False):
         btn = NodeActionButton(self, icon_type, tooltip, color, hover_color, is_permanent)
@@ -221,9 +222,9 @@ class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
         return btn
 
     def add_separator(self):
-        sep = QtWidgets.QGraphicsRectItem(0, 0, 1, 20, self)
+        sep = QtWidgets.QGraphicsRectItem(0, 0, 1, 24, self)
         sep.setPen(QtGui.QPen(QtCore.Qt.NoPen))
-        sep.setBrush(QtGui.QColor(255, 255, 255, 45))
+        sep.setBrush(QtGui.QColor(255, 255, 255, 30))
         self._add_to_layout(sep)
 
     def _add_to_layout(self, item):
@@ -232,7 +233,7 @@ class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
         self._recalculate_layout()
 
     def _recalculate_layout(self):
-        self.prepareGeometryChange()  # 布局变动前通知场景
+        self.prepareGeometryChange()
         x = self._padding
         for item in self.layout_items:
             h = item.boundingRect().height()
@@ -241,19 +242,30 @@ class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
         self._total_width = x - self._spacing + self._padding
 
     def boundingRect(self):
-        # 核心修复：增加 5 像素的范围，防止阴影或描边在缩放移动时产生残影
-        return QtCore.QRectF(0, 0, self._total_width, self._height).adjusted(-5, -5, 5, 5)
+        # 增加较大的外扩范围，彻底解决拖拽残影和阴影裁剪
+        return QtCore.QRectF(0, 0, self._total_width, self._height).adjusted(-10, -10, 10, 10)
 
     def paint(self, painter, option, widget):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        rect = QtCore.QRectF(0, 0, self._total_width, self._height)  # 使用不带 margin 的 rect 绘制
+        rect = QtCore.QRectF(0, 0, self._total_width, self._height)
 
-        # 绘制阴影（增加层次感并利用 margin）
-        painter.setBrush(QtGui.QColor(0, 0, 0, 80))
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.drawRoundedRect(rect.adjusted(1, 1, 1, 1), 10, 10)
+        # 1. 绘制软阴影
+        for i in range(5):
+            opacity = 50 - (i * 10)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor(0, 0, 0, opacity))
+            painter.drawRoundedRect(rect.adjusted(i, i, i, i), 12 + i, 12 + i)
 
-        # 绘制背景
-        painter.setBrush(QtGui.QColor(40, 40, 45, 235))
+        # 2. 绘制主体背景 (微梯度玻璃态)
+        grad = QtGui.QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        grad.setColorAt(0, QtGui.QColor(45, 45, 50, 240))
+        grad.setColorAt(1, QtGui.QColor(25, 25, 30, 255))
+        painter.setBrush(grad)
+
+        # 3. 绘制内发光边框 (专业感核心)
         painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 45), 1.2))
-        painter.drawRoundedRect(rect, 10, 10)
+        painter.drawRoundedRect(rect, 12, 12)
+
+        # 4. 顶部高光细线 (模拟光源)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 20), 0.8))
+        painter.drawLine(int(rect.left() + 12), int(rect.top() + 1), int(rect.right() - 12), int(rect.top() + 1))
