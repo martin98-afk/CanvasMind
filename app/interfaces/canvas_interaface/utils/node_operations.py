@@ -550,7 +550,7 @@ class NodeOperations:
         # 1. 清理状态缓存
         if node_id in self.parent.node_status:
             del self.parent.node_status[node_id]
-        if getattr(node, "on_deleted"):
+        if hasattr(node, "on_deleted"):
             node.on_deleted()
         # 2. 异步删除本地目录 (传入列表)
         self._delete_node_workspace_async([node_id])
@@ -580,7 +580,7 @@ class NodeOperations:
                     port.clear_connections(push_undo=True, emit_signal=True)
                 for port in node.output_ports():
                     port.clear_connections(push_undo=True, emit_signal=True)
-            if getattr(node, "on_deleted"):
+            if hasattr(node, "on_deleted"):
                 node.on_deleted()
             # 清理状态缓存
             if node.get_property("persistent_id") in self.parent.node_status:
