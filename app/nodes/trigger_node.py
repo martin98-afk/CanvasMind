@@ -98,7 +98,6 @@ def create_trigger_node(parent_window):
             if w:
                 w.get_custom_widget().valueChanged.connect(self._request_sync)
                 self.add_custom_widget(w, tab="Properties")
-                self.set_property(name, conf.get("default"))
                 return w
             return None
 
