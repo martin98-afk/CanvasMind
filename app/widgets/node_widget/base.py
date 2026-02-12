@@ -227,8 +227,10 @@ class _NodeGroupBox(QtWidgets.QWidget):
     def add_global_widget(self, widget):
         """专门添加全局变量控件，强制添加到垂直布局底部"""
         self._apply_unified_font(widget)
+
         widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
+        self.layout.addWidget(widget, 0)
+        # self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
 
     def get_node_widget(self):
         # 1. 优先查找 Header 中的自定义控件
