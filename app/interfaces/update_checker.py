@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog
+from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog, QHBoxLayout
 from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PrimaryPushButton, MessageBox
 
 from app.utils.config import Settings
@@ -50,26 +50,52 @@ class UpdateChecker(QWidget):
                 pass
 
     def _show_update_infobar(self, latest_release):
-        """保持原有的 InfoBar 交互方式"""
+        """保持原有的 InfoBar 交互方式，并增加查看详情按钮"""
         latest_version = latest_release.get("tag_name", "未知")
         update_notes = latest_release.get("body", "无更新说明")
+        html_url = latest_release.get("html_url", "").strip()  # 获取发布页面URL
 
         info_bar = InfoBar(
             icon=InfoBarIcon.INFORMATION,
             title=f"发现新版本 {latest_version}",
             content=f"更新内容：\n{update_notes[:100]}...",
-            orient=Qt.Vertical,  # 垂直布局适合显示较多文字
+            orient=Qt.Vertical,
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=-1,  # 不自动消失
+            duration=-1,
             parent=self.parent or self
         )
 
-        # 添加“立即更新”按钮到 InfoBar
+        # 创建按钮容器（水平布局）
+        from PyQt5.QtGui import QDesktopServices
+        from PyQt5.QtCore import QUrl
+        from qfluentwidgets import PushButton  # 普通按钮用于次要操作
+
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(8)
+        button_layout.addStretch(1)  # 左侧弹性空间，使按钮右对齐
+
+        # 立即更新按钮（主操作）
         update_button = PrimaryPushButton("立即更新")
         update_button.setFixedWidth(80)
         update_button.clicked.connect(lambda: self._on_update_confirmed(latest_release, info_bar))
-        info_bar.widgetLayout.addWidget(update_button, 0, Qt.AlignRight)
+
+        # 查看详情按钮（次要操作）
+        view_button = PushButton("查看详情")
+        view_button.setFixedWidth(80)
+        if html_url:
+            view_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(html_url)))
+        else:
+            view_button.setEnabled(False)  # 无有效URL时禁用按钮
+
+        # 添加按钮到容器
+        button_layout.addWidget(update_button)
+        button_layout.addWidget(view_button)
+
+        # 将按钮容器添加到InfoBar布局
+        info_bar.widgetLayout.addWidget(button_container, 0, Qt.AlignRight)
 
         info_bar.show()
 

@@ -1337,8 +1337,6 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_collision(attr_value)
                     elif attr_name == "pipe_slicing":
                         self.set_pipe_slicing(attr_value)
-                    elif attr_name == "pipe_style":
-                        self.set_pipe_style(attr_value)
 
                 # connection constrains.
                 if attr_name == 'accept_connection_types':
@@ -1397,11 +1395,11 @@ class CustomNodeGraph(NodeGraph):
                             node._view.toggle_collapse()
                         if isinstance(node, BaseNode):
                             if prop in node.view.widgets:
-                                if GlobalVariableContext.is_variable_name(val) and getattr(node.view.widgets[prop], "var_type") != "全局变量":
+                                var_type = getattr(node.view.widgets[prop], "var_type")\
+                                        if hasattr(node.view.widgets[prop], "var_type") else None
+                                if GlobalVariableContext.is_variable_name(val) and var_type != "全局变量":
                                     node.view.widgets[prop].toggle_global_mode(True)
-                                    node.view.widgets[prop]._global_widget.set_value(val)
-                                else:
-                                    node.view.widgets[prop].set_value(val)
+                                node.view.widgets[prop].set_value(val)
                         elif node.type_ == "general.StickyNote":
                             node.set_property(prop, val)
                     # 决定是否还原节点最后保存时缩放大小
