@@ -21,7 +21,7 @@ class ClearVariablePlugin(InteractivePlugin):
         )
     """
 
-    def operate(self, node, params):
+    def handle(self, node, params, msg=None):
         node = node.parent_window.node_operations.create_next_node(params.get("key"))
         response_file = params.get("response_file")
 
