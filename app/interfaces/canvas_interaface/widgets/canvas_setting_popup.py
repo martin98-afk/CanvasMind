@@ -114,7 +114,7 @@ class CanvasSettingPopup(QWidget):
         group = SettingCardGroup("画布保存设置", self.scroll_content)
         self.autoSaveCard = SwitchSettingCard(get_icon("自动保存"), "自动保存", configItem=self.cfg.canvas_auto_save,
                                               parent=group)
-        self.autoSaveIntervalCard = RangeSettingCard(self.cfg.canvas_auto_save_interval, get_icon("自动保存"), "修改",
+        self.autoSaveIntervalCard = RangeSettingCard(self.cfg.canvas_auto_save_interval, get_icon("自动保存"), "间隔时间(s)",
                                                      parent=group)
 
         self.autoSaveCard.checkedChanged.connect(self.onConfigChanged)

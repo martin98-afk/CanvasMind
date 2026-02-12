@@ -8,6 +8,7 @@ from qfluentwidgets import (TransparentToolButton, FluentIcon, RoundMenu, Action
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.bread_crumb import Breadcrumb
 from app.widgets.basic_widget.splitter import ModernSplitter
@@ -478,7 +479,7 @@ class CanvasUISetUp:
 
     def _setup_pipeline_style(self):
         # 仅用于初始化，后续由 Manager 接管
-        config = self.parent.config
+        config = Settings.get_instance()
         if self.graph:
             self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
             self.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))

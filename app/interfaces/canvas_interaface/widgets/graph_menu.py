@@ -48,7 +48,7 @@ class FilterCapsule(QtWidgets.QFrame):
 
 
 class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
-    # ... (保持原有代码不变) ...
+
     def paint(self, painter, option, index):
         data = index.data(Qt.UserRole)
         if not data or data.get("_is_placeholder", False):
@@ -520,7 +520,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                             port_index = [p.name() for p in input_ports].index(self.source_port_item.name)
 
                             target_out_idx = 0
-                            # 【新增】子类型优先匹配
+                            # 子类型优先匹配
                             if req_sub_type:
                                 try:
                                     target_out_idx = data["out_port_sub_types"].index(req_sub_type)
