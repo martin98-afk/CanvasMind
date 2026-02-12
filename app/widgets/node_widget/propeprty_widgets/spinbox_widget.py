@@ -50,6 +50,7 @@ class ProfessionalSpinBox(QtWidgets.QWidget):
 
     def __init__(self, value=0, step=1, decimals=2, is_int=False, parent=None):
         super().__init__(parent)
+        self.setFixedHeight(32)
         self._value = value
         self._step = step
         self._decimals = decimals

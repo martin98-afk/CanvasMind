@@ -1105,8 +1105,8 @@ class CustomNodeViewer(NodeViewer):
             zoom_diff = abs(start_rect.width() - target_rect.width())
             # 稍微加快节奏：减少基础时间，增加距离权重
             # 让短距离极快(350ms)，长距离平滑(最长 1000ms)
-            calc_duration = 350 + (dist * 0.15) + (zoom_diff * 0.05)
-            duration = int(max(400, min(calc_duration, 1000)))
+            calc_duration = 550 + (dist * 0.15) + (zoom_diff * 0.05)
+            duration = int(max(600, min(calc_duration, 1000)))
 
         self._zoom_anim_group = QtCore.QSequentialAnimationGroup(self)
 

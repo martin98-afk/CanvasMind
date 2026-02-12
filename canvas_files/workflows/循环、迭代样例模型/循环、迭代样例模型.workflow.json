@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1bd87b64e90": {
+      "0x18b000ad950": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入",
@@ -54,7 +54,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd87b67590": {
+      "0x18b000b8150": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串",
@@ -97,7 +97,7 @@
           "prop1": "env.LANG"
         }
       },
-      "0x1bd87b6da10": {
+      "0x18b000ba610": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装",
@@ -140,7 +140,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd87b6f350": {
+      "0x18b000bbe90": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 1",
@@ -183,7 +183,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd87b78f10": {
+      "0x18b000c9b10": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 1",
@@ -226,7 +226,7 @@
           "prop1": "env.LANG"
         }
       },
-      "0x1bd87b7a510": {
+      "0x18b000cb090": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 1",
@@ -269,7 +269,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd87b7b790": {
+      "0x18b000d4350": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 2",
@@ -312,7 +312,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f650e90": {
+      "0x18b000d5b10": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 3",
@@ -355,7 +355,7 @@
           "input": "文本内容文本内容文本内容"
         }
       },
-      "0x1bd8f6522d0": {
+      "0x18b000d7090": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 2",
@@ -398,7 +398,7 @@
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x1bd8f6539d0": {
+      "0x18b000dc5d0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 3",
@@ -441,7 +441,7 @@
           "prop1": "custom.test"
         }
       },
-      "0x1bd8f65cf90": {
+      "0x18b000ddb50": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 4",
@@ -484,7 +484,7 @@
           "prop1": "env.PYTHONWARNINGS"
         }
       },
-      "0x1bd8f65e7d0": {
+      "0x18b000df110": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 5",
@@ -527,7 +527,7 @@
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x1bd8f65fe90": {
+      "0x18b000f8690": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 6",
@@ -570,7 +570,7 @@
           "prop1": "env.TZ"
         }
       },
-      "0x1bd8f669450": {
+      "0x18b000f9bd0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 4",
@@ -613,7 +613,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f66a9d0": {
+      "0x18b000fb0d0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 2",
@@ -656,7 +656,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd8f66bb10": {
+      "0x18b00104390": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 3",
@@ -699,7 +699,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd8f678f90": {
+      "0x18b001058d0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 4",
@@ -742,7 +742,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd8f67a3d0": {
+      "0x18b00106e10": {
         "type_": "dynamic.StatusDynamicNode_bd25adc1-1abc-4192-9598-6a82696dea83",
         "icon": null,
         "name": "知识库查询",
@@ -786,7 +786,7 @@
           "knowledge_base_id": "default_kb"
         }
       },
-      "0x1bd8f690050": {
+      "0x18b04348b50": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 5",
@@ -829,7 +829,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f691a10": {
+      "0x18b0434a6d0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 5",
@@ -872,7 +872,7 @@
           "prop_0": "text"
         }
       },
-      "0x1bd8f692bd0": {
+      "0x18b0434b910": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 6",
@@ -915,7 +915,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f6a0310": {
+      "0x18b04355150": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 7",
@@ -958,7 +958,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f6a1690": {
+      "0x18b04356650": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 8",
@@ -1001,7 +1001,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f6a2a90": {
+      "0x18b04357b50": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 9",
@@ -1044,7 +1044,7 @@
           "input": "文本内容"
         }
       },
-      "0x1bd8f6a3ed0": {
+      "0x18b04356150": {
         "type_": "dynamic.StatusDynamicNode_2317bfef-1bde-4f99-8ce5-2d95c4adfb6b",
         "icon": null,
         "name": "获取全局变量",
@@ -1088,7 +1088,7 @@
           "prop1": "env.CUDA_VISIBLE_DEVICES"
         }
       },
-      "0x1bd8f6ad210": {
+      "0x18b0436e210": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -1127,7 +1127,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd8f6ad990": {
+      "0x18b0436ea90": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -1166,7 +1166,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd87808e50": {
+      "0x18b0436f250": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域",
@@ -1215,7 +1215,7 @@
           "parallel_count": 1
         }
       },
-      "0x1bd8f6af710": {
+      "0x18b04378810": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 1",
@@ -1254,7 +1254,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd8f6aff10": {
+      "0x18b04379010": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 1",
@@ -1293,7 +1293,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd8f6b4750": {
+      "0x18b04379810": {
         "type_": "control_flow.ControlFlowLoopNode",
         "icon": null,
         "name": "循环控制流区域",
@@ -1342,7 +1342,7 @@
           "parallel_count": 1
         }
       },
-      "0x1bd8f6b5950": {
+      "0x18b0437aa10": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口 3",
@@ -1381,7 +1381,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd8f6b6150": {
+      "0x18b0437b210": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口 2",
@@ -1420,7 +1420,7 @@
           "_collapsed": false
         }
       },
-      "0x1bd8f6b6950": {
+      "0x18b0437ba10": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": null,
         "name": "迭代控制流区域 1",
@@ -1469,7 +1469,7 @@
           "parallel_count": 1
         }
       },
-      "0x1bd8f6b68d0": {
+      "0x18b0437b990": {
         "type_": "control_flow.ControlFlowBranchNode",
         "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
         "name": "条件分支",
@@ -1494,8 +1494,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 0.0,
-        "height": 0.0,
+        "width": 423.0,
+        "height": 117.0,
         "pos": [
           36.956606154375095,
           1294.1336507071305
@@ -1555,296 +1555,397 @@
           "enable_else": true,
           "execute_all_matches": false
         }
+      },
+      "0x18b6a7497d0": {
+        "type_": "control_flow.ControlFlowBranchNode",
+        "icon": ":/icons/条件分支.png",
+        "name": "条件分支 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1617.9860618878613,
+          1294.1336507071303
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch1_condition",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "branch2_condition",
+            "multi_connection": false,
+            "display_name": true
+          },
+          {
+            "name": "branch3_condition",
+            "multi_connection": false,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "branch1",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch2",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "branch3",
+            "multi_connection": true,
+            "display_name": true
+          },
+          {
+            "name": "else",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "6cc424f4-d5a1-4b39-873c-98babfda6009",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_column_select": {},
+          "conditions": [
+            {
+              "expr": "",
+              "name": "branch1"
+            },
+            {
+              "expr": "",
+              "name": "branch2"
+            },
+            {
+              "expr": "",
+              "name": "branch3"
+            }
+          ],
+          "enable_else": true,
+          "execute_all_matches": false
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x1bd87b64e90",
+          "0x18b000ad950",
           "text"
         ],
         "in": [
-          "0x1bd87808e50",
+          "0x18b0436f250",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1bd87b67590",
+          "0x18b000b8150",
           "input1"
         ],
         "out": [
-          "0x1bd8f6ad210",
+          "0x18b0436e210",
           "output"
         ]
       },
       {
         "out": [
-          "0x1bd87b67590",
+          "0x18b000b8150",
           "output1"
         ],
         "in": [
-          "0x1bd8f6ad990",
+          "0x18b0436ea90",
           "input"
         ]
       },
       {
         "in": [
-          "0x1bd87b6da10",
+          "0x18b000ba610",
           "input1"
         ],
         "out": [
-          "0x1bd87808e50",
+          "0x18b0436f250",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1bd87b6f350",
+          "0x18b000bbe90",
           "text"
         ],
         "in": [
-          "0x1bd8f6b4750",
+          "0x18b04379810",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1bd87b78f10",
+          "0x18b000c9b10",
           "input1"
         ],
         "out": [
-          "0x1bd8f6af710",
+          "0x18b04378810",
           "output"
         ]
       },
       {
         "out": [
-          "0x1bd87b78f10",
+          "0x18b000c9b10",
           "output1"
         ],
         "in": [
-          "0x1bd8f6522d0",
+          "0x18b000d7090",
           "input1"
         ]
       },
       {
         "in": [
-          "0x1bd87b7a510",
+          "0x18b000cb090",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b68d0",
+          "0x18b0437b990",
           "test_port"
         ]
       },
       {
         "out": [
-          "0x1bd87b7b790",
+          "0x18b000d4350",
           "text"
         ],
         "in": [
-          "0x1bd8f6b4750",
+          "0x18b04379810",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f650e90",
+          "0x18b000d5b10",
           "text"
         ],
         "in": [
-          "0x1bd8f6b4750",
+          "0x18b04379810",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f6522d0",
+          "0x18b000d7090",
           "output1"
         ],
         "in": [
-          "0x1bd8f6539d0",
+          "0x18b000dc5d0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1bd8f6539d0",
+          "0x18b000dc5d0",
           "output1"
         ],
         "in": [
-          "0x1bd8f6aff10",
+          "0x18b04379010",
           "input"
         ]
       },
       {
         "in": [
-          "0x1bd8f65cf90",
+          "0x18b000ddb50",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b5950",
+          "0x18b0437aa10",
           "output"
         ]
       },
       {
         "out": [
-          "0x1bd8f65cf90",
+          "0x18b000ddb50",
           "output1"
         ],
         "in": [
-          "0x1bd8f65e7d0",
+          "0x18b000df110",
           "input1"
         ]
       },
       {
         "out": [
-          "0x1bd8f65e7d0",
+          "0x18b000df110",
           "output1"
         ],
         "in": [
-          "0x1bd8f6b6150",
+          "0x18b0437b210",
           "input"
         ]
       },
       {
         "in": [
-          "0x1bd8f65fe90",
+          "0x18b000f8690",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b5950",
+          "0x18b0437aa10",
           "output"
         ]
       },
       {
         "out": [
-          "0x1bd8f65fe90",
+          "0x18b000f8690",
           "output1"
         ],
         "in": [
-          "0x1bd8f6b6150",
+          "0x18b0437b210",
           "input"
         ]
       },
       {
         "out": [
-          "0x1bd8f669450",
+          "0x18b000f9bd0",
           "text"
         ],
         "in": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1bd8f66a9d0",
+          "0x18b000fb0d0",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "outputs"
         ]
       },
       {
         "in": [
-          "0x1bd8f66bb10",
+          "0x18b00104390",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b68d0",
+          "0x18b0437b990",
           "branch2"
         ]
       },
       {
         "out": [
-          "0x1bd8f66bb10",
+          "0x18b00104390",
           "output1"
         ],
         "in": [
-          "0x1bd8f67a3d0",
+          "0x18b00106e10",
           "query"
         ]
       },
       {
         "in": [
-          "0x1bd8f678f90",
+          "0x18b001058d0",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b68d0",
+          "0x18b0437b990",
           "else"
         ]
       },
       {
         "out": [
-          "0x1bd8f690050",
+          "0x18b04348b50",
           "text"
         ],
         "in": [
-          "0x1bd87808e50",
+          "0x18b0436f250",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x1bd8f691a10",
+          "0x18b0434a6d0",
           "input1"
         ],
         "out": [
-          "0x1bd8f6b4750",
+          "0x18b04379810",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f692bd0",
+          "0x18b0434b910",
           "text"
         ],
         "in": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f6a0310",
+          "0x18b04355150",
           "text"
         ],
         "in": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f6a1690",
+          "0x18b04356650",
           "text"
         ],
         "in": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f6a2a90",
+          "0x18b04357b50",
           "text"
         ],
         "in": [
-          "0x1bd8f6b6950",
+          "0x18b0437ba10",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x1bd8f6a3ed0",
+          "0x18b04356150",
           "output1"
         ],
         "in": [
-          "0x1bd8f6b68d0",
+          "0x18b0437b990",
           "input"
         ]
       }
@@ -1852,47 +1953,48 @@
   },
   "runtime": {
     "environment": {
-      "name": "3.11",
+      "name": "3.12",
       "type": "local",
-      "path": "E:\\CanvasMind\\CanvasMind\\_internal\\envs\\miniconda\\envs\\3.11\\python.exe"
+      "path": "D:\\work\\CanvasMind\\_internal\\envs\\miniconda\\envs\\3.12\\python.exe"
     },
-    "environment_exe": "E:\\CanvasMind\\CanvasMind\\_internal\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "environment_exe": "D:\\work\\CanvasMind\\_internal\\envs\\miniconda\\envs\\3.12\\python.exe",
     "node_id2stable_key": {
-      "0x1bd87b64e90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
-      "0x1bd87b67590": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串",
-      "0x1bd87b6da10": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装",
-      "0x1bd87b6f350": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
-      "0x1bd87b78f10": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1",
-      "0x1bd87b7a510": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1",
-      "0x1bd87b7b790": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2",
-      "0x1bd8f650e90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3",
-      "0x1bd8f6522d0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2",
-      "0x1bd8f6539d0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3",
-      "0x1bd8f65cf90": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4",
-      "0x1bd8f65e7d0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5",
-      "0x1bd8f65fe90": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6",
-      "0x1bd8f669450": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4",
-      "0x1bd8f66a9d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2",
-      "0x1bd8f66bb10": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3",
-      "0x1bd8f678f90": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4",
-      "0x1bd8f67a3d0": "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询",
-      "0x1bd8f690050": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5",
-      "0x1bd8f691a10": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5",
-      "0x1bd8f692bd0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6",
-      "0x1bd8f6a0310": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7",
-      "0x1bd8f6a1690": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8",
-      "0x1bd8f6a2a90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9",
-      "0x1bd8f6a3ed0": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
-      "0x1bd8f6ad210": "unknown||输入端口",
-      "0x1bd8f6ad990": "unknown||输出端口",
-      "0x1bd87808e50": "unknown||迭代控制流区域",
-      "0x1bd8f6af710": "unknown||输入端口 1",
-      "0x1bd8f6aff10": "unknown||输出端口 1",
-      "0x1bd8f6b4750": "unknown||循环控制流区域",
-      "0x1bd8f6b5950": "unknown||输入端口 3",
-      "0x1bd8f6b6150": "unknown||输出端口 2",
-      "0x1bd8f6b6950": "unknown||迭代控制流区域 1",
-      "0x1bd8f6b68d0": "unknown||条件分支"
+      "0x18b000ad950": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入",
+      "0x18b000b8150": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串",
+      "0x18b000ba610": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装",
+      "0x18b000bbe90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
+      "0x18b000c9b10": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1",
+      "0x18b000cb090": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1",
+      "0x18b000d4350": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2",
+      "0x18b000d5b10": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3",
+      "0x18b000d7090": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2",
+      "0x18b000dc5d0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3",
+      "0x18b000ddb50": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4",
+      "0x18b000df110": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5",
+      "0x18b000f8690": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6",
+      "0x18b000f9bd0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4",
+      "0x18b000fb0d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2",
+      "0x18b00104390": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3",
+      "0x18b001058d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4",
+      "0x18b00106e10": "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询",
+      "0x18b04348b50": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5",
+      "0x18b0434a6d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5",
+      "0x18b0434b910": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6",
+      "0x18b04355150": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7",
+      "0x18b04356650": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8",
+      "0x18b04357b50": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9",
+      "0x18b04356150": "2317bfef-1bde-4f99-8ce5-2d95c4adfb6b||获取全局变量",
+      "0x18b0436e210": "unknown||输入端口",
+      "0x18b0436ea90": "unknown||输出端口",
+      "0x18b0436f250": "unknown||迭代控制流区域",
+      "0x18b04378810": "unknown||输入端口 1",
+      "0x18b04379010": "unknown||输出端口 1",
+      "0x18b04379810": "unknown||循环控制流区域",
+      "0x18b0437aa10": "unknown||输入端口 3",
+      "0x18b0437b210": "unknown||输出端口 2",
+      "0x18b0437ba10": "unknown||迭代控制流区域 1",
+      "0x18b0437b990": "unknown||条件分支",
+      "0x18b6a7497d0": "unknown||条件分支 1"
     },
     "node_states": {
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": "last_success",
@@ -1929,7 +2031,8 @@
       "unknown||输入端口 3": "unrun",
       "unknown||输出端口 2": "unrun",
       "unknown||迭代控制流区域 1": "last_success",
-      "unknown||条件分支": "last_success"
+      "unknown||条件分支": "last_success",
+      "unknown||条件分支 1": "unrun"
     },
     "node_inputs": {
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {},
@@ -1966,7 +2069,8 @@
       "unknown||输入端口 3": {},
       "unknown||输出端口 2": {},
       "unknown||迭代控制流区域 1": {},
-      "unknown||条件分支": {}
+      "unknown||条件分支": {},
+      "unknown||条件分支 1": {}
     },
     "node_outputs": {
       "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入": {
@@ -2103,7 +2207,8 @@
       },
       "unknown||条件分支": {
         "branch2": "0"
-      }
+      },
+      "unknown||条件分支 1": {}
     }
   },
   "global_variable": {

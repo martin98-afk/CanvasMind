@@ -13,6 +13,7 @@ from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWi
 from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWidget
 from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidget
+from app.widgets.node_widget.propeprty_widgets.spinbox_widget import NumberWidgetWrapper, SpinBoxWidget
 from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import VarComboBoxWidget
 
 
@@ -37,7 +38,7 @@ class FormFieldWidget(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(6)
-
+        layout.setAlignment(QtCore.Qt.AlignTop)
         for key, defn in self.schema.items():
             field_type = defn["type"]
             label = defn.get("label", "")
@@ -51,7 +52,7 @@ class FormFieldWidget(QtWidgets.QWidget):
             sub_layout = QtWidgets.QVBoxLayout()
             sub_layout.setContentsMargins(0, 0, 0, 0)
             sub_layout.setSpacing(2)
-
+            sub_layout.setAlignment(QtCore.Qt.AlignTop)
             # 标签
             label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:", self)
             child_font = label_widget.font()
@@ -81,6 +82,12 @@ class FormFieldWidget(QtWidgets.QWidget):
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
                 widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            elif field_type in (PropertyType.INT.name, PropertyType.FLOAT.name):
+                widget = SpinBoxWidget(
+                    parent=self.home, default=default, type=field_type.lower()
+                )
+                self.fields[key] = widget
+                input_row.addWidget(widget, 1)
             elif field_type == PropertyType.CHOICE.name:
                 widget = CustomComboBox(parent=self.home)
                 widget.addItems(defn.get("choices", []))
@@ -123,15 +130,14 @@ class FormFieldWidget(QtWidgets.QWidget):
                 widget.textChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
-
             sub_layout.addLayout(input_row)
             layout.addLayout(sub_layout)
 
         # 移除按钮
         btn_remove = TransparentToolButton(FluentIcon.DELETE, parent=self)
-        btn_remove.setFixedSize(24, 32)
+        btn_remove.setFixedSize(24, 53)
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
-        layout.addWidget(btn_remove, 0, QtCore.Qt.AlignBottom)
+        layout.addWidget(btn_remove, 0, QtCore.Qt.AlignTop)
 
     def get_data(self):
         data = {}
