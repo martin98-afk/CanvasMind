@@ -101,18 +101,8 @@ class LongTextWidgetWrapper(CustomNodeBaseWidget):
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 
-    def get_port_func(self):
-        vars = [f"input.{port.name()}" for port in self.node.input_ports()]
-        for port in self.node.input_ports():
-            connected_ports = port.connected_ports()
-            for connected_port in connected_ports:
-                safe_name = connected_port.node().name().replace(" ", "_")
-                vars.append(f"input.{safe_name}__{connected_port.name()}")
-
-        return vars
-
-    def get_value(self):
+    def _get_local_value(self):
         return self.get_custom_widget().get_value()
 
-    def set_value(self, value):
+    def _set_local_value(self, value):
         self.get_custom_widget().set_value(value)

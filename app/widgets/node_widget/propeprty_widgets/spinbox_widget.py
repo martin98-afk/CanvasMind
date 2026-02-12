@@ -217,14 +217,14 @@ class NumberWidgetWrapper(CustomNodeBaseWidget):
         # 连接信号
         inner_widget.valueChanged.connect(self.on_value_changed)
 
-    def get_value(self):
+    def _get_local_value(self):
         # 使用基类提供的 get_custom_widget() 方法安全获取对象
         widget = self.get_custom_widget()
         if widget:
             return widget.get_value()
         return 0
 
-    def set_value(self, value):
+    def _set_local_value(self, value):
         widget = self.get_custom_widget()
         if widget:
             try:

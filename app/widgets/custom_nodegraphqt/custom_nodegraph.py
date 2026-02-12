@@ -1397,7 +1397,7 @@ class CustomNodeGraph(NodeGraph):
                             node._view.toggle_collapse()
                         if isinstance(node, BaseNode):
                             if prop in node.view.widgets:
-                                if GlobalVariableContext.is_variable_name(val):
+                                if GlobalVariableContext.is_variable_name(val) and getattr(node.view.widgets[prop], "var_type") != "全局变量":
                                     node.view.widgets[prop].toggle_global_mode(True)
                                     node.view.widgets[prop]._global_widget.set_value(val)
                                 else:
