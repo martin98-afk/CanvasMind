@@ -365,10 +365,10 @@ class DynamicTreeWidgetWrapper(CustomNodeBaseWidget):
             view.draw_node()
         view.update()
 
-    def get_value(self):
+    def _get_local_value(self):
         return self.tree_widget.get_value()
 
-    def set_value(self, value):
+    def _set_local_value(self, value):
         self.tree_widget.set_value(value)
         # 加载数据后同步一次高度
         self._sync_node_geometry()

@@ -17,9 +17,6 @@ class CheckBoxWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.main_window = parent
         self._value = state if isinstance(state, bool) else state in ("true", 1, "True", "1")
-        label = BodyLabel(text)
-        label.setFont(QFont(Settings.get_instance().canvas_font_type.value))
-        label.setStyleSheet("color: rgba(170, 170, 170, 255);")
         self.checkbox = SwitchButton("")
         self.checkbox.setFixedHeight(32)
         self.checkbox._offText = self.checkbox.tr("")
@@ -29,8 +26,6 @@ class CheckBoxWidget(QtWidgets.QWidget):
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(label)
-        layout.addStretch(1)
         layout.addWidget(self.checkbox)
 
     def _on_state_changed(self, state):
@@ -56,14 +51,13 @@ class CheckBoxWidgetWrapper(CustomNodeBaseWidget):
         self.set_name(name)
         self.set_label(f"{text}({name})")
         widget = CheckBoxWidget(text=f"{text}({name})", state=state, parent=window)
-        self.set_custom_widget(widget)
+        self.set_custom_widget(widget, add_on_label=True)
         widget.valueChanged.connect(self.on_value_changed)
-        self.set_label_visible(False)
 
-    def get_value(self):
+    def _get_local_value(self):
         return self.get_custom_widget().get_value()
 
-    def set_value(self, value):
+    def _set_local_value(self, value):
         self.get_custom_widget().set_value(value)
 
 

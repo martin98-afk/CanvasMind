@@ -1,6 +1,6 @@
 # 节点悬浮快捷按钮
 from NodeGraphQt.constants import (
-    Z_VAL_NODE_WIDGET
+    Z_VAL_NODE_WIDGET, Z_VAL_PIPE
 )
 from PyQt5 import QtWidgets, QtCore, QtGui
 
@@ -170,6 +170,16 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
             painter.drawEllipse(QtCore.QRectF(cx - dot_size / 2, cy - dot_size / 2, dot_size, dot_size))
             # 右点
             painter.drawEllipse(QtCore.QRectF(cx + 7 - dot_size, cy - dot_size / 2, dot_size, dot_size))
+        elif self.icon_type == 'info':
+            # 绘制外圆圈
+            painter.drawEllipse(QtCore.QRectF(cx - 7, cy - 7, 14, 14))
+            # 绘制感叹号的上半部分
+            painter.drawLine(QtCore.QPointF(cx, cy - 3.5), QtCore.QPointF(cx, cy + 1))
+            # 绘制感叹号的下半部分点 (小矩形模拟，更清晰)
+            painter.setBrush(painter.pen().color())
+            painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+            painter.drawRect(QtCore.QRectF(cx - 0.75, cy + 2.5, 1.5, 1.5))
+
         painter.restore()
 
     def hoverEnterEvent(self, event):
@@ -188,3 +198,74 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
                 self.update() # 点击后立刻强制刷新一次状态
         else:
             event.ignore()
+
+
+class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
+    def __init__(self, viewer=None, parent=None, ignore_transform=True):
+        super(BaseCanvasToolbar, self).__init__(parent)
+        self.setZValue(Z_VAL_NODE_WIDGET + 9)
+        self.viewer = viewer
+        if ignore_transform:
+            self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
+        self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
+
+        self.layout_items = []
+        self._padding = 10
+        self._spacing = 6
+        self._total_width = 0
+        self._height = 44  # 稍微加高，增加高级感
+
+    def add_button(self, icon_type, tooltip, color, hover_color, is_permanent=False):
+        btn = NodeActionButton(self, icon_type, tooltip, color, hover_color, is_permanent)
+        self._add_to_layout(btn)
+        return btn
+
+    def add_separator(self):
+        sep = QtWidgets.QGraphicsRectItem(0, 0, 1, 24, self)
+        sep.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        sep.setBrush(QtGui.QColor(255, 255, 255, 30))
+        self._add_to_layout(sep)
+
+    def _add_to_layout(self, item):
+        item.setParentItem(self)
+        self.layout_items.append(item)
+        self._recalculate_layout()
+
+    def _recalculate_layout(self):
+        self.prepareGeometryChange()
+        x = self._padding
+        for item in self.layout_items:
+            h = item.boundingRect().height()
+            item.setPos(x, (self._height - h) / 2)
+            x += item.boundingRect().width() + self._spacing
+        self._total_width = x - self._spacing + self._padding
+
+    def boundingRect(self):
+        # 增加较大的外扩范围，彻底解决拖拽残影和阴影裁剪
+        return QtCore.QRectF(0, 0, self._total_width, self._height).adjusted(-10, -10, 10, 10)
+
+    def paint(self, painter, option, widget):
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        rect = QtCore.QRectF(0, 0, self._total_width, self._height)
+
+        # 1. 绘制软阴影
+        for i in range(5):
+            opacity = 50 - (i * 10)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor(0, 0, 0, opacity))
+            painter.drawRoundedRect(rect.adjusted(i, i, i, i), 12 + i, 12 + i)
+
+        # 2. 绘制主体背景 (微梯度玻璃态)
+        grad = QtGui.QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        grad.setColorAt(0, QtGui.QColor(45, 45, 50, 240))
+        grad.setColorAt(1, QtGui.QColor(25, 25, 30, 255))
+        painter.setBrush(grad)
+
+        # 3. 绘制内发光边框 (专业感核心)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 45), 1.2))
+        painter.drawRoundedRect(rect, 12, 12)
+
+        # 4. 顶部高光细线 (模拟光源)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 20), 0.8))
+        painter.drawLine(int(rect.left() + 12), int(rect.top() + 1), int(rect.right() - 12), int(rect.top() + 1))

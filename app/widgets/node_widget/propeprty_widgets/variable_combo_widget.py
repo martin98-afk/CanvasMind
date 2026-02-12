@@ -210,6 +210,7 @@ class VarComboBoxWidgetWrapper(CustomNodeBaseWidget):
 
     def __init__(self, parent=None, name="", label="", var_type="全局变量", main_window=None, z_value=10):
         super().__init__(parent)
+        self.var_type = var_type
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})({var_type})")

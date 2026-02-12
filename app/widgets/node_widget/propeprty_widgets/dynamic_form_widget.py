@@ -311,10 +311,10 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
         view.draw_node()
         view.update()
 
-    def get_value(self):
+    def _get_local_value(self):
         return self.get_custom_widget().get_value()
 
-    def set_value(self, value):
+    def _set_local_value(self, value):
         widget = self.get_custom_widget()
         if widget:
             widget.set_value(value)

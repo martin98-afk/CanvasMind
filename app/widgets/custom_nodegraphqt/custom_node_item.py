@@ -11,7 +11,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 from app.utils.config import Settings
 from app.widgets.custom_nodegraphqt.custom_port_item import GlowPortItem
-from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton
+from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
 
 # ==============================================================================
 # 高级感配色常量 (ComfyUI Style)
@@ -170,6 +170,13 @@ class CustomDisabledItem(QtWidgets.QGraphicsItem):
         painter.restore()
 
 
+class NodeFloatingToolbar(BaseCanvasToolbar):
+    def __init__(self, parent=None):
+        # 节点上的 Toolbar 应该随节点缩放，所以 ignore_transform=False
+        super(NodeFloatingToolbar, self).__init__(viewer=None, parent=parent, ignore_transform=False)
+        self.setZValue(Z_VAL_NODE_WIDGET + 15)
+
+
 class CustomNodeItem(NodeItem):
     current_mode = "subprocess"
     ICON_NODE_BASE = ":/icons/同心圆.svg"
@@ -232,20 +239,31 @@ class CustomNodeItem(NodeItem):
         self._proxy_text_item.setVisible(False)
 
     def _init_custom_buttons(self):
-        self._center_btn = NodeActionButton(self, "zoom", "聚焦", "#3498db", "#2980b9", False)
+        # 创建 Toolbar 容器
+        self._floating_toolbar = NodeFloatingToolbar(self)
+
+        # 往 Toolbar 里加按钮 (原逻辑一个不少)
+        self._center_btn = self._floating_toolbar.add_button("zoom", "聚焦", "#3498db", "#2980b9", False)
         self._center_btn.clicked_func = self.center_signal.emit
+
+        self._run_btn = self._floating_toolbar.add_button("run", "执行", "#27ae60", "#2ecc71", False)
+        self._run_btn.clicked_func = self.run_signal.emit
+
+        self._mute_btn = self._floating_toolbar.add_button("debug", "调试", "#f39c12", "#f1c40f", False)
+        self._mute_btn.clicked_func = self.debug_signal.emit
+
+        self._floating_toolbar.add_separator()
+
+        self._close_btn = self._floating_toolbar.add_button("close", "删除", "#c0392b", "#e74c3c", False)
+        self._close_btn.clicked_func = self.delete_signal.emit
+
+        # 这两个依然留在 Header 左右两侧
         self._collapse_btn = NodeActionButton(self, "collapse", "折叠控件", "transparent", "rgba(255,255,255,40)", True)
         self._collapse_btn.clicked_func = self.toggle_collapse
-        self._run_btn = NodeActionButton(self, "run", "执行", "#27ae60", "#2ecc71", False)
-        self._run_btn.clicked_func = self.run_signal.emit
-        self._mute_btn = NodeActionButton(self, "debug", "调试", "#f39c12", "#f1c40f", False)
-        self._mute_btn.clicked_func = self.debug_signal.emit
-        self._close_btn = NodeActionButton(self, "close", "删除", "#c0392b", "#e74c3c", False)
-        self._close_btn.clicked_func = self.delete_signal.emit
         self._exec_mode_btn = NodeActionButton(self, "exec_subprocess", "执行模式", "#9b59b6", "#8e44ad", True)
         self._exec_mode_btn.clicked_func = self._toggle_exec_mode
-        self._exec_mode_btn.setVisible(True)
-        self._set_action_btns_visible(False)
+
+        self._floating_toolbar.setVisible(False)
 
     def _toggle_exec_mode(self, mode=None):
         if mode:
@@ -282,10 +300,7 @@ class CustomNodeItem(NodeItem):
 
     def _set_action_btns_visible(self, visible):
         self.prepareGeometryChange()
-        self._center_btn.setVisible(visible)
-        self._run_btn.setVisible(visible)
-        self._mute_btn.setVisible(visible)
-        self._close_btn.setVisible(visible)
+        self._floating_toolbar.setVisible(visible)
 
     def _update_elements_visibility(self):
         widgets_visible = not self._is_collapsed and not self._proxy_mode
@@ -479,12 +494,9 @@ class CustomNodeItem(NodeItem):
         else:
             self._update_proxy_text_position()
 
-        btn_y = rect.top() - 32
-        spacing = 32
-        self._close_btn.setPos(rect.right() - 28, btn_y)
-        self._mute_btn.setPos(rect.right() - 28 - spacing, btn_y)
-        self._run_btn.setPos(rect.right() - 28 - spacing * 2, btn_y)
-        self._center_btn.setPos(rect.right() - 28 - spacing * 3, btn_y)
+        # 节点悬浮 Toolbar 定位
+        tb_w = self._floating_toolbar.boundingRect().width()
+        self._floating_toolbar.setPos(rect.right() - tb_w + 20, rect.top() - 50)
 
     def _align_widgets_stacked(self, start_y, node_width, node_height):
         if not self._widgets: return

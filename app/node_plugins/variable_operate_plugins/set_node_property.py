@@ -16,6 +16,6 @@ class AddVariablePlugin(VariableOperatePlugin):
         if node.parent_window:
             for key, value in params.items():
                 try:
-                    node.set_property(key=key, value=value)
+                    node.set_property(key, value)
                 except:
                     pass

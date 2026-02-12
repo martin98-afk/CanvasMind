@@ -67,7 +67,6 @@ def create_trigger_node(parent_window):
 
             # 信号绑定
             self.signals.execution_requested.connect(self._on_execution_signal_received)
-            self.view.delete_signal.connect(self.on_deleted)
             self._patch_view_drawing()
 
         # --- UI 逻辑 (保持不变) ---
@@ -99,7 +98,6 @@ def create_trigger_node(parent_window):
             if w:
                 w.get_custom_widget().valueChanged.connect(self._request_sync)
                 self.add_custom_widget(w, tab="Properties")
-                self.set_property(name, conf.get("default"))
                 return w
             return None
 
@@ -145,8 +143,6 @@ def create_trigger_node(parent_window):
                 props = {k: self.get_property(k) for k in plugin.get_properties(self)}
                 plugin.activate(self.parent_window.workflow_name, self.persistent_id, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
-
-            logger.info(f"触发器模式切换: {curr_type}")
 
         def _handle_runner_error_event(self, error_msg):
             """当 Runner 报错时被调用"""

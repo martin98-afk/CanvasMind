@@ -37,7 +37,7 @@ class HtmlWidget(QtWidgets.QWidget):
             self.view.setAttribute(Qt.WA_TranslucentBackground)
             self.view.page().setBackgroundColor(Qt.transparent)
             self.view.setContextMenuPolicy(Qt.NoContextMenu)
-            layout.addWidget(self.view)
+            layout.addWidget(self.view, 0, QtCore.Qt.AlignCenter)
             # 初始加载
             self.view.setHtml(self._html, QUrl("https://chart.local/"))
         else:

@@ -141,8 +141,8 @@ class CustomComboBox(QComboBox):
 
         # 滚动条美化
         self.view().verticalScrollBar().setStyleSheet("""
-            QScrollBar:vertical { background: transparent; width: 4px; margin-right: 2px; }
-            QScrollBar::handle:vertical { background: rgba(120, 120, 120, 100); border-radius: 2px; }
+            QScrollBar:vertical { background: transparent; width: 6px; margin-right: 2px; }
+            QScrollBar::handle:vertical { background: rgba(120, 120, 120, 200); border-radius: 4px; }
             QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
         """)
 
