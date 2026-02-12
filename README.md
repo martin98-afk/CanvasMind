@@ -46,6 +46,16 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 ## 🌟 Key Features
 
+### 📋 Complex Form & Tree Control Widget 🌳
+*   **Dynamic Property Grid** – Render adaptive UI controls (text fields, numeric inputs, file selectors, toggles, sliders) based on parameter data types and validation rules
+*   **Hierarchical Property Tree** – Organize nested configurations into expandable/collapsible tree structures with drag-and-drop reordering for complex workflows
+*   **Context-Aware Validation** – Apply real-time validation logic based on parameter dependencies (e.g., enabling/disabling fields based on toggle states)
+*   **Interactive Tree Navigation** – Context menus and visual indicators for managing parent-child relationships in hierarchical data structures
+
+<img src="images/复杂节点控件1.png" width="100%" height="100%"><br>
+
+<img src="images/复杂节点控件2.png" width="100%" height="100%"><br>
+
 ### ⚡ Distributed & Hybrid Execution Engine
 *   **Parallel DAG Execution** – Independent branches are executed concurrently via a high-performance task scheduler, maximizing CPU/GPU utilization across the workflow.
 *   **Hybrid Runtime Orchestration** – Supports seamless mixing of execution environments:
