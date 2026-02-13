@@ -23,63 +23,20 @@ class ComfyVAEDecode(BaseComponent):
     
     inputs = [
         PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="samples", label="待解码潜空间", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
+        PortDefinition(name="images", label="IMAGE", type=ArgumentType.OBJECT, sub_type=""),
     ]
-    
-    def ensure_comfy_exist(self):
-        import os 
-        # comfyui节点必须从本地comfy包中读取
-        if "comfy_extension" not in self.global_variable.custom:
-            raise Exception("自定义全局变量未添加 comfy_extension 参数，无法使用comfy节点。")
-        elif not os.path.exists(self.global_variable.comfy_extension):
-            raise Exception("配置的 comfy_extension 参数，无法找到本地文件。")
-        import sys
-        sys.path.append(self.global_variable.comfy_extension)
         
     def run(self, params, inputs):
-        import numpy as np
-        from PIL import Image
+        samples = inputs.samples
+        vae = inputs.vae
+        latent = samples["samples"]
+        if latent.is_nested:
+            latent = latent.unbind()[0]
 
-        # 1. 获取输入并校验
-        vae = inputs.get("vae")
-        
-        latent = inputs.get("latent")
-        
-        if vae is None or latent is None:
-            raise ValueError("VAE解码器缺少必要的输入：vae 或 latent 为空")
-
-        # 2. 从字典中取出 Tensor
-        # 标准 ComfyUI latent 是一个字典 {"samples": tensor}
-        samples = latent["samples"]
-
-        # 3. 执行解码
-        # 为了防止大图 OOM (显存溢出)，建议使用 decode_tiled
-        # 如果你追求极致速度且显存充足，可以用 pixels = vae.decode(samples)
-        self.logger.info(f"正在解码潜空间，尺寸为: {samples.shape}")
-        pixels = vae.decode(samples)
-
-        # 4. 转换 Tensor 到 Numpy [Batch, Height, Width, Channels]
-        # .cpu() 移至内存, .numpy() 转换格式
-        img_np = (pixels.cpu().detach().numpy() * 255.0).clip(0, 255).astype(np.uint8)
-        img_np = np.squeeze(img_np)
-        # 5. 【核心修复】处理维度，确保返回的是 PIL 兼容的 3D 数组 (H, W, C)
-        if len(img_np.shape) == 4:
-            # 如果 batch_size > 1，这里默认取第一张。
-            # 如果你的平台支持图像列表，可以循环处理
-            img_np = img_np[0] 
-
-        # 6. 安全校验：防止出现 (1, 512, 3) 这种高度异常的情况
-        if img_np.shape[0] < 2 or img_np.shape[1] < 2:
-             raise ValueError(f"生成的图像尺寸异常: {img_np.shape}，请检查潜空间尺寸")
-
-        # 7. 转换为 PIL Image 并输出
-        try:
-            out_img = Image.fromarray(img_np, mode='RGB')
-            self.logger.info(f"解码成功，图像尺寸: {out_img.width}x{out_img.height}")
-            return {"image": out_img}
-        except Exception as e:
-            self.logger.error(f"PIL转换失败: {str(e)}，数组形状: {img_np.shape}")
-            raise e
+        images = vae.decode(latent)
+        if len(images.shape) == 5: #Combine batches
+            images = images.reshape(-1, images.shape[-3], images.shape[-2], images.shape[-1])
+        return {"images": images}

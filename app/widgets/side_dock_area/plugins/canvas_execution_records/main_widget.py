@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout
 from qfluentwidgets import (SingleDirectionScrollArea, TransparentToolButton, FluentIcon,
                             StrongBodyLabel)
 
-from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
+from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import ExecutionManager
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_result_card import ExecutionResultCard
 # 假设这些是你项目中的工具类引用，如果没有可以替换为标准 PyQt 组件
@@ -16,7 +16,7 @@ class ExecutionHistoryWindow(ToolWindow):
     """
     画布执行历史记录窗口
     """
-    name = "执行结果"
+    name = "任务记录"
     icon = get_icon("任务队列")  # 使用合适的图标
     default_position = DockPosition.BOTTOM
     cards = {}  # {execution_id: ExecutionResultCard}
@@ -62,6 +62,16 @@ class ExecutionHistoryWindow(ToolWindow):
         self.ui_ticker.setInterval(1000)
         self.ui_ticker.timeout.connect(self._update_running_timers)
         self.ui_ticker.start()
+
+    @property
+    def execution_manager(self):
+        return self.manager
+
+    def create_record(self, **kwargs):
+        self.manager.create_record(**kwargs)
+
+    def update_record(self, exec_id, status, **kwargs):
+        self.manager.update_record(exec_id, status, **kwargs)
 
     def showEvent(self, event):
         # 首次显示时同步一次数据

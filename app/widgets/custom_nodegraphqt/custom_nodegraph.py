@@ -797,15 +797,6 @@ class CustomNodeViewer(NodeViewer):
                     if isinstance(item, AbstractNodeItem):
                         node_ids.append(item.id)
 
-                if node_ids:
-                    prev_ids = [
-                        n.id for n in self._prev_selection_nodes
-                        if not n.selected
-                    ]
-                    self.node_selected.emit(node_ids[0])
-                    if prev_ids != node_ids and event.button() != QtCore.Qt.MiddleButton and not self._navigation_mode:
-                        self.node_selection_changed.emit(node_ids, prev_ids)
-
                 self.scene().update(map_rect)
                 return
 
@@ -1512,3 +1503,17 @@ class CustomNodeGraph(NodeGraph):
             self._viewer.scene().blockSignals(False)
             for n in nodes.values():
                 n.view.draw_node()
+
+    # def _on_node_selection_changed(self, sel_ids, desel_ids):
+    #     """
+    #     called when the node selection changes in the viewer.
+    #     (emits node objects <selected nodes>, <deselected nodes>)
+    #
+    #     Args:
+    #         sel_ids (list[str]): new selected node ids.
+    #         desel_ids (list[str]): deselected node ids.
+    #     """
+    #     sel_nodes = [self.get_node_by_id(nid) for nid in sel_ids]
+    #     unsel_nodes = [self.get_node_by_id(nid) for nid in desel_ids]
+    #     print(sel_nodes, unsel_nodes)
+    #     self.node_selection_changed.emit(sel_nodes, unsel_nodes)

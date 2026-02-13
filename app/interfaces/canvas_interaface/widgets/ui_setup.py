@@ -368,6 +368,10 @@ class CanvasUISetUp:
     def log_window(self):
         return self.side_dock_area.get_tool_instance("模型日志")
 
+    @property
+    def execution_record(self):
+        return self.side_dock_area.get_tool_instance("任务记录")
+
     # ================= 动态定位控制 (优化版) =================
 
     def update_position(self, recalculate_size=False):

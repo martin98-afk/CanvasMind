@@ -169,10 +169,6 @@ class CanvasPage(QWidget):
         return self.node_operations.node_uuid_map
 
     @property
-    def registered_nodes(self):
-        return self.node_operations._registered_nodes
-
-    @property
     def component_map(self):
         component_map, _ = ComponentScanner().get_components()
         return component_map
@@ -205,6 +201,10 @@ class CanvasPage(QWidget):
     @property
     def log_window(self):
         return self.ui_manager.log_window
+
+    @property
+    def execution_record(self):
+        return self.ui_manager.execution_record
 
     @property
     def side_dock_area(self):
@@ -416,7 +416,7 @@ class CanvasPage(QWidget):
         self.graph.node_created.connect(self.node_operations.on_node_created)
         self.graph.node_double_clicked.connect(self.node_operations.on_node_double_clicked)
         self.graph.port_connected.connect(self._on_port_connected)
-        self.graph.viewer().node_selection_changed.connect(
+        self.graph.node_selection_changed.connect(
             lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
         )
         self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)

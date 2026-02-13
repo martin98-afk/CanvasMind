@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.components.base import PropertyType
-from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
+from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import ExecutionManager
 from app.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
 
 
