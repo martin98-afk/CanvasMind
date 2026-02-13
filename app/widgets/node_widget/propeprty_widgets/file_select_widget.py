@@ -43,12 +43,13 @@ class FileSelectWidget(QtWidgets.QWidget):
 
         self.btn_clear = TransparentToolButton(get_icon("清空参数"), self)
         self.btn_clear.setToolTip("清空路径")
-        self.btn_clear.setFixedSize(30, 30)
+        self.btn_clear.setFixedSize(32, 32)
         self.btn_clear.clicked.connect(self._on_clear)
         self.btn_clear.setVisible(False)
 
         self.btn_browse = TransparentToolButton(get_icon("文件选择"))
         self.btn_browse.setIconSize(QtCore.QSize(30, 30))
+        self.btn_browse.setFixedSize(32, 32)
         self.btn_browse.setToolTip(placeholder)
         self.btn_browse.clicked.connect(self._on_browse)
 
@@ -63,16 +64,16 @@ class FileSelectWidget(QtWidgets.QWidget):
         is_ssh = env_data.get("type") == "ssh"
 
         if is_ssh:
+            if not self._is_folder_mode:
+                path = os.path.dirname(self._path)
             # 使用 PyCharm 级别的远程浏览器
             dialog = SSHRemoteFileDialog(
                 env_data=env_data,
                 selection_mode="folder" if self._is_folder_mode else "file",
                 file_filter=self._file_filter,
-                parent=self.main_window
+                parent=self.main_window,
+                initial_path=path
             )
-            # 应用深色主题到整个对话框
-            # setDarkTheme(dialog) # 如果你有全局主题控制函数
-
             if dialog.exec_() == QtWidgets.QDialog.Accepted:
                 path = dialog.get_selected_result()
                 if path:
