@@ -16,12 +16,12 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "结果固化到任务输出"
-    category = "变量操作"
-    description = ""
+    name = "固化当前任务结果"
+    category = "数据存储"
+    description = "将指定数据存入当前运行记录中的结果对象中，避免节点结果覆盖"
     requirements = "numpy"
     inputs = [
-        PortDefinition(name="input", label="待固化结果", type=ArgumentType.JSON, connection=ConnectionType.SINGLE, description="待固化结果，格式为dict"),
+        PortDefinition(name="input1", label="输入1", type=ArgumentType.JSON, connection=ConnectionType.MULTIPLE),
     ]
     outputs = [
     ]
@@ -33,16 +33,15 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
-        input_data = inputs.input
-        if not isinstance(input_data, dict):
-            import uuid
-            input_data = {
-                uuid.uuid4().hex: input_data
-            }
-        self.emit_message(
-            method="store_current_task_output",
-            params=input_data
-        )
+        import uuid
+        for inp in inputs.input1:
+            if not isinstance(inp, dict):
+                inp = {uuid.uuid4().hex: inp}
+            self.emit_message(
+                method="store_current_task_output",
+                params=inp
+            )
+
 
 if __name__ == "__main__":
     import warnings

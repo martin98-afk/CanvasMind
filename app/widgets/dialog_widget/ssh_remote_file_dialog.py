@@ -302,9 +302,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             QListWidget::item { padding: 8px 12px; border-radius: 4px; margin: 2px 4px; }
             QListWidget::item:selected { background-color: #3a5a7a; }
         """)
-        self._add_shortcut("🏠 工作目录", os.path.dirname(self.env_data.get('path', '/').rstrip('/') or '/'), FluentIcon.HOME)
-        self._add_shortcut("📁 根目录", "/", FluentIcon.FOLDER)
-        self._add_shortcut("📄 用户目录", f"/home/", FluentIcon.PEOPLE)
+        self._add_shortcut("工作目录", os.path.dirname(self.env_data.get('path', '/').rstrip('/') or '/'), FluentIcon.HOME)
+        self._add_shortcut("根目录", "/", FluentIcon.FOLDER)
+        self._add_shortcut("用户目录", f"/home/", FluentIcon.PEOPLE)
         self.side_bar.itemClicked.connect(lambda it: self._load_path(it.data(QtCore.Qt.UserRole)))
         main_layout.addWidget(self.side_bar)
 

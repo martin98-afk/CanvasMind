@@ -831,7 +831,10 @@ class DataHandler:
         if isinstance(data, (str, Path)):
             path = Path(data)
             if path.is_file():
-                with open(path, 'r', encoding='utf-8') as f: return json.load(f)
+                try:
+                    with open(path, 'r', encoding='utf-8') as f: return json.load(f)
+                except:
+                    return data
             try:
                 return json.loads(data)
             except:
