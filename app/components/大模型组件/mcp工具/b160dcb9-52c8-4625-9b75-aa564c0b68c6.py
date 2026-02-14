@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 
 class MCPToolCallingAgentComponent(BaseComponent):
     name = "MCP工具调用智能体"
-    category = "大模型组件"
+    category = "大模型组件/mcp工具"
     description = "使用预发现的MCP工具字典执行推理（输出历史不含工具调用中间过程）"
     requirements = "openai,fastmcp>=2.3.0,orjson"
     
@@ -63,15 +63,11 @@ class MCPToolCallingAgentComponent(BaseComponent):
             type=PropertyType.INT,
             default=5,
             label="最大工具调用轮数",
-            min=1,
-            max=10,
         ),
         "tool_timeout": PropertyDefinition(
             type=PropertyType.INT,
             default=30,
             label="单次工具调用超时(秒)",
-            min=5,
-            max=120,
         ),
         "enable_tools": PropertyDefinition(
             type=PropertyType.BOOL,

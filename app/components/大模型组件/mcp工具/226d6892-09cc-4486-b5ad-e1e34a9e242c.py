@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "MCP工具配置"
-    category = "大模型组件"
+    category = "大模型组件/mcp工具"
     description = "配置MCP服务连接参数"
     requirements = ""
     
@@ -49,20 +49,13 @@ class Component(BaseComponent):
                     default="http",
                     label="协议类型",
                     description="MCP服务通信协议",
-                    choices=["http", "stdio", "websocket"]
+                    choices=["http", "stdio", "websocket", "sse"]
                 ),
                 "disabled": PropertyDefinition(
                     type=PropertyType.BOOL,
                     default=False,
-                    label="禁用工具",
-                    description="是否在运行时跳过此工具",
+                    label="是否禁用工具",
                 ),
-                "timeout": PropertyDefinition(
-                    type=PropertyType.INT,
-                    default=30,
-                    label="超时时间(秒)",
-                    description="请求超时时间（仅HTTP协议有效）",
-                )
             }
         ),
     }
@@ -78,29 +71,16 @@ class Component(BaseComponent):
         Returns:
             dict: 包含mcp_config输出端口的配置字典
         """
-        import json
-        
         # 获取配置参数
         configs = params.get("mcp_config", {})
         mcp_configs = {}
         for config in configs:
-            print(config.url, config.name)
-                
-            # 处理headers字符串
-            try:
-                headers = json.loads(config.get("headers", "{}"))
-                if not isinstance(headers, dict):
-                    raise ValueError("请求头必须是有效的JSON对象")
-            except json.JSONDecodeError as e:
-                raise ValueError(f"请求头格式错误: {str(e)}")
-            
+            if config.disabled:
+                continue
             # 构建标准化配置
             mcp_configs[config.name] = {
                 "url": config["url"].strip(),
-                "type": config["type"],
-                "disabled": bool(config.get("disabled", False)),
-                "timeout": int(config.get("timeout", 30)),
-                "headers": headers
+                "type": config["type"]
             }
         
         self.logger.info(f"生成MCP配置: {mcp_configs}")

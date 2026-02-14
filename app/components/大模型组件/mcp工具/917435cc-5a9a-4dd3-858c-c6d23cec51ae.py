@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class MCPToolDiscoveryComponent(BaseComponent):
     name = "MCP工具发现"
-    category = "MCP组件"
+    category = "大模型组件/mcp工具"
     description = "连接MCP服务器并返回工具字典（tool_name → schema 映射）"
     requirements = "fastmcp>=2.3.0"
     
@@ -40,8 +40,6 @@ class MCPToolDiscoveryComponent(BaseComponent):
             type=PropertyType.INT,
             default=30,
             label="发现超时(秒)",
-            min=5,
-            max=120,
         ),
     }
 
