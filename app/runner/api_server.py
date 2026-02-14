@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import base64
 import io
@@ -91,16 +92,23 @@ def is_file_type(format_str: str) -> bool:
 
 input_fields = {}
 input_file_map = {}
-for key, cfg in project_spec.get("inputs", {}).items():
-    fmt = cfg.get("format", "TEXT")
-    if is_file_type(fmt):
-        input_fields[key] = (Optional[UploadFile], File(None))
-        input_file_map[key] = True
-    else:
-        input_fields[key] = (Optional[get_pydantic_type(fmt)], None)
-        input_file_map[key] = False
+inputs_spec = project_spec.get("inputs", {})
 
-InputModel = create_model("InputModel", **input_fields)
+# 处理没有输入参数的情况
+if not inputs_spec:
+    # 创建一个空模型，但允许接受空对象
+    InputModel = create_model("InputModel")
+else:
+    for key, cfg in inputs_spec.items():
+        fmt = cfg.get("format", "TEXT")
+        if is_file_type(fmt):
+            input_fields[key] = (Optional[UploadFile], File(None))
+            input_file_map[key] = True
+        else:
+            input_fields[key] = (Optional[get_pydantic_type(fmt)], None)
+            input_file_map[key] = False
+
+    InputModel = create_model("InputModel", **input_fields)
 
 
 # --- FastAPI 接口 ---
@@ -174,6 +182,11 @@ async def run_workflow(request: Request, input_data: InputModel, background_task
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8000, help="服务端口")
+    parser.add_argument("--python", type=str, default=None, help="画布运行python环境")
+    args = parser.parse_args()
+
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=True)
+    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="info")
