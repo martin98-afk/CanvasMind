@@ -187,6 +187,7 @@ class CanvasExporter:
                 key = item.get("custom_key", f"output_{i}")
                 project_spec["outputs"][key] = {
                     "node_id": item["node_id"],
+                    "node_name": item["node_name"],
                     "output_name": item["output_name"],
                     "format": item["format"]
                 }
@@ -452,15 +453,19 @@ class CanvasExporter:
             doc_lines.append(f"  来自节点: {node_name}")
             doc_lines.append(f"  功能描述: {p_desc}")
             doc_lines.append(f"  数据格式: {fmt} ({fmt_desc})")
+            doc_lines.append(f"  参考数据: {info.get('current_value')}")
             doc_lines.append("")
 
             # 构造 Pydantic 参数
             safe_key = f"{key}_param" if key in ("input", "type", "id") else key
-            input_args.append(f'    {safe_key}: str = Field(default=None, description="输入字段: {key}")')
+            input_args.append(f'    {safe_key}: str = Field(default={json.dumps(info.get("current_value"))}, description="输入字段: {key}")')
 
         doc_lines.append("=== 输出结果结构预览 ===")
         for ok, ov in project_spec.get("outputs", {}).items():
-            doc_lines.append(f"- 输出字段: {ok} (格式: {ov.get('format', 'TEXT')})")
+            node_name = ov.get("node_name", "未知节点")
+            doc_lines.append(f"- 输出字段: {ok}")
+            doc_lines.append(f"  来自节点: {node_name}")
+            doc_lines.append(f"  数据格式: {ov.get('format', 'TEXT')}")
 
         full_description = "\n".join(doc_lines)
 

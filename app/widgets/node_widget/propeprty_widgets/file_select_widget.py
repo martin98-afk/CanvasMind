@@ -66,6 +66,8 @@ class FileSelectWidget(QtWidgets.QWidget):
         if is_ssh:
             if not self._is_folder_mode:
                 path = os.path.dirname(self._path)
+            else:
+                path = self._path
             # 使用 PyCharm 级别的远程浏览器
             dialog = SSHRemoteFileDialog(
                 env_data=env_data,
