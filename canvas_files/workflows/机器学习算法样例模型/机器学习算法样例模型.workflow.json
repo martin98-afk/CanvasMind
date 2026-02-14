@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1f088abea90": {
+      "0x1ba46c41f90": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "代码编辑",
@@ -83,7 +83,7 @@
           "_zmq_ports": "63561/63562"
         }
       },
-      "0x1f088b19410": {
+      "0x1ba46c9d1d0": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点 1",
@@ -126,14 +126,14 @@
           "_column_select": {}
         }
       },
-      "0x1f088b1b050": {
+      "0x1ba46c9ee50": {
         "type_": "dynamic.StatusDynamicNode_f946ed63-36ae-4da3-8a3b-de6d0d80cf01",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "通用ECharts图表绘制",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -173,10 +173,10 @@
           "_column_select": {},
           "widt": 1000.0,
           "heigh": "custom.height",
-          "_zmq_ports": "55095/55096"
+          "_zmq_ports": "53337/53338"
         }
       },
-      "0x1f088b3a650": {
+      "0x1ba46cc61d0": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点 2",
@@ -219,14 +219,14 @@
           "_column_select": {}
         }
       },
-      "0x1f088b4a2d0": {
+      "0x1ba46ccdcd0": {
         "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "随机森林分类训练",
         "color": [
-          192,
-          57,
-          43,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -242,7 +242,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 297.0,
         "height": 563.0,
@@ -292,17 +292,17 @@
               "virginica"
             ]
           },
-          "_zmq_ports": "49722/49723"
+          "_zmq_ports": "58852/58853"
         }
       },
-      "0x1f088b59e10": {
+      "0x1ba46cdd690": {
         "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "MinMax归一化",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -333,7 +333,17 @@
           "persistent_id": "3fd34b98-e9c6-42af-bf26-0cdee4adac74",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "input": {
+              "type": "column",
+              "columns": [
+                "150",
+                "4",
+                "setosa",
+                "versicolor"
+              ]
+            }
+          },
           "version": "latest",
           "_column_select": {
             "input": [
@@ -343,17 +353,17 @@
               "versicolor"
             ]
           },
-          "_zmq_ports": "63600/63601"
+          "_zmq_ports": "58894/58895"
         }
       },
-      "0x1f088b5af50": {
+      "0x1ba46cde850": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归推理(npy) 1",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -406,17 +416,17 @@
           "_data_select": {},
           "version": "latest",
           "_column_select": {},
-          "_zmq_ports": "55074/55075"
+          "_zmq_ports": "62108/62109"
         }
       },
-      "0x1f088b68850": {
+      "0x1ba46cf4190": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "文档上传",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -451,17 +461,17 @@
           "version": "latest",
           "_column_select": {},
           "file_upload": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv",
-          "_zmq_ports": "63519/63520"
+          "_zmq_ports": "58772/58773"
         }
       },
-      "0x1f088ae7490": {
+      "0x1ba46cf5590": {
         "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "模型评估",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -492,22 +502,128 @@
           "persistent_id": "7fa4a0a1-930f-494a-9569-5217d7cfdb08",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "predictions": {
+              "type": "list",
+              "indices": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81,
+                82,
+                83,
+                84,
+                85,
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92,
+                93,
+                94,
+                95,
+                96,
+                97,
+                98,
+                99
+              ]
+            }
+          },
           "version": "latest",
           "metric": "precision",
           "average": "micro",
           "_column_select": {},
-          "_zmq_ports": "55060/55061"
+          "_zmq_ports": "62094/62095"
         }
       },
-      "0x1f14d8c0050": {
+      "0x1ba46cf7b10": {
         "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "Matplotlib画图",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -550,17 +666,17 @@
           "fig_size": "8,6",
           "auto_arrange": true,
           "_column_select": {},
-          "_zmq_ports": "54974/54975"
+          "_zmq_ports": "58922/58923"
         }
       },
-      "0x1f14d8cd2d0": {
+      "0x1ba46d08ed0": {
         "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "sklearn模型推理(csv)",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -591,7 +707,17 @@
           "persistent_id": "f2776f95-0ee4-4092-817e-824be7f8ba84",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "feature": {
+              "type": "column",
+              "columns": [
+                "150",
+                "4",
+                "setosa",
+                "versicolor"
+              ]
+            }
+          },
           "version": "latest",
           "_column_select": {
             "feature": [
@@ -601,17 +727,17 @@
               "versicolor"
             ]
           },
-          "_zmq_ports": "55044/55045"
+          "_zmq_ports": "58908/58909"
         }
       },
-      "0x1f14d8ce410": {
+      "0x1ba46d09fd0": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归推理(npy)",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -664,17 +790,17 @@
           "_data_select": {},
           "version": "latest",
           "_column_select": {},
-          "_zmq_ports": "55010/55011"
+          "_zmq_ports": "53279/53280"
         }
       },
-      "0x1f14d8cfa90": {
+      "0x1ba46d0b6d0": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "csv转npy 1",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -690,13 +816,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 236.0,
         "height": 194.0,
         "pos": [
           1090.3635635308137,
-          371.35735119893525
+          383.3283207347697
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -705,7 +831,14 @@
           "persistent_id": "30ab0492-c0db-4e76-9276-91c59476835f",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "input": {
+              "type": "column",
+              "columns": [
+                "virginica"
+              ]
+            }
+          },
           "version": "latest",
           "number": -1,
           "_column_select": {
@@ -713,17 +846,17 @@
               "virginica"
             ]
           },
-          "_zmq_ports": "63614/63615"
+          "_zmq_ports": "62079/62080"
         }
       },
-      "0x1f14d8dd410": {
+      "0x1ba46d14d10": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归训练",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -754,7 +887,23 @@
           "persistent_id": "b7c16be4-b689-4b20-99e4-99ffde6c2819",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "feature": {
+              "type": "column",
+              "columns": [
+                "150",
+                "4",
+                "setosa",
+                "versicolor"
+              ]
+            },
+            "target": {
+              "type": "column",
+              "columns": [
+                "virginica"
+              ]
+            }
+          },
           "version": "latest",
           "solver": "newton-cg",
           "max_iter": 100,
@@ -769,10 +918,10 @@
               "virginica"
             ]
           },
-          "_zmq_ports": "63617/63627"
+          "_zmq_ports": "58866/58867"
         }
       },
-      "0x1f14d8df8d0": {
+      "0x1ba46d17250": {
         "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "CSV读取器",
@@ -813,17 +962,17 @@
           "_data_select": {},
           "version": "latest",
           "_column_select": {},
-          "_zmq_ports": "56976/56977"
+          "_zmq_ports": "58824/58825"
         }
       },
-      "0x1f14d8f0c90": {
+      "0x1ba5bf38790": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "csv转npy 2",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -844,8 +993,8 @@
         "width": 236.0,
         "height": 194.0,
         "pos": [
-          1090.3635635308137,
-          998.3573511989354
+          1111.4918963579094,
+          999.3634622859402
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -878,7 +1027,17 @@
           "persistent_id": "c6606bb0-584e-49dd-851e-95f9c3720fb3",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "input": {
+              "type": "column",
+              "columns": [
+                "150",
+                "4",
+                "setosa",
+                "versicolor"
+              ]
+            }
+          },
           "version": "latest",
           "number": -1,
           "_column_select": {
@@ -889,17 +1048,17 @@
               "versicolor"
             ]
           },
-          "_zmq_ports": "54960/54961"
+          "_zmq_ports": "53249/53250"
         }
       },
-      "0x1f082ba9cd0": {
+      "0x1ba5bf3a4d0": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归训练 1",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -920,8 +1079,8 @@
         "width": 265.40625,
         "height": 243.0,
         "pos": [
-          1497.3635635308137,
-          292.35735119893525
+          1497.363563530814,
+          295.31842759564444
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -930,7 +1089,23 @@
           "persistent_id": "dc38700a-5e2b-41d0-ab95-4528f73e5f31",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_data_select": {},
+          "_data_select": {
+            "feature": {
+              "type": "column",
+              "columns": [
+                "150",
+                "4",
+                "setosa",
+                "versicolor"
+              ]
+            },
+            "target": {
+              "type": "column",
+              "columns": [
+                "virginica"
+              ]
+            }
+          },
           "version": "latest",
           "solver": "lbfgs",
           "max_iter": 100,
@@ -945,10 +1120,10 @@
               "versicolor"
             ]
           },
-          "_zmq_ports": "54994/54995"
+          "_zmq_ports": "53308/53309"
         }
       },
-      "0x1f1624ab450": {
+      "0x1ba5bf50390": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点",
@@ -991,14 +1166,14 @@
           "_column_select": {}
         }
       },
-      "0x1f1624ada10": {
+      "0x1ba5bf51bd0": {
         "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "归一化推理(npy)",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1051,17 +1226,17 @@
           "_data_select": {},
           "version": "latest",
           "_column_select": {},
-          "_zmq_ports": "55024/55025"
+          "_zmq_ports": "53322/53323"
         }
       },
-      "0x1f1624af090": {
+      "0x1ba5bf52fd0": {
         "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "输入array",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1096,17 +1271,17 @@
           "version": "latest",
           "param1": "1,2,3,4",
           "_column_select": {},
-          "_zmq_ports": "63533/63534"
+          "_zmq_ports": "58786/58787"
         }
       },
-      "0x1f1624b0a90": {
+      "0x1ba5bf5c9d0": {
         "type_": "dynamic.StatusDynamicNode_bdd34293-592e-4443-81bb-573f6aeed80c",
         "icon": ":/icons/同心圆.svg",
         "name": "设定自定义全局变量",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1142,10 +1317,10 @@
           "key": "height",
           "value": "300",
           "_column_select": {},
-          "_zmq_ports": "63535/63536"
+          "_zmq_ports": "58800/58801"
         }
       },
-      "0x1f1624b06d0": {
+      "0x1ba5bf5eb90": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器",
@@ -1213,281 +1388,281 @@
     "connections": [
       {
         "in": [
-          "0x1f088abea90",
+          "0x1ba46c41f90",
           "input1"
         ],
         "out": [
-          "0x1f1624b06d0",
+          "0x1ba5bf5eb90",
           "output"
         ]
       },
       {
         "out": [
-          "0x1f088abea90",
+          "0x1ba46c41f90",
           "html"
         ],
         "in": [
-          "0x1f088b3a650",
+          "0x1ba46cc61d0",
           "data"
         ]
       },
       {
         "in": [
-          "0x1f088b19410",
+          "0x1ba46c9d1d0",
           "data"
         ],
         "out": [
-          "0x1f14d8c0050",
+          "0x1ba46cf7b10",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f088b1b050",
+          "0x1ba46c9ee50",
           "x_data"
         ],
         "out": [
-          "0x1f14d8f0c90",
+          "0x1ba5bf38790",
           "index"
         ]
       },
       {
         "in": [
-          "0x1f088b1b050",
+          "0x1ba46c9ee50",
           "y_data"
         ],
         "out": [
-          "0x1f14d8cd2d0",
+          "0x1ba46d08ed0",
           "value"
         ]
       },
       {
         "out": [
-          "0x1f088b1b050",
+          "0x1ba46c9ee50",
           "output1"
         ],
         "in": [
-          "0x1f1624ab450",
+          "0x1ba5bf50390",
           "data"
         ]
       },
       {
         "in": [
-          "0x1f088b4a2d0",
+          "0x1ba46ccdcd0",
           "features"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f088b4a2d0",
+          "0x1ba46ccdcd0",
           "target"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f088b59e10",
+          "0x1ba46cdd690",
           "input"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "out": [
-          "0x1f088b59e10",
+          "0x1ba46cdd690",
           "output"
         ],
         "in": [
-          "0x1f082ba9cd0",
+          "0x1ba5bf3a4d0",
           "feature"
         ]
       },
       {
         "out": [
-          "0x1f088b59e10",
+          "0x1ba46cdd690",
           "scaler"
         ],
         "in": [
-          "0x1f1624ada10",
+          "0x1ba5bf51bd0",
           "scaler"
         ]
       },
       {
         "in": [
-          "0x1f088b5af50",
+          "0x1ba46cde850",
           "feature"
         ],
         "out": [
-          "0x1f1624ada10",
+          "0x1ba5bf51bd0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f088b5af50",
+          "0x1ba46cde850",
           "model"
         ],
         "out": [
-          "0x1f082ba9cd0",
+          "0x1ba5bf3a4d0",
           "model"
         ]
       },
       {
         "out": [
-          "0x1f088b68850",
+          "0x1ba46cf4190",
           "file"
         ],
         "in": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f088ae7490",
+          "0x1ba46cf5590",
           "predictions"
         ],
         "out": [
-          "0x1f14d8ce410",
+          "0x1ba46d09fd0",
           "value"
         ]
       },
       {
         "in": [
-          "0x1f088ae7490",
+          "0x1ba46cf5590",
           "true_labels"
         ],
         "out": [
-          "0x1f14d8cfa90",
+          "0x1ba46d0b6d0",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f14d8c0050",
+          "0x1ba46cf7b10",
           "x"
         ],
         "out": [
-          "0x1f14d8f0c90",
+          "0x1ba5bf38790",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f14d8c0050",
+          "0x1ba46cf7b10",
           "y"
         ],
         "out": [
-          "0x1f14d8f0c90",
+          "0x1ba5bf38790",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f14d8cd2d0",
+          "0x1ba46d08ed0",
           "feature"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f14d8cd2d0",
+          "0x1ba46d08ed0",
           "model"
         ],
         "out": [
-          "0x1f14d8dd410",
+          "0x1ba46d14d10",
           "model"
         ]
       },
       {
         "in": [
-          "0x1f14d8ce410",
+          "0x1ba46d09fd0",
           "feature"
         ],
         "out": [
-          "0x1f14d8f0c90",
+          "0x1ba5bf38790",
           "output"
         ]
       },
       {
         "in": [
-          "0x1f14d8ce410",
+          "0x1ba46d09fd0",
           "model"
         ],
         "out": [
-          "0x1f14d8dd410",
+          "0x1ba46d14d10",
           "model"
         ]
       },
       {
         "in": [
-          "0x1f14d8cfa90",
+          "0x1ba46d0b6d0",
           "input"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f14d8dd410",
+          "0x1ba46d14d10",
           "feature"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "in": [
-          "0x1f14d8dd410",
+          "0x1ba46d14d10",
           "target"
         ],
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ]
       },
       {
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ],
         "in": [
-          "0x1f082ba9cd0",
+          "0x1ba5bf3a4d0",
           "target"
         ]
       },
       {
         "out": [
-          "0x1f14d8df8d0",
+          "0x1ba46d17250",
           "csv"
         ],
         "in": [
-          "0x1f14d8f0c90",
+          "0x1ba5bf38790",
           "input"
         ]
       },
       {
         "in": [
-          "0x1f1624ada10",
+          "0x1ba5bf51bd0",
           "input"
         ],
         "out": [
-          "0x1f1624af090",
+          "0x1ba5bf52fd0",
           "output"
         ]
       }
@@ -1501,51 +1676,51 @@
     },
     "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
     "node_id2stable_key": {
-      "0x1f088abea90": "unknown||代码编辑",
-      "0x1f088b19410": "unknown||多媒体展示节点 1",
-      "0x1f088b1b050": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
-      "0x1f088b3a650": "unknown||多媒体展示节点 2",
-      "0x1f088b4a2d0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
-      "0x1f088b59e10": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
-      "0x1f088b5af50": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
-      "0x1f088b68850": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
-      "0x1f088ae7490": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
-      "0x1f14d8c0050": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
-      "0x1f14d8cd2d0": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
-      "0x1f14d8ce410": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
-      "0x1f14d8cfa90": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
-      "0x1f14d8dd410": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
-      "0x1f14d8df8d0": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
-      "0x1f14d8f0c90": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2",
-      "0x1f082ba9cd0": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
-      "0x1f1624ab450": "unknown||多媒体展示节点",
-      "0x1f1624ada10": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
-      "0x1f1624af090": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
-      "0x1f1624b0a90": "bdd34293-592e-4443-81bb-573f6aeed80c||设定自定义全局变量",
-      "0x1f1624b06d0": "unknown||触发器"
+      "0x1ba46c41f90": "unknown||代码编辑",
+      "0x1ba46c9d1d0": "unknown||多媒体展示节点 1",
+      "0x1ba46c9ee50": "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制",
+      "0x1ba46cc61d0": "unknown||多媒体展示节点 2",
+      "0x1ba46ccdcd0": "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练",
+      "0x1ba46cdd690": "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化",
+      "0x1ba46cde850": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1",
+      "0x1ba46cf4190": "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传",
+      "0x1ba46cf5590": "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估",
+      "0x1ba46cf7b10": "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图",
+      "0x1ba46d08ed0": "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)",
+      "0x1ba46d09fd0": "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)",
+      "0x1ba46d0b6d0": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1",
+      "0x1ba46d14d10": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练",
+      "0x1ba46d17250": "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器",
+      "0x1ba5bf38790": "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2",
+      "0x1ba5bf3a4d0": "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1",
+      "0x1ba5bf50390": "unknown||多媒体展示节点",
+      "0x1ba5bf51bd0": "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)",
+      "0x1ba5bf52fd0": "a1b716b5-35e3-4885-b907-01ed113f2279||输入array",
+      "0x1ba5bf5c9d0": "bdd34293-592e-4443-81bb-573f6aeed80c||设定自定义全局变量",
+      "0x1ba5bf5eb90": "unknown||触发器"
     },
     "node_states": {
       "unknown||代码编辑": "last_success",
-      "unknown||多媒体展示节点 1": "last_success",
-      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": "last_success",
+      "unknown||多媒体展示节点 1": "unrun",
+      "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": "success",
       "unknown||多媒体展示节点 2": "last_success",
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "failed",
-      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": "last_success",
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": "last_success",
-      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "last_success",
-      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": "last_success",
-      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": "last_success",
-      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": "last_success",
-      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": "last_success",
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": "last_success",
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": "last_success",
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": "success",
+      "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": "success",
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy) 1": "success",
+      "27927d6d-5b76-48f1-95a6-ea5a5d0f85b7||文档上传": "success",
+      "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": "success",
+      "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": "success",
+      "04f8eaf9-dafd-446a-94b2-d232bae8620a||sklearn模型推理(csv)": "success",
+      "9262f386-7096-4326-864d-e70ff0901267||逻辑回归推理(npy)": "success",
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": "success",
       "26f404b9-0029-4f8b-8abc-0740ecad423b||CSV读取器": "success",
-      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": "last_success",
-      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": "last_success",
-      "unknown||多媒体展示节点": "last_success",
-      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": "last_success",
-      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": "last_success",
-      "bdd34293-592e-4443-81bb-573f6aeed80c||设定自定义全局变量": "last_success",
+      "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": "success",
+      "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": "success",
+      "unknown||多媒体展示节点": "unrun",
+      "2c162fc3-2275-4f49-aeac-5dd4778911e9||归一化推理(npy)": "success",
+      "a1b716b5-35e3-4885-b907-01ed113f2279||输入array": "success",
+      "bdd34293-592e-4443-81bb-573f6aeed80c||设定自定义全局变量": "success",
       "unknown||触发器": "last_success"
     },
     "node_inputs": {
@@ -1578,14 +1753,25 @@
       },
       "unknown||多媒体展示节点 1": {},
       "f946ed63-36ae-4da3-8a3b-de6d0d80cf01||通用ECharts图表绘制": {
-        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"7c7c2a00977c4b3c87c8682eb818cf76\" class=\"chart-container\" style=\"width:700px; height:500px; \"></div>\n    <script>\n        var chart_7c7c2a00977c4b3c87c8682eb818cf76 = echarts.init(\n            document.getElementById('7c7c2a00977c4b3c87c8682eb818cf76'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_7c7c2a00977c4b3c87c8682eb818cf76 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_7c7c2a00977c4b3c87c8682eb818cf76.setOption(option_7c7c2a00977c4b3c87c8682eb818cf76);\n    </script>\n</body>\n</html>\n"
+        "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"da88e520a60b488a87e9096e80c7343b\" class=\"chart-container\" style=\"width:700px; height:500px; \"></div>\n    <script>\n        var chart_da88e520a60b488a87e9096e80c7343b = echarts.init(\n            document.getElementById('da88e520a60b488a87e9096e80c7343b'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_da88e520a60b488a87e9096e80c7343b = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148,\n                149\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_da88e520a60b488a87e9096e80c7343b.setOption(option_da88e520a60b488a87e9096e80c7343b);\n    </script>\n</body>\n</html>\n"
       },
       "unknown||多媒体展示节点 2": {},
-      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {},
+      "076e8486-c5ea-491d-ac67-99987a622dd5||随机森林分类训练": {
+        "predictions": {
+          "__type__": "DataFrame",
+          "data": "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",
+          "format": "feather_base64",
+          "shape": [
+            150,
+            1
+          ]
+        },
+        "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\result\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1_model.pkl"
+      },
       "c41d7b30-7d50-4765-a806-844d54021fdb||MinMax归一化": {
         "output": {
           "__type__": "DataFrame",
-          "data": "QVJST1cxAAD/////UAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEAMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJzdHIiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjMuMC4wIn0AAAAABgAAAHBhbmRhcwAABAAAAKQAAABoAAAAOAAAAAQAAAB8////AAABAxAAAAAcAAAABAAAAAAAAAAKAAAAdmVyc2ljb2xvcgAAcv///wAAAgCs////AAABAxAAAAAYAAAABAAAAAAAAAAGAAAAc2V0b3NhAACe////AAACANj///8AAAEDEAAAABQAAAAEAAAAAAAAAAEAAAA0AAAAxv///wAAAgAQABQACAAGAAcADAAAABAAEAAAAAAAAQMQAAAAHAAAAAQAAAAAAAAAAwAAADE1MAAAAAYACAAGAAYAAAAAAAIAAAAAAP////8wAQAAFAAAAAAAAAAMABgABgAFAAgADAAMAAAAAAMEABwAAADwBQAAAAAAAAAAAAAMAB4AEAAEAAgADAAMAAAAsAAAACQAAAAYAAAAlgAAAAAAAAAAAAAAAAAGAAgABwAGAAAAAAAAAQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUAQAAAAAAAJgBAAAAAAAAAAAAAAAAAACYAQAAAAAAAFYBAAAAAAAA8AIAAAAAAAAAAAAAAAAAAPACAAAAAAAAwwEAAAAAAAC4BAAAAAAAAAAAAAAAAAAAuAQAAAAAAAAyAQAAAAAAAAAAAAAEAAAAlgAAAAAAAAAAAAAAAAAAAJYAAAAAAAAAAAAAAAAAAACWAAAAAAAAAAAAAAAAAAAAlgAAAAAAAAAAAAAAAAAAALAEAAAAAAAAKLUv/WCwAxUMADQJGMdxHMdxzD9YVVVVVVXFPyC8P1C1PziO4ziO48g/5NNAnHAcx3Ecx8EAqKra2BjM48jIPwDQANA/VNXjyKwYzNHoP6ziP8hxHMdxHOfj2D9y4XHk3D+Q4ziO4zjeP/z//////98/xNc/VuU64HHkPzjm2NOoyNjY6OPt6uk45tqM7pDe4azi6evw4yDHcRzHcdw/gIaoIdKakkJh40ACQhQ73hAQhyZPKumb7oKtZj16Q1HAca/2QG9TLam15PrsOBeIHRJjY1rfR+a6yoCYzXG3KEaE7xtvXdPggMx2WPwBaGUPNel96WBxbJmPePb0L2LFdh591gl2fe6ScU7AnbSPH97m7Xhxu8PcWWvPGtrKmzggPAYu/HR2+rBBNrgF34mQVc1MHk1HPiJdNvtB0k7o4WPWd6YtGroif8e1dkknbEEA3HwQR7HIoMyRdVXhW/6zQWJu8VxbZB05+OOhrdaYt4GWcY9o/SWNb4POAKTIjF3TwT/vrmon/yP0zKAGAAAAALAEAAAAAAAAKLUv/WCwAyUKAKIHGh+wpTkQMWGRZaOJmPjKsfRWEHTpTsEwDMVmvxkmScVTuv//o+9uE1KlxeKshLwHWsRQ1RAjsRUA6NppHU452RIB4hE2Zii8Q+9xMplzzplQODgQ/iQzRZffdRBNocwUbdb9/x+Ftm0HgIioEWrKxnagojEzbhAQhtQZVdIYIgwLa2pCvCkzBgcMtbtsqhSsMZkFM0fMOobwjfESDoYE6Nx2Ltjm1nckO5gFssCm2RrJp32Llhmlmwsgx0SBZTlJqqMOMF/pLrVhFo7rhN7inNMSAZPzuy54eVWDsjiTwsd0zls74bPbjR8QZ9oS2pgEx57Vh1pr/taGHpFnorz72qhep7MxI3R/07JkrEA6rRrXc5/Ule3dNa2bWyOdjfSa+JQ+8cxIec7mnOxuxQnfQu6F1X1SwuvOUdfJRINf/rdUAQAAsAQAAAAAAAAotS/9YLADjQ0AZA0MJ3VfHluxP5S6L4+tCKo/0HBS9+WxtVQEDSd1X766EJGhqgDuy2MrgobDuqG6sT8R5D+2Img4qfviP5jHVgQNJ+U/nNR9eWxF4OPy2MZWBA0ndd8/Hts/W+ER5D92Xx5bETTcP355bEXQcOLQ4JzkReGx5V/eP+axFUHDSd0IGk7qvjzm0ODy2LHVP9Dg68xjK4KGk+roP5PqP1/urOw8Uuc/6r48tiJo6OWQrQgaTuruPwDwWxE0nNR96R7r5rEVQcNJ7bLnQcNJ3ZfH5ggaTuq+POY/eKhBLpxYCzWGNTACgphD2xHUjIK9KSnMxhrL5sSWjv6lZXnxcEfaR3nZwoUjNx/WbcV8+cl6dDM5i3r0sSvPK2ozswAM8Mg1ToxUtAsLNweQes686/C4r90kMWnLkGtJS737boUXbEG9LswKmZCKH/d6N3iaaX0a33BMlHZyT1LUmvoIaslKTVeDV0PYAnEunBHPVaaPtWSiDk90+ipq/+LqxtBha2SPlWCaHyMQEzeTC3iHsL2y8VBgpS/EhhWXE4Ouyh+Wd5wzCJeZwIuzOmYAGesX/WuKHwAAAAAAsAQAAAAAAAAotS/9YLADBQkAUoUTHLClOaAJNjuIjc1L7yn9rAMC6jAMmc8HJkmoZAq68bls0eBbAiZREKIXbqHoi07q6i5dGqi2KZHZQm5lAygzFwy3SWDoGbbN9VjJ/38Ee6jw3DQHkAIhq6sDEkDgcaKLOhUNES2nteZo6RywBNnw0u40sj+C0YxRuy3pbifZIqbRS+pRNaRDrg2zuLbb0J4++/aDtSmh2dnLSQUbKFjPfV3v7wUcF+sM74FnoTEwfZIt/0dMbZ0iwYqZD0hm0eNzXGzZnKv/IjU8dHry77ID4hlW++z8Sb78TE05JLftC77ew16vS/CcRd1EDN7eVS1o0gJSZrhvHBE1l4RmnWLALqM2n8z7uptKslI8fCMIUU97FSBOmTuCg+4xrUkBAAAAAAAA/////wAAAAAQAAAADAAUAAYACAAMABAADAAAAAAABAA8AAAAKAAAAAQAAAABAAAAYAQAAAAAAAA4AQAAAAAAAPAFAAAAAAAAAAAAAAAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEAMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJzdHIiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjMuMC4wIn0AAAAABgAAAHBhbmRhcwAABAAAAKQAAABoAAAAOAAAAAQAAAB8////AAABAxAAAAAcAAAABAAAAAAAAAAKAAAAdmVyc2ljb2xvcgAAcv///wAAAgCs////AAABAxAAAAAYAAAABAAAAAAAAAAGAAAAc2V0b3NhAACe////AAACANj///8AAAEDEAAAABQAAAAEAAAAAAAAAAEAAAA0AAAAxv///wAAAgAQABQACAAGAAcADAAAABAAEAAAAAAAAQMQAAAAHAAAAAQAAAAAAAAAAwAAADE1MAAAAAYACAAGAAYAAAAAAAIAeAQAAEFSUk9XMQ==",
+          "data": "QVJST1cxAAD/////UAQAABAAAAAAAAoADgAGAAUACAAKAAAAAAEEABAAAAAAAAoADAAAAAQACAAKAAAASAMAAAQAAAABAAAADAAAAAgADAAEAAgACAAAACADAAAEAAAAEwMAAHsiaW5kZXhfY29sdW1ucyI6IFt7ImtpbmQiOiAicmFuZ2UiLCAibmFtZSI6IG51bGwsICJzdGFydCI6IDAsICJzdG9wIjogMTUwLCAic3RlcCI6IDF9XSwgImNvbHVtbl9pbmRleGVzIjogW3sibmFtZSI6IG51bGwsICJmaWVsZF9uYW1lIjogbnVsbCwgInBhbmRhc190eXBlIjogInVuaWNvZGUiLCAibnVtcHlfdHlwZSI6ICJvYmplY3QiLCAibWV0YWRhdGEiOiB7ImVuY29kaW5nIjogIlVURi04In19XSwgImNvbHVtbnMiOiBbeyJuYW1lIjogIjE1MCIsICJmaWVsZF9uYW1lIjogIjE1MCIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiNCIsICJmaWVsZF9uYW1lIjogIjQiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogInNldG9zYSIsICJmaWVsZF9uYW1lIjogInNldG9zYSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAidmVyc2ljb2xvciIsICJmaWVsZF9uYW1lIjogInZlcnNpY29sb3IiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyMi4wLjAifSwgInBhbmRhc192ZXJzaW9uIjogIjMuMC4wIn0ABgAAAHBhbmRhcwAA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",
           "format": "feather_base64",
           "shape": [
             150,
@@ -1604,7 +1790,7 @@
       },
       "e42b5e46-56d9-4089-9b4d-5f2b24802fef||模型评估": {
         "evaluation_results": {
-          "precision": 0.9731543624161074
+          "precision": 0.9733333333333334
         }
       },
       "generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8||Matplotlib画图": {
@@ -1914,16 +2100,17 @@
           2,
           2,
           2,
+          2,
           2
         ]
       },
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 1": {
         "output": {
           "__type__": "ndarray",
-          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE0OSwgMSksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAA",
+          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE1MCwgMSksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA=",
           "dtype": "int64",
           "shape": [
-            149,
+            150,
             1
           ],
           "format": "npy_base64"
@@ -2080,7 +2267,8 @@
           145,
           146,
           147,
-          148
+          148,
+          149
         ]
       },
       "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练": {
@@ -2103,10 +2291,10 @@
       "76bf63d2-b665-4d1f-9386-c4711ac89fc5||csv转npy 2": {
         "output": {
           "__type__": "ndarray",
-          "data": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE0OSwgNCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIApmZmZmZmYUQAAAAAAAAAxAZmZmZmZm9j+amZmZmZnJP5qZmZmZmRNAAAAAAAAACEBmZmZmZmb2P5qZmZmZmck/zczMzMzMEkCamZmZmZkJQM3MzMzMzPQ/mpmZmZmZyT9mZmZmZmYSQM3MzMzMzAhAAAAAAAAA+D+amZmZmZnJPwAAAAAAABRAzczMzMzMDEBmZmZmZmb2P5qZmZmZmck/mpmZmZmZFUAzMzMzMzMPQDMzMzMzM/s/mpmZmZmZ2T9mZmZmZmYSQDMzMzMzMwtAZmZmZmZm9j8zMzMzMzPTPwAAAAAAABRAMzMzMzMzC0AAAAAAAAD4P5qZmZmZmck/mpmZmZmZEUAzMzMzMzMHQGZmZmZmZvY/mpmZmZmZyT+amZmZmZkTQM3MzMzMzAhAAAAAAAAA+D+amZmZmZm5P5qZmZmZmRVAmpmZmZmZDUAAAAAAAAD4P5qZmZmZmck/MzMzMzMzE0AzMzMzMzMLQJqZmZmZmfk/mpmZmZmZyT8zMzMzMzMTQAAAAAAAAAhAZmZmZmZm9j+amZmZmZm5PzMzMzMzMxFAAAAAAAAACECamZmZmZnxP5qZmZmZmbk/MzMzMzMzF0AAAAAAAAAQQDMzMzMzM/M/mpmZmZmZyT/NzMzMzMwWQJqZmZmZmRFAAAAAAAAA+D+amZmZmZnZP5qZmZmZmRVAMzMzMzMzD0DNzMzMzMz0P5qZmZmZmdk/ZmZmZmZmFEAAAAAAAAAMQGZmZmZmZvY/MzMzMzMz0z/NzMzMzMwWQGZmZmZmZg5AMzMzMzMz+z8zMzMzMzPTP2ZmZmZmZhRAZmZmZmZmDkAAAAAAAAD4PzMzMzMzM9M/mpmZmZmZFUAzMzMzMzMLQDMzMzMzM/s/mpmZmZmZyT9mZmZmZmYUQJqZmZmZmQ1AAAAAAAAA+D+amZmZmZnZP2ZmZmZmZhJAzczMzMzMDEAAAAAAAADwP5qZmZmZmck/ZmZmZmZmFEBmZmZmZmYKQDMzMzMzM/s/AAAAAAAA4D8zMzMzMzMTQDMzMzMzMwtAZmZmZmZm/j+amZmZmZnJPwAAAAAAABRAAAAAAAAACECamZmZmZn5P5qZmZmZmck/AAAAAAAAFEAzMzMzMzMLQJqZmZmZmfk/mpmZmZmZ2T/NzMzMzMwUQAAAAAAAAAxAAAAAAAAA+D+amZmZmZnJP83MzMzMzBRAMzMzMzMzC0BmZmZmZmb2P5qZmZmZmck/zczMzMzMEkCamZmZmZkJQJqZmZmZmfk/mpmZmZmZyT8zMzMzMzMTQM3MzMzMzAhAmpmZmZmZ+T+amZmZmZnJP5qZmZmZmRVAMzMzMzMzC0AAAAAAAAD4P5qZmZmZmdk/zczMzMzMFEBmZmZmZmYQQAAAAAAAAPg/mpmZmZmZuT8AAAAAAAAWQM3MzMzMzBBAZmZmZmZm9j+amZmZmZnJP5qZmZmZmRNAzczMzMzMCEAAAAAAAAD4P5qZmZmZmck/AAAAAAAAFECamZmZmZkJQDMzMzMzM/M/mpmZmZmZyT8AAAAAAAAWQAAAAAAAAAxAzczMzMzM9D+amZmZmZnJP5qZmZmZmRNAzczMzMzMDEBmZmZmZmb2P5qZmZmZmbk/mpmZmZmZEUAAAAAAAAAIQM3MzMzMzPQ/mpmZmZmZyT9mZmZmZmYUQDMzMzMzMwtAAAAAAAAA+D+amZmZmZnJPwAAAAAAABRAAAAAAAAADEDNzMzMzMz0PzMzMzMzM9M/AAAAAAAAEkBmZmZmZmYCQM3MzMzMzPQ/MzMzMzMz0z+amZmZmZkRQJqZmZmZmQlAzczMzMzM9D+amZmZmZnJPwAAAAAAABRAAAAAAAAADECamZmZmZn5PzMzMzMzM+M/ZmZmZmZmFEBmZmZmZmYOQGZmZmZmZv4/mpmZmZmZ2T8zMzMzMzMTQAAAAAAAAAhAZmZmZmZm9j8zMzMzMzPTP2ZmZmZmZhRAZmZmZmZmDkCamZmZmZn5P5qZmZmZmck/ZmZmZmZmEkCamZmZmZkJQGZmZmZmZvY/mpmZmZmZyT8zMzMzMzMVQJqZmZmZmQ1AAAAAAAAA+D+amZmZmZnJPwAAAAAAABRAZmZmZmZmCkBmZmZmZmb2P5qZmZmZmck/AAAAAAAAHECamZmZmZkJQM3MzMzMzBJAZmZmZmZm9j+amZmZmZkZQJqZmZmZmQlAAAAAAAAAEkAAAAAAAAD4P5qZmZmZmRtAzczMzMzMCECamZmZmZkTQAAAAAAAAPg/AAAAAAAAFkBmZmZmZmYCQAAAAAAAABBAzczMzMzM9D8AAAAAAAAaQGZmZmZmZgZAZmZmZmZmEkAAAAAAAAD4P83MzMzMzBZAZmZmZmZmBkAAAAAAAAASQM3MzMzMzPQ/MzMzMzMzGUBmZmZmZmYKQM3MzMzMzBJAmpmZmZmZ+T+amZmZmZkTQDMzMzMzMwNAZmZmZmZmCkAAAAAAAADwP2ZmZmZmZhpAMzMzMzMzB0BmZmZmZmYSQM3MzMzMzPQ/zczMzMzMFECamZmZmZkFQDMzMzMzMw9AZmZmZmZm9j8AAAAAAAAUQAAAAAAAAABAAAAAAAAADEAAAAAAAADwP5qZmZmZmRdAAAAAAAAACEDNzMzMzMwQQAAAAAAAAPg/AAAAAAAAGECamZmZmZkBQAAAAAAAABBAAAAAAAAA8D9mZmZmZmYYQDMzMzMzMwdAzczMzMzMEkBmZmZmZmb2P2ZmZmZmZhZAMzMzMzMzB0DNzMzMzMwMQM3MzMzMzPQ/zczMzMzMGkDNzMzMzMwIQJqZmZmZmRFAZmZmZmZm9j9mZmZmZmYWQAAAAAAAAAhAAAAAAAAAEkAAAAAAAAD4PzMzMzMzMxdAmpmZmZmZBUBmZmZmZmYQQAAAAAAAAPA/zczMzMzMGECamZmZmZkBQAAAAAAAABJAAAAAAAAA+D9mZmZmZmYWQAAAAAAAAARAMzMzMzMzD0CamZmZmZnxP5qZmZmZmRdAmpmZmZmZCUAzMzMzMzMTQM3MzMzMzPw/ZmZmZmZmGEBmZmZmZmYGQAAAAAAAABBAzczMzMzM9D8zMzMzMzMZQAAAAAAAAARAmpmZmZmZE0AAAAAAAAD4P2ZmZmZmZhhAZmZmZmZmBkDNzMzMzMwSQDMzMzMzM/M/mpmZmZmZGUAzMzMzMzMHQDMzMzMzMxFAzczMzMzM9D9mZmZmZmYaQAAAAAAAAAhAmpmZmZmZEUBmZmZmZmb2PzMzMzMzMxtAZmZmZmZmBkAzMzMzMzMTQGZmZmZmZvY/zczMzMzMGkAAAAAAAAAIQAAAAAAAABRAMzMzMzMz+z8AAAAAAAAYQDMzMzMzMwdAAAAAAAAAEkAAAAAAAAD4P83MzMzMzBZAzczMzMzMBEAAAAAAAAAMQAAAAAAAAPA/AAAAAAAAFkAzMzMzMzMDQGZmZmZmZg5AmpmZmZmZ8T8AAAAAAAAWQDMzMzMzMwNAmpmZmZmZDUAAAAAAAADwPzMzMzMzMxdAmpmZmZmZBUAzMzMzMzMPQDMzMzMzM/M/AAAAAAAAGECamZmZmZkFQGZmZmZmZhRAmpmZmZmZ+T+amZmZmZkVQAAAAAAAAAhAAAAAAAAAEkAAAAAAAAD4PwAAAAAAABhAMzMzMzMzC0AAAAAAAAASQJqZmZmZmfk/zczMzMzMGkDNzMzMzMwIQM3MzMzMzBJAAAAAAAAA+D8zMzMzMzMZQGZmZmZmZgJAmpmZmZmZEUDNzMzMzMz0P2ZmZmZmZhZAAAAAAAAACEBmZmZmZmYQQM3MzMzMzPQ/AAAAAAAAFkAAAAAAAAAEQAAAAAAAABBAzczMzMzM9D8AAAAAAAAWQM3MzMzMzARAmpmZmZmZEUAzMzMzMzPzP2ZmZmZmZhhAAAAAAAAACEBmZmZmZmYSQGZmZmZmZvY/MzMzMzMzF0DNzMzMzMwEQAAAAAAAABBAMzMzMzMz8z8AAAAAAAAUQGZmZmZmZgJAZmZmZmZmCkAAAAAAAADwP2ZmZmZmZhZAmpmZmZmZBUDNzMzMzMwQQM3MzMzMzPQ/zczMzMzMFkAAAAAAAAAIQM3MzMzMzBBAMzMzMzMz8z/NzMzMzMwWQDMzMzMzMwdAzczMzMzMEEDNzMzMzMz0P83MzMzMzBhAMzMzMzMzB0AzMzMzMzMRQM3MzMzMzPQ/ZmZmZmZmFEAAAAAAAAAEQAAAAAAAAAhAmpmZmZmZ8T/NzMzMzMwWQGZmZmZmZgZAZmZmZmZmEEDNzMzMzMz0PzMzMzMzMxlAZmZmZmZmCkAAAAAAAAAYQAAAAAAAAARAMzMzMzMzF0CamZmZmZkFQGZmZmZmZhRAZmZmZmZm/j9mZmZmZmYcQAAAAAAAAAhAmpmZmZmZF0DNzMzMzMwAQDMzMzMzMxlAMzMzMzMzB0BmZmZmZmYWQM3MzMzMzPw/AAAAAAAAGkAAAAAAAAAIQDMzMzMzMxdAmpmZmZmZAUBmZmZmZmYeQAAAAAAAAAhAZmZmZmZmGkDNzMzMzMwAQJqZmZmZmRNAAAAAAAAABEAAAAAAAAASQDMzMzMzM/s/MzMzMzMzHUAzMzMzMzMHQDMzMzMzMxlAzczMzMzM/D/NzMzMzMwaQAAAAAAAAARAMzMzMzMzF0DNzMzMzMz8P83MzMzMzBxAzczMzMzMDEBmZmZmZmYYQAAAAAAAAARAAAAAAAAAGkCamZmZmZkJQGZmZmZmZhRAAAAAAAAAAECamZmZmZkZQJqZmZmZmQVAMzMzMzMzFUBmZmZmZmb+PzMzMzMzMxtAAAAAAAAACEAAAAAAAAAWQM3MzMzMzABAzczMzMzMFkAAAAAAAAAEQAAAAAAAABRAAAAAAAAAAEAzMzMzMzMXQGZmZmZmZgZAZmZmZmZmFEAzMzMzMzMDQJqZmZmZmRlAmpmZmZmZCUAzMzMzMzMVQGZmZmZmZgJAAAAAAAAAGkAAAAAAAAAIQAAAAAAAABZAzczMzMzM/D/NzMzMzMweQGZmZmZmZg5AzczMzMzMGkCamZmZmZkBQM3MzMzMzB5AzczMzMzMBECamZmZmZkbQGZmZmZmZgJAAAAAAAAAGECamZmZmZkBQAAAAAAAABRAAAAAAAAA+D+amZmZmZkbQJqZmZmZmQlAzczMzMzMFkBmZmZmZmYCQGZmZmZmZhZAZmZmZmZmBkCamZmZmZkTQAAAAAAAAABAzczMzMzMHkBmZmZmZmYGQM3MzMzMzBpAAAAAAAAAAEAzMzMzMzMZQJqZmZmZmQVAmpmZmZmZE0DNzMzMzMz8P83MzMzMzBpAZmZmZmZmCkDNzMzMzMwWQM3MzMzMzABAzczMzMzMHECamZmZmZkJQAAAAAAAABhAzczMzMzM/D/NzMzMzMwYQGZmZmZmZgZAMzMzMzMzE0DNzMzMzMz8P2ZmZmZmZhhAAAAAAAAACECamZmZmZkTQM3MzMzMzPw/mpmZmZmZGUBmZmZmZmYGQGZmZmZmZhZAzczMzMzMAEDNzMzMzMwcQAAAAAAAAAhAMzMzMzMzF0CamZmZmZn5P5qZmZmZmR1AZmZmZmZmBkBmZmZmZmYYQGZmZmZmZv4/mpmZmZmZH0BmZmZmZmYOQJqZmZmZmRlAAAAAAAAAAECamZmZmZkZQGZmZmZmZgZAZmZmZmZmFkCamZmZmZkBQDMzMzMzMxlAZmZmZmZmBkBmZmZmZmYUQAAAAAAAAPg/ZmZmZmZmGEDNzMzMzMwEQGZmZmZmZhZAZmZmZmZm9j/NzMzMzMweQAAAAAAAAAhAZmZmZmZmGEBmZmZmZmYCQDMzMzMzMxlAMzMzMzMzC0BmZmZmZmYWQDMzMzMzMwNAmpmZmZmZGUDNzMzMzMwIQAAAAAAAABZAzczMzMzM/D8AAAAAAAAYQAAAAAAAAAhAMzMzMzMzE0DNzMzMzMz8P5qZmZmZmRtAzczMzMzMCECamZmZmZkVQM3MzMzMzABAzczMzMzMGkDNzMzMzMwIQGZmZmZmZhZAMzMzMzMzA0CamZmZmZkbQM3MzMzMzAhAZmZmZmZmFEBmZmZmZmYCQDMzMzMzMxdAmpmZmZmZBUBmZmZmZmYUQGZmZmZmZv4/MzMzMzMzG0CamZmZmZkJQJqZmZmZmRdAZmZmZmZmAkDNzMzMzMwaQGZmZmZmZgpAzczMzMzMFkAAAAAAAAAEQM3MzMzMzBpAAAAAAAAACEDNzMzMzMwUQGZmZmZmZgJAMzMzMzMzGUAAAAAAAAAEQAAAAAAAABRAZmZmZmZm/j8AAAAAAAAaQAAAAAAAAAhAzczMzMzMFEAAAAAAAAAAQM3MzMzMzBhAMzMzMzMzC0CamZmZmZkVQGZmZmZmZgJA",
+          "data": "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",
           "dtype": "float64",
           "shape": [
-            149,
+            150,
             4
           ],
           "format": "npy_base64"
@@ -2266,7 +2454,8 @@
           145,
           146,
           147,
-          148
+          148,
+          149
         ]
       },
       "2493f13f-9a89-44a5-8aa6-fe201d4886f9||逻辑回归训练 1": {
