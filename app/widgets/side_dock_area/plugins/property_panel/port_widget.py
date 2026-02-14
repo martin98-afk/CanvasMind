@@ -464,26 +464,33 @@ class PortWidget(QWidget):
         popup.show_at_left_of(btn)
 
     def _refresh_extra_area(self, card, p_name, p_type, data, is_output):
+        """智能刷新额外区域：根据数据类型动态显示对应的选择器"""
         container = card.ui['extra_container']
         while container.count():
             item = container.takeAt(0)
             if item.widget(): item.widget().deleteLater()
-
-        if not is_output and isinstance(data, pd.DataFrame) and not data.empty:
+        if is_output:
+            return
+        if isinstance(data, pd.DataFrame) and not data.empty:
             self._add_column_selector_widget_to_layout(p_name, data, container)
+        elif isinstance(data, (list, tuple)) and len(data) > 0:
+            self._add_list_selector_widget_to_layout(p_name, data, container)
+        elif isinstance(data, dict) and len(data) > 0:
+            self._add_dict_selector_widget_to_layout(p_name, data, container)
 
     def _add_column_selector_widget_to_layout(self, port_name, data, layout):
-        """CSV 列选择器组件"""
-        if not isinstance(data, pd.DataFrame) or data.empty: return
-        columns = list(data.columns)
+        """CSV列选择器 - 统一使用 _data_select"""
+        if not isinstance(data, pd.DataFrame) or data.empty:
+            return
 
+        columns = list(data.columns)
         column_card = CardWidget(self)
         column_card.setFixedHeight(200)
 
-        port_id = f"{self.node.id}_{port_name}"
-        if not hasattr(self.parent_panel, '_column_selector_expanded'):
-            self.parent_panel._column_selector_expanded = {}
-        self.parent_panel._column_selector_expanded.setdefault(port_id, False)
+        port_id = f"{self.node.id}_{port_name}_csv"
+        if not hasattr(self.parent_panel, '_selector_expanded'):
+            self.parent_panel._selector_expanded = {}
+        self.parent_panel._selector_expanded.setdefault(port_id, False)
 
         card_layout = QVBoxLayout(column_card)
         card_layout.setContentsMargins(4, 4, 4, 4)
@@ -493,27 +500,38 @@ class PortWidget(QWidget):
         title_lay.addWidget(BodyLabel("   CSV列选择:"))
         title_lay.addStretch()
 
-        # 定义操作
+        list_widget = ListWidget(self)
+
         def update_view():
-            selected = [list_widget.item(i).text() for i in range(list_widget.count()) if
-                        list_widget.item(i).checkState() == Qt.Checked]
-            self.node.set_property("_column_select", self.node.get_property("_column_select") | {port_name: selected})
+            selected = [
+                list_widget.item(i).text()
+                for i in range(list_widget.count())
+                if list_widget.item(i).checkState() == Qt.Checked
+            ]
+            data_select = self.node.get_property("_data_select")
+            data_select[port_name] = {"type": "column", "columns": selected}
+            self.node.set_property("_data_select", data_select)
+
             if port_name in self._text_edit_widgets:
-                self._text_edit_widgets[port_name].set_data(data[selected] if selected else pd.DataFrame(), port_name)
+                self._text_edit_widgets[port_name].set_data(
+                    data[selected] if selected else pd.DataFrame(),
+                    port_name
+                )
 
         def set_all(state):
             list_widget.blockSignals(True)
-            for i in range(list_widget.count()): list_widget.item(i).setCheckState(state)
+            for i in range(list_widget.count()):
+                list_widget.item(i).setCheckState(state)
             list_widget.blockSignals(False)
             update_view()
 
         def toggle_expand():
-            is_exp = not self.parent_panel._column_selector_expanded[port_id]
-            self.parent_panel._column_selector_expanded[port_id] = is_exp
-            column_card.setFixedHeight(min(list_widget.count() * 40 + 50, 600) if is_exp else 200)
+            is_exp = not self.parent_panel._selector_expanded[port_id]
+            self.parent_panel._selector_expanded[port_id] = is_exp
+            max_height = min(list_widget.count() * 35 + 50, 600)
+            column_card.setFixedHeight(max_height if is_exp else 200)
             expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
 
-        # 按钮构建
         select_all_btn = TransparentToolButton(icon=get_icon("全选"), parent=self)
         clear_btn = TransparentToolButton(icon=get_icon("取消选择"), parent=self)
         expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
@@ -522,14 +540,17 @@ class PortWidget(QWidget):
         clear_btn.clicked.connect(lambda: set_all(Qt.Unchecked))
         expand_btn.clicked.connect(toggle_expand)
 
-        for b in [select_all_btn, clear_btn, expand_btn]: title_lay.addWidget(b)
+        for b in [select_all_btn, clear_btn, expand_btn]:
+            title_lay.addWidget(b)
         card_layout.addLayout(title_lay)
 
-        list_widget = ListWidget(self)
+        # 获取当前选择（默认全选）
+        data_select = self.node.get_property("_data_select")
+        saved = data_select.get(port_name, {}).get("columns", columns)  # 默认全选
+
         for col in columns:
             item = QListWidgetItem(col)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            saved = self.node.get_property("_column_select").get(port_name, columns)
             item.setCheckState(Qt.Checked if col in saved else Qt.Unchecked)
             list_widget.addItem(item)
 
@@ -537,14 +558,281 @@ class PortWidget(QWidget):
         card_layout.addWidget(list_widget)
         layout.addWidget(column_card)
 
+        update_view()
+
+    def _add_list_selector_widget_to_layout(self, port_name, data, layout):
+        """列表索引选择器 - 统一使用 _data_select"""
+        if not isinstance(data, (list, tuple)) or len(data) == 0:
+            return
+
+        list_card = CardWidget(self)
+        list_card.setFixedHeight(200)
+
+        port_id = f"{self.node.id}_{port_name}_list"
+        if not hasattr(self.parent_panel, '_selector_expanded'):
+            self.parent_panel._selector_expanded = {}
+        self.parent_panel._selector_expanded.setdefault(port_id, False)
+
+        card_layout = QVBoxLayout(list_card)
+        card_layout.setContentsMargins(4, 4, 4, 4)
+        card_layout.setSpacing(0)
+
+        title_lay = QHBoxLayout()
+        title_lay.addWidget(BodyLabel("   列表元素选择:"))
+        title_lay.addStretch()
+
+        list_widget = ListWidget(self)
+
+        def update_view():
+            selected_indices = [
+                i for i in range(list_widget.count())
+                if list_widget.item(i).checkState() == Qt.Checked
+            ]
+            data_select = self.node.get_property("_data_select")
+            data_select[port_name] = {"type": "list", "indices": selected_indices}
+            self.node.set_property("_data_select", data_select)
+
+            filtered = self._filter_list_data(data, selected_indices)
+            if port_name in self._text_edit_widgets:
+                self._text_edit_widgets[port_name].set_data(filtered, port_name)
+
+        def set_all(state):
+            list_widget.blockSignals(True)
+            for i in range(list_widget.count()):
+                list_widget.item(i).setCheckState(state)
+            list_widget.blockSignals(False)
+            update_view()
+
+        def toggle_expand():
+            is_exp = not self.parent_panel._selector_expanded[port_id]
+            self.parent_panel._selector_expanded[port_id] = is_exp
+            max_height = min(list_widget.count() * 35 + 50, 600)
+            list_card.setFixedHeight(max_height if is_exp else 200)
+            expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
+
+        select_all_btn = TransparentToolButton(icon=get_icon("全选"), parent=self)
+        clear_btn = TransparentToolButton(icon=get_icon("取消选择"), parent=self)
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+
+        select_all_btn.clicked.connect(lambda: set_all(Qt.Checked))
+        clear_btn.clicked.connect(lambda: set_all(Qt.Unchecked))
+        expand_btn.clicked.connect(toggle_expand)
+
+        for b in [select_all_btn, clear_btn, expand_btn]:
+            title_lay.addWidget(b)
+        card_layout.addLayout(title_lay)
+
+        # 默认全选
+        data_select = self.node.get_property("_data_select")
+        saved_indices = data_select.get(port_name, {}).get("indices")
+        if saved_indices is None:
+            saved_indices = list(range(min(len(data), 100)))
+
+        display_limit = 100
+        display_data = data[:display_limit] if len(data) > display_limit else data
+
+        for idx, item in enumerate(display_data):
+            preview = self._get_preview_value(item, max_len=40)
+            item_text = f"[{idx}] {preview}"
+            list_item = QListWidgetItem(item_text)
+            list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
+            list_item.setCheckState(Qt.Checked if idx in saved_indices else Qt.Unchecked)
+            list_widget.addItem(list_item)
+
+        if len(data) > display_limit:
+            tip_item = QListWidgetItem(f"... 共 {len(data)} 项，仅显示前 {display_limit} 项")
+            tip_item.setFlags(tip_item.flags() & ~Qt.ItemIsEnabled)
+            tip_item.setForeground(Qt.gray)
+            list_widget.addItem(tip_item)
+
+        list_widget.itemChanged.connect(update_view)
+        card_layout.addWidget(list_widget)
+        layout.addWidget(list_card)
+
+        update_view()
+
+    def _add_dict_selector_widget_to_layout(self, port_name, data, layout):
+        """字典Key选择器 - 仅展示第一层key，与CSV/列表选择器UI完全一致"""
+        if not isinstance(data, dict) or len(data) == 0:
+            return
+
+        dict_card = CardWidget(self)
+        dict_card.setFixedHeight(200)
+
+        port_id = f"{self.node.id}_{port_name}_dict"
+        if not hasattr(self.parent_panel, '_selector_expanded'):
+            self.parent_panel._selector_expanded = {}
+        self.parent_panel._selector_expanded.setdefault(port_id, False)
+
+        card_layout = QVBoxLayout(dict_card)
+        card_layout.setContentsMargins(4, 4, 4, 4)
+        card_layout.setSpacing(0)
+
+        title_lay = QHBoxLayout()
+        title_lay.addWidget(BodyLabel("   字典Key选择:"))
+        title_lay.addStretch()
+
+        list_widget = ListWidget(self)
+
+        def update_view():
+            selected_keys = [
+                list_widget.item(i).data(Qt.UserRole)  # 存原始key（避免key是数字等非字符串）
+                for i in range(list_widget.count())
+                if list_widget.item(i).checkState() == Qt.Checked
+            ]
+            data_select = self.node.get_property("_data_select")
+            data_select[port_name] = {"type": "dict", "keys": selected_keys}
+            self.node.set_property("_data_select", data_select)
+
+            # 预览：只保留选中的顶层key
+            filtered = {k: v for k, v in data.items() if k in selected_keys} if selected_keys else {}
+            if port_name in self._text_edit_widgets:
+                self._text_edit_widgets[port_name].set_data(filtered, port_name)
+
+        def set_all(state):
+            list_widget.blockSignals(True)
+            for i in range(list_widget.count()):
+                list_widget.item(i).setCheckState(state)
+            list_widget.blockSignals(False)
+            update_view()
+
+        def toggle_expand():
+            is_exp = not self.parent_panel._selector_expanded[port_id]
+            self.parent_panel._selector_expanded[port_id] = is_exp
+            max_height = min(list_widget.count() * 35 + 50, 600)
+            dict_card.setFixedHeight(max_height if is_exp else 200)
+            expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
+
+        select_all_btn = TransparentToolButton(icon=get_icon("全选"), parent=self)
+        clear_btn = TransparentToolButton(icon=get_icon("取消选择"), parent=self)
+        expand_btn = TransparentToolButton(icon=get_icon("放大"), parent=self)
+
+        select_all_btn.clicked.connect(lambda: set_all(Qt.Checked))
+        clear_btn.clicked.connect(lambda: set_all(Qt.Unchecked))
+        expand_btn.clicked.connect(toggle_expand)
+
+        for b in [select_all_btn, clear_btn, expand_btn]:
+            title_lay.addWidget(b)
+        card_layout.addLayout(title_lay)
+
+        # 获取已保存的选择，默认全选
+        data_select = self.node.get_property("_data_select")
+        saved_keys = data_select.get(port_name, {}).get("keys")
+        if saved_keys is None:
+            saved_keys = list(data.keys())  # 默认全选
+
+        # 添加所有顶层key
+        keys = list(data.keys())
+        display_limit = 100
+        display_keys = keys[:display_limit] if len(keys) > display_limit else keys
+
+        for key in display_keys:
+            preview = self._get_preview_value(data[key], max_len=30)
+            item_text = f"{key}: {preview}"
+            item = QListWidgetItem(item_text)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setData(Qt.UserRole, key)  # 存原始key（支持非字符串key）
+            item.setCheckState(Qt.Checked if key in saved_keys else Qt.Unchecked)
+            list_widget.addItem(item)
+
+        if len(keys) > display_limit:
+            tip_item = QListWidgetItem(f"... 共 {len(keys)} 个Key，仅显示前 {display_limit} 个")
+            tip_item.setFlags(tip_item.flags() & ~Qt.ItemIsEnabled)
+            tip_item.setForeground(Qt.gray)
+            list_widget.addItem(tip_item)
+
+        list_widget.itemChanged.connect(update_view)
+        card_layout.addWidget(list_widget)
+        layout.addWidget(dict_card)
+
+        update_view()
+
+    def _collect_checked_paths(self, item):
+        paths = []
+        for i in range(item.childCount()):
+            child = item.child(i)
+            node_data = child.data(0, Qt.UserRole) or {}
+            path = node_data.get("path", [])
+            if child.checkState(0) == Qt.Checked:
+                paths.append(path)
+                paths.extend(self._collect_checked_paths(child))
+        return paths
+
+    def _set_tree_item_state(self, item, state):
+        item.setCheckState(0, state)
+        for i in range(item.childCount()):
+            self._set_tree_item_state(item.child(i), state)
+
+    def _restore_tree_state(self, item, target_paths, current_path):
+        is_exact = any(p == current_path for p in target_paths)
+        has_child = any(len(p) > len(current_path) and p[:len(current_path)] == current_path for p in target_paths)
+
+        if is_exact:
+            item.setCheckState(0, Qt.Checked)
+        elif has_child:
+            item.setCheckState(0, Qt.PartiallyChecked)
+        else:
+            item.setCheckState(0, Qt.Unchecked)
+
+        for i in range(item.childCount()):
+            child = item.child(i)
+            node_data = child.data(0, Qt.UserRole) or {}
+            child_path = node_data.get("path", [])
+            self._restore_tree_state(child, target_paths, child_path)
+
+    def _count_visible_tree_items(self, item):
+        count = 1
+        if item.isExpanded():
+            for i in range(item.childCount()):
+                count += self._count_visible_tree_items(item.child(i))
+        return count
+
+    def _filter_list_data(self, data, indices):
+        if not isinstance(data, (list, tuple)):
+            return data
+        if not indices:
+            return []
+        unique_indices = sorted(set(i for i in indices if 0 <= i < len(data)))
+        result = [data[i] for i in unique_indices]
+        return result if len(result) > 1 else (result[0] if result else None)
+
     def _get_current_input_value(self, port_name, original_data):
-        selected = self.node.get_property("_column_select").get(port_name, [])
-        if selected and isinstance(original_data, pd.DataFrame):
-            try:
-                return original_data[selected] if len(selected) > 1 else original_data[selected[0]]
-            except:
-                return original_data
+        data_select = self.node.get_property("_data_select")
+        config = data_select.get(port_name, {})
+        if not config:
+            return original_data
+
+        t = config.get("type")
+        try:
+            if t == "column" and isinstance(original_data, pd.DataFrame):
+                cols = config.get("columns", [])
+                return original_data[cols] if cols else original_data
+            elif t == "list":
+                return self._filter_list_data(original_data, config.get("indices", []))
+            elif t == "dict":
+                selected_keys = config.get("keys", [])
+                if isinstance(original_data, dict):
+                    return {k: v for k, v in original_data.items() if
+                            k in selected_keys} if selected_keys else original_data
+        except Exception as e:
+            logger.warning(f"过滤失败 {port_name}: {e}")
         return original_data
+
+    def _get_preview_value(self, value, max_len=40):
+        try:
+            if value is None:
+                return "null"
+            elif isinstance(value, (str, int, float, bool)):
+                text = str(value)
+            elif isinstance(value, (list, tuple)):
+                text = f"[{len(value)} items]"
+            elif isinstance(value, dict):
+                text = f"{{{len(value)} keys}}"
+            else:
+                text = str(type(value).__name__)
+            return (text[:max_len] + "...") if len(text) > max_len else text
+        except:
+            return "<preview error>"
 
     def handle_global_variable(self, node, port_name, is_checked):
         if is_checked:

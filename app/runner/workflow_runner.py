@@ -558,10 +558,10 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
 
         node_inputs = {}
         stable_key = runtime_data.get("node_id2stable_key", {}).get(nid, "")
-        column_select = runtime_data.get("column_select", {}).get(stable_key, {})
+        column_select = runtime_data.get("data_select", {}).get(stable_key, {})
         for port_name, cols in column_select.items():
             if cols:
-                node_inputs[f"{port_name}_column_select"] = cols
+                node_inputs[f"{port_name}_data_select"] = cols
 
         for port, val in n["input_values"].items():
             val = project_dir / val if isinstance(val, str) and val.startswith("inputs/") else val
@@ -782,10 +782,10 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
         # --- 聚合输入逻辑 ---
         node_inputs = {}
         stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
-        column_select = runtime_data.get("column_select", {}).get(stable_key, {})
+        column_select = runtime_data.get("data_select", {}).get(stable_key, {})
         for port_name, cols in column_select.items():
             if cols:
-                node_inputs[f"{port_name}_column_select"] = cols
+                node_inputs[f"{port_name}_data_select"] = cols
 
         input_port_values = defaultdict(list)
         # --- 收集连接信息用于精确引用 ---

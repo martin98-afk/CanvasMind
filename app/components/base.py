@@ -1598,8 +1598,40 @@ class BaseComponent(ABC):
                             validated_inputs[port.name] = self.data_handler.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )
-                    if f"{port.name}_column_select" in inputs:
-                        validated_inputs[port.name] = validated_inputs[port.name][inputs[f"{port.name}_column_select"]]
+
+                    if f"{port.name}_data_select" in inputs:
+                        selection = inputs[f"{port.name}_data_select"]
+                        print(f"{port.name}: {selection}")
+                        original_data = validated_inputs[port.name]
+
+                        # 类型1: CSV列选择 (字符串列表)
+                        if isinstance(selection, dict) and "columns" in selection:
+                            if isinstance(original_data, pd.DataFrame):
+                                validated_inputs[port.name] = original_data[selection.get("columns", [])]
+
+                        # 类型2: 列表索引选择 (整数列表)
+                        elif isinstance(selection, dict) and "indices" in selection:
+                            if isinstance(original_data, (list, tuple)):
+                                try:
+                                    filtered = [original_data[i] for i in selection.get("indices", []) if 0 <= i < len(original_data)]
+                                    validated_inputs[port.name] = filtered if len(filtered) > 1 else (
+                                        filtered[0] if filtered else None)
+                                except (IndexError, TypeError):
+                                    pass  # 保持原数据
+
+                        # 类型3: 字典路径选择 (路径列表的列表，如 [["user", "name"], ["scores"]])
+                        elif isinstance(selection, dict) and "keys" in selection:
+                            if isinstance(original_data, dict):
+                                validated_inputs[port.name] = {
+                                    k: v for k, v in original_data.items() if k in selection.get("keys", [])
+                                }
+
+                        # 兜底：直接索引（兼容原有CSV逻辑）
+                        else:
+                            try:
+                                validated_inputs[port.name] = original_data[selection]
+                            except (KeyError, IndexError, TypeError):
+                                pass  # 保持原数据
 
             validated_inputs = input_model_cls(**validated_inputs)
             safe_env = {

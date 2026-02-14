@@ -205,7 +205,7 @@ class CanvasExporter:
                         "node_outputs": {
                             f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for n in
                             nodes_to_export},
-                        "column_select": {f"{n.FULL_PATH}||{n.name()}": getattr(n, 'column_select', {}) for n in
+                        "data_select": {f"{n.FULL_PATH}||{n.name()}": n.get_property("_data_select") for n in
                                           nodes_to_export},
                         "global_variable": self.parent.global_variables.serialize()
                     },
