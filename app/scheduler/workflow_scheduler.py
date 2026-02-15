@@ -31,7 +31,6 @@ class WorkflowScheduler(QObject):
             self,
             graph,
             component_map: Dict[str, Any],
-            get_node_status: Callable,
             get_python_exe: Callable[[], Optional[str]],
             parent=None
     ):
@@ -39,7 +38,6 @@ class WorkflowScheduler(QObject):
         self.parent = parent
         self.graph = graph
         self.component_map = component_map
-        self.get_node_status = get_node_status
         self.get_python_exe = get_python_exe
         self._executor = None
 

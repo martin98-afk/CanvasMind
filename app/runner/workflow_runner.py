@@ -674,7 +674,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
     execution_order = runtime_data.get("execution_order", None)
-    global_variable = runtime_data.get("global_variable", {})
+    global_variable = graph_data.get("global_variable", {})
     global_ctx = GlobalVariableContext(**global_variable)
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
     spec_path = project_dir / "project_spec.json"
@@ -685,10 +685,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
     component_map, file_map = scan_components(components_dir=project_dir / "components", logger=logger)
     nodes = {}
     for node_id, node_data in graph_data["nodes"].items():
-        stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id)
-        if not stable_key:
-            continue
-        full_path = stable_key.split("||")[0]
+        full_path = node_data["custom"].pop("FULL_PATH")
         if full_path in component_map:
             comp_cls = component_map[full_path]
             file_path_comp = file_map.get(full_path)

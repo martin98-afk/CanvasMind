@@ -187,8 +187,6 @@ class CanvasExporter:
                         "environment": self.parent.env_combo.currentData(),
                         "environment_exe": self.parent.get_current_python_exe(),
                         "execution_order": [(n.id, n.name()) for n in execution_order],
-                        "node_id2stable_key": {n.id: f"{n.FULL_PATH}||{n.name()}" for n in nodes_to_export},
-                        "global_variable": self.parent.global_variables.serialize()
                     },
                     "candidate_inputs": candidate_inputs,  # 可选：保留候选列表供参考
                     "candidate_outputs": candidate_outputs  # 可选：保留候选列表供参考

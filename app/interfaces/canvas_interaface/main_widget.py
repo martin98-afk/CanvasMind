@@ -65,7 +65,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.setStyleSheet("QWidget {border: none;}")
 
         # 全局变量与基础 IO 工具
-        self.global_variables = GlobalVariableContext() # 画布全局变量
         self.canvas_io = CanvasIO(self.graph, self.global_variables, self)
 
     def _deferred_initialization(self):
@@ -106,6 +105,10 @@ class CanvasPage(QWidget):
     @property
     def graph(self):
         return self.ui_manager.canvas_manager.current_graph()
+
+    @property
+    def global_variables(self):
+        return self.graph.global_variables
 
     @property
     def node_created(self):
@@ -155,10 +158,6 @@ class CanvasPage(QWidget):
     @property
     def pause_btn(self):
         return self.ui_manager.pause_btn
-
-    @property
-    def node_status(self):
-        return self.node_operations.node_status
 
     @property
     def node_type_map(self):
@@ -505,11 +504,7 @@ class CanvasPage(QWidget):
             node.set_selected(True)
         self.graph.fit_to_selection()
 
-    def get_node_status(self, node):
-        return self.node_status.get(node.id, NodeStatus.NODE_STATUS_UNRUN)
-
     def set_node_status(self, node, status):
-        self.node_status[node.id] = status
         if hasattr(node, 'status'):
             try:
                 node.status = status

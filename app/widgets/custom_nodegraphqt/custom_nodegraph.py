@@ -1164,6 +1164,7 @@ class CustomNodeGraph(NodeGraph):
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
         self._viewer.graph = self
+        self.global_variables = GlobalVariableContext()  # 画布全局变量
 
     def _register_context_menu(self):
         """
@@ -1362,6 +1363,8 @@ class CustomNodeGraph(NodeGraph):
 
         if not serial_data['connections']:
             serial_data.pop('connections')
+        # 全局变量序列化
+        serial_data['global_variables'] = self.global_variables.serialize()
 
         return serial_data
 
@@ -1383,6 +1386,9 @@ class CustomNodeGraph(NodeGraph):
             if isinstance(data, str): return
             self._viewer.scene().blockSignals(True)
             self._viewer.setUpdatesEnabled(False)
+            # 反序列化 全局变量
+            if data.get("global_variables"):
+                self.global_variables.deserialize(data.get("global_variables"))
             node_resize_memory = Settings.get_instance().canvas_resize_memory.value
             # Recursive function to convert last lists to sets
             def convert_last_list_to_set(d):
@@ -1466,6 +1472,11 @@ class CustomNodeGraph(NodeGraph):
                     # 决定是否还原节点最后保存时缩放大小
                     if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
                         node.view._sync_size_from_model(node_width, node_height)
+                    # 改变节点状态，成功状态改为上次成功状态进行区分
+                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
+                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if hasattr(node, "status"):
+                        node.status = n_data["custom"].get("_status")
                     nodes[n_id] = node
 
             # 处理 backdrop 节点（放到最后）
@@ -1498,6 +1509,13 @@ class CustomNodeGraph(NodeGraph):
                     if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
                         node.view._sync_size_from_model(node_width, node_height)
                     nodes[n_id] = node
+
+                    # 改变节点状态，成功状态改为上次成功状态进行区分
+                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
+                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if hasattr(node, "status"):
+                        node.status = n_data["custom"].get("_status")
+
             node_objs = nodes.values()
             if relative_pos:
                 self._viewer.move_nodes([n.view for n in node_objs])

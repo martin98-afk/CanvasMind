@@ -50,7 +50,6 @@ class CanvasRunner(QObject):
         return WorkflowScheduler(
             graph=self.parent.graph,
             component_map=self.parent.component_map,
-            get_node_status=self.parent.get_node_status,
             get_python_exe=lambda: self.parent.env_data.get("path"),
             parent=self.parent,
         )

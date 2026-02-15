@@ -92,7 +92,7 @@ class NodeListPanelWidget(QWidget):
             list_widget = self._column_list_widgets.get(list_id)
             if list_widget:
                 try:
-                    status_list = [self.main_window.get_node_status(n) for n in node_list]
+                    status_list = [n.get_property("_status") for n in node_list]
                     name_list = [n.name() for n in node_list]
                     list_widget.update_content(status_list, name_list)
                 except Exception as e:
@@ -169,7 +169,7 @@ class NodeListPanelWidget(QWidget):
         # 节点列表生成
         list_id = f"component_{index}"
         self._component_nodes_list[list_id] = topo_sorted
-        status_list = [self.main_window.get_node_status(n) for n in topo_sorted]
+        status_list = [n.get_property("_status") for n in topo_sorted]
         name_list = [n.name() for n in topo_sorted]
 
         node_list_widget = InternalNodeList(status_list, name_list, self)
