@@ -31,8 +31,8 @@ class PropertyToolWindow(ToolWindow):
     def pop_node_layout(self, key):
         self.property_panel.pop_node_layout(key)
 
-    def update_properties(self, node, node_changed=False):
-        self.property_panel.update_properties(node, node_changed)
+    def update_properties(self, node):
+        self.property_panel.update_properties(node)
 
     def set_allowed_update(self, allowed):
         self.property_panel.set_allowed_update(allowed)

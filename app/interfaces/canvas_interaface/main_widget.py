@@ -612,7 +612,6 @@ class CanvasPage(QWidget):
         # 5. 常规逻辑：过滤掉作为"内部节点"被连带选中的节点
         # 使用集合差集高效过滤：保留那些 "不是任何选中Backdrop的子节点" 的节点
         top_level_nodes = [n for n in selected_nodes if n not in all_backdrop_internals]
-
         # 6. 根据过滤后的顶层节点数量处理
         if len(top_level_nodes) > 1:
             self.nav_view.clear_recommendations()  # 多选时不显示推荐
