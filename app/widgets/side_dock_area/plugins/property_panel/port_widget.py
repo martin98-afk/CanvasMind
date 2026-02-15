@@ -605,7 +605,7 @@ class PortWidget(QWidget):
         def toggle_expand():
             is_exp = not self.parent_panel._selector_expanded[port_id]
             self.parent_panel._selector_expanded[port_id] = is_exp
-            max_height = min(list_widget.count() * 35 + 50, 600)
+            max_height = min(list_widget.count() * 40 + 50, 600)
             column_card.setFixedHeight(max_height if is_exp else 200)
             expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
 
@@ -683,7 +683,7 @@ class PortWidget(QWidget):
         def toggle_expand():
             is_exp = not self.parent_panel._selector_expanded[port_id]
             self.parent_panel._selector_expanded[port_id] = is_exp
-            max_height = min(list_widget.count() * 35 + 50, 600)
+            max_height = min(list_widget.count() * 40 + 50, 600)
             list_card.setFixedHeight(max_height if is_exp else 200)
             expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
 
@@ -776,7 +776,7 @@ class PortWidget(QWidget):
         def toggle_expand():
             is_exp = not self.parent_panel._selector_expanded[port_id]
             self.parent_panel._selector_expanded[port_id] = is_exp
-            max_height = min(list_widget.count() * 35 + 50, 600)
+            max_height = min(list_widget.count() * 40 + 50, 600)
             dict_card.setFixedHeight(max_height if is_exp else 200)
             expand_btn.setIcon(get_icon("缩小" if is_exp else "放大"))
 

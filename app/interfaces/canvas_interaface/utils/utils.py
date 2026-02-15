@@ -61,43 +61,6 @@ class SaveTask(QRunnable):
             self.signals.error.emit(str(e))
 
 
-# ────────────────────────────────
-# 加载辅助类
-# ────────────────────────────────
-class FinishLoadingWorker(QObject):
-    finished = pyqtSignal(object, object)
-
-
-class FinishLoadingTask(QRunnable):
-    def __init__(self, graph, runtime_data, node_status_data, worker: FinishLoadingWorker):
-        super().__init__()
-        self.graph = graph
-        self.runtime_data = runtime_data
-        self.node_status_data = node_status_data
-        self.worker = worker
-
-    @pyqtSlot()
-    def run(self):
-        try:
-            target_env = self.runtime_data.get("environment")
-
-            restored = {}
-            for node in self.graph.all_nodes():
-                full_path = getattr(node, 'FULL_PATH', 'unknown')
-                node_comp_cls = ComponentScanner().get_component(full_path)
-                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
-
-                ns = self.node_status_data.get(stable_key, {})
-                status_str = ns.get("node_states", "unrun") or "unrun"
-                restored[node.id] = {"status_str": status_str}
-
-            self.worker.finished.emit(restored, target_env)
-
-        except Exception as e:
-            logger.error(f"FinishLoadingTask failed: {traceback.format_exc()}")
-            self.worker.finished.emit(None, None)
-
-
 class ThumbnailGenerator(QThread):
     """异步生成缩略图的线程类"""
     finished = pyqtSignal(str)  # 发送生成的文件路径
@@ -146,7 +109,7 @@ class ThumbnailGenerator(QThread):
 
 class WorkflowLoader(QThread):
     """异步加载工作流的线程类"""
-    finished = pyqtSignal(dict, dict, dict, dict)  # graph_data, runtime_data, node_status_data
+    finished = pyqtSignal(dict, dict, dict)  # graph_data, runtime_data, node_status_data
 
     def __init__(self, file_path, graph, node_uuid_map):
         super().__init__()
@@ -164,27 +127,9 @@ class WorkflowLoader(QThread):
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
             global_variable = full_data.get("global_variable", {})
-            # 准备节点状态数据
-            node_status_data = {}
-            nodes_data = graph_data.get("nodes", {})
-            for index, (node_id, node_data) in enumerate(nodes_data.items()):
-                node_type = node_data.get("type_", "")
-                node_uuid = None
-                if node_type in self.node_uuid_map.values():
-                    for uuid, node_type_name in self.node_uuid_map.items():
-                        if node_type_name == node_type:
-                            node_uuid = uuid
-                            break
-                node_uuid = node_uuid or "unknown"
-                node_name = node_data.get("name", "Unknown")
-                stable_key = f"{node_uuid}||{node_name}"
-                node_status_data[stable_key] = {
-                    key: value.get(stable_key)
-                    for key, value in runtime_data.items() if key not in ("environment", "environment_exe", "node_id2stable_key")
-                }| {"custom_property": node_data.get("custom", {})}
 
-            self.finished.emit(graph_data, runtime_data, node_status_data, global_variable)
+            self.finished.emit(graph_data, runtime_data, global_variable)
         except Exception as e:
             traceback.print_exc()
             logger.error(f"工作流加载失败: {str(e)}")
-            self.finished.emit({}, {}, {}, {})
+            self.finished.emit({}, {}, {})

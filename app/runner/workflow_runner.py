@@ -674,7 +674,7 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
     graph_data = full_data["graph"]
     runtime_data = full_data.get("runtime", {})
     execution_order = runtime_data.get("execution_order", None)
-    global_variable = graph_data.get("global_variable", {})
+    global_variable = graph_data.get("global_variables", {})
     global_ctx = GlobalVariableContext(**global_variable)
     expr_engine = ExpressionEngine(global_vars_context=global_ctx)
     spec_path = project_dir / "project_spec.json"
