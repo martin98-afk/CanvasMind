@@ -5,7 +5,7 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, ViewerEnum, )
+    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, )
 from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -28,7 +28,6 @@ from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
-from app.widgets.custom_nodegraphqt.node_layout_handler import NodeLayoutHandler
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 # --- 常量配置 ---
@@ -1291,6 +1290,81 @@ class CustomNodeGraph(NodeGraph):
         sub_graph.viewer().zoom_to_nodes([n.view for n in sub_graph.all_nodes()])
         return sub_graph
 
+    def _serialize(self, nodes):
+        """
+        serialize nodes to a dict.
+        (used internally by the node graph)
+
+        Args:
+            nodes (list[NodeGraphQt.Nodes]): list of node instances.
+
+        Returns:
+            dict: serialized data.
+        """
+        serial_data = {'graph': {}, 'nodes': {}, 'connections': []}
+        nodes_data = {}
+
+        # serialize graph session.
+        serial_data['graph']['layout_direction'] = self.layout_direction()
+        serial_data['graph']['acyclic'] = self.acyclic()
+        serial_data['graph']['pipe_collision'] = self.pipe_collision()
+        serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
+        serial_data['graph']['pipe_style'] = self.pipe_style()
+
+        # connection constrains.
+        serial_data['graph']['accept_connection_types'] = json.dumps(self.model.accept_connection_types, default=list)
+        serial_data['graph']['reject_connection_types'] = json.dumps(self.model.reject_connection_types, default=list)
+
+        # serialize nodes.
+        for n in nodes:
+            # update the node model.
+            n.update_model()
+
+            node_dict = n.model.to_dict
+            n_id = list(node_dict.keys())[0]
+            node_dict[n_id].update(
+                {
+                    "input_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in n.input_ports()],
+                    "output_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in
+                                    n.output_ports()],
+                    "output_values": serialize_for_json({} if not hasattr(n, "_output_values") else n._output_values)
+                }
+            )
+            node_dict[n_id]["custom"]["FULL_PATH"] = n.FULL_PATH
+            nodes_data.update(node_dict)
+
+        for n_id, n_data in nodes_data.items():
+            serial_data['nodes'][n_id] = n_data
+
+            # serialize connections
+            inputs = n_data.pop('inputs') if n_data.get('inputs') else {}
+            outputs = n_data.pop('outputs') if n_data.get('outputs') else {}
+
+            for pname, conn_data in inputs.items():
+                for conn_id, prt_names in conn_data.items():
+                    for conn_prt in prt_names:
+                        pipe = {
+                            PortTypeEnum.IN.value: [n_id, pname],
+                            PortTypeEnum.OUT.value: [conn_id, conn_prt]
+                        }
+                        if pipe not in serial_data['connections']:
+                            serial_data['connections'].append(pipe)
+
+            for pname, conn_data in outputs.items():
+                for conn_id, prt_names in conn_data.items():
+                    for conn_prt in prt_names:
+                        pipe = {
+                            PortTypeEnum.OUT.value: [n_id, pname],
+                            PortTypeEnum.IN.value: [conn_id, conn_prt]
+                        }
+                        if pipe not in serial_data['connections']:
+                            serial_data['connections'].append(pipe)
+
+        if not serial_data['connections']:
+            serial_data.pop('connections')
+
+        return serial_data
+
     def _deserialize(self, data, relative_pos=False, pos=None, adjust_graph_style=True):
         """
         deserialize node data.
@@ -1361,6 +1435,7 @@ class CustomNodeGraph(NodeGraph):
                 identifier = n_data['type_']
                 node_width, node_height = n_data.get('width'), n_data.get('height')
                 node = self._node_factory.create_node_instance(identifier)
+                node._output_values = deserialize_from_json(n_data.get('output_values', {}))
                 if node:
                     # 避免复制时触发重命名信号
                     node.NODE_NAME = n_data.get('name', node.NODE_NAME)
@@ -1369,11 +1444,6 @@ class CustomNodeGraph(NodeGraph):
                         if prop in n_data.keys():
                             node.model.set_property(prop, n_data[prop])
                     self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
-                    if n_data.get('port_deletion_allowed', None):
-                        node.set_ports({
-                            'input_ports': n_data['input_ports'],
-                            'output_ports': n_data['output_ports']
-                        })
                     # set custom properties.
                     for prop, val in n_data.get('custom', {}).items():
                         try:

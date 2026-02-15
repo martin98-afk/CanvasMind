@@ -557,11 +557,11 @@ def execute_internal_nodes_with_branches(execute_nodes, internal_order, graph_da
             input_port_values[in_port] = values # 替换为实际值列表
 
         node_inputs = {}
-        stable_key = runtime_data.get("node_id2stable_key", {}).get(nid, "")
-        column_select = runtime_data.get("data_select", {}).get(stable_key, {})
+        column_select = n.get("_data_select", {})
         for port_name, cols in column_select.items():
             if cols:
                 node_inputs[f"{port_name}_data_select"] = cols
+                node_inputs[f"{port_name}_data_select_visible"] = n.get("_data_select_visible", {}).get(port_name, False)
 
         for port, val in n["input_values"].items():
             val = project_dir / val if isinstance(val, str) and val.startswith("inputs/") else val
@@ -695,42 +695,43 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
         else:
             comp_cls = node_data["type_"]
             file_path_comp = None
+        input_ports = node_data.get("input_ports", [])
+        output_ports = [item.get("name") for item in node_data.get("output_ports", [])]
         is_loop_node = (node_data.get("type_") == "control_flow.ControlFlowLoopNode")
         is_iterate_node = (node_data.get("type_") == "control_flow.ControlFlowIterateNode")
         is_branch_node = (node_data.get("type_") == "control_flow.ControlFlowBranchNode")
-        params = node_data["custom"].get("params", {})
-        input_values = node_data["custom"].get("input_values", {})
         nodes[node_id] = {
             "node_id": node_id,
-            "persistent_id": params.get("persistent_id"),
-            "exec_mode": params.get("_exec_mode"),
+            "persistent_id": node_data["custom"].pop("persistent_id"),
+            "exec_mode": node_data["custom"].pop("_exec_mode"),
             "class": comp_cls,
             "file_path": file_path_comp,
             "name": node_data["name"],
-            "params": params,
-            "input_values": input_values,
+            "input_values": node_data.get("input_values", {}),
             "is_loop_node": is_loop_node,
             "is_iterate_node": is_iterate_node,
-            "internal_nodes": node_data["custom"].get("internal_nodes", []),
-            "multi_input": node_data.get("input_ports_multi"),
+            "internal_nodes": node_data["custom"].pop("internal_nodes", []),
+            "multi_input": {item.get("name"): item.get("multi_connection", False) for item in input_ports},
             "is_branch_node": is_branch_node,
-            "output_ports": node_data.get("output_ports", []),
+            "output_ports": output_ports,
             "conditions": [
                 {
                     "expr": condition.get("expr", ""),
                     "name": name
                 }
-                for name, condition in zip(
-                    node_data.get("output_ports", []), node_data["custom"]["params"].get("conditions", []))
+                for name, condition in zip(output_ports, node_data["custom"].get("conditions", []))
             ],
-            "enable_else": node_data["custom"]["params"].get("enable_else", False),
-            "execute_all_matches": node_data["custom"]["params"].get("execute_all_matches", False),
-            "loop_mode": node_data["custom"]["params"].get("loop_mode", "count"),
-            "loop_condition": node_data["custom"]["params"].get("loop_condition", ""),
-            "loop_nums": node_data["custom"]["params"].get("loop_nums", 5),
-            "max_iterations": node_data["custom"]["params"].get("max_iterations", 100),
-            "global_variable": node_data["custom"]["params"].get("global_variable", {}),
+            "enable_else": node_data["custom"].pop("enable_else", False),
+            "execute_all_matches": node_data["custom"].pop("execute_all_matches", False),
+            "loop_mode": node_data["custom"].pop("loop_mode", "count"),
+            "loop_condition": node_data["custom"].pop("loop_condition", ""),
+            "loop_nums": node_data["custom"].pop("loop_nums", 5),
+            "max_iterations": node_data["custom"].pop("max_iterations", 100),
+            "global_variable": node_data["custom"].pop("global_variable", {}),
+            "_data_select": node_data["custom"].pop("_data_select", {}),
+            "_data_select_visible": node_data["custom"].pop("_data_selector_visible", {}),
         }
+        nodes[node_id]["params"] = node_data["custom"]
 
     if external_inputs and "inputs" in project_spec:
         for input_key, cfg in project_spec["inputs"].items():
@@ -781,11 +782,12 @@ def execute_workflow(file_path, external_inputs=None, result_path=None, return_r
 
         # --- 聚合输入逻辑 ---
         node_inputs = {}
-        stable_key = runtime_data.get("node_id2stable_key", {}).get(node_id, "")
-        column_select = runtime_data.get("data_select", {}).get(stable_key, {})
+        column_select = node.get("_data_select", {})
         for port_name, cols in column_select.items():
             if cols:
                 node_inputs[f"{port_name}_data_select"] = cols
+                node_inputs[f"{port_name}_data_select_visible"] = node.get("_data_select_visible", {}).get(port_name,
+                                                                                                        False)
 
         input_port_values = defaultdict(list)
         # --- 收集连接信息用于精确引用 ---

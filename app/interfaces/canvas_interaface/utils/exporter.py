@@ -141,7 +141,7 @@ class CanvasExporter:
                         component_path_map[str(src)] = ("components" / rel).as_posix()
 
             # 导出节点数据
-            new_nodes_data = {}
+            serialized_export_nodes = self.parent.graph._serialize(nodes_to_export)
             for node in nodes_to_export:
                 params = node.model.custom_properties
                 reserved_keys = node.model.properties.keys()
@@ -153,31 +153,18 @@ class CanvasExporter:
                     if k not in ("global_variable", "_collapse", "version")
                 }
                 current_inputs = self._collect_node_inputs(node, inputs_dir)
-                node_data = {
-                    "name": node.name(),
-                    "type_": node.type_,
-                    "pos": node.pos(),
-                    "input_ports_multi": {p.name(): p.model.multi_connection for p in node.input_ports()},
-                    "output_ports": [p.name() for p in node.output_ports()],
-                    "custom": {
-                        "FULL_PATH": node.FULL_PATH,
-                        "FILE_PATH": component_path_map.get(self.file_map.get(node.FULL_PATH, ""), ""),
-                        "params": exported_params,
-                        "input_values": serialize_for_json(current_inputs)
-                    }
-                }
+                serialized_export_nodes["nodes"][node.id]["custom"].update(exported_params)
+                serialized_export_nodes["nodes"][node.id]["input_values"] = serialize_for_json(current_inputs)
                 if isinstance(node, ControlFlowBackdrop):
-                    node_data["custom"]["internal_nodes"] = [n.id for n in node.nodes()]
-                new_nodes_data[node.id] = node_data
-
+                    serialized_export_nodes["nodes"][node.id]["custom"]["internal_nodes"] = [n.id for n in node.nodes()]
             # 导出连接
-            original_conns = self.parent.graph.serialize_session().get("connections")
+            original_conns = serialized_export_nodes.get("connections")
             node_ids = {n.id for n in nodes_to_export}
             if original_conns:
                 new_conns = [c for c in original_conns if c["out"][0] in node_ids and c["in"][0] in node_ids]
             else:
                 new_conns = []
-
+            serialized_export_nodes["connections"] = new_conns
             # 构建 project_spec.json
             project_spec = {"version": "1.0", "graph_name": project_name, "inputs": {}, "outputs": {}}
             for i, item in enumerate(selected_inputs):
@@ -195,19 +182,12 @@ class CanvasExporter:
             # 保存文件
             (export_path / "model.workflow.json").write_text(
                 json.dumps(serialize_for_json({
-                    "graph": {"nodes": new_nodes_data, "connections": new_conns},
+                    "graph": serialized_export_nodes,
                     "runtime": {
                         "environment": self.parent.env_combo.currentData(),
                         "environment_exe": self.parent.get_current_python_exe(),
                         "execution_order": [(n.id, n.name()) for n in execution_order],
                         "node_id2stable_key": {n.id: f"{n.FULL_PATH}||{n.name()}" for n in nodes_to_export},
-                        "node_states": {f"{n.FULL_PATH}||{n.name()}": self.parent.node_status.get(n.id, "unrun") for n
-                                        in nodes_to_export},
-                        "node_outputs": {
-                            f"{n.FULL_PATH}||{n.name()}": serialize_for_json(getattr(n, '_output_values', {})) for n in
-                            nodes_to_export},
-                        "data_select": {f"{n.FULL_PATH}||{n.name()}": n.get_property("_data_select") for n in
-                                          nodes_to_export},
                         "global_variable": self.parent.global_variables.serialize()
                     },
                     "candidate_inputs": candidate_inputs,  # 可选：保留候选列表供参考

@@ -55,9 +55,7 @@ class CanvasIO(QObject):
                 "environment": self.parent.environment_manager.env_combo.currentData(),
                 "environment_exe": self.parent.environment_manager.get_current_python_exe(),
                 "node_id2stable_key": {},
-                "node_states": {},
-                "node_inputs": {},
-                "node_outputs": {}
+                "node_states": {}
             }
 
             # 这一步循环通常很快，除非节点成千上万，否则不需要移出
@@ -66,10 +64,6 @@ class CanvasIO(QObject):
                 stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
                 runtime["node_id2stable_key"][node.id] = stable_key
                 runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-
-                # 这里的 _input_values 可能很大，但这里只是引用传递，很快
-                runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
-                runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
 
             full_data = {
                 "version": "1.0",
@@ -282,8 +276,6 @@ class CanvasIO(QObject):
             data = restored_data.get(node.id)
             if not data:
                 continue
-            node._input_values = data["input_values"]
-            node._output_values = data["output_values"]
             status_str = data["status_str"]
             status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
             # 每次加载时把上次成功的节点设置为枯黄色，用于区分

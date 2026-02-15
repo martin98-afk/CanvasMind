@@ -89,18 +89,8 @@ class FinishLoadingTask(QRunnable):
                 stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
 
                 ns = self.node_status_data.get(stable_key, {})
-                node_inputs = ns.get("node_inputs", {}) or {}
-                node_outputs = ns.get("node_outputs", {}) or {}
                 status_str = ns.get("node_states", "unrun") or "unrun"
-
-                input_vals = deserialize_from_json(node_inputs)
-                output_vals = deserialize_from_json(node_outputs)
-
-                restored[node.id] = {
-                    "input_values": input_vals,
-                    "output_values": output_vals,
-                    "status_str": status_str,
-                }
+                restored[node.id] = {"status_str": status_str}
 
             self.worker.finished.emit(restored, target_env)
 

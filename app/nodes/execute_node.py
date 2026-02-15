@@ -79,9 +79,9 @@ def create_node_class(full_path, file_path, parent_window=None):
                     _, port = self.add_input(port_name)
                 else:
                     _, port = self.add_input(port_name, True, painter_func=draw_square_port)
-                port_description = f"{label}\n{port_type}"
+                port_description = f"名称: {label}\n类型: {port_type.value}"
                 if sub_type:
-                    port_description += f"\n{sub_type}"
+                    port_description += f"\n类型标识: {sub_type}"
                 if description:
                     port_description += f"\n{description}"
                 port.setToolTip(port_description)
@@ -121,9 +121,9 @@ def create_node_class(full_path, file_path, parent_window=None):
                     _, port = self.add_output(port_name, painter_func=draw_special_outputport)
                 else:
                     _, port = self.add_output(port_name)
-                port_description = f"{label}\n{port_type}"
+                port_description = f"名称: {label}\n类型: {port_type.value}"
                 if sub_type:
-                    port_description += f"\n{sub_type}"
+                    port_description += f"\n类型标识: {sub_type}"
                 if description:
                     port_description += f"\n{description}"
                 port.setToolTip(port_description)
