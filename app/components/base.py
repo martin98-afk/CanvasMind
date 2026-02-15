@@ -1598,10 +1598,10 @@ class BaseComponent(ABC):
                             validated_inputs[port.name] = self.data_handler.read_input_data(
                                 port.name, inputs[port.name], port.type
                             )
-
+                    if f"{port.name}_data_select_visible" in inputs and not inputs[f"{port.name}_data_select_visible"]:
+                        continue
                     if f"{port.name}_data_select" in inputs:
                         selection = inputs[f"{port.name}_data_select"]
-                        print(f"{port.name}: {selection}")
                         original_data = validated_inputs[port.name]
 
                         # 类型1: CSV列选择 (字符串列表)

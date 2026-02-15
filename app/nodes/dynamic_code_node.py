@@ -478,6 +478,8 @@ def create_dynamic_code_node(parent_window=None):
                             input_vars[safe_key] = inputs_raw[port_name]
                         if port_name in self.get_property("_data_select"):
                             inputs_raw[f"{port_name}_data_select"] = self.get_property("_data_select").get(port_name)
+                            inputs_raw[f"{port_name}_data_select_visible"] = (
+                                (self.get_property("_data_select_visible") or {}).get(port_name, False))
 
                 expr_engine = ExpressionEngine(global_vars_context=gv)
 

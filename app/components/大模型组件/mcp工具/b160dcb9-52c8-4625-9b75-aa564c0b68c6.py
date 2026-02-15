@@ -92,7 +92,6 @@ class MCPToolCallingAgentComponent(BaseComponent):
 
     def _execute_tool_call(self, tool_name: str, arguments: dict, mcp_metadata: dict) -> dict:
         import asyncio
-        import sys
         import time
         import hashlib
         import json as json_lib
@@ -150,15 +149,8 @@ class MCPToolCallingAgentComponent(BaseComponent):
                     "timestamp": time.time()
                 }
         
-        try:
-            return asyncio.run(_call())
-        except RuntimeError as e:
-            if sys.platform == "win32":
-                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                return loop.run_until_complete(_call())
-            raise
+        # ===== 直接调用 asyncio.run()，nest_asyncio 已处理嵌套问题 =====
+        return asyncio.run(_call())
 
     def _parse_history(self, history_input):
         import json as json_lib
@@ -192,19 +184,29 @@ class MCPToolCallingAgentComponent(BaseComponent):
         return clean
 
     def run(self, params, inputs):
-        self.params, self.inputs = params, inputs
+        import time
+        try:
+            import nest_asyncio
+            nest_asyncio.apply()  # 允许在已有事件循环中嵌套运行
+        except ImportError:
+            pass  # 非 IPython 环境可忽略
+        self.params = params
+        start_time = time.time()
+        self.logger.info(f"🚀 MCP工具调用智能体开始执行 | 输入: '{inputs.input_data[:50]}...' | 工具启用: {params.enable_tools}")
+        
         # === 所有导入严格放在函数开头 ===
         import sys
         import json as json_lib
         import orjson
         from openai import OpenAI
-        original_stderr = sys.stderr  # 保存当前 StreamToLogger
+        original_stderr = sys.stderr
         try:
-            # 使用 Python 启动时的原始 stderr（具有 fileno()）
             sys.stderr = sys.__stderr__
+            
             # 1. 获取工具和元数据
             tools_dict = getattr(inputs, 'tools_dict', None)
             mcp_metadata = getattr(inputs, 'mcp_metadata', None)
+            self.logger.info(f"🔧 工具字典状态: {'✓ 有效' if tools_dict else '✗ 空'} | MCP元数据: {'✓ 有效' if mcp_metadata else '✗ 空'}")
             
             if params.enable_tools and (not tools_dict or not mcp_metadata):
                 self.logger.warning("⚠️ 未提供工具字典或MCP元数据，降级为普通聊天模式")
@@ -213,12 +215,12 @@ class MCPToolCallingAgentComponent(BaseComponent):
             # 2. 准备输入
             user_input = (inputs.input_data.strip() if inputs and inputs.input_data else "") or "你好"
             raw_history = getattr(inputs, 'history', None)
+            history_parse_start = time.time()
             history = self._parse_history(raw_history)
-            # === 核心修复：推理时使用完整历史（含工具调用）===
-            # ❌ 错误做法：messages_for_inference = _clean_history(history) + [user_input]
-            # ✅ 正确做法：直接使用原始历史（模型需要看到工具调用结果才能决策）
+            self.logger.info(f"📜 历史记录解析完成 ({time.time() - history_parse_start:.3f}s) | 消息数: {len(history)}")
+            
             messages_for_inference = [{"role": "system", "content": params.system_prompt}]
-            messages_for_inference.extend(history)  # ✅ 完整历史（可能含之前的tool_calls/tool）
+            messages_for_inference.extend(history)
             messages_for_inference.append({"role": "user", "content": user_input})
             
             # 3. 模型配置
@@ -226,82 +228,109 @@ class MCPToolCallingAgentComponent(BaseComponent):
             api_key = model_config.get("API_KEY", "").strip()
             api_url = model_config.get("API_URL", "").strip() or "https://api.openai.com/v1"
             model_name = model_config.get("模型名称", "gpt-4o").strip()
+            self.logger.info(f"🤖 模型配置: {model_name} | API: {api_url[:30]}... | 温度: {params.temperature} | MaxTokens: {params.max_tokens}")
             
-            client = OpenAI(api_key=api_key, base_url=api_url)
+            client = OpenAI(api_key=api_key[:5] + "*****" if api_key else "", base_url=api_url)  # 脱敏API_KEY
             
             # 4. 工具调用主循环
             tool_calls_log = []
             max_rounds = int(params.max_tool_rounds)
             current_round = 0
             final_reply = ""
+            self.logger.info(f"🔄 启动工具调用循环 | 最大轮数: {max_rounds} | 单次超时: {params.tool_timeout}s")
             
             while current_round < max_rounds:
                 current_round += 1
+                round_start = time.time()
+                self.logger.info(f"🔢 === 第 {current_round}/{max_rounds} 轮推理开始 ===")
                 
                 tools_list = self._get_tools_list(tools_dict if params.enable_tools else {})
                 tools_arg = tools_list if tools_list else None
+                self.logger.info(f"🛠️  可用工具数: {len(tools_list)}" if tools_list else "💬 本轮禁用工具调用")
                 
-                # 调用模型（使用完整历史）
+                # 调用模型
+                model_call_start = time.time()
                 try:
+                    self.logger.info(f"🧠 调用模型进行推理 (消息历史长度: {len(messages_for_inference)})")
                     response = client.chat.completions.create(
                         model=model_name,
-                        messages=messages_for_inference,  # ✅ 完整上下文
+                        messages=messages_for_inference,
                         temperature=float(params.temperature),
                         max_tokens=int(params.max_tokens),
                         tools=tools_arg,
                         tool_choice="auto" if tools_arg else None
                     )
                     message = response.choices[0].message
+                    self.logger.info(f"✅ 模型响应接收 ({time.time() - model_call_start:.3f}s) | 触发工具调用: {bool(message.tool_calls)}")
                     
                 except Exception as e:
+                    self.logger.exception(f"❌ 模型调用失败: {str(e)}")
                     raise RuntimeError(f"❌ 模型调用失败: {str(e)}") from e
                 
                 # 无工具调用 → 返回最终答案
                 if not message.tool_calls:
                     final_reply = message.content.strip() if message.content else ""
                     messages_for_inference.append({"role": "assistant", "content": final_reply})
+                    self.logger.info(f"🔚 无工具调用，生成最终回复 | 长度: {len(final_reply)}")
                     break
                 
                 # 保存含tool_calls的assistant消息
                 messages_for_inference.append(message)
+                self.logger.info(f"🔧 检测到 {len(message.tool_calls)} 个工具调用请求")
                 
                 # 执行工具调用
-                for tool_call in message.tool_calls:
+                for idx, tool_call in enumerate(message.tool_calls, 1):
                     func_name = tool_call.function.name
                     try:
                         arguments = orjson.loads(tool_call.function.arguments)
+                        arg_summary = {k: str(v)[:20] + "..." if isinstance(v, str) and len(v) > 20 else v for k, v in list(arguments.items())[:3]}
                     except Exception as e:
                         arguments = {}
+                        arg_summary = {}
                         self.logger.warning(f"⚠️ 参数解析失败 ({func_name}): {e}")
                     
+                    self.logger.info(f"⚙️  执行工具 [{idx}/{len(message.tool_calls)}]: {func_name} | 参数概要: {arg_summary}")
+                    tool_exec_start = time.time()
                     tool_result = self._execute_tool_call(func_name, arguments, mcp_metadata)
+                    exec_duration = time.time() - tool_exec_start
+                    
                     tool_calls_log.append(tool_result)
                     
-                    # 构建tool response（添加到推理历史，供下一轮模型决策）
+                    if tool_result["success"]:
+                        self.logger.info(f"✅ 工具 '{func_name}' 执行成功 ({exec_duration:.2f}s) | 内容预览: {str(tool_result['content'])[:50]}...")
+                    else:
+                        self.logger.error(f"❌ 工具 '{func_name}' 执行失败 ({exec_duration:.2f}s): {tool_result['error']}")
+                    
+                    # 构建tool response
                     tool_response = {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "name": func_name,
-                        "content": (
-                            tool_result["content"] if tool_result["success"] 
-                            else f"❌ {tool_result['error']}"
-                        )
+                        "content": tool_result["content"] if tool_result["success"] else f"❌ {tool_result['error']}"
                     }
-                    messages_for_inference.append(tool_response)  # ✅ 关键：让模型看到工具结果
+                    messages_for_inference.append(tool_response)
                 
-                # 安全终止
+                # 安全终止检查
                 recent_calls = tool_calls_log[-len(message.tool_calls):] if message.tool_calls else []
                 if recent_calls and all(not call["success"] for call in recent_calls):
                     final_reply = "⚠️ 所有工具调用失败"
                     messages_for_inference.append({"role": "assistant", "content": final_reply})
+                    self.logger.warning("🛑 连续工具调用失败，终止循环")
                     break
-            else:
+                
+                self.logger.info(f"⏱️  第 {current_round} 轮耗时: {time.time() - round_start:.3f}s")
+            
+            else:  # 正常退出循环（非break）
                 final_reply = message.content.strip() if message.content else "⚠️ 已达到最大工具调用轮数"
                 messages_for_inference.append({"role": "assistant", "content": final_reply})
+                self.logger.warning(f"⚠️ 达到最大轮数限制 ({max_rounds})，强制终止")
             
             # 5. 人工干预
             if getattr(params, 'intervent', False):
+                self.logger.info("✋ 启动人工干预流程")
                 try:
+                    intervent_start = time.time()
+                    original_reply = final_reply[:100] + "..." if len(final_reply) > 100 else final_reply
                     final_reply = self.emit_interactive_message(
                         method="ask_user",
                         params={
@@ -310,32 +339,41 @@ class MCPToolCallingAgentComponent(BaseComponent):
                             "schema": {"reply": {"label": "回复", "default": final_reply, "type": "textarea"}}
                         }
                     ).get("reply", final_reply)
+                    if final_reply != original_reply:
+                        self.logger.info(f"✏️  人工干预完成 ({time.time() - intervent_start:.2f}s) | 回复已修改")
+                    else:
+                        self.logger.info(f"⏭️ 人工干预完成 ({time.time() - intervent_start:.2f}s) | 保留原始回复")
                 except Exception as e:
-                    self.logger.warning(f"⚠️ 人工干预失败: {e}")
+                    self.logger.exception(f"⚠️ 人工干预失败: {e}")
             
-            # === 6. 关键：仅在最终输出时清洗历史（不影响推理）===
-            # 6.1 清洗原始输入历史（移除可能残留的工具调用）
+            # 6. 历史记录清洗
+            clean_start = time.time()
             clean_input_history = self._clean_history_for_output(history)
-            
-            # 6.2 构建当前轮次的纯净对话
             current_turn = [
                 {"role": "user", "content": user_input},
                 {"role": "assistant", "content": final_reply}
             ]
-            
-            # 6.3 合并为输出历史
             output_history = clean_input_history + current_turn
+            self.logger.info(f"🧹 历史清洗完成 ({time.time() - clean_start:.3f}s) | 原始: {len(history)} → 清洗后: {len(output_history)} 条消息")
             
             # 7. 返回结果
+            total_duration = time.time() - start_time
+            self.logger.info(f"✅ MCP工具调用智能体执行完成 | 总耗时: {total_duration:.3f}s | 工具调用: {len(tool_calls_log)} 次 | 回复长度: {len(final_reply)}")
+            self.logger.debug(f"💬 最终回复预览: {final_reply[:100]}...")
+            
             return {
                 "response": final_reply,
                 "raw_output": response.model_dump() if 'response' in locals() else {},
-                "history": output_history,  # ✅ 纯净输出（不含工具调用）
-                "tool_calls": tool_calls_log  # 完整工具调用记录（用于调试）
+                "history": output_history,
+                "tool_calls": tool_calls_log
             }
+            
+        except Exception as e:
+            self.logger.exception(f"💥 MCP智能体执行异常: {str(e)}")
+            raise
         finally:
-            # 恢复原始 stderr（确保日志系统正常工作）
             sys.stderr = original_stderr
+            self.logger.info(f"🔚 MCP工具调用智能体执行结束 | 总耗时: {time.time() - start_time:.3f}s")
 
     def teardown(self):
         self._client_cache.clear()

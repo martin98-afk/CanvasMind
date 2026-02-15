@@ -239,6 +239,13 @@ class PortWidget(QWidget):
             'progress_bar': progress_bar, # 记录进度条引用
             'global_btn': None, 'browse_btn': None
         }
+        selector_btn = ToggleToolButton(FluentIcon.FILTER, card)
+        selector_btn.setFixedSize(QSize(26, 20))
+        selector_btn.setToolTip("显示/隐藏数据选择器")
+        selector_btn.setChecked(False)
+        selector_btn.hide()  # 默认隐藏
+        card.ui['selector_btn'] = selector_btn
+        card.ui['btn_container'].addWidget(selector_btn)  # 先添加，后续根据类型决定位置
 
         browse_btn = TransparentToolButton(icon=get_icon("放大"), parent=card)
         browse_btn.setFixedSize(QSize(26, 20))
@@ -276,20 +283,56 @@ class PortWidget(QWidget):
             elif connected:
                 data = [up.node().get_output_value(up.name()) for up in connected]
 
-        # CSV 轻量预览处理
-        filtered_data = data
-        if not is_output and p_type == ArgumentType.CSV:
+        # ===== 新增：判断是否支持数据选择器 =====
+        supports_selector = not is_output and p_type in [
+            ArgumentType.CSV,
+            ArgumentType.ARRAY,
+            ArgumentType.JSON
+        ]
+        # =======================================
+
+        # CSV 轻量预览处理（仅用于选择器内部，不影响主数据显示）
+        raw_data_for_selector = data
+        if supports_selector and p_type == ArgumentType.CSV:
             if isinstance(data, str) and data.lower().endswith('.csv'):
                 try:
-                    # 使用同步读取，由于 nrows=5 且通常是本地路径，阻塞感极低
-                    # 若追求极致，此处也可改为异步，但会增加树组件渲染的复杂度
                     if os.path.exists(data):
-                        filtered_data = pd.read_csv(data, nrows=5)
+                        raw_data_for_selector = pd.read_csv(data, nrows=100)  # 读取更多行供选择
                 except:
                     pass
-            filtered_data = self._get_current_input_value(p_name, filtered_data)
 
-        ui['tree'].set_data(filtered_data, p_name)
+        # ===== 核心逻辑：根据选择器可见状态决定显示的数据 =====
+        selector_visible = self._get_selector_visible(p_name) if supports_selector else False
+
+        if supports_selector:
+            # 显示选择器按钮
+            ui['selector_btn'].show()
+            ui['selector_btn'].blockSignals(True)
+            ui['selector_btn'].setChecked(selector_visible)
+            ui['selector_btn'].blockSignals(False)
+
+            # 重新连接信号（防止重复连接）
+            try:
+                ui['selector_btn'].clicked.disconnect()
+            except:
+                pass
+            ui['selector_btn'].clicked.connect(
+                lambda checked, pn=p_name: self._toggle_selector(pn, checked)
+            )
+
+            # 决定显示给用户的数据：
+            # - 选择器可见：显示过滤后的数据（应用_data_select）
+            # - 选择器隐藏：显示原始全部数据（忽略过滤配置）
+            display_data = self._get_current_input_value(p_name,
+                                                         raw_data_for_selector) if selector_visible else raw_data_for_selector
+        else:
+            # 不支持选择器：隐藏按钮，显示原始数据
+            if ui['selector_btn']:
+                ui['selector_btn'].hide()
+            display_data = data
+        # =========================================================
+
+        ui['tree'].set_data(display_data, p_name)
         self._text_edit_widgets[p_name] = ui['tree']
 
         # 重新绑定按钮信号 (防止闭包引用旧数据)
@@ -297,7 +340,7 @@ class PortWidget(QWidget):
             ui['browse_btn'].clicked.disconnect()
         except:
             pass
-        ui['browse_btn'].clicked.connect(lambda: self._show_detail_popup(filtered_data, p_label, ui['browse_btn']))
+        ui['browse_btn'].clicked.connect(lambda: self._show_detail_popup(display_data, p_label, ui['browse_btn']))
 
         if is_output and ui['global_btn']:
             ui['global_btn'].blockSignals(True)
@@ -316,7 +359,14 @@ class PortWidget(QWidget):
             card.customContextMenuRequested.connect(lambda pos: self._show_context_menu(card, p_name, pos))
 
         self._refresh_card_actions(card, p_name, p_label, p_type, is_output)
-        self._refresh_extra_area(card, p_name, p_type, data, is_output)
+        # 传递 selector_visible 状态给 extra_area
+        self._refresh_extra_area(card, p_name, p_type, raw_data_for_selector, is_output, selector_visible)
+
+    def _toggle_selector(self, port_name, visible):
+        """切换数据选择器可见状态"""
+        self._set_selector_visible(port_name, visible)
+        # 只刷新当前节点，避免全局刷新导致闪烁
+        self.refresh(self.node)
 
     def _refresh_card_actions(self, card, p_name, p_label, p_type, is_output):
         container = card.ui['action_container']
@@ -375,12 +425,31 @@ class PortWidget(QWidget):
         pos = btn.mapToGlobal(QPoint(offset_x, offset_y))
         menu.exec_(pos)
 
-    def _apply_history_selection(self, port_name, file_path):
-        """将历史记录中的文件应用到节点"""
-        if not os.path.exists(file_path):
-            InfoBar.error("错误", "该历史文件已不存在", parent=self.main_window)
-            return
+    def _get_selector_visible(self, port_name):
+        """获取端口数据选择器的可见状态（默认不显示）"""
+        visible_map = self.node.get_property("_data_selector_visible") or {}
+        return visible_map.get(port_name, False)
 
+    def _set_selector_visible(self, port_name, visible):
+        """设置并持久化端口数据选择器的可见状态"""
+        visible_map = self.node.get_property("_data_selector_visible") or {}
+        visible_map[port_name] = visible
+        self.node.set_property("_data_selector_visible", visible_map)
+
+    def _apply_history_selection(self, port_name, file_path):
+        """将历史记录中的文件应用到节点，自动清理无效记录"""
+        if not os.path.exists(file_path):
+            # 自动清理无效历史记录
+            self._remove_from_history(file_path)
+            InfoBar.warning(
+                title="历史记录已更新",
+                content=f"「{os.path.basename(file_path)}」\n文件不存在，已自动从历史中移除",
+                parent=self.main_window,
+                duration=2500
+            )
+            return  # 直接返回，不执行后续操作
+
+        # 原有正常处理逻辑
         self.node.set_output_value(port_name, file_path)
         try:
             self.node.model.add_property(f"{port_name}_upload", file_path)
@@ -390,7 +459,12 @@ class PortWidget(QWidget):
         if port_name in self._text_edit_widgets:
             self._text_edit_widgets[port_name].set_data(file_path, port_name)
 
-        InfoBar.success("已选择", f"已切换至: {os.path.basename(file_path)}", parent=self.main_window)
+        InfoBar.success(
+            "已选择",
+            f"已切换至: {os.path.basename(file_path)}",
+            parent=self.main_window,
+            duration=2000
+        )
 
     # =================================================================
     # 核心优化：异步文件选择与处理
@@ -463,14 +537,18 @@ class PortWidget(QWidget):
         popup.set_data(data, name=f"{label} 详情")
         popup.show_at_left_of(btn)
 
-    def _refresh_extra_area(self, card, p_name, p_type, data, is_output):
-        """智能刷新额外区域：根据数据类型动态显示对应的选择器"""
+    def _refresh_extra_area(self, card, p_name, p_type, data, is_output, selector_visible=False):
+        """智能刷新额外区域：根据数据类型和选择器可见状态动态显示"""
         container = card.ui['extra_container']
         while container.count():
             item = container.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-        if is_output:
-            return
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not selector_visible or is_output:
+            return  # 不显示任何选择器
+
+        # 根据数据类型添加对应的选择器
         if isinstance(data, pd.DataFrame) and not data.empty:
             self._add_column_selector_widget_to_layout(p_name, data, container)
         elif isinstance(data, (list, tuple)) and len(data) > 0:
@@ -875,7 +953,27 @@ class PortWidget(QWidget):
         history = history[:15]  # 限制数量
 
         try:
-            with open(history_file, 'w', encoding='utf-8') as f:
-                json.dump(history, f, ensure_ascii=False)
+            with open(history_file, 'wb') as f:
+                f.write(orjson.dumps(history, option=orjson.OPT_INDENT_2))
+        except Exception as e:
+            logger.error(f"保存历史记录失败: {e}")
+
+    def _remove_from_history(self, file_path):
+        """从历史记录中移除指定文件路径并持久化"""
+        history = self._get_history()
+        file_path = str(file_path)
+        if file_path in history:
+            history.remove(file_path)
+            self._save_history(history)
+            logger.info(f"已从历史记录中移除不存在的文件: {file_path}")
+
+    def _save_history(self, history):
+        """安全保存历史记录到JSON文件"""
+        os.makedirs("canvas_files", exist_ok=True)
+        history_file = "canvas_files/upload_index.json"
+        try:
+            # 使用orjson保持与读取一致的编码处理
+            with open(history_file, 'wb') as f:
+                f.write(orjson.dumps(history, option=orjson.OPT_INDENT_2))
         except Exception as e:
             logger.error(f"保存历史记录失败: {e}")
