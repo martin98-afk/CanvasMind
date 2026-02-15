@@ -6,7 +6,6 @@ from typing import Any, Optional
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from loguru import logger
 
-from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
 from app.scheduler.workflow_scheduler import WorkflowScheduler
 
 
@@ -36,7 +35,6 @@ class CanvasRunner(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.execution_storage = ExecutionManager()
         self._task_queue = deque()
         self._is_running = False
         self._current_task: Optional[ExecutionTask] = None
@@ -109,7 +107,7 @@ class CanvasRunner(QObject):
         """任务入队并尝试启动"""
         self._task_queue.append(task)
         # 1. 创建执行记录
-        self.execution_storage.create_record(
+        self.parent.execution_record.create_record(
             exec_id=task.task_id,
             canvas_name=self.parent.workflow_name,
             trigger_type=task.mode,
@@ -132,7 +130,7 @@ class CanvasRunner(QObject):
         self._is_running = True
         self._current_task = self._task_queue.popleft()
         self.queue_size_changed.emit(len(self._task_queue))
-        self.execution_storage.update_record(
+        self.parent.execution_record.update_record(
             self._current_task.task_id, "running", output_data={}
         )
 
@@ -158,7 +156,7 @@ class CanvasRunner(QObject):
             self._handle_scheduler_error(str(e))
 
     def store_output(self, output):
-        self.execution_storage.update_record(self._current_task.task_id, "running", output_data=output)
+        self.parent.execution_record.update_record(self._current_task.task_id, "running", output_data=output)
 
     def get_trigger_data(self, task_id: str) -> dict:
         """根据 task_id 获取触发数据"""
@@ -171,7 +169,7 @@ class CanvasRunner(QObject):
     def _handle_scheduler_finished(self):
         """调度器正常完成"""
         if self._current_task:
-            self.execution_storage.update_record(
+            self.parent.execution_record.update_record(
                 self._current_task.task_id, "success", output_data={}
             )
             # 如果是 workflow 模式，执行完后刷新一次列表
@@ -185,7 +183,7 @@ class CanvasRunner(QObject):
     def _handle_scheduler_error(self, msg):
         """调度器报错"""
         if self._current_task:
-            self.execution_storage.update_record(
+            self.parent.execution_record.update_record(
                 self._current_task.task_id, "failed", error_msg=msg
             )
             if self._current_task.mode == 'selected':

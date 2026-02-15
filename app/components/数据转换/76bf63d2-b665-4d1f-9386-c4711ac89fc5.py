@@ -43,9 +43,12 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         # 在这里编写你的组件逻辑
-        print(inputs)
+        if params.number == -1:
+            input_csv = inputs.input
+        else:
+            input_csv = inputs.input[:params.number]
         return {
-            "output": inputs.input.values[:params.number, :],
-            "columns": [column for column in inputs.input.columns],
-            "index": [id for id in inputs.input.iloc[:params.number, :].index]
+            "output": input_csv.values,
+            "columns": [column for column in input_csv.columns],
+            "index": [id for id in input_csv.index]
         }

@@ -39,7 +39,7 @@ class CanvasUISetUp:
 
         self.name_container = None
         self.buttons_container = None
-        self.env_container = None
+        self.envs_container = None
         self.canvas_controls_container = None
 
         self.btn_mode_toggle = None
@@ -134,7 +134,7 @@ class CanvasUISetUp:
         )
         self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
-
+        self.reboot_btn.clicked.connect(self.ipython_console.restart_kernel)
         # 强制刷新位置 (recalculate_size=True)
         QTimer.singleShot(100, lambda: self.update_position(recalculate_size=True))
 
@@ -226,16 +226,16 @@ class CanvasUISetUp:
         self.name_container.show()
 
     def _create_env_and_buttons(self):
-        self.buttons_container = QFrame(self.canvas_manager)
-        self.buttons_container.setStyleSheet(self._get_frosted_style())
+        self.envs_container = QFrame(self.canvas_manager)
+        self.envs_container.setStyleSheet(self._get_frosted_style())
         # 注意: 内部布局代码完全相同
-        layout = QHBoxLayout(self.buttons_container)
+        layout = QHBoxLayout(self.envs_container)
         layout.setContentsMargins(6, 2, 3, 2)
         layout.setSpacing(2)
 
-        label = IconWidget(get_icon("运行环境"), self.buttons_container)
+        label = IconWidget(get_icon("运行环境"), self.envs_container)
         label.setFixedSize(16, 16)
-        self.env_combo = ComboBox(self.buttons_container)
+        self.env_combo = ComboBox(self.envs_container)
         self.env_combo.setMaxVisibleItems(15)
         self.env_combo.setFixedWidth(130)
         self.env_combo.setFixedHeight(28)
@@ -243,7 +243,15 @@ class CanvasUISetUp:
         layout.addSpacing(3)
         layout.addWidget(self.env_combo)
         layout.addSpacing(3)
+        self.reboot_btn = self._build_tool_btn(get_icon("远程重启"), "环境重启")
+        layout.addWidget(self.reboot_btn)
 
+        self.buttons_container = QFrame(self.canvas_manager)
+        self.buttons_container.setStyleSheet(self._get_frosted_style())
+        # 注意: 内部布局代码完全相同
+        layout = QHBoxLayout(self.buttons_container)
+        layout.setContentsMargins(6, 2, 3, 2)
+        layout.setSpacing(2)
         self.run_btn = self._build_tool_btn(get_icon("绿色运行"), "运行")
         self.pause_btn = self._build_tool_btn(get_icon("暂停"), "暂停")
         self.stop_btn = self._build_tool_btn(get_icon("结束"), "停止")
@@ -256,6 +264,7 @@ class CanvasUISetUp:
 
         self.pause_btn.hide()
         self.stop_btn.hide()
+        self.envs_container.show()
         self.buttons_container.show()
 
     def reset_env_buttons_state(self):
@@ -266,7 +275,6 @@ class CanvasUISetUp:
     def _create_floating_nodes_base(self):
         self.nodes_container = QFrame(self.canvas_manager)
         self.nodes_container.setStyleSheet(self._get_frosted_style())
-        # ... (内部代码保持不变) ...
         self.node_layout = QVBoxLayout(self.nodes_container)
         self.node_layout.setContentsMargins(4, 8, 4, 8)
         self.node_layout.setSpacing(3)
@@ -360,6 +368,10 @@ class CanvasUISetUp:
     def log_window(self):
         return self.side_dock_area.get_tool_instance("模型日志")
 
+    @property
+    def execution_record(self):
+        return self.side_dock_area.get_tool_instance("任务记录")
+
     # ================= 动态定位控制 (优化版) =================
 
     def update_position(self, recalculate_size=False):
@@ -382,6 +394,11 @@ class CanvasUISetUp:
         if self.buttons_container:
             if recalculate_size: self.buttons_container.adjustSize()
             self.buttons_container.move(w - self.buttons_container.width() - padding, padding)
+        # 环境紧靠 按钮左边
+        if self.envs_container:
+            if recalculate_size: self.envs_container.adjustSize()
+            self.envs_container.move(self.buttons_container.x() - self.envs_container.width() - padding,
+                                     self.buttons_container.y())
 
         # 3. 左侧 (节点栏) -> 垂直居中
         if self.nodes_container:
@@ -491,7 +508,7 @@ class CanvasUISetUp:
 
     def destroy_all(self):
         try:
-            for attr in ['splitter', 'buttons_container', 'nodes_container', 'name_container',
+            for attr in ['splitter', 'envs_container', 'buttons_container', 'nodes_container', 'name_container',
                          'canvas_controls_container', 'side_dock_area']:
                 obj = getattr(self, attr, None)
                 if obj:

@@ -324,6 +324,15 @@ class SettingInterface(ScrollArea):
         )
         self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
 
+        self.PipeWidthCard = RangeSettingCard(
+            self.cfg.canvas_pipe_width,
+            get_icon("画布"),
+            self.tr("画布连线粗细"),
+            self.tr("控制画布节点之间连线粗细"),
+            parent=self.canvasGroup
+        )
+        self.PipeWidthCard.valueChanged.connect(self.onConfigChanged)
+
         self.pipelayoutCard = OptionsSettingCard(
             self.cfg.canvas_pipelayout,
             get_icon("画布"),
@@ -345,6 +354,7 @@ class SettingInterface(ScrollArea):
         self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.nodeResizeMemoryCard)
+        self.canvasGroup.addSettingCard(self.PipeWidthCard)
         self.canvasGroup.addSettingCard(self.NodeProxyCard)
         self.canvasGroup.addSettingCard(self.nodeAnimationCard)
         self.canvasGroup.addSettingCard(self.autoCollapseCard)

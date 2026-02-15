@@ -8,6 +8,8 @@ from NodeGraphQt.constants import (
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from PyQt5 import QtGui, QtCore
 
+from app.utils.config import Settings
+
 
 # ==========================================================
 # 动画控制器 (全局单例)
@@ -201,7 +203,7 @@ class CustomPipeItem(PipeItem):
                 if (points[i] - clean_points[-1]).manhattanLength() > 0.1:
                     clean_points.append(points[i])
 
-            self._draw_rounded_path(path, clean_points, radius=12.0)
+            self._draw_rounded_path(path, clean_points, radius=15.0)
 
         self.setPath(path)
 
@@ -234,7 +236,7 @@ class CustomPipeItem(PipeItem):
         self._running = True
         self._running_type = type
         color = (50, 205, 50, 255) if type == "output" else (64, 158, 255, 255)
-        self.set_pipe_styling(color=color, width=4, style=self.style)
+        self.set_pipe_styling(color=color, width=self._get_state_width("running"), style=self.style)
         self.setZValue(Z_VAL_PIPE + 10)
         self.start_flow()
 
@@ -242,7 +244,7 @@ class CustomPipeItem(PipeItem):
         self._running = False
         self._active = False
         self._highlight = False
-        self.set_pipe_styling(color=self.color, width=3, style=self.style)
+        self.set_pipe_styling(color=self.color, width=self._get_state_width("normal"), style=self.style)
         self.setZValue(Z_VAL_PIPE)
         self.stop_flow()
 
@@ -270,14 +272,14 @@ class CustomPipeItem(PipeItem):
 
     def activate(self):
         self._active = True
-        self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=5, style=self.style)
+        self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("activate"), style=self.style)
         self.setZValue(Z_VAL_PORT-0.5)
         self.start_flow()
 
     def highlight(self):
         self._highlight = True
         if not self._running:
-            self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=4, style=self.style)
+            self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=self._get_state_width("highlight"), style=self.style)
         self.update()
         self.setZValue(Z_VAL_PORT-0.5)
         self.start_flow()
@@ -329,6 +331,16 @@ class CustomPipeItem(PipeItem):
 
         return final_shape
 
+    def _get_state_width(self, state):
+        """根据状态返回计算后的线宽"""
+        offsets = {
+            'normal': 0,
+            'highlight': 1,
+            'active': 2,
+            'running': 1
+        }
+        return int(max(1.0, Settings.get_instance().canvas_pipe_width.value + offsets.get(state, 0)))  # 确保最小宽度1.0
+
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
     def __init__(self):
@@ -342,3 +354,5 @@ class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
     def draw_path(self, start_port, end_port=None, cursor_pos=None, color=None):
         self._start_port = start_port
         LivePipeItem.draw_path(self, start_port, end_port, cursor_pos, color)
+        self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("highlight"),
+                              style=self.style)

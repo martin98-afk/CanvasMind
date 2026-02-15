@@ -216,7 +216,7 @@ class VarComboBoxWidgetWrapper(CustomNodeBaseWidget):
         self.set_label(f"{label}({name})({var_type})")
 
         # 创建自定义控件
-        widget = VarComboBoxWidget(main_window=main_window, type=var_type, parent=parent)
+        widget = VarComboBoxWidget(main_window=main_window, type=var_type, parent=self)
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 

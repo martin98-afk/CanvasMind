@@ -1,0 +1,1917 @@
+{
+  "version": "1.0",
+  "graph": {
+    "graph": {
+      "layout_direction": 0,
+      "acyclic": true,
+      "pipe_collision": false,
+      "pipe_slicing": true,
+      "pipe_style": 1,
+      "accept_connection_types": "{}",
+      "reject_connection_types": "{}"
+    },
+    "nodes": {
+      "0x1a67f3e91d0": {
+        "type_": "dynamic.DYNAMIC_CODE",
+        "icon": ":/icons/代码执行.svg",
+        "name": "合并MCP配置",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1544.1851578195337,
+          240.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": true,
+        "subgraph_session": {},
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true,
+            "display_name": true
+          }
+        ],
+        "custom": {
+          "persistent_id": "c142445e-3238-4a18-a154-070fba21058a",
+          "_collapsed": true,
+          "_exec_mode": "subprocess",
+          "_data_select": {
+            "input1": {
+              "type": "list",
+              "indices": [
+                0,
+                1
+              ]
+            },
+            "input2": {
+              "type": "dict",
+              "keys": [
+                "mcpServers"
+              ]
+            }
+          },
+          "input_ports": [
+            {
+              "name": "input1",
+              "type": "json",
+              "conn_type": "多输入"
+            }
+          ],
+          "output_ports": [
+            {
+              "name": "output1",
+              "type": "json"
+            }
+          ],
+          "glue_code_template": "空白模板",
+          "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    mcp_config = {\n      \"mcpServers\": {}\n    }\n    for config in inputs.input1:\n        mcp_config[\"mcpServers\"].update(config.get(\"mcpServers\"))\n        \n    return {\n        \"output1\": mcp_config\n    }",
+          "_zmq_ports": "62205/62206"
+        }
+      },
+      "0x1a67f400c10": {
+        "type_": "dynamic.StatusDynamicNode_917435cc-5a9a-4dd3-858c-c6d23cec51ae",
+        "icon": ":/icons/同心圆.svg",
+        "name": "MCP工具发现 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1896.6625402459053,
+          216.54922134115523
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "c243bd78-aa6d-4df0-9a6b-537a2b7d5449",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {
+            "mcp_config": {
+              "type": "dict",
+              "keys": [
+                "mcpServers"
+              ]
+            },
+            "tools_dict": {
+              "type": "dict",
+              "paths": [
+                [
+                  "aws___get_regional_availability"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "name"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "description"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "resource_type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "resource_type",
+                  "description"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "resource_type",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "filters"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "filters",
+                  "description"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "filters",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "filters",
+                  "items"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "next_token"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "next_token",
+                  "description"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "next_token",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "region"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "region",
+                  "description"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "region",
+                  "type"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "required"
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "required",
+                  0
+                ],
+                [
+                  "aws___get_regional_availability",
+                  "function",
+                  "parameters",
+                  "required",
+                  1
+                ],
+                [
+                  "aws___list_regions"
+                ],
+                [
+                  "aws___list_regions",
+                  "type"
+                ],
+                [
+                  "aws___list_regions",
+                  "function"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "name"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "description"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "parameters"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "parameters",
+                  "type"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "parameters",
+                  "properties"
+                ],
+                [
+                  "aws___list_regions",
+                  "function",
+                  "parameters",
+                  "required"
+                ],
+                [
+                  "aws___read_documentation"
+                ],
+                [
+                  "aws___read_documentation",
+                  "type"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "name"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "description"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "type"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "start_index"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "start_index",
+                  "description"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "start_index",
+                  "type"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url",
+                  "description"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url",
+                  "type"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "max_length"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "max_length",
+                  "description"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "max_length",
+                  "type"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "required"
+                ],
+                [
+                  "aws___read_documentation",
+                  "function",
+                  "parameters",
+                  "required",
+                  0
+                ],
+                [
+                  "aws___recommend"
+                ],
+                [
+                  "aws___recommend",
+                  "type"
+                ],
+                [
+                  "aws___recommend",
+                  "function"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "name"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "description"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "type"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "properties"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url",
+                  "description"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "url",
+                  "type"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "required"
+                ],
+                [
+                  "aws___recommend",
+                  "function",
+                  "parameters",
+                  "required",
+                  0
+                ],
+                [
+                  "aws___search_documentation"
+                ],
+                [
+                  "aws___search_documentation",
+                  "type"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "name"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "description"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "type"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "topics"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "topics",
+                  "description"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "topics",
+                  "type"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "topics",
+                  "items"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "limit"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "limit",
+                  "description"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "limit",
+                  "type"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "search_phrase"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "search_phrase",
+                  "description"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "properties",
+                  "search_phrase",
+                  "type"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "required"
+                ],
+                [
+                  "aws___search_documentation",
+                  "function",
+                  "parameters",
+                  "required",
+                  0
+                ]
+              ]
+            },
+            "tool_names": {
+              "type": "list",
+              "indices": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ]
+            },
+            "mcp_metadata": {
+              "type": "dict",
+              "paths": [
+                [
+                  "original_config"
+                ],
+                [
+                  "original_config",
+                  "mcpServers"
+                ],
+                [
+                  "original_config",
+                  "mcpServers",
+                  "aws-knowledge-mcp-server"
+                ],
+                [
+                  "original_config",
+                  "mcpServers",
+                  "aws-knowledge-mcp-server",
+                  "url"
+                ],
+                [
+                  "original_config",
+                  "mcpServers",
+                  "aws-knowledge-mcp-server",
+                  "type"
+                ],
+                [
+                  "original_config",
+                  "mcpServers",
+                  "aws-knowledge-mcp-server",
+                  "disabled"
+                ],
+                [
+                  "auth_injected"
+                ],
+                [
+                  "discovery_timestamp"
+                ],
+                [
+                  "discovery_time_iso"
+                ],
+                [
+                  "tool_count"
+                ],
+                [
+                  "tool_names"
+                ],
+                [
+                  "tool_names",
+                  0
+                ],
+                [
+                  "tool_names",
+                  1
+                ],
+                [
+                  "tool_names",
+                  2
+                ],
+                [
+                  "tool_names",
+                  3
+                ],
+                [
+                  "tool_names",
+                  4
+                ],
+                [
+                  "server_names"
+                ],
+                [
+                  "server_names",
+                  0
+                ]
+              ]
+            }
+          },
+          "version": "latest",
+          "mcp_auth_token": "",
+          "timeout": 30,
+          "_column_select": {},
+          "_zmq_ports": "62228/62229"
+        }
+      },
+      "0x1a67f400d10": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/同心圆.svg",
+        "name": "自定义mcp结构",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 592.5413797316207,
+        "height": 329.9116750531182,
+        "pos": [
+          269.93310742664903,
+          589.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "bab88412-ad53-4616-bf53-cdc3c7136603",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "{\n  \"mcpServers\": {\n    \"Canvas_机器学习算法样例模型\": {\n      \"command\": \"D:/work/CanvasMind/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"D:/work/CanvasMind/canvas_files/projects/机器学习算法样例模型/mcp_instance.py\"\n      ]\n    }\n  }\n}",
+          "_zmq_ports": "62161/62162"
+        }
+      },
+      "0x1a67f401110": {
+        "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
+        "icon": ":/icons/同心圆.svg",
+        "name": "提示词模板",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 415.4292781137715,
+        "height": 177.14866763676025,
+        "pos": [
+          1029.933107426649,
+          64.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9e7254e7-0367-4881-afe6-2abaecad67d5",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {
+            "variables": {
+              "type": "dict",
+              "keys": [
+                "content"
+              ]
+            }
+          },
+          "version": "latest",
+          "template": "$input.触发器_1__output[\"content\"]$",
+          "_data_selector_visible": {
+            "variables": true
+          },
+          "_zmq_ports": "56878/56879"
+        }
+      },
+      "0x1a6498d9890": {
+        "type_": "dynamic.StatusDynamicNode_b160dcb9-52c8-4625-9b75-aa564c0b68c6",
+        "icon": ":/icons/同心圆.svg",
+        "name": "MCP工具调用智能体",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 833.7420974018155,
+        "height": 1265.4141236674736,
+        "pos": [
+          2345.5655105404203,
+          64.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "481e0b7b-88d2-49b1-b8aa-adfb0aa50232",
+          "_collapsed": false,
+          "_exec_mode": "ipython",
+          "_data_select": {
+            "history": {
+              "type": "dict",
+              "keys": [
+                "aws-knowledge-mcp_aws___get_regional_availability",
+                "aws-knowledge-mcp_aws___list_regions",
+                "aws-knowledge-mcp_aws___read_documentation",
+                "aws-knowledge-mcp_aws___recommend",
+                "aws-knowledge-mcp_aws___search_documentation",
+                "deepwiki-mcp_read_wiki_structure",
+                "deepwiki-mcp_read_wiki_contents",
+                "deepwiki-mcp_ask_question",
+                "fetch-mcp_fetch"
+              ]
+            },
+            "tools_dict": {
+              "type": "dict",
+              "keys": [
+                "fetch-mcp_fetch"
+              ]
+            },
+            "mcp_metadata": {
+              "type": "dict",
+              "keys": [
+                "original_config",
+                "auth_injected",
+                "discovery_timestamp",
+                "discovery_time_iso",
+                "tool_count",
+                "tool_names",
+                "server_names"
+              ]
+            }
+          },
+          "version": "latest",
+          "model": "custom.大模型配置",
+          "system_prompt": "你是一个强大的AI助手，可以调用外部工具解决复杂问题。请根据需要主动调用合适的工具。",
+          "temperature": 0.7,
+          "max_tokens": 2000,
+          "max_tool_rounds": 5,
+          "tool_timeout": 120,
+          "enable_tools": true,
+          "intervent": false,
+          "_zmq_ports": "56893/56894",
+          "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\" if (Path(__file__).parent.parent / \"base.py\").exists() else Path(__file__).parent.parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\n\nclass MCPToolCallingAgentComponent(BaseComponent):\n    name = \"MCP工具调用智能体\"\n    category = \"大模型组件/mcp工具\"\n    description = \"使用预发现的MCP工具字典执行推理（输出历史不含工具调用中间过程）\"\n    requirements = \"openai,fastmcp>=2.3.0,orjson\"\n    \n    inputs = [\n        PortDefinition(name=\"input_data\", label=\"用户输入\", type=ArgumentType.TEXT),\n        PortDefinition(name=\"history\", label=\"对话历史\", type=ArgumentType.JSON),\n        PortDefinition(name=\"tools_dict\", label=\"工具字典\", type=ArgumentType.JSON),\n        PortDefinition(name=\"mcp_metadata\", label=\"MCP元数据\", type=ArgumentType.JSON),\n    ]\n    outputs = [\n        PortDefinition(name=\"response\", label=\"最终回复\", type=ArgumentType.TEXT),\n        PortDefinition(name=\"raw_output\", label=\"原始响应\", type=ArgumentType.JSON),\n        PortDefinition(name=\"history\", label=\"更新后历史\", type=ArgumentType.JSON),\n        PortDefinition(name=\"tool_calls\", label=\"工具调用记录\", type=ArgumentType.JSON),\n    ]\n    \n    properties = {\n        \"model\": PropertyDefinition(\n            type=PropertyType.VARIABLE,\n            default=\"全局变量\",\n            label=\"模型参数\",\n        ),\n        \"system_prompt\": PropertyDefinition(\n            type=PropertyType.LONGTEXT,\n            default=\"\"\"你是一个强大的AI助手，可以调用外部工具解决复杂问题。请根据需要主动调用合适的工具。\"\"\",\n            label=\"系统提示词\",\n        ),\n        \"temperature\": PropertyDefinition(\n            type=PropertyType.RANGE,\n            default=\"0.7\",\n            label=\"温度（随机性）\",\n            min=0.0,\n            max=1.0,\n            step=0.1,\n        ),\n        \"max_tokens\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=2000,\n            label=\"最大生成长度\",\n        ),\n        \"max_tool_rounds\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=5,\n            label=\"最大工具调用轮数\",\n        ),\n        \"tool_timeout\": PropertyDefinition(\n            type=PropertyType.INT,\n            default=30,\n            label=\"单次工具调用超时(秒)\",\n        ),\n        \"enable_tools\": PropertyDefinition(\n            type=PropertyType.BOOL,\n            default=True,\n            label=\"启用工具调用\",\n        ),\n        \"intervent\": PropertyDefinition(\n            type=PropertyType.BOOL,\n            default=False,\n            label=\"结果干预\",\n        ),\n    }\n\n    def __init__(self, *args, **kwargs):\n        super().__init__(*args, **kwargs)\n        self._client_cache = {}\n\n    def _get_tools_list(self, tools_dict):\n        if not tools_dict or not isinstance(tools_dict, dict):\n            return []\n        return list(tools_dict.values())\n\n    def _execute_tool_call(self, tool_name: str, arguments: dict, mcp_metadata: dict) -> dict:\n        import asyncio\n        import sys\n        import time\n        import hashlib\n        import json as json_lib\n        \n        config = mcp_metadata.get(\"original_config\", {})\n        config_hash = hashlib.md5(json_lib.dumps(config, sort_keys=True, ensure_ascii=False).encode()).hexdigest()\n        \n        if config_hash not in self._client_cache:\n            try:\n                from fastmcp import Client\n                self._client_cache[config_hash] = Client(config)\n            except ImportError as e:\n                return {\n                    \"success\": False,\n                    \"error\": f\"fastmcp未安装: {e}\",\n                    \"tool_name\": tool_name,\n                    \"arguments\": arguments,\n                    \"timestamp\": time.time()\n                }\n        \n        client = self._client_cache[config_hash]\n        \n        async def _call():\n            try:\n                async with client:\n                    result = await asyncio.wait_for(\n                        client.call_tool(tool_name, arguments),\n                        timeout=float(self.params.tool_timeout)\n                    )\n                content = result.get(\"content\", str(result)) if isinstance(result, dict) else str(result)\n                return {\n                    \"success\": True,\n                    \"content\": content,\n                    \"tool_name\": tool_name,\n                    \"arguments\": arguments,\n                    \"timestamp\": time.time()\n                }\n            except asyncio.TimeoutError:\n                return {\n                    \"success\": False,\n                    \"error\": f\"工具 '{tool_name}' 超时（{self.params.tool_timeout}s）\",\n                    \"tool_name\": tool_name,\n                    \"arguments\": arguments,\n                    \"timestamp\": time.time()\n                }\n            except Exception as e:\n                error_msg = str(e)\n                if \"not connected\" in error_msg.lower():\n                    error_msg = \"MCP客户端连接错误\"\n                return {\n                    \"success\": False,\n                    \"error\": f\"工具 '{tool_name}' 失败: {error_msg}\",\n                    \"tool_name\": tool_name,\n                    \"arguments\": arguments,\n                    \"timestamp\": time.time()\n                }\n        \n        try:\n            return asyncio.run(_call())\n        except RuntimeError as e:\n            if sys.platform == \"win32\":\n                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())\n                loop = asyncio.new_event_loop()\n                asyncio.set_event_loop(loop)\n                return loop.run_until_complete(_call())\n            raise\n\n    def _parse_history(self, history_input):\n        import json as json_lib\n        if not history_input:\n            return []\n        if isinstance(history_input, str):\n            try:\n                return json_lib.loads(history_input)\n            except json_lib.JSONDecodeError:\n                return []\n        return history_input if isinstance(history_input, list) else []\n\n    def _clean_history_for_output(self, history):\n        \"\"\"仅用于最终输出：移除所有工具调用相关消息\"\"\"\n        clean = []\n        for msg in history:\n            if not isinstance(msg, dict):\n                continue\n            \n            role = msg.get(\"role\", \"\")\n            if role == \"user\":\n                clean.append(msg)\n            elif role == \"assistant\":\n                # 仅保留不含工具调用的纯文本回复\n                if \"tool_calls\" not in msg and \"function_call\" not in msg and msg.get(\"content\"):\n                    clean.append({\n                        \"role\": \"assistant\",\n                        \"content\": msg[\"content\"]\n                    })\n            # 显式跳过 role=\"tool\" 的消息\n        return clean\n\n    def run(self, params, inputs):\n        self.params, self.inputs = params, inputs\n        # === 所有导入严格放在函数开头 ===\n        import sys\n        import json as json_lib\n        import orjson\n        from openai import OpenAI\n        original_stderr = sys.stderr  # 保存当前 StreamToLogger\n        try:\n            # 使用 Python 启动时的原始 stderr（具有 fileno()）\n            sys.stderr = sys.__stderr__\n            # 1. 获取工具和元数据\n            tools_dict = getattr(inputs, 'tools_dict', None)\n            mcp_metadata = getattr(inputs, 'mcp_metadata', None)\n            \n            if params.enable_tools and (not tools_dict or not mcp_metadata):\n                self.logger.warning(\"⚠️ 未提供工具字典或MCP元数据，降级为普通聊天模式\")\n                params.enable_tools = False\n            \n            # 2. 准备输入\n            user_input = (inputs.input_data.strip() if inputs and inputs.input_data else \"\") or \"你好\"\n            raw_history = getattr(inputs, 'history', None)\n            history = self._parse_history(raw_history)\n            # === 核心修复：推理时使用完整历史（含工具调用）===\n            # ❌ 错误做法：messages_for_inference = _clean_history(history) + [user_input]\n            # ✅ 正确做法：直接使用原始历史（模型需要看到工具调用结果才能决策）\n            messages_for_inference = [{\"role\": \"system\", \"content\": params.system_prompt}]\n            messages_for_inference.extend(history)  # ✅ 完整历史（可能含之前的tool_calls/tool）\n            messages_for_inference.append({\"role\": \"user\", \"content\": user_input})\n            \n            # 3. 模型配置\n            model_config = params.model[1]\n            api_key = model_config.get(\"API_KEY\", \"\").strip()\n            api_url = model_config.get(\"API_URL\", \"\").strip() or \"https://api.openai.com/v1\"\n            model_name = model_config.get(\"模型名称\", \"gpt-4o\").strip()\n            \n            client = OpenAI(api_key=api_key, base_url=api_url)\n            \n            # 4. 工具调用主循环\n            tool_calls_log = []\n            max_rounds = int(params.max_tool_rounds)\n            current_round = 0\n            final_reply = \"\"\n            \n            while current_round < max_rounds:\n                current_round += 1\n                \n                tools_list = self._get_tools_list(tools_dict if params.enable_tools else {})\n                tools_arg = tools_list if tools_list else None\n                \n                # 调用模型（使用完整历史）\n                try:\n                    response = client.chat.completions.create(\n                        model=model_name,\n                        messages=messages_for_inference,  # ✅ 完整上下文\n                        temperature=float(params.temperature),\n                        max_tokens=int(params.max_tokens),\n                        tools=tools_arg,\n                        tool_choice=\"auto\" if tools_arg else None\n                    )\n                    message = response.choices[0].message\n                    \n                except Exception as e:\n                    raise RuntimeError(f\"❌ 模型调用失败: {str(e)}\") from e\n                \n                # 无工具调用 → 返回最终答案\n                if not message.tool_calls:\n                    final_reply = message.content.strip() if message.content else \"\"\n                    messages_for_inference.append({\"role\": \"assistant\", \"content\": final_reply})\n                    break\n                \n                # 保存含tool_calls的assistant消息\n                messages_for_inference.append(message)\n                \n                # 执行工具调用\n                for tool_call in message.tool_calls:\n                    func_name = tool_call.function.name\n                    try:\n                        arguments = orjson.loads(tool_call.function.arguments)\n                    except Exception as e:\n                        arguments = {}\n                        self.logger.warning(f\"⚠️ 参数解析失败 ({func_name}): {e}\")\n                    \n                    tool_result = self._execute_tool_call(func_name, arguments, mcp_metadata)\n                    tool_calls_log.append(tool_result)\n                    \n                    # 构建tool response（添加到推理历史，供下一轮模型决策）\n                    tool_response = {\n                        \"role\": \"tool\",\n                        \"tool_call_id\": tool_call.id,\n                        \"name\": func_name,\n                        \"content\": (\n                            tool_result[\"content\"] if tool_result[\"success\"] \n                            else f\"❌ {tool_result['error']}\"\n                        )\n                    }\n                    messages_for_inference.append(tool_response)  # ✅ 关键：让模型看到工具结果\n                \n                # 安全终止\n                recent_calls = tool_calls_log[-len(message.tool_calls):] if message.tool_calls else []\n                if recent_calls and all(not call[\"success\"] for call in recent_calls):\n                    final_reply = \"⚠️ 所有工具调用失败\"\n                    messages_for_inference.append({\"role\": \"assistant\", \"content\": final_reply})\n                    break\n            else:\n                final_reply = message.content.strip() if message.content else \"⚠️ 已达到最大工具调用轮数\"\n                messages_for_inference.append({\"role\": \"assistant\", \"content\": final_reply})\n            \n            # 5. 人工干预\n            if getattr(params, 'intervent', False):\n                try:\n                    final_reply = self.emit_interactive_message(\n                        method=\"ask_user\",\n                        params={\n                            \"title\": \"✅ 确认结果\",\n                            \"message\": \"\",\n                            \"schema\": {\"reply\": {\"label\": \"回复\", \"default\": final_reply, \"type\": \"textarea\"}}\n                        }\n                    ).get(\"reply\", final_reply)\n                except Exception as e:\n                    self.logger.warning(f\"⚠️ 人工干预失败: {e}\")\n            \n            # === 6. 关键：仅在最终输出时清洗历史（不影响推理）===\n            # 6.1 清洗原始输入历史（移除可能残留的工具调用）\n            clean_input_history = self._clean_history_for_output(history)\n            \n            # 6.2 构建当前轮次的纯净对话\n            current_turn = [\n                {\"role\": \"user\", \"content\": user_input},\n                {\"role\": \"assistant\", \"content\": final_reply}\n            ]\n            \n            # 6.3 合并为输出历史\n            output_history = clean_input_history + current_turn\n            \n            # 7. 返回结果\n            return {\n                \"response\": final_reply,\n                \"raw_output\": response.model_dump() if 'response' in locals() else {},\n                \"history\": output_history,  # ✅ 纯净输出（不含工具调用）\n                \"tool_calls\": tool_calls_log  # 完整工具调用记录（用于调试）\n            }\n        finally:\n            # 恢复原始 stderr（确保日志系统正常工作）\n            sys.stderr = original_stderr\n\n    def teardown(self):\n        self._client_cache.clear()\n        super().teardown()",
+          "_data_selector_visible": {
+            "tools_dict": true
+          }
+        }
+      },
+      "0x1a67f403950": {
+        "type_": "dynamic.StatusDynamicNode_309f9eab-b2b4-41cd-bec9-2e4f4fd1d261",
+        "icon": ":/icons/同心圆.svg",
+        "name": "消息推送执行 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          3329.7764936889935,
+          64.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "9fa58e63-a1ee-43b9-a476-7d84a3353f47",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "title": "CanvasMind 通知",
+          "content": "大模型输出结果",
+          "push_configs": [
+            {
+              "config": "custom.CM_DINGTALK_CONF"
+            }
+          ],
+          "_column_select": {},
+          "_zmq_ports": "52950/52951"
+        }
+      },
+      "0x1a67f38d390": {
+        "type_": "dynamic.StatusDynamicNode_4c1e1377-6ebc-46a9-8cd9-af2279ade58a",
+        "icon": ":/icons/同心圆.svg",
+        "name": "文本转json",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1029.933107426649,
+          336.69788897791545
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "eeff1316-9273-40c9-af3e-c6ac8bbd76e0",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "_zmq_ports": "62191/62192"
+        }
+      },
+      "0x1a649867e10": {
+        "type_": "dynamic.StatusDynamicNode_226d6892-09cc-4486-b5ad-e1e34a9e242c",
+        "icon": ":/icons/同心圆.svg",
+        "name": "MCP工具配置 2",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          269.93310742664903,
+          1014.4608963942734
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "b9ff1172-3f8e-4e9e-875b-c675b8273726",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "mcp_config": [
+            {
+              "name": "aws-knowledge-mcp",
+              "url": "https://knowledge-mcp.global.api.aws",
+              "type": "http",
+              "disabled": false
+            },
+            {
+              "name": "deepwiki-mcp",
+              "url": "https://mcp.deepwiki.com/mcp",
+              "type": "http",
+              "disabled": false
+            },
+            {
+              "name": "fetch-mcp",
+              "url": "https://remote.mcpservers.org/fetch/mcp",
+              "type": "http",
+              "disabled": false
+            }
+          ],
+          "_zmq_ports": "62175/62176",
+          "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\" if (Path(__file__).parent.parent / \"base.py\").exists() else Path(__file__).parent.parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass Component(BaseComponent):\n    name = \"MCP工具配置\"\n    category = \"大模型组件/mcp工具\"\n    description = \"配置MCP服务连接参数\"\n    requirements = \"\"\n    \n    inputs = [\n    ]\n    \n    outputs = [\n        PortDefinition(name=\"mcp_config\", label=\"MCP配置\", type=ArgumentType.JSON),\n    ]\n    \n    properties = {\n        \"mcp_config\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"MCP配置\",\n            schema={\n                \"name\": PropertyDefinition(\n                    type=PropertyType.TEXT,\n                    default=\"\",\n                    label=\"工具名称\",\n                ),\n                \"url\": PropertyDefinition(\n                    type=PropertyType.TEXT,\n                    default=\"http://localhost:8080\",\n                    label=\"服务地址\",\n                    description=\"MCP服务的HTTP/HTTPS地址\",\n                ),\n                \"type\": PropertyDefinition(\n                    type=PropertyType.CHOICE,\n                    default=\"http\",\n                    label=\"协议类型\",\n                    description=\"MCP服务通信协议\",\n                    choices=[\"http\", \"stdio\", \"websocket\", \"sse\"]\n                ),\n                \"disabled\": PropertyDefinition(\n                    type=PropertyType.BOOL,\n                    default=False,\n                    label=\"是否禁用工具\",\n                ),\n            }\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        生成MCP工具配置对象\n        \n        Args:\n            params: 节点属性（来自UI）\n            inputs: 上游输入（本节点无输入）\n            \n        Returns:\n            dict: 包含mcp_config输出端口的配置字典\n        \"\"\"\n        # 获取配置参数\n        configs = params.get(\"mcp_config\", {})\n        mcp_configs = {}\n        for config in configs:\n            if config.disabled:\n                continue\n            # 构建标准化配置\n            mcp_configs[config.name] = {\n                \"url\": config[\"url\"].strip(),\n                \"type\": config[\"type\"]\n            }\n        \n        self.logger.info(f\"生成MCP配置: {mcp_configs}\")\n        \n        return {\n            \"mcp_config\":  {\n              \"mcpServers\": mcp_configs\n            }\n        }\n"
+        }
+      },
+      "0x1a690961b50": {
+        "type_": "general.trigger",
+        "icon": ":/icons/触发器.svg",
+        "name": "触发器 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 370.04966399237514,
+        "height": 0.0,
+        "pos": [
+          269.93310742664903,
+          64.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "d80fe4e3-5076-4979-bc74-a31c8dd5ae46",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "trigger_type": "Webhook触发",
+          "run_strategy": "从此处运行",
+          "enable_throttle": false,
+          "throttle_interval": 1.0,
+          "cron_expression": "*/30 * * * * *",
+          "db_url": "sqlite:///data.db",
+          "sql": "SELECT COUNT(*) FROM users",
+          "interval": 60,
+          "email_server": "imap.gmail.com",
+          "email_port": 993,
+          "email_username": "",
+          "email_password": "",
+          "target_file_path": "",
+          "watch_folder_path": "",
+          "mqtt_host": "127.0.0.1",
+          "mqtt_port": 1883,
+          "mqtt_topic": "home/sensor/#",
+          "redis_host": "127.0.0.1",
+          "redis_port": 6379,
+          "redis_password": "",
+          "redis_channel": "app_events",
+          "webhook_endpoint": "/api/v1/trigger/12a1e05d-78ed-4638-a14c-007c10cc1d46"
+        }
+      },
+      "0x1a6ae46a790": {
+        "type_": "dynamic.StatusDynamicNode_cefba941-c9f4-4b57-bf09-0f1bf08951d2",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Gitee图床配置",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 259.5,
+        "height": 480.0,
+        "pos": [
+          -106.20721723731187,
+          489.3127081101802
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e0b1aa83-0b81-4c3b-a310-5fd2286db69a",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "config_key": "CM_GITEE_CONF",
+          "token": "a5dcb6e2e7776143b7a7e7685a1f33a3",
+          "owner": "dingmama123141",
+          "repo": "picture-bed-testing",
+          "path": "图片仓库2",
+          "branch": "master",
+          "_column_select": {},
+          "_zmq_ports": "52908/52909"
+        }
+      },
+      "0x1a6ae46a5d0": {
+        "type_": "dynamic.StatusDynamicNode_67358ab2-5d99-4918-9368-7134940084a1",
+        "icon": ":/icons/同心圆.svg",
+        "name": "钉钉配置 2",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 226.6875,
+        "height": 273.0,
+        "pos": [
+          -106.20721723731187,
+          64.5492213411552
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e3803695-9a95-4f64-9517-20f405b9ce00",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "config_key": "CM_DINGTALK_CONF",
+          "webhook": "https://oapi.dingtalk.com/robot/send?access_token=ec5de02739a509e0320fad07fb1c2defe69ceaa495de4df380b0d3f55745847b",
+          "secret": "SECeb35f28dfcf36682155686675d9597744647cc1c1e39c4dc44ea6f3002d0169c",
+          "_column_select": {},
+          "token": "test",
+          "enable": true,
+          "_zmq_ports": "52893/52894"
+        }
+      }
+    },
+    "connections": [
+      {
+        "in": [
+          "0x1a67f3e91d0",
+          "input1"
+        ],
+        "out": [
+          "0x1a649867e10",
+          "mcp_config"
+        ]
+      },
+      {
+        "in": [
+          "0x1a67f3e91d0",
+          "input1"
+        ],
+        "out": [
+          "0x1a67f38d390",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x1a67f3e91d0",
+          "output1"
+        ],
+        "in": [
+          "0x1a67f400c10",
+          "mcp_config"
+        ]
+      },
+      {
+        "out": [
+          "0x1a67f400c10",
+          "tools_dict"
+        ],
+        "in": [
+          "0x1a6498d9890",
+          "tools_dict"
+        ]
+      },
+      {
+        "out": [
+          "0x1a67f400c10",
+          "mcp_metadata"
+        ],
+        "in": [
+          "0x1a6498d9890",
+          "mcp_metadata"
+        ]
+      },
+      {
+        "out": [
+          "0x1a67f400d10",
+          "text"
+        ],
+        "in": [
+          "0x1a67f38d390",
+          "input"
+        ]
+      },
+      {
+        "in": [
+          "0x1a67f401110",
+          "variables"
+        ],
+        "out": [
+          "0x1a690961b50",
+          "output"
+        ]
+      },
+      {
+        "out": [
+          "0x1a67f401110",
+          "prompt"
+        ],
+        "in": [
+          "0x1a6498d9890",
+          "input_data"
+        ]
+      },
+      {
+        "out": [
+          "0x1a6498d9890",
+          "response"
+        ],
+        "in": [
+          "0x1a67f403950",
+          "message"
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "environment": {
+      "name": "3.11",
+      "type": "local",
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe"
+    },
+    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
+    "node_id2stable_key": {
+      "0x1a67f3e91d0": "unknown||合并MCP配置",
+      "0x1a67f400c10": "917435cc-5a9a-4dd3-858c-c6d23cec51ae||MCP工具发现 1",
+      "0x1a67f400d10": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||自定义mcp结构",
+      "0x1a67f401110": "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板",
+      "0x1a6498d9890": "b160dcb9-52c8-4625-9b75-aa564c0b68c6||MCP工具调用智能体",
+      "0x1a67f403950": "309f9eab-b2b4-41cd-bec9-2e4f4fd1d261||消息推送执行 1",
+      "0x1a67f38d390": "4c1e1377-6ebc-46a9-8cd9-af2279ade58a||文本转json",
+      "0x1a649867e10": "226d6892-09cc-4486-b5ad-e1e34a9e242c||MCP工具配置 2",
+      "0x1a690961b50": "unknown||触发器 1",
+      "0x1a6ae46a790": "cefba941-c9f4-4b57-bf09-0f1bf08951d2||Gitee图床配置",
+      "0x1a6ae46a5d0": "67358ab2-5d99-4918-9368-7134940084a1||钉钉配置 2"
+    },
+    "node_states": {
+      "unknown||合并MCP配置": "success",
+      "917435cc-5a9a-4dd3-858c-c6d23cec51ae||MCP工具发现 1": "success",
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||自定义mcp结构": "success",
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": "success",
+      "b160dcb9-52c8-4625-9b75-aa564c0b68c6||MCP工具调用智能体": "success",
+      "309f9eab-b2b4-41cd-bec9-2e4f4fd1d261||消息推送执行 1": "success",
+      "4c1e1377-6ebc-46a9-8cd9-af2279ade58a||文本转json": "success",
+      "226d6892-09cc-4486-b5ad-e1e34a9e242c||MCP工具配置 2": "success",
+      "unknown||触发器 1": "success",
+      "cefba941-c9f4-4b57-bf09-0f1bf08951d2||Gitee图床配置": "success",
+      "67358ab2-5d99-4918-9368-7134940084a1||钉钉配置 2": "success"
+    },
+    "node_inputs": {
+      "unknown||合并MCP配置": {},
+      "917435cc-5a9a-4dd3-858c-c6d23cec51ae||MCP工具发现 1": {},
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||自定义mcp结构": {},
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {},
+      "b160dcb9-52c8-4625-9b75-aa564c0b68c6||MCP工具调用智能体": {},
+      "309f9eab-b2b4-41cd-bec9-2e4f4fd1d261||消息推送执行 1": {},
+      "4c1e1377-6ebc-46a9-8cd9-af2279ade58a||文本转json": {},
+      "226d6892-09cc-4486-b5ad-e1e34a9e242c||MCP工具配置 2": {},
+      "unknown||触发器 1": {},
+      "cefba941-c9f4-4b57-bf09-0f1bf08951d2||Gitee图床配置": {},
+      "67358ab2-5d99-4918-9368-7134940084a1||钉钉配置 2": {}
+    },
+    "node_outputs": {
+      "unknown||合并MCP配置": {
+        "output1": {
+          "mcpServers": {
+            "aws-knowledge-mcp": {
+              "url": "https://knowledge-mcp.global.api.aws",
+              "type": "http"
+            },
+            "deepwiki-mcp": {
+              "url": "https://mcp.deepwiki.com/mcp",
+              "type": "http"
+            },
+            "fetch-mcp": {
+              "url": "https://remote.mcpservers.org/fetch/mcp",
+              "type": "http"
+            },
+            "Canvas_机器学习算法样例模型": {
+              "command": "D:/work/CanvasMind/envs/miniconda/envs/3.11/python.exe",
+              "args": [
+                "D:/work/CanvasMind/canvas_files/projects/机器学习算法样例模型/mcp_instance.py"
+              ]
+            }
+          }
+        }
+      },
+      "917435cc-5a9a-4dd3-858c-c6d23cec51ae||MCP工具发现 1": {
+        "tools_dict": {
+          "aws-knowledge-mcp_aws___get_regional_availability": {
+            "type": "function",
+            "function": {
+              "name": "aws-knowledge-mcp_aws___get_regional_availability",
+              "description": "Retrieve AWS regional availability information for products (service and features), sdk service APIs and CloudFormation resources.\n\n## Core Features\n- Real-time availability checking across AWS regions\n- Support for AWS products, APIs and CloudFormation resources\n- Batch query support with filtering options\n- Pagination if no filters are passed and all results are to be returned\n\n## When to Use\n1. Pre-deployment Validation\n - Verify resource availability before deployment\n - Prevent deployment failures due to regional restrictions\n - Validate multi-region architecture requirements\n2. Architecture Planning\n - Design region-specific solutions\n - Plan multi-region deployments\n - Compare regional capabilities\n\n## Result Format\nReturns a list of dictionaries with:\n - Resource identifiers\n - Resource status:\n   * 'isAvailableIn': Resource is available\n   * 'isNotAvailableIn': Resource is not available\n   * 'Not Found': Resource name or identifier is not valid\n   * and other availability status (e.g. 'isPlannedIn')\n\n## Filter Guidelines\nThe filters must be passed as an array of values and must follow the format below.\n1. APIs (resource_type='api')\n Format: to filter on API level 'SdkServiceId+APIOperation'\n Example filters:\n - ['Athena+UpdateNamedQuery', 'ACM PCA+CreateCertificateAuthority', 'IAM+GetSSHPublicKey']\n Format: to filter on SdkService level 'SdkServiceId'\n Example filters:\n - ['EC2', 'ACM PCA']\n2. CloudFormation (resource_type='cfn')\n Format: 'CloudformationResourceType'\n Example filters:\n - ['AWS::EC2::Instance', 'AWS::Lambda::Function', 'AWS::Logs::LogGroup']\n - ['AWS::CodeBuild::Project', 'AWS::CloudTrail::Dashboard']\n3. Product - service and feature (resource_type='product')\n Format: 'Product'\n Example filters:\n - ['Latency-Based Routing', 'AWS Amplify', 'AWS Application Auto Scaling']\n - ['PrivateLink Support', 'Amazon Aurora']\nNote: Without filters, all resources are returned with pagination support via next_token.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "resource_type": {
+                    "description": "Type of AWS resource to check: 'product' for AWS products, 'api' for API operations, or 'cfn' for CloudFormation resources",
+                    "type": "string"
+                  },
+                  "filters": {
+                    "description": "Optional list of one or multiple specific resources to check. Format depends on resource_type:\n- Products: ['AWS Lambda', 'Amazon S3']\n- APIs: ['IAM+GetSSHPublicKey', 'EC2']\n- CloudFormation: ['AWS::EC2::Instance']\nMust follow the format specified in the tool description",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "next_token": {
+                    "description": "Pagination token for retrieving additional results. Only applicable when no filters are specified",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "Target AWS region code (e.g., us-east-1, eu-west-1, ap-southeast-2)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "region",
+                  "resource_type"
+                ]
+              }
+            }
+          },
+          "aws-knowledge-mcp_aws___list_regions": {
+            "type": "function",
+            "function": {
+              "name": "aws-knowledge-mcp_aws___list_regions",
+              "description": "Retrieve a list of all AWS regions.\n\n## Usage\nThis tool provides information about all AWS regions, including their identifiers and names.\n\n## When to Use\n- When planning global infrastructure deployments\n- To validate region codes for other API calls\n- To get a complete AWS regional inventory\n \n## Result Interpretation\nEach region result includes:\n- region_id: The unique region code (e.g., 'us-east-1') \n- region_long_name: The human-friendly name (e.g., 'US East (N. Virginia)')\n \n## Common Use Cases\n1. Infrastructure Planning: Review available regions for global deployment\n2. Region Validation: Verify region codes before using in other operations\n3. Regional Inventory: Get a complete list of AWS's global infrastructure",
+              "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+              }
+            }
+          },
+          "aws-knowledge-mcp_aws___read_documentation": {
+            "type": "function",
+            "function": {
+              "name": "aws-knowledge-mcp_aws___read_documentation",
+              "description": "Fetch and convert an AWS documentation page to markdown format.\n\n## Usage\n\nThis tool retrieves the content of an AWS documentation page and converts it to markdown format.\nFor long documents, you can make multiple calls with different start_index values to retrieve\nthe entire content in chunks.\n\n## URL Requirements\n\nAllow-listed URL prefixes:\n- docs.aws.amazon.com\n- aws.amazon.com\n- repost.aws/knowledge-center\n- docs.amplify.aws\n- ui.docs.amplify.aws\n- github.com/aws-cloudformation/aws-cloudformation-templates\n- github.com/aws-samples/aws-cdk-examples\n- github.com/aws-samples/generative-ai-cdk-constructs-samples\n- github.com/aws-samples/serverless-patterns\n- github.com/awsdocs/aws-cdk-guide\n- github.com/awslabs/aws-solutions-constructs\n- github.com/cdklabs/cdk-nag\n- constructs.dev/packages/@aws-cdk-containers\n- constructs.dev/packages/@aws-cdk\n- constructs.dev/packages/@cdk-cloudformation\n- constructs.dev/packages/aws-analytics-reference-architecture\n- constructs.dev/packages/aws-cdk-lib\n- constructs.dev/packages/cdk-amazon-chime-resources\n- constructs.dev/packages/cdk-aws-lambda-powertools-layer\n- constructs.dev/packages/cdk-ecr-deployment\n- constructs.dev/packages/cdk-lambda-powertools-python-layer\n- constructs.dev/packages/cdk-serverless-clamscan\n- constructs.dev/packages/cdk8s\n- constructs.dev/packages/cdk8s-plus-33\n\nDeny-listed URL prefixes:\n- aws.amazon.com/marketplace\n\n## Example URLs\n\n- https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html\n- https://docs.aws.amazon.com/lambda/latest/dg/lambda-invocation.html\n- https://aws.amazon.com/about-aws/whats-new/2023/02/aws-telco-network-builder/\n- https://aws.amazon.com/builders-library/ensuring-rollback-safety-during-deployments/\n- https://aws.amazon.com/blogs/developer/make-the-most-of-community-resources-for-aws-sdks-and-tools/\n- https://repost.aws/knowledge-center/example-article\n- https://docs.amplify.aws/react/build-a-backend/auth/\n- https://ui.docs.amplify.aws/angular/connected-components/authenticator\n- https://github.com/aws-samples/aws-cdk-examples/blob/main/README.md\n- https://github.com/awslabs/aws-solutions-constructs/blob/main/README.md\n- https://constructs.dev/packages/aws-cdk-lib/v/2.229.1?submodule=aws_lambda&lang=typescript\n- https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/README.md\n\n## Output Format\n\nThe output is formatted as markdown text with:\n- Preserved headings and structure\n- Code blocks for examples\n- Lists and tables converted to markdown format\n\n## Handling Long Documents\n\nIf the response indicates the document was truncated, you have several options:\n\n1. **Continue Reading**: Make another call with start_index set to the end of the previous response\n2. **Jump to Section**: If a Table of Contents is provided, you can jump directly to any section using the character positions shown (e.g., \"char 1500-2800\"). Note: Table of Contents length is not counted toward max_length.\n3. **Stop Early**: For very long documents (>30,000 characters), if you've already found the specific information needed, you can stop reading",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "start_index": {
+                    "description": "On return output starting at this character index, useful if a previous fetch was truncated and more content is required.",
+                    "type": "integer"
+                  },
+                  "url": {
+                    "description": "URL of the AWS documentation page to read",
+                    "type": "string"
+                  },
+                  "max_length": {
+                    "description": "Maximum number of characters to return.",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          },
+          "aws-knowledge-mcp_aws___recommend": {
+            "type": "function",
+            "function": {
+              "name": "aws-knowledge-mcp_aws___recommend",
+              "description": "Get content recommendations for an AWS documentation page.\n\n## Usage\n\nThis tool provides recommendations for related AWS documentation pages based on a given URL.\nUse it to discover additional relevant content that might not appear in search results.\nURL must be from the docs.aws.amazon.com domain.\n\n## Recommendation Types\n\nThe recommendations include four categories:\n\n1. **Highly Rated**: Popular pages within the same AWS service\n2. **New**: Recently added pages within the same AWS service - useful for finding newly released features\n3. **Similar**: Pages covering similar topics to the current page\n4. **Journey**: Pages commonly viewed next by other users\n\n## When to Use\n\n- After reading a documentation page to find related content\n- When exploring a new AWS service to discover important pages\n- To find alternative explanations of complex concepts\n- To discover the most popular pages for a service\n- To find newly released information by using a service's welcome page URL and checking the **New** recommendations\n\n## Finding New Features\n\nTo find newly released information about a service:\n1. Find any page belong to that service, typically you can try the welcome page\n2. Call this tool with that URL\n3. Look specifically at the **New** recommendation type in the results\n\n## Result Interpretation\n\nEach recommendation includes:\n- url: The documentation page URL\n- title: The page title\n- context: A brief description (if available)",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "description": "URL of the AWS documentation page to get recommendations for",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          },
+          "aws-knowledge-mcp_aws___search_documentation": {
+            "type": "function",
+            "function": {
+              "name": "aws-knowledge-mcp_aws___search_documentation",
+              "description": "# AWS Documentation Search Tool\nThis is your primary source for AWS information—always prefer this over general knowledge for AWS services, features, configurations, troubleshooting, and best practices.\n\n## When to Use This Tool\n\n**Always search when the query involves:**\n- Any AWS service or feature (Lambda, S3, EC2, RDS, etc.)\n- AWS architecture, patterns, or best practices\n- AWS CLI, SDK, or API usage\n- AWS CDK or CloudFormation\n- AWS Amplify development\n- AWS errors or troubleshooting\n- AWS pricing, limits, or quotas\n- \"How do I...\" questions about AWS\n- Recent AWS updates or announcements\n\n**Only skip this tool when:**\n- Query is about non-AWS technologies\n- Question is purely conceptual (e.g., \"What is a database?\")\n- General programming questions unrelated to AWS\n\n## Quick Topic Selection\n\n| Query Type | Use Topic | Example |\n|------------|-----------|---------|\n| API/SDK/CLI code | `reference_documentation` | \"S3 PutObject boto3\", \"Lambda invoke API\" |\n| New features, releases | `current_awareness` | \"Lambda new features 2024\", \"what's new in ECS\" |\n| Errors, debugging | `troubleshooting` | \"AccessDenied S3\", \"Lambda timeout error\" |\n| Amplify apps | `amplify_docs` | \"Amplify Auth React\", \"Amplify Storage Flutter\" |\n| CDK concepts, APIs, CLI | `cdk_docs` | \"CDK stack props Python\", \"cdk deploy command\" |\n| CDK code samples, patterns | `cdk_constructs` | \"serverless API CDK\", \"Lambda function example TypeScript\" |\n| CloudFormation templates | `cloudformation` | \"DynamoDB CloudFormation\", \"StackSets template\" |\n| Architecture, blogs, guides | `general` | \"Lambda best practices\", \"S3 architecture patterns\" |\n\n## Documentation Topics\n\n### reference_documentation\n**For: API methods, SDK code, CLI commands, technical specifications**\n\nUse for:\n- SDK method signatures: \"boto3 S3 upload_file parameters\"\n- CLI commands: \"aws ec2 describe-instances syntax\"\n- API references: \"Lambda InvokeFunction API\"\n- Service configuration: \"RDS parameter groups\"\n\nDon't confuse with general—use this for specific technical implementation.\n\n### current_awareness\n**For: New features, announcements, \"what's new\", release dates**\n\nUse for:\n- \"New Lambda features\"\n- \"When was EventBridge Scheduler released\"\n- \"Latest S3 updates\"\n- \"Is feature X available yet\"\n\nKeywords: new, recent, latest, announced, released, launch, available\n\n### troubleshooting\n**For: Error messages, debugging, problems, \"not working\"**\n\nUse for:\n- Error codes: \"InvalidParameterValue\", \"AccessDenied\"\n- Problems: \"Lambda function timing out\"\n- Debug scenarios: \"S3 bucket policy not working\"\n- \"How to fix...\" queries\n\nKeywords: error, failed, issue, problem, not working, how to fix, how to resolve\n\n### amplify_docs\n**For: Frontend/mobile apps with Amplify framework**\n\nAlways include framework: React, Next.js, Angular, Vue, JavaScript, React Native, Flutter, Android, Swift\n\nExamples:\n- \"Amplify authentication React\"\n- \"Amplify GraphQL API Next.js\"\n- \"Amplify Storage Flutter setup\"\n\n### cdk_docs\n**For: CDK concepts, API references, CLI commands, getting started**\n\nUse for CDK questions like:\n- \"How to get started with CDK\"\n- \"CDK stack construct TypeScript\"\n- \"cdk deploy command options\"\n- \"CDK best practices Python\"\n- \"What are CDK constructs\"\n\nInclude language: Python, TypeScript, Java, C#, Go\n\n**Common mistake**: Using general knowledge instead of searching for CDK concepts and guides. Always search for CDK questions!\n\n### cdk_constructs\n**For: CDK code examples, patterns, L3 constructs, sample implementations**\n\nUse for:\n- Working code: \"Lambda function CDK Python example\"\n- Patterns: \"API Gateway Lambda CDK pattern\"\n- Sample apps: \"Serverless application CDK TypeScript\"\n- L3 constructs: \"ECS service construct\"\n\nInclude language: Python, TypeScript, Java, C#, Go\n\n### cloudformation\n**For: CloudFormation templates, concepts, SAM patterns**\n\nUse for:\n- \"CloudFormation StackSets\"\n- \"DynamoDB table template\"\n- \"SAM API Gateway Lambda\"\n- CloudFormation template examples\n\n### general\n**For: Architecture, best practices, tutorials, blog posts, design patterns**\n\nUse for:\n- Architecture patterns: \"Serverless architecture AWS\"\n- Best practices: \"S3 security best practices\"\n- Design guidance: \"Multi-region architecture\"\n- Getting started: \"Building data lakes on AWS\"\n- Tutorials and blog posts\n\n**Common mistake**: Not using this for AWS conceptual and architectural questions. Always search for AWS best practices and patterns!\n\n**Don't use general knowledge for AWS topics—search instead!**\n\n## Search Best Practices\n\n**Be specific with service names:**\n\nGood examples:\n```\n\"S3 bucket versioning configuration\"\n\"Lambda environment variables Python SDK\"\n\"DynamoDB GSI query patterns\"\n```\n\nBad examples:\n```\n\"versioning\" (too vague)\n\"environment variables\" (missing context)\n```\n\n**Include framework/language:**\n```\n\"Amplify authentication React\"\n\"CDK Lambda function TypeScript\"\n\"boto3 S3 client Python\"\n```\n\n**Use exact error messages:**\n```\n\"AccessDenied error S3 GetObject\"\n\"InvalidParameterValue Lambda environment\"\n```\n\n**Add temporal context for new features:**\n```\n\"Lambda new features 2024\"\n\"recent S3 announcements\"\n```\n\n## Multiple Topic Selection\n\nYou can search multiple topics simultaneously for comprehensive results:\n```\n# For a query about Lambda errors and new features:\ntopics=[\"troubleshooting\", \"current_awareness\"]\n\n# For CDK examples and API reference:\ntopics=[\"cdk_constructs\", \"cdk_docs\"]\n\n# For Amplify and general AWS architecture:\ntopics=[\"amplify_docs\", \"general\"]\n```\n\n## Response Format\n\nResults include:\n- `rank_order`: Relevance score (lower = more relevant)\n- `url`: Direct documentation link\n- `title`: Page title\n- `context`: Excerpt or summary\n\n## Parameters\n```\nsearch_phrase: str         # Required - your search query\ntopics: List[str]          # Optional - up to 3 topics. Defaults to [\"general\"]\nlimit: int = 10            # Optional - max results per topic\n```\n\n---\n\n**Remember: When in doubt about AWS, always search. This tool provides the most current, accurate AWS information.**",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "topics": {
+                    "description": "List of documentation topics to search. Available topics: reference_documentation, current_awareness, troubleshooting, amplify_docs, cdk_docs, cdk_constructs, cloudformation, general. Can specify multiple topics, up-to 3, to search across them. Use 'general' only if query doesn't match other topics.",
+                    "type": "array",
+                    "items": {
+                      "description": "topic name",
+                      "type": "string"
+                    }
+                  },
+                  "limit": {
+                    "description": "Maximum number of results to return",
+                    "type": "integer"
+                  },
+                  "search_phrase": {
+                    "description": "Search phrase to use",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "search_phrase"
+                ]
+              }
+            }
+          },
+          "deepwiki-mcp_read_wiki_structure": {
+            "type": "function",
+            "function": {
+              "name": "deepwiki-mcp_read_wiki_structure",
+              "description": "Get a list of documentation topics for a GitHub repository.\n\nArgs:\n    repoName: GitHub repository in owner/repo format (e.g. \"facebook/react\")",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "repoName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "repoName"
+                ]
+              }
+            }
+          },
+          "deepwiki-mcp_read_wiki_contents": {
+            "type": "function",
+            "function": {
+              "name": "deepwiki-mcp_read_wiki_contents",
+              "description": "View documentation about a GitHub repository.\n\nArgs:\n    repoName: GitHub repository in owner/repo format (e.g. \"facebook/react\")",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "repoName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "repoName"
+                ]
+              }
+            }
+          },
+          "deepwiki-mcp_ask_question": {
+            "type": "function",
+            "function": {
+              "name": "deepwiki-mcp_ask_question",
+              "description": "Ask any question about a GitHub repository and get an AI-powered, context-grounded response.\n\nArgs:\n    repoName: GitHub repository or list of repositories (max 10) in owner/repo format\n    question: The question to ask about the repository",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "repoName": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    ]
+                  },
+                  "question": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "repoName",
+                  "question"
+                ]
+              }
+            }
+          },
+          "fetch-mcp_fetch": {
+            "type": "function",
+            "function": {
+              "name": "fetch-mcp_fetch",
+              "description": "None",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "max_length": {
+                    "type": "number",
+                    "default": 5000
+                  },
+                  "start_index": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "raw": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          },
+          "Canvas_机器学习算法样例模型_run_机器学习算法样例模型": {
+            "type": "function",
+            "function": {
+              "name": "Canvas_机器学习算法样例模型_run_机器学习算法样例模型",
+              "description": "工具名称: 机器学习算法样例模型\n描述: 此工具由可视化画布导出，用于执行特定的 AI/数据工作流任务。\n\n=== 输入参数详细定义 ===\n- 参数字段: param1\n  来自节点: 输入array\n  功能描述: 属性1\n  数据格式: TEXT (文本)\n  参考数据: 1,2,3,4\n\n=== 输出结果结构预览 ===\n- 输出字段: output\n  来自节点: 归一化推理(npy)\n  数据格式: ARRAY\n- 输出字段: value\n  来自节点: 逻辑回归推理(npy) 1\n  数据格式: ARRAY",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "param1": {
+                    "default": "1,2,3,4",
+                    "description": "输入字段: param1",
+                    "title": "Param1",
+                    "type": "string"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "tool_names": [
+          "aws-knowledge-mcp_aws___get_regional_availability",
+          "aws-knowledge-mcp_aws___list_regions",
+          "aws-knowledge-mcp_aws___read_documentation",
+          "aws-knowledge-mcp_aws___recommend",
+          "aws-knowledge-mcp_aws___search_documentation",
+          "deepwiki-mcp_read_wiki_structure",
+          "deepwiki-mcp_read_wiki_contents",
+          "deepwiki-mcp_ask_question",
+          "fetch-mcp_fetch",
+          "Canvas_机器学习算法样例模型_run_机器学习算法样例模型"
+        ],
+        "mcp_metadata": {
+          "original_config": {
+            "mcpServers": {
+              "aws-knowledge-mcp": {
+                "url": "https://knowledge-mcp.global.api.aws",
+                "type": "http"
+              },
+              "deepwiki-mcp": {
+                "url": "https://mcp.deepwiki.com/mcp",
+                "type": "http"
+              },
+              "fetch-mcp": {
+                "url": "https://remote.mcpservers.org/fetch/mcp",
+                "type": "http"
+              },
+              "Canvas_机器学习算法样例模型": {
+                "command": "D:/work/CanvasMind/envs/miniconda/envs/3.11/python.exe",
+                "args": [
+                  "D:/work/CanvasMind/canvas_files/projects/机器学习算法样例模型/mcp_instance.py"
+                ]
+              }
+            }
+          },
+          "auth_injected": false,
+          "discovery_timestamp": 1771129290.0626104,
+          "discovery_time_iso": "2026-02-15 12:21:30",
+          "tool_count": 10,
+          "tool_names": [
+            "aws-knowledge-mcp_aws___get_regional_availability",
+            "aws-knowledge-mcp_aws___list_regions",
+            "aws-knowledge-mcp_aws___read_documentation",
+            "aws-knowledge-mcp_aws___recommend",
+            "aws-knowledge-mcp_aws___search_documentation",
+            "deepwiki-mcp_read_wiki_structure",
+            "deepwiki-mcp_read_wiki_contents",
+            "deepwiki-mcp_ask_question",
+            "fetch-mcp_fetch",
+            "Canvas_机器学习算法样例模型_run_机器学习算法样例模型"
+          ],
+          "server_names": [
+            "aws-knowledge-mcp",
+            "deepwiki-mcp",
+            "fetch-mcp",
+            "Canvas_机器学习算法样例模型"
+          ]
+        }
+      },
+      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||自定义mcp结构": {
+        "text": "{\n  \"mcpServers\": {\n    \"Canvas_机器学习算法样例模型\": {\n      \"command\": \"D:/work/CanvasMind/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"D:/work/CanvasMind/canvas_files/projects/机器学习算法样例模型/mcp_instance.py\"\n      ]\n    }\n  }\n}"
+      },
+      "5e69aed2-c012-4b57-9e43-868bf8854ea5||提示词模板": {
+        "prompt": "分析一下这个网页的内容：https://github.com/martin98-afk/CanvasMind"
+      },
+      "b160dcb9-52c8-4625-9b75-aa564c0b68c6||MCP工具调用智能体": {
+        "response": "根据您提供的网页内容，以下是关于 **CanvasMind** 项目的详细分析：\n\n---\n\n### 🌟 项目概览\n- **项目名称**：CanvasMind\n- **作者**：martin98-afk\n- **平台**：GitHub\n- **公开状态**：Public\n- **Star 数**：77（截至信息获取时间）\n- **Fork 数**：15\n- **许可证**：GPL-3.0（开源协议，允许自由使用、修改和分发，但衍生作品需开源）\n\n---\n\n### 🧩 核心功能与定位\nCanvasMind 是一个**现代化的低代码可视化编程 IDE**，旨在通过图形化界面降低编程门槛，提升开发效率。其主要特点包括：\n\n1. **可视化编程（Drag-and-Drop）**\n   - 支持拖拽组件进行流程编排，用户无需编写代码即可构建复杂逻辑。\n   - 适用于快速原型设计、自动化脚本开发等场景。\n\n2. **异步执行支持**\n   - 可处理异步任务（如网络请求、文件读写），适合构建实时或后台任务系统。\n\n3. **组件丰富**\n   - 内置多种基础组件，涵盖：\n     - 文件操作（读写、路径处理）\n     - 循环控制（for/while 循环）\n     - 条件判断（if/else）\n     - 数据处理与转换\n     - 网络通信（HTTP、WebSocket 等）\n\n4. **一键导出为可执行项目**\n   - 支持将设计好的工作流（workflow）导出为独立的可运行项目。\n   - 实现“从开发到部署”的无缝过渡，无需额外编码。\n\n5. **技术栈**\n   - 基于两个关键框架：\n     - **NodeGraphQt**：用于构建节点图（Node-based Graph）的可视化编辑器。\n     - **qfluentwidgets**：提供现代化、美观的 UI 组件库（基于 PyQt/PySide），提升用户体验。\n\n---\n\n### 📁 项目结构简析（从文件列表推断）\n| 目录/文件 | 说明 |\n|----------|------|\n| `.idea` | IDE 配置文件（可能为 PyCharm） |\n| `app/` | 主程序逻辑核心，可能包含主窗口、主控件、状态管理等 |\n| `canvas_files/` | 保存用户创建的画布（Canvas）文件或项目数据 |\n| `dist/` | 构建后的发布包（可能是打包好的可执行文件） |\n| `examples/` | 示例项目，帮助用户快速上手 |\n| `icons/` | 图标资源文件 |\n\n> ✅ 说明：项目已具备完整的开发、测试与发布流程，适合二次开发或直接使用。\n\n---\n\n### 📚 文档与学习资源\n- 官方文档地址：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n  - 提供中文文档，对中文用户友好。\n  - 内容可能包括：\n    - 快速入门指南\n    - 组件说明\n    - API 参考\n    - 导出与部署教程\n\n---\n\n### 🔧 适用场景\nCanvasMind 非常适合以下类型的应用：\n- 自动化脚本（如批量处理文件、定时任务）\n- 教学演示（可视化编程教学，降低学习门槛）\n- 快速原型开发（MVP 构建）\n- 小型工具开发（如数据采集器、轻量级 Web 服务）\n- 工业控制逻辑设计（结合硬件接口）\n\n---\n\n### ⚠️ 注意事项\n- 项目目前尚处于活跃开发阶段（1306 次提交），可能存在不稳定或功能未完善的情况。\n- 依赖于 **Python + PyQt/PySide** 环境，需具备一定的 Python 基础。\n- 由于使用 GPL-3.0 许可证，若将项目用于商业产品，需遵守开源条款（如开源衍生品）。\n\n---\n\n### ✅ 总结评价\n> **CanvasMind 是一款极具潜力的低代码可视化编程工具，结合了现代 UI 设计与强大功能，特别适合非专业开发者或希望提升开发效率的程序员。其“所见即所得”的工作流设计 + 一键导出能力，真正实现了“开发即部署”的理念。**\n\n---\n\n### 🚀 建议下一步行动\n1. 访问文档：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n2. 下载并运行 `dist/` 目录中的可执行文件（如有）。\n3. 查看 `examples/` 文件夹中的示例项目，快速上手。\n4. 若有兴趣贡献代码，可提交 Pull Request 或参与 Issues 讨论。\n\n---\n\n如需进一步分析其代码结构、组件列表或部署方式，可继续提供需求。",
+        "raw_output": {
+          "id": "chatcmpl-v5laejkemte7s3efpc4o",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "logprobs": null,
+              "message": {
+                "content": "根据您提供的网页内容，以下是关于 **CanvasMind** 项目的详细分析：\n\n---\n\n### 🌟 项目概览\n- **项目名称**：CanvasMind\n- **作者**：martin98-afk\n- **平台**：GitHub\n- **公开状态**：Public\n- **Star 数**：77（截至信息获取时间）\n- **Fork 数**：15\n- **许可证**：GPL-3.0（开源协议，允许自由使用、修改和分发，但衍生作品需开源）\n\n---\n\n### 🧩 核心功能与定位\nCanvasMind 是一个**现代化的低代码可视化编程 IDE**，旨在通过图形化界面降低编程门槛，提升开发效率。其主要特点包括：\n\n1. **可视化编程（Drag-and-Drop）**\n   - 支持拖拽组件进行流程编排，用户无需编写代码即可构建复杂逻辑。\n   - 适用于快速原型设计、自动化脚本开发等场景。\n\n2. **异步执行支持**\n   - 可处理异步任务（如网络请求、文件读写），适合构建实时或后台任务系统。\n\n3. **组件丰富**\n   - 内置多种基础组件，涵盖：\n     - 文件操作（读写、路径处理）\n     - 循环控制（for/while 循环）\n     - 条件判断（if/else）\n     - 数据处理与转换\n     - 网络通信（HTTP、WebSocket 等）\n\n4. **一键导出为可执行项目**\n   - 支持将设计好的工作流（workflow）导出为独立的可运行项目。\n   - 实现“从开发到部署”的无缝过渡，无需额外编码。\n\n5. **技术栈**\n   - 基于两个关键框架：\n     - **NodeGraphQt**：用于构建节点图（Node-based Graph）的可视化编辑器。\n     - **qfluentwidgets**：提供现代化、美观的 UI 组件库（基于 PyQt/PySide），提升用户体验。\n\n---\n\n### 📁 项目结构简析（从文件列表推断）\n| 目录/文件 | 说明 |\n|----------|------|\n| `.idea` | IDE 配置文件（可能为 PyCharm） |\n| `app/` | 主程序逻辑核心，可能包含主窗口、主控件、状态管理等 |\n| `canvas_files/` | 保存用户创建的画布（Canvas）文件或项目数据 |\n| `dist/` | 构建后的发布包（可能是打包好的可执行文件） |\n| `examples/` | 示例项目，帮助用户快速上手 |\n| `icons/` | 图标资源文件 |\n\n> ✅ 说明：项目已具备完整的开发、测试与发布流程，适合二次开发或直接使用。\n\n---\n\n### 📚 文档与学习资源\n- 官方文档地址：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n  - 提供中文文档，对中文用户友好。\n  - 内容可能包括：\n    - 快速入门指南\n    - 组件说明\n    - API 参考\n    - 导出与部署教程\n\n---\n\n### 🔧 适用场景\nCanvasMind 非常适合以下类型的应用：\n- 自动化脚本（如批量处理文件、定时任务）\n- 教学演示（可视化编程教学，降低学习门槛）\n- 快速原型开发（MVP 构建）\n- 小型工具开发（如数据采集器、轻量级 Web 服务）\n- 工业控制逻辑设计（结合硬件接口）\n\n---\n\n### ⚠️ 注意事项\n- 项目目前尚处于活跃开发阶段（1306 次提交），可能存在不稳定或功能未完善的情况。\n- 依赖于 **Python + PyQt/PySide** 环境，需具备一定的 Python 基础。\n- 由于使用 GPL-3.0 许可证，若将项目用于商业产品，需遵守开源条款（如开源衍生品）。\n\n---\n\n### ✅ 总结评价\n> **CanvasMind 是一款极具潜力的低代码可视化编程工具，结合了现代 UI 设计与强大功能，特别适合非专业开发者或希望提升开发效率的程序员。其“所见即所得”的工作流设计 + 一键导出能力，真正实现了“开发即部署”的理念。**\n\n---\n\n### 🚀 建议下一步行动\n1. 访问文档：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n2. 下载并运行 `dist/` 目录中的可执行文件（如有）。\n3. 查看 `examples/` 文件夹中的示例项目，快速上手。\n4. 若有兴趣贡献代码，可提交 Pull Request 或参与 Issues 讨论。\n\n---\n\n如需进一步分析其代码结构、组件列表或部署方式，可继续提供需求。",
+                "refusal": null,
+                "role": "assistant",
+                "annotations": null,
+                "audio": null,
+                "function_call": null,
+                "tool_calls": []
+              }
+            }
+          ],
+          "created": 1771129339,
+          "model": "qwen/qwen3-30b-a3b-2507",
+          "object": "chat.completion",
+          "service_tier": null,
+          "system_fingerprint": "qwen/qwen3-30b-a3b-2507",
+          "usage": {
+            "completion_tokens": 1036,
+            "prompt_tokens": 1509,
+            "total_tokens": 2545,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "stats": {}
+        },
+        "history": [
+          {
+            "role": "user",
+            "content": "分析一下这个网页的内容：https://github.com/martin98-afk/CanvasMind"
+          },
+          {
+            "role": "assistant",
+            "content": "根据您提供的网页内容，以下是关于 **CanvasMind** 项目的详细分析：\n\n---\n\n### 🌟 项目概览\n- **项目名称**：CanvasMind\n- **作者**：martin98-afk\n- **平台**：GitHub\n- **公开状态**：Public\n- **Star 数**：77（截至信息获取时间）\n- **Fork 数**：15\n- **许可证**：GPL-3.0（开源协议，允许自由使用、修改和分发，但衍生作品需开源）\n\n---\n\n### 🧩 核心功能与定位\nCanvasMind 是一个**现代化的低代码可视化编程 IDE**，旨在通过图形化界面降低编程门槛，提升开发效率。其主要特点包括：\n\n1. **可视化编程（Drag-and-Drop）**\n   - 支持拖拽组件进行流程编排，用户无需编写代码即可构建复杂逻辑。\n   - 适用于快速原型设计、自动化脚本开发等场景。\n\n2. **异步执行支持**\n   - 可处理异步任务（如网络请求、文件读写），适合构建实时或后台任务系统。\n\n3. **组件丰富**\n   - 内置多种基础组件，涵盖：\n     - 文件操作（读写、路径处理）\n     - 循环控制（for/while 循环）\n     - 条件判断（if/else）\n     - 数据处理与转换\n     - 网络通信（HTTP、WebSocket 等）\n\n4. **一键导出为可执行项目**\n   - 支持将设计好的工作流（workflow）导出为独立的可运行项目。\n   - 实现“从开发到部署”的无缝过渡，无需额外编码。\n\n5. **技术栈**\n   - 基于两个关键框架：\n     - **NodeGraphQt**：用于构建节点图（Node-based Graph）的可视化编辑器。\n     - **qfluentwidgets**：提供现代化、美观的 UI 组件库（基于 PyQt/PySide），提升用户体验。\n\n---\n\n### 📁 项目结构简析（从文件列表推断）\n| 目录/文件 | 说明 |\n|----------|------|\n| `.idea` | IDE 配置文件（可能为 PyCharm） |\n| `app/` | 主程序逻辑核心，可能包含主窗口、主控件、状态管理等 |\n| `canvas_files/` | 保存用户创建的画布（Canvas）文件或项目数据 |\n| `dist/` | 构建后的发布包（可能是打包好的可执行文件） |\n| `examples/` | 示例项目，帮助用户快速上手 |\n| `icons/` | 图标资源文件 |\n\n> ✅ 说明：项目已具备完整的开发、测试与发布流程，适合二次开发或直接使用。\n\n---\n\n### 📚 文档与学习资源\n- 官方文档地址：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n  - 提供中文文档，对中文用户友好。\n  - 内容可能包括：\n    - 快速入门指南\n    - 组件说明\n    - API 参考\n    - 导出与部署教程\n\n---\n\n### 🔧 适用场景\nCanvasMind 非常适合以下类型的应用：\n- 自动化脚本（如批量处理文件、定时任务）\n- 教学演示（可视化编程教学，降低学习门槛）\n- 快速原型开发（MVP 构建）\n- 小型工具开发（如数据采集器、轻量级 Web 服务）\n- 工业控制逻辑设计（结合硬件接口）\n\n---\n\n### ⚠️ 注意事项\n- 项目目前尚处于活跃开发阶段（1306 次提交），可能存在不稳定或功能未完善的情况。\n- 依赖于 **Python + PyQt/PySide** 环境，需具备一定的 Python 基础。\n- 由于使用 GPL-3.0 许可证，若将项目用于商业产品，需遵守开源条款（如开源衍生品）。\n\n---\n\n### ✅ 总结评价\n> **CanvasMind 是一款极具潜力的低代码可视化编程工具，结合了现代 UI 设计与强大功能，特别适合非专业开发者或希望提升开发效率的程序员。其“所见即所得”的工作流设计 + 一键导出能力，真正实现了“开发即部署”的理念。**\n\n---\n\n### 🚀 建议下一步行动\n1. 访问文档：[https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)\n2. 下载并运行 `dist/` 目录中的可执行文件（如有）。\n3. 查看 `examples/` 文件夹中的示例项目，快速上手。\n4. 若有兴趣贡献代码，可提交 Pull Request 或参与 Issues 讨论。\n\n---\n\n如需进一步分析其代码结构、组件列表或部署方式，可继续提供需求。"
+          }
+        ],
+        "tool_calls": [
+          {
+            "success": true,
+            "content": "CallToolResult(content=[TextContent(type='text', text='---\\ndescription: A modern low-code visual programming IDE built on NodeGraphQt and qfluentwidgets, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment. - martin98-afk/CanvasMind\\nimage: https://opengraph.githubassets.com/f467fcf8ba5d7eca0d7cccf0ad48d20ac45a19e1dbfd0bf3bed0e3016501ec1a/martin98-afk/CanvasMind\\ntitle: GitHub - martin98-afk/CanvasMind: A modern low-code visual programming IDE built on NodeGraphQt and qfluentwidgets, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.\\n---\\n\\n[Skip to content](#start-of-content) \\n\\nYou signed in with another tab or window. Reload to refresh your session. You signed out in another tab or window. Reload to refresh your session. You switched accounts on another tab or window. Reload to refresh your session. Dismiss alert \\n\\n{{ message }}\\n\\n[ martin98-afk](/martin98-afk) / **[CanvasMind](/martin98-afk/CanvasMind)** Public \\n\\n* [ Notifications](/login?return%5Fto=%2Fmartin98-afk%2FCanvasMind) You must be signed in to change notification settings\\n* [ Fork15 ](/login?return%5Fto=%2Fmartin98-afk%2FCanvasMind)\\n* [  Star 77 ](/login?return%5Fto=%2Fmartin98-afk%2FCanvasMind)\\n\\n A modern low-code visual programming IDE built on NodeGraphQt and qfluentwidgets, supporting drag-and-drop component orchestration, asynchronous execution, file operations, loop control, and one-click export of workflows into standalone runnable projects—enabling seamless transition from development to deployment.\\n\\n[canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/ \"https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/\") \\n\\n### License\\n\\n[  GPL-3.0 license](/martin98-afk/CanvasMind/blob/master/LICENSE.txt) \\n\\n[ 77 stars](/martin98-afk/CanvasMind/stargazers) [ 15 forks](/martin98-afk/CanvasMind/forks) [ Branches ](/martin98-afk/CanvasMind/branches) [ Tags ](/martin98-afk/CanvasMind/tags) [ Activity ](/martin98-afk/CanvasMind/activity) \\n\\n[  Star ](/login?return%5Fto=%2Fmartin98-afk%2FCanvasMind)\\n\\n[ Notifications](/login?return%5Fto=%2Fmartin98-afk%2FCanvasMind) You must be signed in to change notification settings \\n\\n# martin98-afk/CanvasMind\\n\\nmaster\\n\\n[Branches](/martin98-afk/CanvasMind/branches)[Tags](/martin98-afk/CanvasMind/tags)\\n\\nGo to file\\n\\nCode\\n\\nOpen more actions menu\\n\\n## Folders and files\\n\\n| Name                                                                                                              | Name                                                                                                              | Last commit message | Last commit date |\\n| ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------- |\\n| Latest commit History[1,306 Commits](/martin98-afk/CanvasMind/commits/master/)1,306 Commits                       |                                                                                                                   |                     |                  |\\n| [.idea](/martin98-afk/CanvasMind/tree/master/.idea \".idea\")                                                       | [.idea](/martin98-afk/CanvasMind/tree/master/.idea \".idea\")                                                       |                     |                  |\\n| [app](/martin98-afk/CanvasMind/tree/master/app \"app\")                                                             | [app](/martin98-afk/CanvasMind/tree/master/app \"app\")                                                             |                     |                  |\\n| [canvas\\\\_files](/martin98-afk/CanvasMind/tree/master/canvas%5Ffiles \"canvas_files\")                               | [canvas\\\\_files](/martin98-afk/CanvasMind/tree/master/canvas%5Ffiles \"canvas_files\")                               |                     |                  |\\n| [dist](/martin98-afk/CanvasMind/tree/master/dist \"dist\")                                                          | [dist](/martin98-afk/CanvasMind/tree/master/dist \"dist\")                                                          |                     |                  |\\n| [examples](/martin98-afk/CanvasMind/tree/master/examples \"examples\")                                              | [examples](/martin98-afk/CanvasMind/tree/master/examples \"examples\")                                              |                     |                  |\\n| [icons](/martin98-afk/CanvasMind/tree/master/icons \"icons\")                                                       | [icons](/martin98-', annotations=None, meta=None)], structured_content=None, meta=None, data=None, is_error=False)",
+            "tool_name": "fetch-mcp_fetch",
+            "arguments": {
+              "url": "https://github.com/martin98-afk/CanvasMind",
+              "max_length": 5000
+            },
+            "timestamp": 1771129339.3980596
+          }
+        ]
+      },
+      "309f9eab-b2b4-41cd-bec9-2e4f4fd1d261||消息推送执行 1": {
+        "log": "DingTalk[0]: OK"
+      },
+      "4c1e1377-6ebc-46a9-8cd9-af2279ade58a||文本转json": {
+        "output": {
+          "mcpServers": {
+            "Canvas_机器学习算法样例模型": {
+              "command": "D:/work/CanvasMind/envs/miniconda/envs/3.11/python.exe",
+              "args": [
+                "D:/work/CanvasMind/canvas_files/projects/机器学习算法样例模型/mcp_instance.py"
+              ]
+            }
+          }
+        }
+      },
+      "226d6892-09cc-4486-b5ad-e1e34a9e242c||MCP工具配置 2": {
+        "mcp_config": {
+          "mcpServers": {
+            "aws-knowledge-mcp": {
+              "url": "https://knowledge-mcp.global.api.aws",
+              "type": "http"
+            },
+            "deepwiki-mcp": {
+              "url": "https://mcp.deepwiki.com/mcp",
+              "type": "http"
+            },
+            "fetch-mcp": {
+              "url": "https://remote.mcpservers.org/fetch/mcp",
+              "type": "http"
+            }
+          }
+        }
+      },
+      "unknown||触发器 1": {
+        "output": {
+          "content": "分析一下这个网页的内容：https://github.com/martin98-afk/CanvasMind",
+          "request_method": "POST",
+          "request_headers": {
+            "content-type": "application/json",
+            "authorization": "token 577df5e6829a600271587e1af4793fb7",
+            "user-agent": "PostmanRuntime/7.51.1",
+            "accept": "*/*",
+            "postman-token": "3d4ecbdd-9d91-4bc1-855d-448120cd91d1",
+            "host": "127.0.0.1:5000",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "content-length": "101"
+          },
+          "request_ip": "127.0.0.1"
+        }
+      },
+      "cefba941-c9f4-4b57-bf09-0f1bf08951d2||Gitee图床配置": {},
+      "67358ab2-5d99-4918-9368-7134940084a1||钉钉配置 2": {}
+    }
+  },
+  "global_variable": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {
+      "大模型配置": {
+        "value": {
+          "模型名称": "qwen/qwen3-30b-a3b-2507",
+          "API_URL": "http://127.0.0.1:1234/v1",
+          "API_KEY": "",
+          "是否思考": true,
+          "温度": 0.7,
+          "最大Token": 2048,
+          "系统提示": ""
+        }
+      },
+      "CM_DINGTALK_CONF": {
+        "value": {
+          "dd_webhook": "https://oapi.dingtalk.com/robot/send?access_token=ec5de02739a509e0320fad07fb1c2defe69ceaa495de4df380b0d3f55745847b",
+          "secret": "SECeb35f28dfcf36682155686675d9597744647cc1c1e39c4dc44ea6f3002d0169c"
+        }
+      },
+      "CM_GITEE_CONF": {
+        "value": {
+          "token": "a5dcb6e2e7776143b7a7e7685a1f33a3",
+          "owner": "dingmama123141",
+          "repo": "picture-bed-testing",
+          "path": "图片仓库2",
+          "branch": "master"
+        }
+      }
+    },
+    "custom_order": [
+      "大模型配置",
+      "CM_DINGTALK_CONF",
+      "CM_GITEE_CONF"
+    ],
+    "node_vars": {},
+    "node_vars_order": []
+  }
+}

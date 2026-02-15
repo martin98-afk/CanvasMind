@@ -391,8 +391,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                         input_vars[f"input_{port_name}"] = inputs_raw[port_name]
                         safe_name = connected[0].node().name().replace(" ", "_")
                         input_vars[f"input_{safe_name}__{connected[0].name()}"] = inputs_raw[port_name]
-                    if port_name in self.get_property("_column_select"):
-                        inputs_raw[f"{port_name}_column_select"] = self.get_property("_column_select").get(port_name)
+                    if port_name in self.get_property("_data_select"):
+                        inputs_raw[f"{port_name}_data_select"] = self.get_property("_data_select").get(port_name)
+                        inputs_raw[f"{port_name}_data_select_visible"] = (
+                            (self.get_property("_data_selector_visible") or {}).get(port_name, False))
 
             expr_engine = ExpressionEngine(global_vars_context=gv)
 

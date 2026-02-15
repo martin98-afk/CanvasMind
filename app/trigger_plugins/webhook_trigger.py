@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.components.base import PropertyType
-from app.interfaces.canvas_interaface.utils.execution_manager import ExecutionManager
+from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import ExecutionManager
 from app.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
 
 
@@ -92,6 +92,13 @@ class WebhookManager(BaseTriggerManager):
                             data = dict(await request.form())
                     else:
                         data = dict(request.query_params)
+                    data.update(
+                        {
+                            "request_method": request.method,
+                            "request_headers": dict(request.headers),
+                            "request_ip": request.client.host
+                        }
+                    )
                 except Exception as e:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 

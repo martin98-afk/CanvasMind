@@ -97,7 +97,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.model.add_property("persistent_id", str(uuid.uuid4()))
         self.model.add_property("_collapsed", False)
         self.model.add_property("_exec_mode", "subprocess")
-        self.model.add_property("_column_select", {})
+        self.model.add_property("_data_select", {})
 
         # 绑定视图信号
         if hasattr(self.view, "collapsed_toggle"):
