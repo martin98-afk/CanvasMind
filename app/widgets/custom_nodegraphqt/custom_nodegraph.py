@@ -1327,7 +1327,7 @@ class CustomNodeGraph(NodeGraph):
                     "input_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in n.input_ports()],
                     "output_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in
                                     n.output_ports()],
-                    "output_values": serialize_for_json({} if not hasattr(n, "_output_values") else n._output_values)
+                    "output_values": {} if not hasattr(n, "_output_values") else serialize_for_json(n._output_values)
                 }
             )
             node_dict[n_id]["custom"]["FULL_PATH"] = n.FULL_PATH

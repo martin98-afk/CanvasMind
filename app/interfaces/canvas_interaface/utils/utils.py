@@ -1,4 +1,3 @@
-import json
 import os
 import traceback
 from pathlib import Path
@@ -51,8 +50,8 @@ class SaveTask(QRunnable):
             serialized_data = serialize_for_json(self.full_data)
 
             # 3. 写入文件 (IO 阻塞操作)
-            with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(serialized_data, f, indent=2, ensure_ascii=False)
+            with open(self.file_path, 'wb') as f:
+                f.write(orjson.dumps(serialized_data, option=orjson.OPT_INDENT_2))
 
             self.signals.finished.emit()
 

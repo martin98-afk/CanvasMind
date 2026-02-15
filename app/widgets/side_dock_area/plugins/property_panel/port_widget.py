@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import orjson
 import pandas as pd
-import json
 import os
 import re
 import shutil
