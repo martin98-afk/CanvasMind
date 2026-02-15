@@ -21,26 +21,6 @@ class ClearVariablePlugin(InteractivePlugin):
         )
     """
 
-    def handle(self, node, params, msg=None):
+    def operate(self, node, params, msg=None):
         node = node.parent_window.node_operations.create_next_node(params.get("key"))
-        response_file = params.get("response_file")
-
-        env_data = getattr(node.parent_window, 'env_data', None)
-        is_ssh = env_data and env_data.get('type') == 'ssh'
-
-        def on_confirmed(result_data):
-            if is_ssh:
-                temp_path = os.path.join(tempfile.gettempdir(), f"ask_{uuid.uuid4().hex}.pkl")
-                with open(temp_path, 'wb') as f:
-                    pickle.dump(result_data, f)
-                ssh_send_file(env_data, temp_path, response_file)
-                if os.path.exists(temp_path): os.remove(temp_path)
-            else:
-                os.makedirs(os.path.dirname(response_file), exist_ok=True)
-                with open(response_file, 'wb') as f:
-                    pickle.dump(result_data, f)
-
-        if Settings.get_instance().communication_method.value == "ZMQ通信":
-            return node.persistent_id
-        else:
-            on_confirmed(node.persistent_id)
+        return node.persistent_id

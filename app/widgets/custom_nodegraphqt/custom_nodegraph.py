@@ -1504,16 +1504,15 @@ class CustomNodeGraph(NodeGraph):
             for n in nodes.values():
                 n.view.draw_node()
 
-    # def _on_node_selection_changed(self, sel_ids, desel_ids):
-    #     """
-    #     called when the node selection changes in the viewer.
-    #     (emits node objects <selected nodes>, <deselected nodes>)
-    #
-    #     Args:
-    #         sel_ids (list[str]): new selected node ids.
-    #         desel_ids (list[str]): deselected node ids.
-    #     """
-    #     sel_nodes = [self.get_node_by_id(nid) for nid in sel_ids]
-    #     unsel_nodes = [self.get_node_by_id(nid) for nid in desel_ids]
-    #     print(sel_nodes, unsel_nodes)
-    #     self.node_selection_changed.emit(sel_nodes, unsel_nodes)
+    def get_node_by_uuid(self, uuid):
+        """
+        Returns node that matches the name.
+
+        Args:
+            name (str): name of the node.
+        Returns:
+            NodeGraphQt.NodeObject: node object.
+        """
+        for node_id, node in self._model.nodes.items():
+            if node.persistent_id == uuid:
+                return node

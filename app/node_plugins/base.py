@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
+import os
+import pickle
+import tempfile
+import uuid
 from abc import ABC, abstractmethod
+
+from app.utils.config import Settings
+from app.utils.utils import ssh_send_file
 
 
 class BaseNodePlugin(ABC):
@@ -38,8 +45,31 @@ class DisplayPlugin(BaseNodePlugin):
 class InteractivePlugin(BaseNodePlugin):
     """分类二：双向交互插件 (Node <-> UI)"""
 
-    @abstractmethod
+    def on_confirmed(self, result_data, env_data, response_file):
+        is_ssh = env_data and env_data.get('type') == 'ssh'
+        if is_ssh:
+            temp_path = os.path.join(tempfile.gettempdir(), f"ask_{uuid.uuid4().hex}.pkl")
+            with open(temp_path, 'wb') as f:
+                pickle.dump(result_data, f)
+            ssh_send_file(env_data, temp_path, response_file)
+            if os.path.exists(temp_path): os.remove(temp_path)
+        else:
+            os.makedirs(os.path.dirname(response_file), exist_ok=True)
+            with open(response_file, 'wb') as f:
+                pickle.dump(result_data, f)
+
     def handle(self, node, params, msg=None):
+        # 默认从 params 获取数据并渲染
+        response_file = params.get("response_file")
+        env_data = getattr(node.parent_window, 'env_data', None)
+        result = self.operate(node, params, msg)
+        if Settings.get_instance().communication_method.value == "ZMQ通信":
+            return result
+        else:
+            self.on_confirmed(result, env_data, response_file)
+
+    @abstractmethod
+    def operate(self, node, params, msg=None):
         raise NotImplementedError
 
 
