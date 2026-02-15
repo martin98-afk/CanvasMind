@@ -84,6 +84,22 @@ class MCPToolCallingAgentComponent(BaseComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._client_cache = {}
+        import asyncio
+        try:
+            self._loop = asyncio.get_event_loop()
+            if self._loop.is_closed():
+                self._loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self._loop)
+        except RuntimeError:  # 无当前循环
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+        
+        # 应用 nest_asyncio 允许在运行中的循环中嵌套调用
+        try:
+            import nest_asyncio
+            nest_asyncio.apply()
+        except ImportError:
+            pass
 
     def _get_tools_list(self, tools_dict):
         if not tools_dict or not isinstance(tools_dict, dict):
@@ -97,12 +113,21 @@ class MCPToolCallingAgentComponent(BaseComponent):
         import json as json_lib
         
         config = mcp_metadata.get("original_config", {})
-        config_hash = hashlib.md5(json_lib.dumps(config, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        config_str = json_lib.dumps(config, sort_keys=True, ensure_ascii=False)
+        config_hash = hashlib.md5(config_str.encode()).hexdigest()
         
+        # ===== 1. 获取或初始化客户端 =====
         if config_hash not in self._client_cache:
             try:
                 from fastmcp import Client
-                self._client_cache[config_hash] = Client(config)
+                client = Client(config)
+                # 存储客户端 + 连接状态 + 异步锁（防并发）
+                self._client_cache[config_hash] = {
+                    "client": client,
+                    "connected": False,
+                    "lock": asyncio.Lock()
+                }
+                self.logger.info(f"🆕 MCP客户端初始化 (hash: {config_hash[:8]})")
             except ImportError as e:
                 return {
                     "success": False,
@@ -112,15 +137,26 @@ class MCPToolCallingAgentComponent(BaseComponent):
                     "timestamp": time.time()
                 }
         
-        client = self._client_cache[config_hash]
+        client_info = self._client_cache[config_hash]
+        client = client_info["client"]
+        # =================================
         
+        # ===== 2. 异步调用函数（在组件的统一事件循环中执行）=====
         async def _call():
+            # 使用锁防止并发连接
+            async with client_info["lock"]:
+                # 检查连接状态（通过私有属性 _transport 判断，fastmcp 2.3+ 有效）
+                if not client_info["connected"] or getattr(client, "_transport", None) is None:
+                    self.logger.debug(f"🔌 建立MCP连接 (hash: {config_hash[:8]})")
+                    await client.__aenter__()  # 手动建立连接
+                    client_info["connected"] = True
+                    self.logger.debug(f"✅ MCP连接建立成功")
+            
             try:
-                async with client:
-                    result = await asyncio.wait_for(
-                        client.call_tool(tool_name, arguments),
-                        timeout=float(self.params.tool_timeout)
-                    )
+                result = await asyncio.wait_for(
+                    client.call_tool(tool_name, arguments),
+                    timeout=float(self.params.tool_timeout)
+                )
                 content = result.get("content", str(result)) if isinstance(result, dict) else str(result)
                 return {
                     "success": True,
@@ -140,7 +176,9 @@ class MCPToolCallingAgentComponent(BaseComponent):
             except Exception as e:
                 error_msg = str(e)
                 if "not connected" in error_msg.lower():
-                    error_msg = "MCP客户端连接错误"
+                    error_msg = "MCP客户端连接意外断开（可能服务崩溃）"
+                    # 重置连接状态，下次调用会重建
+                    client_info["connected"] = False
                 return {
                     "success": False,
                     "error": f"工具 '{tool_name}' 失败: {error_msg}",
@@ -149,8 +187,8 @@ class MCPToolCallingAgentComponent(BaseComponent):
                     "timestamp": time.time()
                 }
         
-        # ===== 直接调用 asyncio.run()，nest_asyncio 已处理嵌套问题 =====
-        return asyncio.run(_call())
+        # ===== 3. 在组件的统一事件循环中执行（关键！避免循环漂移）=====
+        return self._loop.run_until_complete(_call())
 
     def _parse_history(self, history_input):
         import json as json_lib
@@ -185,11 +223,6 @@ class MCPToolCallingAgentComponent(BaseComponent):
 
     def run(self, params, inputs):
         import time
-        try:
-            import nest_asyncio
-            nest_asyncio.apply()  # 允许在已有事件循环中嵌套运行
-        except ImportError:
-            pass  # 非 IPython 环境可忽略
         self.params = params
         start_time = time.time()
         self.logger.info(f"🚀 MCP工具调用智能体开始执行 | 输入: '{inputs.input_data[:50]}...' | 工具启用: {params.enable_tools}")
