@@ -8,18 +8,16 @@ from PyQt5.QtCore import pyqtSignal, QThreadPool, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
 
-from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
 from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
-from app.interfaces.canvas_interaface.utils.canvas_multi_runner import CanvasMultiRunner
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
 from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
-from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.environment_manager import EnvironmentManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base_node import BasicNodeWithGlobalProperty
@@ -73,7 +71,6 @@ class CanvasPage(QWidget):
 
         # 2. 运行控制逻辑
         self.canvas_runner = CanvasRunner(self)
-        self.multi_runner = CanvasMultiRunner(self)
 
         # 3. 辅助工具
         self.quick_manager = QuickComponentManager(self, self.component_map)

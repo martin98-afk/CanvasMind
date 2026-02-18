@@ -15,7 +15,7 @@ from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, topological_sort, resource_path
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 from .logger import get_logger
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 
 logger = get_logger("Exporter")
 

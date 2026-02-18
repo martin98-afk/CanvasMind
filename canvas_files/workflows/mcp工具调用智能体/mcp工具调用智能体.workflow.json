@@ -11,7 +11,7 @@
       "reject_connection_types": "{}"
     },
     "nodes": {
-      "0x1a2258ba7d0": {
+      "0x1b868470250": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "合并MCP配置",
@@ -39,8 +39,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          1327.9663921983242,
-          336.6978889779155
+          1871.740096683813,
+          372.5130465281392
         ],
         "layout_direction": 0,
         "port_deletion_allowed": true,
@@ -112,7 +112,7 @@
           }
         }
       },
-      "0x1a22592a4d0": {
+      "0x1b8684c2010": {
         "type_": "dynamic.StatusDynamicNode_917435cc-5a9a-4dd3-858c-c6d23cec51ae",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具发现 1",
@@ -140,8 +140,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          1724.077215132813,
-          336.6978889779155
+          2267.8509196183013,
+          372.5130465281392
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -884,7 +884,7 @@
           }
         }
       },
-      "0x1a225938c50": {
+      "0x1b8684e6450": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "自定义mcp结构",
@@ -912,8 +912,8 @@
         "width": 592.5413797316207,
         "height": 329.9116750531182,
         "pos": [
-          269.93310742664903,
-          585.5492213411552
+          813.7068119121375,
+          621.3643788913791
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -940,7 +940,7 @@
           "text": "{\n  \"mcpServers\": {\n    \"Canvas_获取当前时间\": {\n      \"command\": \"E:/CanvasMind/CanvasMind/_internal/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"E:/CanvasMind/CanvasMind/canvas_files/projects/获取当前时间/mcp_instance.py\"\n      ]\n    }\n  }\n}"
         }
       },
-      "0x1a22593a890": {
+      "0x1b8684e7dd0": {
         "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
         "icon": ":/icons/同心圆.svg",
         "name": "提示词模板",
@@ -1012,14 +1012,14 @@
           "prompt": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述"
         }
       },
-      "0x1a23628c350": {
+      "0x1b8684f9790": {
         "type_": "dynamic.StatusDynamicNode_b160dcb9-52c8-4625-9b75-aa564c0b68c6",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具调用智能体",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1098,7 +1098,7 @@
             "mcp_metadata": false
           },
           "FULL_PATH": "大模型组件/mcp工具/MCP工具调用智能体",
-          "_status": "success"
+          "_status": "last_success"
         },
         "input_ports": [
           {
@@ -1241,7 +1241,7 @@
           ]
         }
       },
-      "0x1a23629e210": {
+      "0x1b868507590": {
         "type_": "dynamic.StatusDynamicNode_309f9eab-b2b4-41cd-bec9-2e4f4fd1d261",
         "icon": ":/icons/同心圆.svg",
         "name": "消息推送执行 1",
@@ -1313,7 +1313,7 @@
           "log": "DingTalk[0]: OK"
         }
       },
-      "0x1a2362acb90": {
+      "0x1b868515e90": {
         "type_": "dynamic.StatusDynamicNode_4c1e1377-6ebc-46a9-8cd9-af2279ade58a",
         "icon": ":/icons/同心圆.svg",
         "name": "文本转json",
@@ -1341,8 +1341,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          1020.933107426649,
-          336.69788897791545
+          1564.7068119121375,
+          372.5130465281392
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1382,7 +1382,7 @@
           }
         }
       },
-      "0x1a2362ae350": {
+      "0x1b868517750": {
         "type_": "dynamic.StatusDynamicNode_226d6892-09cc-4486-b5ad-e1e34a9e242c",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具配置 2",
@@ -1410,8 +1410,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          269.93310742664903,
-          1010.4608963942734
+          813.7068119121375,
+          1046.276053944497
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1465,7 +1465,7 @@
           }
         }
       },
-      "0x1a2362c2b90": {
+      "0x1b868534090": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器 1",
@@ -1545,7 +1545,7 @@
           "output": {}
         }
       },
-      "0x1a2362ec2d0": {
+      "0x1b868559750": {
         "type_": "dynamic.StatusDynamicNode_cefba941-c9f4-4b57-bf09-0f1bf08951d2",
         "icon": ":/icons/同心圆.svg",
         "name": "Gitee图床配置",
@@ -1600,7 +1600,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x1a2362eea10": {
+      "0x1b86855bd10": {
         "type_": "dynamic.StatusDynamicNode_67358ab2-5d99-4918-9368-7134940084a1",
         "icon": ":/icons/同心圆.svg",
         "name": "钉钉配置 2",
@@ -1654,7 +1654,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x1a204194c50": {
+      "0x1b868569bd0": {
         "type_": "dynamic.StatusDynamicNode_ab01999d-dd29-4763-bebb-e67931ddc635",
         "icon": ":/icons/同心圆.svg",
         "name": "获取当前时间",
@@ -1709,7 +1709,7 @@
           "timestamp": "2026-02-16 02:23:14"
         }
       },
-      "0x1a204197690": {
+      "0x1b86856ad50": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入",
@@ -1749,7 +1749,7 @@
           "_exec_mode": "subprocess",
           "_data_select": {},
           "version": "latest",
-          "input": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述",
+          "input": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接",
           "_status": "last_success",
           "FULL_PATH": "数据集成/文本输入"
         },
@@ -1768,101 +1768,101 @@
     "connections": [
       {
         "in": [
-          "0x1a2258ba7d0",
+          "0x1b868470250",
           "input1"
         ],
         "out": [
-          "0x1a2362ae350",
+          "0x1b868517750",
           "mcp_config"
         ]
       },
       {
         "in": [
-          "0x1a2258ba7d0",
+          "0x1b868470250",
           "input1"
         ],
         "out": [
-          "0x1a2362acb90",
+          "0x1b868515e90",
           "output"
         ]
       },
       {
         "out": [
-          "0x1a2258ba7d0",
+          "0x1b868470250",
           "output1"
         ],
         "in": [
-          "0x1a22592a4d0",
+          "0x1b8684c2010",
           "mcp_config"
         ]
       },
       {
         "out": [
-          "0x1a22592a4d0",
+          "0x1b8684c2010",
           "tools_dict"
         ],
         "in": [
-          "0x1a23628c350",
+          "0x1b8684f9790",
           "tools_dict"
         ]
       },
       {
         "out": [
-          "0x1a22592a4d0",
+          "0x1b8684c2010",
           "mcp_metadata"
         ],
         "in": [
-          "0x1a23628c350",
+          "0x1b8684f9790",
           "mcp_metadata"
         ]
       },
       {
         "out": [
-          "0x1a225938c50",
+          "0x1b8684e6450",
           "text"
         ],
         "in": [
-          "0x1a2362acb90",
+          "0x1b868515e90",
           "input"
         ]
       },
       {
         "in": [
-          "0x1a22593a890",
+          "0x1b8684e7dd0",
           "variables"
         ],
         "out": [
-          "0x1a2362c2b90",
+          "0x1b868534090",
           "output"
         ]
       },
       {
         "in": [
-          "0x1a22593a890",
+          "0x1b8684e7dd0",
           "variables"
         ],
         "out": [
-          "0x1a204197690",
+          "0x1b86856ad50",
           "text"
         ]
       },
       {
         "out": [
-          "0x1a22593a890",
+          "0x1b8684e7dd0",
           "prompt"
         ],
         "in": [
-          "0x1a23628c350",
+          "0x1b8684f9790",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x1a23628c350",
+          "0x1b8684f9790",
           "response"
         ],
         "in": [
-          "0x1a23629e210",
+          "0x1b868507590",
           "message"
         ]
       }
@@ -1891,7 +1891,7 @@
       "custom": {
         "大模型配置": {
           "value": {
-            "模型名称": "nvidia/nemotron-3-nano",
+            "模型名称": "qwen/qwen3-30b-a3b-2507",
             "API_URL": "http://127.0.0.1:1234/v1",
             "API_KEY": "",
             "是否思考": true,

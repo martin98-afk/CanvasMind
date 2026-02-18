@@ -17,7 +17,7 @@ from qfluentwidgets import (
     TransparentPushButton, FlowLayout
 )
 
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.utils.utils import get_icon, serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel

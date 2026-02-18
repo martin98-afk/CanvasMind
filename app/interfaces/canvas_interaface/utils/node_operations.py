@@ -9,7 +9,7 @@ from PyQt5.QtGui import QIcon
 from qfluentwidgets import Theme, getIconColor, FluentIcon
 
 from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node

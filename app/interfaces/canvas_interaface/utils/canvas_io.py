@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel
 
 from .logger import get_logger
 from .utils import WorkflowLoader, SaveTask
-from ..widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from ..widgets.progress_overlay import ModernProgressOverlay
 
 logger = get_logger("CanvasIO")
@@ -49,7 +49,6 @@ class CanvasIO(QObject):
             }
 
             full_data = {
-                "version": "1.0",
                 "graph": graph_data,
                 "runtime": runtime
             }
@@ -169,7 +168,9 @@ class CanvasIO(QObject):
 
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._start_finish_loading(runtime_data)
+                target_env = runtime_data.get("environment")
+                # --- 主线程 UI 更新 ---
+                self.canvas_loaded.emit(target_env)
                 return
 
             # ─────────────────────────────────────────────────────────────

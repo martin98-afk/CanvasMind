@@ -1,7 +1,6 @@
 # /app/interfaces/canvas_interface/environment_manager.py
-from PyQt5.QtCore import QTimer, Qt
 from app.interfaces.canvas_interaface.utils.logger import get_logger
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 
 logger = get_logger("EnvironmentManager")
 
