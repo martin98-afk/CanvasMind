@@ -5,7 +5,7 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, ViewerEnum, )
+    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, )
 from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -28,7 +28,6 @@ from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
-from app.widgets.custom_nodegraphqt.node_layout_handler import NodeLayoutHandler
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 # --- 常量配置 ---
@@ -798,7 +797,6 @@ class CustomNodeViewer(NodeViewer):
                         node_ids.append(item.id)
 
                 self.scene().update(map_rect)
-                return
 
         moved_nodes = {
             n: xy_pos for n, xy_pos in self._node_positions.items()
@@ -817,7 +815,7 @@ class CustomNodeViewer(NodeViewer):
             prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
             nodes, _ = self.selected_items()
             node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-            if prev_ids != node_ids and event.button() != QtCore.Qt.MiddleButton and not self._navigation_mode:
+            if prev_ids != node_ids:
                 self.node_selection_changed.emit(node_ids, prev_ids)
 
         self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
@@ -978,7 +976,6 @@ class CustomNodeViewer(NodeViewer):
                 self.home_window.nav_view.record_usage(full_path)
                 node.set_pos(scene_pos.x(), scene_pos.y())
                 QtCore.QTimer.singleShot(0, lambda: self.home_window.property_panel.update_properties(node))
-                self.home_window.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
                 if hasattr(node, 'status'):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
 
@@ -1165,6 +1162,7 @@ class CustomNodeGraph(NodeGraph):
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
         self._viewer.graph = self
+        self.global_variables = GlobalVariableContext()  # 画布全局变量
 
     def _register_context_menu(self):
         """
@@ -1291,6 +1289,99 @@ class CustomNodeGraph(NodeGraph):
         sub_graph.viewer().zoom_to_nodes([n.view for n in sub_graph.all_nodes()])
         return sub_graph
 
+    def serialize_session(self, exclude_keys: list[str]=[]):
+        """
+        Serializes the current node graph layout to a dictionary.
+
+        See Also:
+            :meth:`NodeGraph.deserialize_session`,
+            :meth:`NodeGraph.save_session`,
+            :meth:`NodeGraph.load_session`
+
+        Returns:
+            dict: serialized session of the current node layout.
+        """
+        return self._serialize(self.all_nodes(), exclude_keys)
+
+    def _serialize(self, nodes, exclude_keys: list[str]=[]):
+        """
+        serialize nodes to a dict.
+        (used internally by the node graph)
+
+        Args:
+            nodes (list[NodeGraphQt.Nodes]): list of node instances.
+
+        Returns:
+            dict: serialized data.
+        """
+        serial_data = {'graph': {}, 'nodes': {}, 'connections': []}
+        nodes_data = {}
+
+        # serialize graph session.
+        serial_data['graph']['layout_direction'] = self.layout_direction()
+        serial_data['graph']['acyclic'] = self.acyclic()
+        serial_data['graph']['pipe_collision'] = self.pipe_collision()
+        serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
+        serial_data['graph']['pipe_style'] = self.pipe_style()
+
+        # connection constrains.
+        serial_data['graph']['accept_connection_types'] = json.dumps(self.model.accept_connection_types, default=list)
+        serial_data['graph']['reject_connection_types'] = json.dumps(self.model.reject_connection_types, default=list)
+
+        # serialize nodes.
+        for n in nodes:
+            # update the node model.
+            n.update_model()
+
+            node_dict = n.model.to_dict
+            n_id = list(node_dict.keys())[0]
+            node_dict[n_id].update(
+                {
+                    "input_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in n.input_ports()],
+                    "output_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in
+                                    n.output_ports()],
+                    "output_values": {} if not hasattr(n, "_output_values") else serialize_for_json(n._output_values)
+                }
+            )
+            node_dict[n_id]["custom"]["FULL_PATH"] = n.FULL_PATH
+            # 过滤不需要的字段
+            node_dict[n_id] = {k: v for k, v in node_dict[n_id].items() if k not in exclude_keys}
+            nodes_data.update(node_dict)
+
+        for n_id, n_data in nodes_data.items():
+            serial_data['nodes'][n_id] = n_data
+
+            # serialize connections
+            inputs = n_data.pop('inputs') if n_data.get('inputs') else {}
+            outputs = n_data.pop('outputs') if n_data.get('outputs') else {}
+
+            for pname, conn_data in inputs.items():
+                for conn_id, prt_names in conn_data.items():
+                    for conn_prt in prt_names:
+                        pipe = {
+                            PortTypeEnum.IN.value: [n_id, pname],
+                            PortTypeEnum.OUT.value: [conn_id, conn_prt]
+                        }
+                        if pipe not in serial_data['connections']:
+                            serial_data['connections'].append(pipe)
+
+            for pname, conn_data in outputs.items():
+                for conn_id, prt_names in conn_data.items():
+                    for conn_prt in prt_names:
+                        pipe = {
+                            PortTypeEnum.OUT.value: [n_id, pname],
+                            PortTypeEnum.IN.value: [conn_id, conn_prt]
+                        }
+                        if pipe not in serial_data['connections']:
+                            serial_data['connections'].append(pipe)
+
+        if not serial_data['connections']:
+            serial_data.pop('connections')
+        # 全局变量序列化
+        serial_data['global_variables'] = self.global_variables.serialize()
+
+        return serial_data
+
     def _deserialize(self, data, relative_pos=False, pos=None, adjust_graph_style=True):
         """
         deserialize node data.
@@ -1309,6 +1400,9 @@ class CustomNodeGraph(NodeGraph):
             if isinstance(data, str): return
             self._viewer.scene().blockSignals(True)
             self._viewer.setUpdatesEnabled(False)
+            # 反序列化 全局变量
+            if data.get("global_variables"):
+                self.global_variables.deserialize(data.get("global_variables"))
             node_resize_memory = Settings.get_instance().canvas_resize_memory.value
             # Recursive function to convert last lists to sets
             def convert_last_list_to_set(d):
@@ -1361,6 +1455,7 @@ class CustomNodeGraph(NodeGraph):
                 identifier = n_data['type_']
                 node_width, node_height = n_data.get('width'), n_data.get('height')
                 node = self._node_factory.create_node_instance(identifier)
+                node._output_values = deserialize_from_json(n_data.get('output_values', {}))
                 if node:
                     # 避免复制时触发重命名信号
                     node.NODE_NAME = n_data.get('name', node.NODE_NAME)
@@ -1369,11 +1464,6 @@ class CustomNodeGraph(NodeGraph):
                         if prop in n_data.keys():
                             node.model.set_property(prop, n_data[prop])
                     self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
-                    if n_data.get('port_deletion_allowed', None):
-                        node.set_ports({
-                            'input_ports': n_data['input_ports'],
-                            'output_ports': n_data['output_ports']
-                        })
                     # set custom properties.
                     for prop, val in n_data.get('custom', {}).items():
                         try:
@@ -1396,6 +1486,11 @@ class CustomNodeGraph(NodeGraph):
                     # 决定是否还原节点最后保存时缩放大小
                     if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
                         node.view._sync_size_from_model(node_width, node_height)
+                    # 改变节点状态，成功状态改为上次成功状态进行区分
+                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
+                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if hasattr(node, "status"):
+                        node.status = n_data["custom"].get("_status")
                     nodes[n_id] = node
 
             # 处理 backdrop 节点（放到最后）
@@ -1428,6 +1523,13 @@ class CustomNodeGraph(NodeGraph):
                     if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
                         node.view._sync_size_from_model(node_width, node_height)
                     nodes[n_id] = node
+
+                    # 改变节点状态，成功状态改为上次成功状态进行区分
+                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
+                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if hasattr(node, "status"):
+                        node.status = n_data["custom"].get("_status")
+
             node_objs = nodes.values()
             if relative_pos:
                 self._viewer.move_nodes([n.view for n in node_objs])
@@ -1504,16 +1606,15 @@ class CustomNodeGraph(NodeGraph):
             for n in nodes.values():
                 n.view.draw_node()
 
-    # def _on_node_selection_changed(self, sel_ids, desel_ids):
-    #     """
-    #     called when the node selection changes in the viewer.
-    #     (emits node objects <selected nodes>, <deselected nodes>)
-    #
-    #     Args:
-    #         sel_ids (list[str]): new selected node ids.
-    #         desel_ids (list[str]): deselected node ids.
-    #     """
-    #     sel_nodes = [self.get_node_by_id(nid) for nid in sel_ids]
-    #     unsel_nodes = [self.get_node_by_id(nid) for nid in desel_ids]
-    #     print(sel_nodes, unsel_nodes)
-    #     self.node_selection_changed.emit(sel_nodes, unsel_nodes)
+    def get_node_by_uuid(self, uuid):
+        """
+        Returns node that matches the name.
+
+        Args:
+            name (str): name of the node.
+        Returns:
+            NodeGraphQt.NodeObject: node object.
+        """
+        for node_id, node in self._model.nodes.items():
+            if node.persistent_id == uuid:
+                return node

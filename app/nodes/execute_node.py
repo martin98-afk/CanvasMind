@@ -69,16 +69,22 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             self._generate_parms_widget()
-            for port_name, label, connection, port_type, description in (
-                    ComponentScanner().get_component_by_uuid(self.uuid).get_inputs()):
+            comp_cls = ComponentScanner().get_component_by_uuid(self.uuid)
+            port_infos = comp_cls.get_inputs()
+            port_sub_types = comp_cls.get_input_sub_types()
+            for (port_name, label, connection, port_type, description), sub_type in zip(port_infos, port_sub_types):
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 if connection == ConnectionType.SINGLE:
                     _, port = self.add_input(port_name)
                 else:
                     _, port = self.add_input(port_name, True, painter_func=draw_square_port)
+                port_description = f"名称: {label}\n类型: {port_type.value}"
+                if sub_type:
+                    port_description += f"\n类型标识: {sub_type}"
                 if description:
-                    port.setToolTip(description)
+                    port_description += f"\n{description}"
+                port.setToolTip(port_description)
             QtCore.QTimer.singleShot(0, self.build_outputs)
 
             # 连接父类的信号（如果父类没有自动连的话，这里确保连上）
@@ -95,12 +101,18 @@ def create_node_class(full_path, file_path, parent_window=None):
                     break
 
         @property
+        def description(self):
+            return ComponentScanner().get_component_by_uuid(self.uuid).description
+
+        @property
         def uuid(self):
             return self.model.type_.split("StatusDynamicNode_")[1]
 
         def build_outputs(self):
-            for port_name, label, port_type, description in (
-                    ComponentScanner().get_component_by_uuid(self.uuid).get_outputs()):
+            comp_cls = ComponentScanner().get_component_by_uuid(self.uuid)
+            port_infos = comp_cls.get_outputs()
+            port_sub_types = comp_cls.get_output_sub_types()
+            for (port_name, label, port_type, description), sub_type in zip(port_infos, port_sub_types):
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
                 self.delete_output(port_name)
@@ -109,8 +121,12 @@ def create_node_class(full_path, file_path, parent_window=None):
                     _, port = self.add_output(port_name, painter_func=draw_special_outputport)
                 else:
                     _, port = self.add_output(port_name)
+                port_description = f"名称: {label}\n类型: {port_type.value}"
+                if sub_type:
+                    port_description += f"\n类型标识: {sub_type}"
                 if description:
-                    port.setToolTip(description)
+                    port_description += f"\n{description}"
+                port.setToolTip(port_description)
 
         def refresh_node_outports(self):
             self.set_port_deletion_allowed(True)

@@ -469,39 +469,48 @@ class GlobalVariableContext(BaseModel):
 
     def deserialize(self, data):
         history_env = data.get("env", {})
-        self.env.metadata = self.env.metadata | history_env.get("metadata", {})
-        self.env.user_id = history_env.get("user_id")
-        self.env.canvas_id = history_env.get("canvas_id")
-        self.env.session_id = history_env.get("session_id")
-        self.env.run_id = history_env.get("run_id")
-        # custom
+
+        # metadata: 安全合并，不覆盖已有键
+        if "metadata" in history_env:
+            self.env.metadata = {**self.env.metadata, **history_env["metadata"]}
+
+        # custom: 保留当前数据，仅追加缺失项（按历史顺序）
         custom_data = data.get("custom", {})
         custom_order = data.get("custom_order", [])
-        # 按 custom_order 顺序重建 OrderedDict，缺失的键放在最后（或忽略）
-        self.custom = OrderedDict()
+        existing_keys = set(self.custom.keys())
+
+        # 按 custom_order 顺序追加缺失项
         for k in custom_order:
-            if k in custom_data:
+            if k in custom_data and k not in existing_keys:
                 self.custom[k] = CustomVariable(**custom_data[k])
-        # 可选：补充未在 order 中的键（兼容旧数据）
+                existing_keys.add(k)
+
+        # 补充未在 order 中的缺失项
         for k, v in custom_data.items():
-            if k not in self.custom:
+            if k not in existing_keys:
                 self.custom[k] = CustomVariable(**v)
 
-        # node_vars 同理
+        # node_vars: 同样保留当前数据，仅追加缺失项
         node_vars_data = data.get("node_vars", {})
         node_vars_order = data.get("node_vars_order", [])
-        self.node_vars = OrderedDict()
+        existing_node_keys = set(self.node_vars.keys())
+
         for k in node_vars_order:
-            if k in node_vars_data:
+            if k in node_vars_data and k not in existing_node_keys:
                 v = node_vars_data[k]
                 self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+                existing_node_keys.add(k)
+
         for k, v in node_vars_data.items():
-            if k not in self.node_vars:
+            if k not in existing_node_keys:
                 self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
-        # 临时inputs解析
+
+        # inputs: 仅补充当前不存在的输入项（避免覆盖运行时输入）
         inputs_data = data.get("inputs", {})
-        for k, v in inputs_data.items():
-            self.input[k.split(".")[1]] = NodeVariable(value=v)
+        for full_key, value in inputs_data.items():
+            input_name = full_key.split(".", 1)[-1]  # 安全分割，避免索引错误
+            if input_name not in self.input:  # 仅当当前不存在时才添加
+                self.input[input_name] = NodeVariable(value=value)
 
     def get(self, key: str, default=None) -> Any:
         if not isinstance(key, str):

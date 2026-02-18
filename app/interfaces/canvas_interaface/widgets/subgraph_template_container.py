@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
-import json
-import uuid
+import orjson
 import shutil
-import traceback
+import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer, QMimeData, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QPoint, QRectF, QTimer, QMimeData
 from PyQt5.QtGui import QPixmap, QPainter, QImage, QDrag
 from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout,
     QApplication, QDialog
 )
+
 from qfluentwidgets import (
     CardWidget, TransparentToolButton, FluentIcon, BodyLabel,
     StrongBodyLabel, RoundMenu, Action, SmoothScrollArea,
     TransparentPushButton, FlowLayout
 )
 
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.utils.utils import get_icon, serialize_for_json, deserialize_from_json
-from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
+from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog, CustomEditableComboDialog
 
 
@@ -204,7 +204,7 @@ class SubgraphTemplatePanel(QWidget):
                 if meta_file.exists() and preview_file.exists():
                     try:
                         with open(meta_file, 'r', encoding='utf-8') as f:
-                            meta = json.load(f)
+                            meta = orjson.loads(f.read())
                         self._template_cache[tid] = {
                             "name": meta.get("name", tid),
                             "tags": meta.get("tags", []),
@@ -348,10 +348,10 @@ class SubgraphTemplatePanel(QWidget):
         if not meta_file.exists(): return
         try:
             with open(meta_file, 'r', encoding='utf-8') as f:
-                meta = json.load(f)
+                meta = orjson.loads(f.read())
             meta['tags'] = list(dict.fromkeys(tags))
-            with open(meta_file, 'w', encoding='utf-8') as f:
-                json.dump(meta, f, ensure_ascii=False, indent=2)
+            with open(meta_file, 'wb') as f:
+                f.write(orjson.dumps(meta, option=orjson.OPT_INDENT_2))
         except Exception:
             pass
 
@@ -398,7 +398,7 @@ class SubgraphTemplatePanel(QWidget):
         nodes_file = self._template_dir / tid / "nodes.json"
         if not nodes_file.exists(): return
         with open(nodes_file, "r", encoding="utf-8") as f:
-            nodes_data = deserialize_from_json(json.load(f))
+            nodes_data = deserialize_from_json(orjson.loads(f.read()))
 
         # 性能优化：暂停更新
         viewer = graph.viewer()
@@ -466,11 +466,11 @@ class SubgraphTemplatePanel(QWidget):
         template_path = self._template_dir / tid
         template_path.mkdir(exist_ok=True)
 
-        with open(template_path / "nodes.json", "w", encoding="utf-8") as f:
-            json.dump(serialize_for_json(nodes_data), f, ensure_ascii=False, indent=2)
+        with open(template_path / "nodes.json", "wb") as f:
+            f.write(orjson.dumps(serialize_for_json(nodes_data), option=orjson.OPT_INDENT_2))
         preview_pixmap.save(str(template_path / "preview.png"))
-        with open(template_path / "meta.json", "w", encoding="utf-8") as f:
-            json.dump({"id": tid, "name": template_name, "tags": []}, f, ensure_ascii=False)
+        with open(template_path / "meta.json", "wb") as f:
+            f.write(orjson.dumps({"id": tid, "name": template_name, "tags": []}, option=orjson.OPT_INDENT_2))
 
         self._template_cache[tid] = {"name": template_name, "tags": [],
                                      "preview_path": str(template_path / "preview.png")}

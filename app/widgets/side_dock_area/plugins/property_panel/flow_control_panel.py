@@ -267,7 +267,7 @@ class FlowControlPanelWidget(QWidget):
         # 4. 内部列表更新 (保持不变)
         _, _, internal_nodes = node.get_nodes()
         if self._backdrop_internal_nodes_list:
-            status_list = [self.main_window.get_node_status(n) for n in internal_nodes]
+            status_list = [n.get_property("_status") for n in internal_nodes]
             name_list = [n.name() for n in internal_nodes]
             self._backdrop_internal_nodes_list.update_content(status_list, name_list)
             self._update_nodes_card_height()

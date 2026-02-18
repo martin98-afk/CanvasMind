@@ -38,12 +38,8 @@ class LeftPanel(QWidget):
         """
         在基类中统一配置字体
         """
-        # 1. 获取字体名称 (这里替换为你实际获取配置的代码)
-        try:
-            font_name = Settings.get_instance().canvas_font_type.value
-        except Exception:
-            font_name = "Microsoft YaHei"  # 默认字体
-
+        # 1. 获取字体名称
+        font_name = Settings.get_instance().canvas_font_type.value
         # 2. 方案 A：使用 setFont (基础设置)
         font = self.font()
         font.setFamily(font_name)

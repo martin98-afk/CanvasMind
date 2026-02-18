@@ -245,7 +245,7 @@ class PropertyPanel(QWidget):
         self.anim_group.clear()
         super().closeEvent(event)
 
-    def update_properties(self, node, node_changed=False):
+    def update_properties(self, node):
         if not self._allowed_update:
             return
 

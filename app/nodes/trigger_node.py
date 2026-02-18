@@ -68,6 +68,7 @@ def create_trigger_node(parent_window):
             # 信号绑定
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self._patch_view_drawing()
+            self.view.rename_signal.connect(parent_window.rename_node_vars)
 
         # --- UI 逻辑 (保持不变) ---
         def _generate_widgets(self):

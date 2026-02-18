@@ -6,11 +6,9 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt, QRectF, pyqtSlot
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QApplication, QGraphicsProxyWidget, QLabel
 
-from app.nodes.status_node import NodeStatus
-from app.scan_components import ComponentScanner
 from .logger import get_logger
-from .utils import WorkflowLoader, SaveTask, FinishLoadingWorker, FinishLoadingTask
-from ..widgets.message_manager import MessageManager
+from .utils import WorkflowLoader, SaveTask
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from ..widgets.progress_overlay import ModernProgressOverlay
 
 logger = get_logger("CanvasIO")
@@ -29,7 +27,6 @@ class CanvasIO(QObject):
         self.graph = graph
         self.global_variables = global_variables
         self.parent = parent
-        self.node_status = parent.node_status
         self._save_progress = None  # 保存进度的遮罩引用
 
     def save_full_workflow(self, file_path, show_info=True):
@@ -42,40 +39,18 @@ class CanvasIO(QObject):
         logger.info(f"开始准备保存数据: {file_path}")
 
         # [步骤1] 主线程提取数据
-        # 必须在主线程执行，因为涉及访问 QGraphicsItem 等 UI 对象
         try:
             QApplication.processEvents()  # 强制刷新一下UI显示遮罩
 
-            graph_data = self.graph.serialize_session()
-            for node_data in graph_data["nodes"].values():
-                if "custom" in node_data:
-                    node_data["custom"].pop("global_variable", None)
+            graph_data = self.graph.serialize_session(exclude_keys=["global_variable", "_zmq_ports"])
 
             runtime = {
-                "environment": self.parent.environment_manager.env_combo.currentData(),
-                "environment_exe": self.parent.environment_manager.get_current_python_exe(),
-                "node_id2stable_key": {},
-                "node_states": {},
-                "node_inputs": {},
-                "node_outputs": {}
+                "environment": self.parent.environment_manager.env_combo.currentData()
             }
 
-            # 这一步循环通常很快，除非节点成千上万，否则不需要移出
-            for node in self.graph.all_nodes():
-                node_comp_cls = ComponentScanner().get_component(getattr(node, 'FULL_PATH', 'unknown'))
-                stable_key = f"{node_comp_cls.uuid}||{node.name()}" if node_comp_cls else f"unknown||{node.name()}"
-                runtime["node_id2stable_key"][node.id] = stable_key
-                runtime["node_states"][stable_key] = self.node_status.get(node.id, "unrun")
-
-                # 这里的 _input_values 可能很大，但这里只是引用传递，很快
-                runtime["node_inputs"][stable_key] = getattr(node, '_input_values', {})
-                runtime["node_outputs"][stable_key] = getattr(node, '_output_values', {})
-
             full_data = {
-                "version": "1.0",
                 "graph": graph_data,
-                "runtime": runtime,
-                "global_variable": self.global_variables.serialize()
+                "runtime": runtime
             }
 
         except Exception as e:
@@ -182,10 +157,10 @@ class CanvasIO(QObject):
     def load_full_workflow(self, file_path):
         self.workflow_loader = WorkflowLoader(file_path, self.graph, self.parent.node_uuid_map)
         self.workflow_loader.finished.connect(
-            lambda gd, rd, ns, gv: self._on_workflow_loaded(gd, rd, ns, gv))
+            lambda gd, rd, gv: self._on_workflow_loaded(gd, rd, gv))
         self.workflow_loader.start()
 
-    def _on_workflow_loaded(self, graph_data, runtime_data, node_status_data, global_variable):
+    def _on_workflow_loaded(self, graph_data, runtime_data, global_variable):
         try:
             self.global_variables.deserialize(global_variable)
             nodes_data = graph_data.get("nodes", {})
@@ -193,7 +168,9 @@ class CanvasIO(QObject):
 
             if total_nodes == 0:
                 self.graph.deserialize_session(graph_data)
-                self._start_finish_loading(runtime_data, node_status_data)
+                target_env = runtime_data.get("environment")
+                # --- 主线程 UI 更新 ---
+                self.canvas_loaded.emit(target_env)
                 return
 
             # ─────────────────────────────────────────────────────────────
@@ -245,7 +222,7 @@ class CanvasIO(QObject):
                 self.graph.add_node = original_add_node
                 progress.close()  # 关闭自定义进度条
 
-            self._start_finish_loading(runtime_data, node_status_data)
+            self._on_finish_loading_in_main_thread(runtime_data)
 
         except Exception as e:
             logger.exception(f"❌ 加载失败: {traceback.format_exc()}")
@@ -254,45 +231,10 @@ class CanvasIO(QObject):
             if 'progress' in locals():
                 progress.close()
 
-    def _start_finish_loading(self, runtime_data, node_status_data):
-        worker = FinishLoadingWorker()
-        worker.finished.connect(self._on_finish_loading_in_main_thread)
-
-        task = FinishLoadingTask(
-            graph=self.graph,
-            runtime_data=runtime_data,
-            node_status_data=node_status_data,
-            worker=worker
-        )
-        task.setAutoDelete(True)
-        # 必须持有引用，否则 signals 可能会在槽函数执行前被垃圾回收
-        task.worker_ref = worker
-
-        self.parent.thread_pool.start(task)
-
-    @pyqtSlot(object, object)
-    def _on_finish_loading_in_main_thread(self, restored_data, target_env):
-        if restored_data is None:
-            MessageManager.error("加载失败", "工作流后处理失败！", self.parent)
-            return
-
+    def _on_finish_loading_in_main_thread(self, runtime_data):
+        target_env = runtime_data.get("environment")
         # --- 主线程 UI 更新 ---
         self.canvas_loaded.emit(target_env)
-        for node in self.graph.all_nodes():
-            data = restored_data.get(node.id)
-            if not data:
-                continue
-            node._input_values = data["input_values"]
-            node._output_values = data["output_values"]
-            status_str = data["status_str"]
-            status_enum = getattr(NodeStatus, f"NODE_STATUS_{status_str.upper()}", NodeStatus.NODE_STATUS_UNRUN)
-            # 每次加载时把上次成功的节点设置为枯黄色，用于区分
-            if status_enum == NodeStatus.NODE_STATUS_SUCCESS:
-                status_enum = NodeStatus.NODE_STATUS_LAST_SUCCESS
-            self.node_status[node.id] = status_enum
-            if hasattr(node, 'status'):
-                node.status = status_enum
-
         self.parent._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
         self.parent._node_id_cache_valid = True
         self.parent._delayed_fit_view()

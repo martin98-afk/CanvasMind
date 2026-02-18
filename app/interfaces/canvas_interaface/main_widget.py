@@ -8,18 +8,16 @@ from PyQt5.QtCore import pyqtSignal, QThreadPool, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget
 from loguru import logger
 
-from app.components.base import GlobalVariableContext
 from app.interfaces.canvas_interaface.constants import TEMPLATE_START_SIZES
 from app.interfaces.canvas_interaface.llm_context import LLMContextProvider
 from app.interfaces.canvas_interaface.utils.auto_saver import AutoSaver
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
-from app.interfaces.canvas_interaface.utils.canvas_multi_runner import CanvasMultiRunner
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
 from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
-from app.interfaces.canvas_interaface.widgets.environment_manager import EnvironmentManager
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.environment_manager import EnvironmentManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base_node import BasicNodeWithGlobalProperty
@@ -65,7 +63,6 @@ class CanvasPage(QWidget):
         self.canvas_widget.setStyleSheet("QWidget {border: none;}")
 
         # 全局变量与基础 IO 工具
-        self.global_variables = GlobalVariableContext() # 画布全局变量
         self.canvas_io = CanvasIO(self.graph, self.global_variables, self)
 
     def _deferred_initialization(self):
@@ -74,7 +71,6 @@ class CanvasPage(QWidget):
 
         # 2. 运行控制逻辑
         self.canvas_runner = CanvasRunner(self)
-        self.multi_runner = CanvasMultiRunner(self)
 
         # 3. 辅助工具
         self.quick_manager = QuickComponentManager(self, self.component_map)
@@ -106,6 +102,10 @@ class CanvasPage(QWidget):
     @property
     def graph(self):
         return self.ui_manager.canvas_manager.current_graph()
+
+    @property
+    def global_variables(self):
+        return self.graph.global_variables
 
     @property
     def node_created(self):
@@ -155,10 +155,6 @@ class CanvasPage(QWidget):
     @property
     def pause_btn(self):
         return self.ui_manager.pause_btn
-
-    @property
-    def node_status(self):
-        return self.node_operations.node_status
 
     @property
     def node_type_map(self):
@@ -505,11 +501,7 @@ class CanvasPage(QWidget):
             node.set_selected(True)
         self.graph.fit_to_selection()
 
-    def get_node_status(self, node):
-        return self.node_status.get(node.id, NodeStatus.NODE_STATUS_UNRUN)
-
     def set_node_status(self, node, status):
-        self.node_status[node.id] = status
         if hasattr(node, 'status'):
             try:
                 node.status = status
@@ -617,7 +609,6 @@ class CanvasPage(QWidget):
         # 5. 常规逻辑：过滤掉作为"内部节点"被连带选中的节点
         # 使用集合差集高效过滤：保留那些 "不是任何选中Backdrop的子节点" 的节点
         top_level_nodes = [n for n in selected_nodes if n not in all_backdrop_internals]
-
         # 6. 根据过滤后的顶层节点数量处理
         if len(top_level_nodes) > 1:
             self.nav_view.clear_recommendations()  # 多选时不显示推荐

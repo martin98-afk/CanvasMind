@@ -9,7 +9,7 @@ from PyQt5.QtGui import QIcon
 from qfluentwidgets import Theme, getIconColor, FluentIcon
 
 from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
-from app.interfaces.canvas_interaface.widgets.message_manager import MessageManager
+from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
@@ -38,7 +38,6 @@ class NodeOperations:
         self._clipboard_data = None
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
-        self.node_status = {}  # {node_id: status}
 
     def _reset_registered(self):
         self.node_type_map = {}
@@ -547,9 +546,6 @@ class NodeOperations:
             return
 
         node_id = node.get_property("persistent_id")
-        # 1. 清理状态缓存
-        if node_id in self.parent.node_status:
-            del self.parent.node_status[node_id]
         if hasattr(node, "on_deleted"):
             node.on_deleted()
         # 2. 异步删除本地目录 (传入列表)
@@ -582,9 +578,6 @@ class NodeOperations:
                     port.clear_connections(push_undo=True, emit_signal=True)
             if hasattr(node, "on_deleted"):
                 node.on_deleted()
-            # 清理状态缓存
-            if node.get_property("persistent_id") in self.parent.node_status:
-                del self.parent.node_status[node.get_property("persistent_id")]
 
         # 1. 批量异步删除本地磁盘文件
         self._delete_node_workspace_async(node_ids_to_delete)

@@ -95,42 +95,44 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
-        # 重新获取 global_vars 对象，以防信号处理延迟导致的数据不一致
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
-            logger.warning(
-                f"Global variables object not found in main_window when handling {action} for {var_type}.{var_name}")
             return
 
         if var_type == "node_vars":
             if action == "clear":
                 global_vars.clear_node_vars(var_name)
+            # 调用优化后的刷新方法
             self._refresh_node_vars_page()
+
         elif var_type == "custom":
             if action == "update":
-                # 处理更新：删除旧卡片，根据新值类型创建新卡片并放入对应布局
                 if var_name in self._custom_var_cards:
-                    old_card = self._custom_var_cards.pop(var_name)
-                    old_card.deleteLater()
-                    # 现在当作新增来处理
-                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
-                        new_value = global_vars.custom[var_name].value
-                        if isinstance(new_value, dict):
-                            new_card = self._create_parameter_group_row(var_name, new_value)
-                            layout_to_use = self.custom_params_layout
-                        else:
-                            new_card = self._create_dict_row(var_name, new_value)
-                            layout_to_use = self.custom_kvs_layout
-                        layout_to_use.addWidget(new_card)
-                        self._custom_var_cards[var_name] = new_card
-                        # 更新分割线可见性
-                        has_params = self.custom_params_layout.count() > 0
-                        has_kvs = self.custom_kvs_layout.count() > 0
-                        self.custom_separator.setVisible(has_params and has_kvs)
+                    card = self._custom_var_cards[var_name]
+                    new_val_obj = global_vars.custom.get(var_name)
+                    if not new_val_obj: return  # 异常保护
+
+                    new_value = new_val_obj.value
+
+                    # 检查类型是否变更 (KV <-> Group)
+                    is_group_card = card.objectName() == "kvGroupCard"
+                    is_new_value_group = isinstance(new_value, dict)
+
+                    if is_group_card != is_new_value_group:
+                        # 类型变了，只能重建
+                        card.deleteLater()
+                        del self._custom_var_cards[var_name]
+                        self._refresh_custom_vars_page()  # 走全量添加逻辑
                     else:
-                        logger.warning(f"Variable {var_name} not found in global_vars.custom during update.")
+                        # 类型没变，原地更新 UI
+                        if is_new_value_group:
+                            # 更新 Group
+                            self._update_parameter_group_card(card, new_value)
+                        else:
+                            # 更新 KV
+                            self._update_kv_card(card, new_value)
                 else:
-                    action = "add"
+                    # 没找到卡片，当作新增
                     self._refresh_custom_vars_page()
             else:
                 self._refresh_custom_vars_page()
@@ -138,6 +140,62 @@ class GlobalPanelWidget:
             self._refresh_env_page()
 
         self.main_window.global_variables_changed.emit(f"{var_type}.{var_name}", action)
+
+    # [新增] 辅助更新 KV 卡片
+    def _update_kv_card(self, card, new_value):
+        layout = card.layout()
+        if layout.count() > 1:
+            value_label = layout.itemAt(1).widget()
+            if isinstance(value_label, BodyLabel):
+                try:
+                    preview = json.dumps(new_value, ensure_ascii=False, default=str)[:40] + "..." \
+                        if isinstance(new_value, (dict, list)) else str(new_value)[:40]
+                except:
+                    preview = "<无法预览>"
+
+                # 只有文字变了才 set，避免闪烁
+                if value_label.text() != preview:
+                    value_label.setText(preview)
+
+    # [新增] 辅助更新 Group 卡片
+    def _update_parameter_group_card(self, card, new_value):
+        # 1. 更新标题栏的计数
+        layout = card.layout()  # VBox
+        title_layout = layout.itemAt(0).layout()  # HBox
+        count_label = title_layout.itemAt(1).widget()
+        new_count_text = f"[参数x{len(new_value)}]"
+        if count_label.text() != new_count_text:
+            count_label.setText(new_count_text)
+
+        # 2. 更新详情区域 (简单起见，这里可以重建详情区，或者遍历更新)
+        # 详情区通常是隐藏的，重建开销不大
+        detail_container = layout.itemAt(1).widget()
+        detail_layout = detail_container.layout()
+
+        # 清空详情
+        while detail_layout.count():
+            item = detail_layout.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+            if item.layout():
+                # 递归清理layout比较麻烦，这里详情结构简单，都是 HBox
+                while item.layout().count():
+                    sub = item.layout().takeAt(0)
+                    if sub.widget(): sub.widget().deleteLater()
+                item.layout().deleteLater()
+
+        # 重新填充
+        for key, val in new_value.items():
+            param_row = QHBoxLayout()
+            param_key = BodyLabel(f"{key}:")
+            param_value_text = str(val)
+            if len(param_value_text) > 50:
+                param_value_text = param_value_text[:50] + "..."
+            param_value = BodyLabel(param_value_text)
+            param_value.setStyleSheet("color: #888888;")
+            param_value.setWordWrap(True)
+            param_row.addWidget(param_key)
+            param_row.addWidget(param_value, 1)
+            detail_layout.addLayout(param_row)
 
     def _on_global_tab_changed(self, key):
         if key == 'env':
@@ -308,46 +366,186 @@ class GlobalPanelWidget:
         self.custom_separator.setVisible(has_params and has_kvs)
 
     def _refresh_node_vars_page(self):
-        """优化后的节点变量刷新逻辑"""
+        """优化后的节点变量刷新逻辑：增量更新 + 布局修复"""
         global_vars = getattr(self.main_window, 'global_variables', None)
         if not global_vars:
             return
 
-        current_node_vars = set(global_vars.node_vars.keys()) if hasattr(global_vars, 'node_vars') else set()
+        # 1. 关键修复：先移除布局最底部的 Stretch (如果有)
+        # 防止多次刷新导致底部堆积多个弹簧，或者卡片被插到弹簧之间
+        cnt = self.node_vars_layout.count()
+        if cnt > 0:
+            last_item = self.node_vars_layout.itemAt(cnt - 1)
+            # 检查是否是 SpacerItem (addStretch 产生的就是 SpacerItem)
+            if last_item.spacerItem():
+                self.node_vars_layout.removeItem(last_item)
+                # 注意：removeItem 不会销毁对象，建议显式删除以防内存泄漏（虽 Python 有 GC）
+                del last_item
 
-        # 清空布局和旧缓存
-        while self.node_vars_layout.count():
-            child = self.node_vars_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-        self._node_var_cards.clear() # 清空旧卡片引用
-
-        if not current_node_vars:
-            empty_label = BodyLabel("变量池中暂无节点输出\n在节点输出菜单中添加")
-            empty_label.setAlignment(Qt.AlignCenter)
-            empty_label.setStyleSheet("color: #888888; margin-top: 50px;")
-            self.node_vars_layout.addWidget(empty_label)
-            return
-
+                # 2. 获取当前数据状态
+        current_node_vars = getattr(global_vars, 'node_vars', {})
         current_node_groups = {}
-        for var_name in current_node_vars:
+        for var_name, var_obj in current_node_vars.items():
             node_name = var_name.split("__")[0]
             if node_name not in current_node_groups:
                 current_node_groups[node_name] = []
-            current_node_groups[node_name].append((var_name, global_vars.node_vars[var_name]))
+            current_node_groups[node_name].append((var_name, var_obj))
 
-        for node_name in sorted(current_node_groups.keys()):
+        # 3. 处理空状态
+        if not current_node_vars:
+            # 清理所有现有卡片
+            for name in list(self._node_var_cards.keys()):
+                self._node_var_cards.pop(name).deleteLater()
+
+            # 显示空提示（如果还没有的话）
+            has_hint = False
+            for i in range(self.node_vars_layout.count()):
+                w = self.node_vars_layout.itemAt(i).widget()
+                if w and w.objectName() == "empty_hint":
+                    has_hint = True
+                    break
+
+            if not has_hint:
+                empty_label = BodyLabel("变量池中暂无节点输出\n在节点输出菜单中添加")
+                empty_label.setAlignment(Qt.AlignCenter)
+                empty_label.setObjectName("empty_hint")
+                empty_label.setStyleSheet("color: #888888; margin-top: 50px;")
+                self.node_vars_layout.addWidget(empty_label)
+            return
+        else:
+            # 如果有数据，移除可能存在的空提示
+            for i in reversed(range(self.node_vars_layout.count())):
+                item = self.node_vars_layout.itemAt(i)
+                if item.widget() and item.widget().objectName() == "empty_hint":
+                    item.widget().deleteLater()
+
+        # 4. 增删卡片
+        existing_nodes = set(self._node_var_cards.keys())
+        target_nodes = set(current_node_groups.keys())
+
+        # 删除不存在的节点组
+        for node_name in existing_nodes - target_nodes:
+            card = self._node_var_cards.pop(node_name)
+            card.deleteLater()
+
+        # 5. 排序并更新布局顺序
+        sorted_node_names = sorted(target_nodes)
+
+        # 使用 layout_index 确保卡片在布局中严格按顺序排列
+        layout_index = 0
+
+        for node_name in sorted_node_names:
             group_items = sorted(current_node_groups[node_name], key=lambda x: x[0])
-            group_card = self._create_node_group_card_enhanced(node_name, group_items)
-            self.node_vars_layout.addWidget(group_card)
-            # --- 关键：存入缓存 ---
-            self._node_var_cards[node_name] = group_card
 
+            if node_name in self._node_var_cards:
+                # 已存在：更新内容
+                card = self._node_var_cards[node_name]
+                self._sync_node_group_content(card, group_items)
+            else:
+                # 新增：创建卡片
+                card = self._create_node_group_card_enhanced(node_name, group_items)
+                self._node_var_cards[node_name] = card
+                # 先简单添加，后面统一调整位置
+                self.node_vars_layout.addWidget(card)
+
+                # --- 强制布局顺序调整 ---
+            # 检查当前 layout_index 位置的组件是否是目标 card
+            current_item = self.node_vars_layout.itemAt(layout_index)
+
+            if current_item is None or current_item.widget() != card:
+                # 如果位置不对（例如新插入了节点，或者顺序变了），将卡片挪到正确位置
+                self.node_vars_layout.removeWidget(card)
+                self.node_vars_layout.insertWidget(layout_index, card)
+
+            layout_index += 1
+
+        # 6. 最后添加 Stretch，确保所有卡片顶端对齐
         self.node_vars_layout.addStretch(1)
+
+    def _sync_node_group_content(self, card, group_items):
+        """同步单个节点卡片内的变量行"""
+        # card.row_cache 结构: { full_var_name: {'widget': row_widget, 'data_id': id(val), 'policy': str} }
+        if not hasattr(card, 'row_cache'):
+            card.row_cache = {}
+
+        target_vars = {item[0]: item[1] for item in group_items}
+        existing_vars = set(card.row_cache.keys())
+        current_vars = set(target_vars.keys())
+
+        layout = card.content_layout  # 需要在 _create_node_group_card_enhanced 中暴露这个属性
+
+        # 1. 删除多余的行
+        for var_name in existing_vars - current_vars:
+            cache_item = card.row_cache.pop(var_name)
+            cache_item['widget'].deleteLater()
+
+        # 2. 新增或更新行
+        # 为了保持顺序，最好是清空 layout 重新 add？不，这样闪烁。
+        # 我们按 items 顺序遍历，对比 check
+
+        # 获取当前的 widget 列表顺序（略微复杂，这里简化处理：直接 append 新的，不强制重排顺序）
+
+        for var_name, var_obj in group_items:
+            val_id = id(var_obj.value)
+            policy = var_obj.update_policy
+
+            if var_name not in card.row_cache:
+                # 新增
+                row_widget = self._create_compact_port_row(var_name, var_obj)
+                layout.addWidget(row_widget)
+                card.row_cache[var_name] = {
+                    'widget': row_widget,
+                    'data_id': val_id,
+                    'policy': policy
+                }
+            else:
+                # 更新检查
+                cache = card.row_cache[var_name]
+                row_widget = cache['widget']
+
+                # 检查策略是否变化 (更新 UI)
+                if cache['policy'] != policy:
+                    # 找到下拉框控件并更新
+                    btn = row_widget.findChild(TransparentDropDownToolButton)
+                    if btn:
+                        btn.setIcon(get_icon(policy))
+                        btn.setProperty("policy", policy)
+                    cache['policy'] = policy
+
+                # 检查数据是否变化 (更新 Tree)
+                # 注意：如果是 None 变 None，id 是一样的。
+                # 如果是可变对象(dict/list)内容变了但 id 没变（原地修改），这里可能检测不到。
+                # 但在数据流图中，通常输出是新生成的对象。如果需要深度检测，代价太大。
+                # 折中方案：比对 id，以及如果是基础类型比对值。
+                should_update_data = (cache['data_id'] != val_id)
+
+                if should_update_data:
+                    # 找到 Tree 组件
+                    tree = row_widget.findChild(VariableTreeWidget)
+                    if tree:
+                        if var_obj.value is not None:
+                            tree.set_data(var_obj.value, var_name.split("__")[-1])
+                            tree.show()
+                        else:
+                            # 如果变成了 None，可能需要隐藏 tree 或显示 label？
+                            # 原逻辑 _create_compact_port_row 是 create 时决定的。
+                            # 如果结构需要动态变（有数据 <-> 无数据），最好是重新生成 row
+                            pass
+                    else:
+                        # 原来没 tree (即原来是 None)，现在有值了 -> 简单起见，重建 row
+                        if var_obj.value is not None:
+                            layout.removeWidget(row_widget)
+                            row_widget.deleteLater()
+                            new_row = self._create_compact_port_row(var_name, var_obj)
+                            layout.addWidget(new_row)
+                            card.row_cache[var_name]['widget'] = new_row
+
+                    cache['data_id'] = val_id
 
     def _create_node_group_card_enhanced(self, node_name: str, node_var_items: list):
         """增强版节点组卡片：支持折叠、定位、计数"""
         card = SimpleCardWidget(self.parent_panel)
+        card.row_cache = {}
         outer_layout = QVBoxLayout(card)
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
@@ -389,9 +587,19 @@ class GlobalPanelWidget:
         content_layout.setContentsMargins(3, 3, 3, 3)
         content_layout.setSpacing(3)
 
+        # [新增] 暴露 layout 给 sync 方法使用
+        card.content_layout = content_layout
+
         for var_name, node_var_obj in node_var_items:
             port_row = self._create_compact_port_row(var_name, node_var_obj)
             content_layout.addWidget(port_row)
+
+            # [新增] 初始填充缓存
+            card.row_cache[var_name] = {
+                'widget': port_row,
+                'data_id': id(node_var_obj.value),
+                'policy': node_var_obj.update_policy
+            }
 
         outer_layout.addWidget(content_container)
 
