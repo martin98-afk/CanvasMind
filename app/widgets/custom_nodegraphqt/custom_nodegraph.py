@@ -1001,38 +1001,13 @@ class CustomNodeViewer(NodeViewer):
         return super().resizeEvent(event)
 
     def zoom_to_nodes(self, nodes, duration=None):
-        if not Settings.get_instance().node_animation.value:
-            return super().zoom_to_nodes(nodes)
-        if not nodes:
-            return
-
-        # --- 优化 1: 性能设置 ---
-        # 动画期间不仅关闭抗锯齿，建议暂时将视口更新模式设为全视口更新或智能更新，防止局部重绘闪烁
-        # 注意：这里假设 self 是 QGraphicsView 的子类
-        original_render_hint = self.renderHints()
-        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
-        # 这一步能显著提高大场景缩放时的帧率
-        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
-
-        # --- 优化 2: 安全清理旧动画 ---
-        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
-            if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
-                self._zoom_anim_group.stop()
-            # 显式删除以防内存泄漏
-            self._zoom_anim_group.deleteLater()
-            self._zoom_anim_group = None
-
-        # --- 优化 3: 精确计算可见区域 (解决对齐问题) ---
+        # --- 精确计算可见区域 (解决对齐问题) ---
         def get_tight_bbox(item_list):
             rect = QtCore.QRectF()
             first = True
             for node in item_list:
                 # 获取节点自身在场景中的坐标
                 node_scene_rect = node.sceneBoundingRect()
-
-                # 关键修复：如果节点是组或包含子项，我们需要排除隐藏的子项
-                # 这里我们手动遍历一级子项来确定更紧凑的边界
-                # 如果您的节点结构非常复杂，这里逻辑是：取“节点自身”与“可见子项”的并集
 
                 # 1. 先拿节点自身的 boundingRect (通常是背景框)
                 tight_rect = node.mapRectToScene(node.boundingRect())
@@ -1053,6 +1028,32 @@ class CustomNodeViewer(NodeViewer):
                 else:
                     rect = rect.united(tight_rect)
             return rect
+
+        if not Settings.get_instance().node_animation.value:
+            self._scene_range = get_tight_bbox(nodes)
+            self._update_scene()
+
+            if self.get_zoom() > 0.1:
+                self.reset_zoom(self._scene_range.center())
+            return
+        if not nodes:
+            return
+
+        # --- 优化 1: 性能设置 ---
+        # 动画期间不仅关闭抗锯齿，建议暂时将视口更新模式设为全视口更新或智能更新，防止局部重绘闪烁
+        # 注意：这里假设 self 是 QGraphicsView 的子类
+        original_render_hint = self.renderHints()
+        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
+        # 这一步能显著提高大场景缩放时的帧率
+        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
+
+        # --- 优化 2: 安全清理旧动画 ---
+        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
+            if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
+                self._zoom_anim_group.stop()
+            # 显式删除以防内存泄漏
+            self._zoom_anim_group.deleteLater()
+            self._zoom_anim_group = None
 
         start_rect = QtCore.QRectF(self._scene_range)
         target_rect = get_tight_bbox(nodes)
