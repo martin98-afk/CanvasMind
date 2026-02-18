@@ -19,7 +19,7 @@ class MCPToolCallingAgentComponent(BaseComponent):
     name = "MCP工具调用智能体"
     category = "大模型组件/mcp工具"
     description = "使用预发现的MCP工具字典执行推理（输出历史不含工具调用中间过程），支持超限强制总结"
-    requirements = "openai,fastmcp>=2.3.0,orjson"
+    requirements = "openai,fastmcp>=2.3.0,orjson,nest_asyncio"
     
     inputs = [
         PortDefinition(name="input_data", label="用户输入", type=ArgumentType.TEXT),
@@ -42,7 +42,35 @@ class MCPToolCallingAgentComponent(BaseComponent):
         ),
         "system_prompt": PropertyDefinition(
             type=PropertyType.LONGTEXT,
-            default="""你是一个强大的AI助手，可以调用外部工具解决复杂问题。请根据需要主动调用合适的工具。""",
+            default="""#### 1. 角色定义 (Role Definition)
+
+你是一个拥有工具调用能力的智能助手。你的目标是根据用户请求，通过调用提供的函数（Tools）来获取信息，并最终向用户提供一个简洁、准确的总结性回答。
+
+
+#### 2. 核心指令 (Core Instructions - **关键防死循环逻辑**)
+
+请严格遵守以下执行流程：
+
+1. **思考 (Thought)**: 在采取任何行动之前，先分析当前对话历史。
+   - 问自己：我是否已经拥有了回答用户问题所需的所有信息？
+   - 如果是 -> **必须停止调用工具**，直接生成最终回复。
+   - 如果否 -> 思考缺少什么信息，并选择最合适的工具来获取。
+
+2. **去重检查 (Duplicate Check)**:
+   - **绝对禁止**使用相同的参数重复调用同一个工具，除非上一次调用返回了“超时”或“网络错误”。
+   - 如果上一次工具调用返回了结果（即使是空结果或错误提示），**不要**再次尝试相同的操作。请尝试不同的参数，或者告知用户无法完成。
+
+3. **停止条件 (Stop Condition)**:
+   - 当工具返回的结果足以回答用户问题时，或者当你尝试了所有合理的工具/参数组合仍无法获取信息时，**必须停止调用**。
+   - 此时，请根据已知信息生成最终回复，如果任务失败，请明确告知用户原因。
+
+#### 3. 响应格式 (Response Protocol)
+
+- 不要直接把工具返回的原始 JSON 数据扔给用户。
+- 你必须将工具返回的数据**总结**为人类可读的自然语言。
+- 如果需要进行多步操作，每一步结束后都要重新评估是否可以结束任务。
+
+""",
             label="系统提示词",
         ),
         "temperature": PropertyDefinition(
@@ -342,14 +370,6 @@ class MCPToolCallingAgentComponent(BaseComponent):
                         "content": tool_result["content"] if tool_result["success"] else f"❌ {tool_result['error']}"
                     }
                     messages_for_inference.append(tool_response)
-                
-                # 安全终止检查
-                recent_calls = tool_calls_log[-len(message.tool_calls):] if message.tool_calls else []
-                if recent_calls and all(not call["success"] for call in recent_calls):
-                    final_reply = "⚠️ 所有工具调用失败"
-                    messages_for_inference.append({"role": "assistant", "content": final_reply})
-                    self.logger.warning("🛑 连续工具调用失败，终止循环")
-                    break
                 
                 self.logger.info(f"⏱️  第 {current_round} 轮耗时: {time.time() - round_start:.3f}s")
             
