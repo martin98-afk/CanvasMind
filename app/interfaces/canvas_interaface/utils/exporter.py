@@ -52,7 +52,8 @@ class CanvasExporter:
                     if req_str:
                         requirements.update(pkg.strip() for pkg in req_str.split(',') if pkg.strip())
             requirements.update(self.config.default_packages.value)
-
+            # 导出节点序列化
+            nodes_session = self.parent.graph._serialize(nodes_to_export, exclude_keys=["global_variable", "_zmq_ports"])
             # 构造markdown输入、输出端口信息
             def generate_markdown(input: list, output: list):
                 input_desc = ""
@@ -81,7 +82,7 @@ class CanvasExporter:
                     input_desc=input_desc,
                     output_desc=output_desc,
                     component_names="\n".join(["- " + Path(fp).stem for fp in used_components]),
-                    conn_count=len(self.parent.graph.serialize_session().get("connections", []))
+                    conn_count=len(nodes_session.get("connections", []))
                 )
                 return initial_readme
 
@@ -141,7 +142,7 @@ class CanvasExporter:
                         component_path_map[str(src)] = ("components" / rel).as_posix()
 
             # 导出节点数据
-            serialized_export_nodes = self.parent.graph._serialize(nodes_to_export)
+            serialized_export_nodes = nodes_session
             for node in nodes_to_export:
                 params = node.model.custom_properties
                 reserved_keys = node.model.properties.keys()

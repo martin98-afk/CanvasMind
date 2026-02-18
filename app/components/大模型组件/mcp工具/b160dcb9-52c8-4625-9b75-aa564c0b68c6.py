@@ -15,11 +15,10 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-
 class MCPToolCallingAgentComponent(BaseComponent):
     name = "MCP工具调用智能体"
     category = "大模型组件/mcp工具"
-    description = "使用预发现的MCP工具字典执行推理（输出历史不含工具调用中间过程）"
+    description = "使用预发现的MCP工具字典执行推理（输出历史不含工具调用中间过程），支持超限强制总结"
     requirements = "openai,fastmcp>=2.3.0,orjson"
     
     inputs = [
@@ -157,7 +156,7 @@ class MCPToolCallingAgentComponent(BaseComponent):
                     client.call_tool(tool_name, arguments),
                     timeout=float(self.params.tool_timeout)
                 )
-                content = result.get("content", str(result)) if isinstance(result, dict) else str(result)
+                content = "\n\n".join([item.text for item in result.content])
                 return {
                     "success": True,
                     "content": content,
@@ -272,6 +271,7 @@ class MCPToolCallingAgentComponent(BaseComponent):
             final_reply = ""
             self.logger.info(f"🔄 启动工具调用循环 | 最大轮数: {max_rounds} | 单次超时: {params.tool_timeout}s")
             
+            # 循环逻辑
             while current_round < max_rounds:
                 current_round += 1
                 round_start = time.time()
@@ -330,7 +330,7 @@ class MCPToolCallingAgentComponent(BaseComponent):
                     tool_calls_log.append(tool_result)
                     
                     if tool_result["success"]:
-                        self.logger.info(f"✅ 工具 '{func_name}' 执行成功 ({exec_duration:.2f}s) | 内容预览: {str(tool_result['content'])[:50]}...")
+                        self.logger.info(f"✅ 工具 '{func_name}' 执行成功 ({exec_duration:.2f}s) | 内容预览: {str(tool_result['content'])[:100]}...")
                     else:
                         self.logger.error(f"❌ 工具 '{func_name}' 执行失败 ({exec_duration:.2f}s): {tool_result['error']}")
                     
@@ -353,11 +353,38 @@ class MCPToolCallingAgentComponent(BaseComponent):
                 
                 self.logger.info(f"⏱️  第 {current_round} 轮耗时: {time.time() - round_start:.3f}s")
             
-            else:  # 正常退出循环（非break）
-                final_reply = message.content.strip() if message.content else "⚠️ 已达到最大工具调用轮数"
-                messages_for_inference.append({"role": "assistant", "content": final_reply})
-                self.logger.warning(f"⚠️ 达到最大轮数限制 ({max_rounds})，强制终止")
-            
+            # === 循环结束后的强制总结 ===
+            if not final_reply:
+                self.logger.warning(f"⚠️ 达到最大轮数限制 ({max_rounds})，停止工具调用，强制生成总结")
+                
+                # 构造包含提示词的临时消息列表
+                summary_messages = list(messages_for_inference)
+                summary_messages.append({
+                    "role": "user", 
+                    "content": "已达到最大工具调用轮数限制。请根据目前已有的工具执行结果，对用户的问题进行总结性回答，不要尝试再次调用工具。"
+                })
+                
+                try:
+                    summary_start = time.time()
+                    self.logger.info(f"📝 发起强制总结推理 (上下文长度: {len(summary_messages)})")
+                    
+                    summary_response = client.chat.completions.create(
+                        model=model_name,
+                        messages=summary_messages, # 使用带提示的消息列表
+                        temperature=float(params.temperature),
+                        max_tokens=int(params.max_tokens),
+                        tools=None,      # 关键：禁用工具
+                        tool_choice=None # 关键：禁用工具选择
+                    )
+                    final_reply = summary_response.choices[0].message.content
+                    messages_for_inference.append({"role": "assistant", "content": final_reply})
+                    
+                    self.logger.info(f"✅ 强制总结完成 ({time.time() - summary_start:.3f}s) | 长度: {len(final_reply)}")
+                except Exception as e:
+                    final_reply = f"⚠️ 已达到最大工具调用次数，且无法生成总结: {str(e)}"
+                    messages_for_inference.append({"role": "assistant", "content": final_reply})
+                    self.logger.error(f"❌ 强制总结失败: {e}")
+
             # 5. 人工干预
             if getattr(params, 'intervent', False):
                 self.logger.info("✋ 启动人工干预流程")
@@ -410,4 +437,3 @@ class MCPToolCallingAgentComponent(BaseComponent):
 
     def teardown(self):
         self._client_cache.clear()
-        super().teardown()

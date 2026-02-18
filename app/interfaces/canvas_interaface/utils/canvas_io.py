@@ -42,10 +42,7 @@ class CanvasIO(QObject):
         try:
             QApplication.processEvents()  # 强制刷新一下UI显示遮罩
 
-            graph_data = self.graph.serialize_session()
-            for node_data in graph_data["nodes"].values():
-                if "custom" in node_data:
-                    node_data["custom"].pop("global_variable", None)
+            graph_data = self.graph.serialize_session(exclude_keys=["global_variable", "_zmq_ports"])
 
             runtime = {
                 "environment": self.parent.environment_manager.env_combo.currentData()

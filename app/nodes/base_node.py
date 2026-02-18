@@ -146,7 +146,6 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """
         self._zmq_pub_port = pub_port
         self._zmq_svc_port = svc_port
-        self.model.set_property("_zmq_ports", f"{pub_port}/{svc_port}")
 
         # 确定连接 IP：如果是 SSH 且有 IP，则 UI 连远程；否则 UI 连本地
         if remote_ip:

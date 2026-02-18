@@ -976,7 +976,6 @@ class CustomNodeViewer(NodeViewer):
                 self.home_window.nav_view.record_usage(full_path)
                 node.set_pos(scene_pos.x(), scene_pos.y())
                 QtCore.QTimer.singleShot(0, lambda: self.home_window.property_panel.update_properties(node))
-                self.home_window.node_status[node.id] = NodeStatus.NODE_STATUS_UNRUN
                 if hasattr(node, 'status'):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
 
@@ -1290,7 +1289,21 @@ class CustomNodeGraph(NodeGraph):
         sub_graph.viewer().zoom_to_nodes([n.view for n in sub_graph.all_nodes()])
         return sub_graph
 
-    def _serialize(self, nodes):
+    def serialize_session(self, exclude_keys: list[str]=[]):
+        """
+        Serializes the current node graph layout to a dictionary.
+
+        See Also:
+            :meth:`NodeGraph.deserialize_session`,
+            :meth:`NodeGraph.save_session`,
+            :meth:`NodeGraph.load_session`
+
+        Returns:
+            dict: serialized session of the current node layout.
+        """
+        return self._serialize(self.all_nodes(), exclude_keys)
+
+    def _serialize(self, nodes, exclude_keys: list[str]=[]):
         """
         serialize nodes to a dict.
         (used internally by the node graph)
@@ -1331,6 +1344,8 @@ class CustomNodeGraph(NodeGraph):
                 }
             )
             node_dict[n_id]["custom"]["FULL_PATH"] = n.FULL_PATH
+            # 过滤不需要的字段
+            node_dict[n_id] = {k: v for k, v in node_dict[n_id].items() if k not in exclude_keys}
             nodes_data.update(node_dict)
 
         for n_id, n_data in nodes_data.items():
