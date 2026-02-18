@@ -123,7 +123,6 @@ class WorkflowLoader(QThread):
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 full_data = orjson.loads(f.read())
             full_data = deserialize_from_json(full_data)
-
             graph_data = full_data.get("graph", {})
             runtime_data = full_data.get("runtime", {})
             global_variable = full_data.get("global_variable", {})

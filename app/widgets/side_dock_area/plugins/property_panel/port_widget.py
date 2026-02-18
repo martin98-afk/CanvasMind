@@ -100,6 +100,9 @@ class PortWidget(QWidget):
         self.delete_output_from_global_func = delete_func
         self.is_in_global_func = is_in_func
 
+        # 结构: { port_name: (data_id, selector_visible, select_config_str, is_global) }
+        self._port_states = {}
+
         # 线程池管理，防止 Worker 被提前垃圾回收
         self._active_threads = []
         self._input_cards = []
@@ -260,11 +263,13 @@ class PortWidget(QWidget):
         return card
 
     def _update_card_data(self, card, p_name, p_label, p_type, is_output):
-        """填充/更新卡片业务数据"""
+        """填充/更新卡片业务数据 (优化版：增加缓存比对)"""
         ui = card.ui
+
+        # 1. 基础文本更新 (开销极小，总是执行以防止 label 变化)
         ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type}")
 
-        # 获取数据逻辑
+        # 2. 获取当前数据
         data = "暂无数据"
         if is_output:
             data = getattr(self.node, '_output_values', {}).get(p_name)
@@ -282,35 +287,75 @@ class PortWidget(QWidget):
             elif connected:
                 data = [up.node().get_output_value(up.name()) for up in connected]
 
-        # ===== 新增：判断是否支持数据选择器 =====
+        # 3. 准备状态指纹所需的变量
         supports_selector = not is_output and p_type in [
-            ArgumentType.CSV,
-            ArgumentType.ARRAY,
-            ArgumentType.JSON
+            ArgumentType.CSV, ArgumentType.ARRAY, ArgumentType.JSON
         ]
-        # =======================================
 
-        # CSV 轻量预览处理（仅用于选择器内部，不影响主数据显示）
+        # 获取选择器可见性
+        selector_visible = self._get_selector_visible(p_name) if supports_selector else False
+
+        # 获取数据筛选配置 (序列化为字符串以便比较)
+        select_config_str = ""
+        if supports_selector:
+            data_select = self.node.get_property("_data_select") or {}
+            config = data_select.get(p_name, {})
+            # 使用 orjson 快速序列化配置字典作为指纹
+            try:
+                select_config_str = orjson.dumps(config, option=orjson.OPT_SORT_KEYS).decode()
+            except:
+                select_config_str = str(config)
+
+        # 获取 Global 状态
+        is_global = False
+        if is_output and ui['global_btn']:
+            is_global = self.is_in_global_func(self.node, p_name)
+
+        # 4. 构建当前状态指纹
+        # 注意：对于 pandas DataFrame 等复杂对象，直接比对内容太慢，比对 id(data) 通常足够
+        # 如果是同一个对象但在内部被修改了（原地修改），UI可能不会刷新，但在节点流中数据通常是新生成的对象。
+        current_state_fingerprint = (
+            id(data),  # 数据对象的内存地址
+            type(data),  # 数据类型 (防止 id 复用但类型变的极端情况)
+            selector_visible,  # 选择器是否展开
+            select_config_str,  # 选择器的筛选配置
+            is_global  # 是否在全局变量中
+        )
+
+        # 5. 检查缓存，如果一致则跳过耗时操作
+        last_state = self._port_states.get(p_name)
+        if last_state == current_state_fingerprint:
+            # 即使跳过刷新，也要确保 Global 按钮的显示状态正确（防止被外部修改）
+            if is_output and ui['global_btn']:
+                ui['global_btn'].blockSignals(True)
+                ui['global_btn'].setChecked(is_global)
+                ui['global_btn'].blockSignals(False)
+            return  # >>> 命中缓存，直接返回，不刷新 Tree 和 Selector <<<
+
+        # 更新缓存
+        self._port_states[p_name] = current_state_fingerprint
+
+        # ================= 以下是耗时刷新逻辑 (仅在状态变化时执行) =================
+
+        # CSV 轻量预览处理
         raw_data_for_selector = data
         if supports_selector and p_type == ArgumentType.CSV:
             if isinstance(data, str) and data.lower().endswith('.csv'):
                 try:
                     if os.path.exists(data):
-                        raw_data_for_selector = pd.read_csv(data, nrows=100)  # 读取更多行供选择
+                        # 仅读取用于 selector 的数据，Tree 显示仍使用 display_data
+                        raw_data_for_selector = pd.read_csv(data, nrows=100)
                 except:
                     pass
 
-        # ===== 核心逻辑：根据选择器可见状态决定显示的数据 =====
-        selector_visible = self._get_selector_visible(p_name) if supports_selector else False
-
+        # 处理选择器按钮状态
         if supports_selector:
-            # 显示选择器按钮
             ui['selector_btn'].show()
             ui['selector_btn'].blockSignals(True)
             ui['selector_btn'].setChecked(selector_visible)
             ui['selector_btn'].blockSignals(False)
 
-            # 重新连接信号（防止重复连接）
+            # 仅在第一次或需要重置时连接信号
             try:
                 ui['selector_btn'].clicked.disconnect()
             except:
@@ -319,31 +364,28 @@ class PortWidget(QWidget):
                 lambda checked, pn=p_name: self._toggle_selector(pn, checked)
             )
 
-            # 决定显示给用户的数据：
-            # - 选择器可见：显示过滤后的数据（应用_data_select）
-            # - 选择器隐藏：显示原始全部数据（忽略过滤配置）
             display_data = self._get_current_input_value(p_name,
                                                          raw_data_for_selector) if selector_visible else raw_data_for_selector
         else:
-            # 不支持选择器：隐藏按钮，显示原始数据
             if ui['selector_btn']:
                 ui['selector_btn'].hide()
             display_data = data
-        # =========================================================
 
+        # 更新 Tree 数据 (耗时操作)
         ui['tree'].set_data(display_data, p_name)
         self._text_edit_widgets[p_name] = ui['tree']
 
-        # 重新绑定按钮信号 (防止闭包引用旧数据)
+        # 重新绑定浏览按钮
         try:
             ui['browse_btn'].clicked.disconnect()
         except:
             pass
         ui['browse_btn'].clicked.connect(lambda: self._show_detail_popup(display_data, p_label, ui['browse_btn']))
 
+        # 处理 Global 按钮逻辑
         if is_output and ui['global_btn']:
             ui['global_btn'].blockSignals(True)
-            ui['global_btn'].setChecked(self.is_in_global_func(self.node, p_name))
+            ui['global_btn'].setChecked(is_global)
             ui['global_btn'].blockSignals(False)
             try:
                 ui['global_btn'].clicked.disconnect()
@@ -351,6 +393,8 @@ class PortWidget(QWidget):
                 pass
             ui['global_btn'].clicked.connect(
                 lambda: self.handle_global_variable(self.node, p_name, ui['global_btn'].isChecked()))
+
+            # 右键菜单
             try:
                 card.customContextMenuRequested.disconnect()
             except:
@@ -358,7 +402,8 @@ class PortWidget(QWidget):
             card.customContextMenuRequested.connect(lambda pos: self._show_context_menu(card, p_name, pos))
 
         self._refresh_card_actions(card, p_name, p_label, p_type, is_output)
-        # 传递 selector_visible 状态给 extra_area
+
+        # 刷新额外区域 (选择器UI) (耗时操作)
         self._refresh_extra_area(card, p_name, p_type, raw_data_for_selector, is_output, selector_visible)
 
     def _toggle_selector(self, port_name, visible):
