@@ -49,10 +49,17 @@ def create_trigger_node(parent_window):
                     "type": PropertyType.CHOICE,
                     "label": "运行策略",
                     "choices": list(parent_window.run_strategies.keys()),
-                    "default": "从此处运行"
+                    "default": "从此处运行",
+                    "description": "选择运行策略，从此处运行: 从当前节点运行；运行到此处：从该节点的前置节点运行到此处；运行所在子图：运行触发器所在的连通图上所有节点；运行所有节点：运行画布的所有节点"
                 },
-                "enable_throttle": {"type": PropertyType.BOOL, "label": "启用节流", "default": False},
-                "throttle_interval": {"type": PropertyType.FLOAT, "label": "节流间隔(s)", "default": 1.0}
+                "enable_throttle": {
+                    "type": PropertyType.BOOL, "label": "启用节流", "default": False,
+                    "description": "是否启用节流，节流将限制触发器每秒触发的次数。"
+                },
+                "throttle_interval": {
+                    "type": PropertyType.FLOAT, "label": "节流间隔(s)", "default": 1.0,
+                    "description": "节流间隔，单位为秒。"
+                }
             }
 
             # UI 防抖
@@ -73,11 +80,15 @@ def create_trigger_node(parent_window):
         # --- UI 逻辑 (保持不变) ---
         def _generate_widgets(self):
             for i, (name, conf) in enumerate(self.property_defs.items()):
-                self._create_and_add_widget(name, conf, 200 - i)
+                widget = self._create_and_add_widget(name, conf, 200 - i)
+                if "description" in conf:
+                    widget.setToolTip(conf["description"])
             for p_name, plugin in self.plugins.items():
                 props = plugin.get_properties(self)
                 for i, (name, conf) in enumerate(props.items()):
                     widget = self._create_and_add_widget(name, conf, 100 - i)
+                    if "description" in conf:
+                        widget.setToolTip(conf["description"])
                     if widget: self.plugin_widgets[p_name].append(widget)
 
         def _create_and_add_widget(self, name, conf, z_value):

@@ -43,44 +43,58 @@ class WebhookManager(BaseTriggerManager):
         self._server_thread = None
         self._initialized = True
 
+    def get_canvas_triggers_info(self, canvas_name: str):
+        # 从基类的 canvas_mapping 中获取该画布下的所有 node_id
+        node_ids = self.canvas_mapping.get(canvas_name, [])
+
+        triggers_info = []
+        node_to_endpoint = getattr(self, '_node_to_endpoint', {})
+
+        for node_id in node_ids:
+            # 获取对应的 Webhook 路径
+            endpoint, name = node_to_endpoint.get(node_id)
+            if endpoint:
+                triggers_info.append({
+                    "node_id": node_id,
+                    "node_name": name,
+                    "endpoint": endpoint,
+                    "url": f"http://{self.host}:{self.port}{endpoint}"
+                })
+
+        return {
+            "canvas_name": canvas_name,
+            "count": len(triggers_info),
+            "triggers": triggers_info
+        }
+
     def _setup_routes(self):
         """配置 FastAPI 路由逻辑"""
 
         @self.app.get("/health")
         async def health_check():
-            return {"status": "ok", "active_canvases": list(self.canvas_mapping.keys())}
-
-        @self.app.get("/api/v1/canvases/{canvas_name}/triggers")
-        async def get_triggers_by_canvas(canvas_name: str):
-            """获取指定画布下注册的所有 Webhook 触发器及其 Endpoint"""
-            # 从基类的 canvas_mapping 中获取该画布下的所有 node_id
-            node_ids = self.canvas_mapping.get(canvas_name, [])
-
-            triggers_info = []
-            node_to_endpoint = getattr(self, '_node_to_endpoint', {})
-
-            for node_id in node_ids:
-                # 获取对应的 Webhook 路径
-                endpoint = node_to_endpoint.get(node_id)
-                if endpoint:
-                    triggers_info.append({
-                        "node_id": node_id,
-                        "endpoint": endpoint,
-                        "url": f"http://{self.host}:{self.port}{endpoint}"
-                    })
-
+            """检查服务是否正常"""
             return {
-                "canvas_name": canvas_name,
-                "count": len(triggers_info),
-                "triggers": triggers_info
+                "status": "ok", "active_canvases": {
+                    canvas_name: self.get_canvas_triggers_info(canvas_name)
+                    for canvas_name in self.canvas_mapping
+                }
             }
 
-        @self.app.api_route("/api/v1/trigger/{node_id}", methods=["GET", "POST", "PUT"])
-        async def handle_trigger(node_id: str, request: Request):
-            # 这里的 endpoint 构造规则需要与 add_trigger 保持一致
-            path = f"/api/v1/trigger/{node_id}"
-            task_id = uuid4().hex
+        @self.app.get("/health/{canvas_name}")
+        async def health_check(canvas_name: str = ""):
+            """检查服务是否正常"""
+            if canvas_name not in self.canvas_mapping:
+                return {"status": "not_found", "canvas_name": canvas_name}
+            else:
+                return {
+                    "status": "ok", canvas_name: self.get_canvas_triggers_info(canvas_name)
+                }
 
+        @self.app.api_route("/api/v1/trigger/{endpoint}", methods=["GET", "POST", "PUT"])
+        async def handle_trigger(endpoint: str, request: Request):
+            # 这里的 endpoint 构造规则需要与 add_trigger 保持一致
+            path = endpoint
+            task_id = uuid4().hex
             if path in self.registry:
                 data = {}
                 try:
@@ -104,7 +118,7 @@ class WebhookManager(BaseTriggerManager):
 
                 # 执行回调
                 self.registry[path](data, task_id)
-                return {"status": "success", "node_id": node_id, "task_id": task_id}
+                return {"status": "success", "task_id": task_id}
 
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 
@@ -125,6 +139,7 @@ class WebhookManager(BaseTriggerManager):
                 return {"status": "waiting", "exec_id": exec_id}
             elif status == "running":
                 return {"status": "running", "exec_id": exec_id}
+
             return {"status": "unknown", "exec_id": exec_id}
 
     def add_trigger(self, canvas_name: str, node_id: str, callback: Callable, **kwargs):
@@ -133,12 +148,12 @@ class WebhookManager(BaseTriggerManager):
         参数要求: kwargs 需包含 'endpoint' (可选，默认为标准路径)
         """
         # 如果没有传入 endpoint，则使用默认的 node_id 路径
-        endpoint = kwargs.get("endpoint", f"/api/v1/trigger/{node_id}")
-
-        if not endpoint.startswith("/"):
-            endpoint = "/" + endpoint
-
+        endpoint = kwargs.get("endpoint", node_id)
+        name = kwargs.get("name", "")
         # 注册回调
+        if endpoint in self.registry:
+            logger.warning(f"[Webhook] 节点 {node_id} 的接口 {endpoint} 已存在，请勿重复注册")
+            return False
         self.registry[endpoint] = callback
 
         # 调用基类映射维护
@@ -147,12 +162,13 @@ class WebhookManager(BaseTriggerManager):
         # 记录 node_id 与 endpoint 的对应关系，方便 remove_trigger 时查找
         if not hasattr(self, '_node_to_endpoint'):
             self._node_to_endpoint = {}
-        self._node_to_endpoint[node_id] = endpoint
+        self._node_to_endpoint[node_id] = (endpoint, name)
 
         # 自动启动 Server（如果未启动）
         self.start()
 
         logger.info(f"[Webhook] 节点 {node_id} 已注册接口: {endpoint}")
+        return True
 
     def remove_trigger(self, node_id: str):
         """实现基类方法：注销 Webhook"""
@@ -202,15 +218,18 @@ class WebhookPlugin(BaseTriggerPlugin):
     manager = WebhookManager()
 
     def get_properties(self, parent_node=None):
+        self.parent_node = parent_node
         return {
             "webhook_endpoint":
                 {
                     "type": PropertyType.TEXT,
                     "label": "接口路由",
-                    "default": f"/api/v1/trigger/{parent_node.persistent_id}"
+                    "default": parent_node.persistent_id,
+                    "description": "接口路由，默认为节点 ID，请勿重复使用, 默认服务地址: http://0.0.0.0:5000/api/v1/trigger/, /health 查看已激活webhook触发器画布，/health/{canvas_name} 查看指定画布触发器"
                 }
         }
 
     def activate(self, canvas_name, node_id, callback, props):
-        endpoint = props.get("webhook_endpoint") or f"/api/v1/trigger/{node_id}"
-        self.manager.add_trigger(canvas_name, node_id, callback, endpoint=endpoint)
+        endpoint = props.get("webhook_endpoint") or node_id
+        if not self.manager.add_trigger(canvas_name, node_id, callback, endpoint=endpoint, name=self.parent_node.name()):
+            self.parent_node.set_property("webhook_endpoint", self.parent_node.persistent_id)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import copy
-import json
+import orjson
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
@@ -184,7 +184,7 @@ class SelectionActionToolbar(BaseCanvasToolbar):
     def _on_clone(self):
         if hasattr(self.viewer.home_window, 'node_operations'):
             ops = self.viewer.home_window.node_operations
-            ops._copy_selected_nodes();
+            ops._copy_selected_nodes()
             ops._paste_nodes()
             self.viewer._selection_overlay.refresh(full_recalc=False)
 
@@ -962,7 +962,7 @@ class CustomNodeViewer(NodeViewer):
             # --- 情况 B：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
             if mime_data.hasFormat("application/x-global-variable") and target_widget:
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                drag_data = json.loads(data_bytes.decode('utf-8'))
+                drag_data = orjson.loads(data_bytes.decode('utf-8'))
                 # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
@@ -982,7 +982,7 @@ class CustomNodeViewer(NodeViewer):
                 # 变量节点自动设置部分属性，便于与普通节点区分
                 if mime_data.hasFormat("application/x-global-variable"):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                    drag_data = json.loads(data_bytes.decode('utf-8'))
+                    drag_data = orjson.loads(data_bytes.decode('utf-8'))
                     node.set_icon(":/icons/变量.svg")
                     node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
                     node.set_name("\n".join(drag_data['var_name'].split("__")))
@@ -1206,13 +1206,13 @@ class CustomNodeGraph(NodeGraph):
             return False
         clipboard = QtWidgets.QApplication.clipboard()
         serial_data = self._serialize(nodes)
-        serial_str = json.dumps(serialize_for_json(serial_data))
+        serial_str = orjson.dumps(serialize_for_json(serial_data)).decode("utf-8")
         if serial_str:
             clipboard.setText(serial_str)
             return True
         return False
 
-    def paste_nodes(self, adjust_graph_style=True):
+    def paste_nodes(self, cb_data, adjust_graph_style=True):
         """
         Pastes nodes copied from the clipboard.
 
@@ -1222,18 +1222,8 @@ class CustomNodeGraph(NodeGraph):
         Returns:
             list[NodeGraphQt.BaseNode]: list of pasted node instances.
         """
-        clipboard = QtWidgets.QApplication.clipboard()
-        cb_text = clipboard.text()
-        if not cb_text:
-            return
 
-        try:
-            serial_data = deserialize_from_json(json.loads(cb_text))
-        except json.decoder.JSONDecodeError as e:
-            print('ERROR: Can\'t Decode Clipboard Data:\n'
-                  '"{}"'.format(cb_text))
-            return
-
+        serial_data = deserialize_from_json(cb_data)
         self._undo_stack.beginMacro('pasted nodes')
         self.clear_selection()
         nodes, _ = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
@@ -1325,9 +1315,9 @@ class CustomNodeGraph(NodeGraph):
         serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
         serial_data['graph']['pipe_style'] = self.pipe_style()
 
-        # connection constrains.
-        serial_data['graph']['accept_connection_types'] = json.dumps(self.model.accept_connection_types, default=list)
-        serial_data['graph']['reject_connection_types'] = json.dumps(self.model.reject_connection_types, default=list)
+        # # connection constrains.
+        # serial_data['graph']['accept_connection_types'] = orjson.dumps(self.model.accept_connection_types, default=list)
+        # serial_data['graph']['reject_connection_types'] = orjson.dumps(self.model.reject_connection_types, default=list)
 
         # serialize nodes.
         for n in nodes:
@@ -1423,17 +1413,17 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_collision(attr_value)
                     elif attr_name == "pipe_slicing":
                         self.set_pipe_slicing(attr_value)
-
-                # connection constrains.
-                if attr_name == 'accept_connection_types':
-                    attr_value = json.loads(attr_value)
-                    convert_last_list_to_set(attr_value)
-                    self.model.accept_connection_types = attr_value
-
-                elif attr_name == 'reject_connection_types':
-                    attr_value = json.loads(attr_value)
-                    convert_last_list_to_set(attr_value)
-                    self.model.reject_connection_types = attr_value
+                #
+                # # connection constrains.
+                # if attr_name == 'accept_connection_types':
+                #     attr_value = orjson.loads(attr_value)
+                #     convert_last_list_to_set(attr_value)
+                #     self.model.accept_connection_types = attr_value
+                #
+                # elif attr_name == 'reject_connection_types':
+                #     attr_value = orjson.loads(attr_value)
+                #     convert_last_list_to_set(attr_value)
+                #     self.model.reject_connection_types = attr_value
 
             # 分离 backdrop 节点和其他节点
             nodes_data = data.get('nodes', {})

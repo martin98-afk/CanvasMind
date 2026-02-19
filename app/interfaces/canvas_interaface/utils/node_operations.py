@@ -2,11 +2,13 @@
 import shutil
 import uuid
 
+import orjson
 from NodeGraphQt import GroupNode
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 from qfluentwidgets import Theme, getIconColor, FluentIcon
+from qtpy import QtWidgets
 
 from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
 from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
@@ -35,7 +37,6 @@ class NodeOperations:
         self.thread_pool = thread_pool
         self.graph_menu = None
         self._node_id_cache_valid = False  # 标记缓存是否有效
-        self._clipboard_data = None
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
 
@@ -593,11 +594,19 @@ class NodeOperations:
         selected_nodes = self.graph.selected_nodes()
         if not selected_nodes:
             return
-        self._clipboard_data = self.graph.copy_nodes()
+        self.graph.copy_nodes()
         MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self.parent)
 
     def _paste_nodes(self):
-        if not self._clipboard_data:
+        clipboard = QtWidgets.QApplication.clipboard()
+        cb_text = clipboard.text()
+        if not cb_text:
+            return
+        try:
+            cb_data = orjson.loads(cb_text)
+        except:
+            return
+        if "graph" not in cb_data or "nodes" not in cb_data or "connections" not in cb_data:
             return
         selected_nodes = self.graph.selected_nodes()
         if selected_nodes:
@@ -609,7 +618,7 @@ class NodeOperations:
             center = viewer.mapToScene(viewer.rect().center())
             avg_x, avg_y = center.x(), center.y()
             offset = (0, 0)
-        pasted_nodes = self.graph.paste_nodes(False)
+        pasted_nodes = self.graph.paste_nodes(cb_data, False)
         if pasted_nodes:
             min_x = min(n.pos()[0] for n in pasted_nodes)
             min_y = min(n.pos()[1] for n in pasted_nodes)
