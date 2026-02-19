@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import socket
 import threading
-from typing import Callable, Dict
+import json
+from typing import Callable, Dict, Optional
 from uuid import uuid4
 
 import uvicorn
-from fastapi import FastAPI, Request
+import requests  # 需要引入 requests 库发送回调
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from loguru import logger
 
@@ -37,6 +39,9 @@ class WebhookManager(BaseTriggerManager):
 
         # self.registry 用于存放路径到回调的映射
         self.registry: Dict[str, Callable] = {}
+        # 新增：存放 node_id 到 callback_url 的映射
+        self.callback_urls: Dict[str, str] = {}
+
         self.execution_manager = ExecutionManager()
 
         self._setup_routes()
@@ -52,12 +57,15 @@ class WebhookManager(BaseTriggerManager):
 
         for node_id in node_ids:
             # 获取对应的 Webhook 路径
-            endpoint, name = node_to_endpoint.get(node_id)
-            if endpoint:
+            endpoint_info = node_to_endpoint.get(node_id)
+            if endpoint_info:
+                endpoint, name = endpoint_info
+                callback_url = self.callback_urls.get(node_id, "")
                 triggers_info.append({
                     "node_id": node_id,
                     "node_name": name,
                     "endpoint": endpoint,
+                    "callback_url": callback_url,  # 展示回调地址信息
                     "url": f"http://{self.host}:{self.port}/api/v1/trigger/{endpoint}"
                 })
 
@@ -72,29 +80,29 @@ class WebhookManager(BaseTriggerManager):
 
         @self.app.get("/health")
         async def health_check():
-            """检查服务是否正常"""
             return {
-                "status": "ok", "active_canvases": {
+                "status": "ok", "active_triggers": {
                     canvas_name: self.get_canvas_triggers_info(canvas_name)
                     for canvas_name in self.canvas_mapping
                 }
             }
 
         @self.app.get("/health/{canvas_name}")
-        async def health_check(canvas_name: str = ""):
-            """检查服务是否正常"""
+        async def health_check_canvas(canvas_name: str):
             if canvas_name not in self.canvas_mapping:
-                return {"status": "not_found", "canvas_name": canvas_name}
+                return {"status": "not_found"}
             else:
                 return {
-                    "status": "ok", canvas_name: self.get_canvas_triggers_info(canvas_name)
+                    "status": "ok", "active_triggers": {
+                        canvas_name: self.get_canvas_triggers_info(canvas_name)
+                    }
                 }
 
         @self.app.api_route("/api/v1/trigger/{endpoint}", methods=["GET", "POST", "PUT"])
         async def handle_trigger(endpoint: str, request: Request):
-            # 这里的 endpoint 构造规则需要与 add_trigger 保持一致
             path = endpoint
             task_id = uuid4().hex
+
             if path in self.registry:
                 data = {}
                 try:
@@ -106,23 +114,25 @@ class WebhookManager(BaseTriggerManager):
                             data = dict(await request.form())
                     else:
                         data = dict(request.query_params)
-                    data.update(
-                        {
-                            "request_method": request.method,
-                            "request_headers": dict(request.headers),
-                            "request_ip": request.client.host
-                        }
-                    )
+
+                    # 注入请求元数据
+                    data.update({
+                        "request_method": request.method,
+                        "request_headers": dict(request.headers),
+                        "request_ip": request.client.host,
+                        "_webhook_task_id": task_id  # 传递 task_id 以便后续追踪
+                    })
                 except Exception as e:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 
-                # 执行回调
+                # 执行触发器回调（这里是触发工作流运行）
                 self.registry[path](data, task_id)
+
                 return {"status": "success", "task_id": task_id}
 
             return JSONResponse(status_code=404, content={"status": "not_registered", "path": path})
 
-        # 这里保留你原有的 /api/v1/result/{exec_id} 路由...
+        # 保持原有的结果查询接口
         @self.app.get("/api/v1/result/{exec_id}")
         async def get_result(exec_id: str):
             record = self.execution_manager.get_record(exec_id)
@@ -144,53 +154,91 @@ class WebhookManager(BaseTriggerManager):
 
     def add_trigger(self, canvas_name: str, node_id: str, callback: Callable, **kwargs):
         """
-        实现基类方法：注册 Webhook 路径
-        参数要求: kwargs 需包含 'endpoint' (可选，默认为标准路径)
+        注册 Webhook
+        :param kwargs: 包含 'endpoint' 和 'callback_url'
         """
-        # 如果没有传入 endpoint，则使用默认的 node_id 路径
         endpoint = kwargs.get("endpoint", node_id)
         name = kwargs.get("name", "")
-        # 注册回调
+        callback_url = kwargs.get("callback_url", "")  # 获取回调地址
+
         if endpoint in self.registry:
-            logger.warning(f"[Webhook] 节点 {node_id} 的接口 {endpoint} 已存在，请勿重复注册")
+            # 注意：简单的重复注册检查可能会阻止更新配置，这里假设 endpoint 是唯一的
+            # 如果只是更新 callback_url，可以在这里处理
+            logger.warning(f"[Webhook] 接口 {endpoint} 已存在")
             return False
+
         self.registry[endpoint] = callback
 
-        # 调用基类映射维护
+        # 记录回调地址
+        if callback_url:
+            self.callback_urls[node_id] = callback_url
+        elif node_id in self.callback_urls:
+            # 如果新配置为空，但旧配置有，则删除
+            del self.callback_urls[node_id]
+
         self._register_in_mapping(canvas_name, node_id)
 
-        # 记录 node_id 与 endpoint 的对应关系，方便 remove_trigger 时查找
         if not hasattr(self, '_node_to_endpoint'):
             self._node_to_endpoint = {}
         self._node_to_endpoint[node_id] = (endpoint, name)
 
-        # 自动启动 Server（如果未启动）
         self.start()
-
-        logger.info(f"[Webhook] 节点 {node_id} 已注册接口: {endpoint}")
+        logger.info(f"[Webhook] 节点 {node_id} 注册: {endpoint}, 回调: {callback_url if callback_url else '无'}")
         return True
 
     def remove_trigger(self, node_id: str):
-        """实现基类方法：注销 Webhook"""
-        endpoint, _ = getattr(self, '_node_to_endpoint', {}).get(node_id)
-        if endpoint and endpoint in self.registry:
-            del self.registry[endpoint]
+        endpoint_info = getattr(self, '_node_to_endpoint', {}).get(node_id)
+        if endpoint_info:
+            endpoint, _ = endpoint_info
+            if endpoint in self.registry:
+                del self.registry[endpoint]
+
             del self._node_to_endpoint[node_id]
 
-            # 调用基类映射清理
+            # 清理回调地址
+            if node_id in self.callback_urls:
+                del self.callback_urls[node_id]
+
             self._unregister_from_mapping(node_id)
             logger.info(f"[Webhook] 已注销接口: {endpoint}")
 
+    def callback(self, node_id: str, callback_data: dict):
+        """
+        重写基类的 callback 方法
+        当工作流运行结束时，BaseTriggerPlugin.callback 会调用此方法
+        """
+        target_url = self.callback_urls.get(node_id)
+
+        if not target_url:
+            return
+
+        threading.Thread(
+            target=self._send_callback_request,
+            args=(target_url, callback_data, node_id),
+            daemon=True
+        ).start()
+
+    def _send_callback_request(self, url: str, data: dict, node_id: str):
+        try:
+            logger.info(f"[Webhook] 正在向 {url} 发送节点 {node_id} 的回调数据...")
+            # 发送 POST 请求
+            response = requests.post(
+                url,
+                json=data,
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            response.raise_for_status()
+            logger.info(f"[Webhook] 回调发送成功: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[Webhook] 回调发送失败: {e}")
+
     def stop(self):
-        """
-        由于 uvicorn 的 Server 运行在 Thread 中且通常随主线程退出，
-        这里主要做逻辑上的清理。彻底停止 uvicorn 线程通常需要更复杂的信号控制。
-        """
         self.registry.clear()
+        self.callback_urls.clear()
         logger.info("Webhook 管理器逻辑服务已停止")
 
     def start(self):
-        """启动后端 Web Server"""
         if self._server_thread is not None:
             return
 
@@ -219,16 +267,35 @@ class WebhookPlugin(BaseTriggerPlugin):
 
     def get_properties(self, parent_node=None):
         return {
-            "webhook_endpoint":
-                {
-                    "type": PropertyType.TEXT,
-                    "label": "接口路由",
-                    "default": parent_node.persistent_id,
-                    "description": "接口路由，默认为节点 ID，请勿重复使用, 默认服务地址: http://0.0.0.0:5000/api/v1/trigger/, /health 查看已激活webhook触发器画布，/health/{canvas_name} 查看指定画布触发器"
-                }
+            "webhook_endpoint": {
+                "type": PropertyType.TEXT,
+                "label": "接口路由",
+                "default": parent_node.persistent_id,
+                "description": "接口路由，默认为节点 ID。服务地址: http://0.0.0.0:5000/api/v1/trigger/{endpoint}"
+            },
+            "callback_url": {
+                "type": PropertyType.TEXT,
+                "label": "结果回调地址",
+                "default": "",
+                "description": "可选。工作流运行完成后，将结果以 POST 请求发送至此 URL。"
+            }
         }
 
     def activate(self, canvas_name, node, callback, props):
         endpoint = props.get("webhook_endpoint") or node.persistent_id
-        if not self.manager.add_trigger(canvas_name, node.persistent_id, callback, endpoint=endpoint, name=node.name()):
+        # 获取回调地址属性
+        callback_url = props.get("callback_url", "").strip()
+
+        # 将 callback_url 传递给 manager
+        success = self.manager.add_trigger(
+            canvas_name,
+            node.persistent_id,
+            callback,
+            endpoint=endpoint,
+            name=node.name(),
+            callback_url=callback_url
+        )
+
+        if not success:
+            # 如果注册失败（通常是重复了），重置回 ID 也许不是最佳做法，但保持原逻辑
             node.set_property("webhook_endpoint", node.persistent_id)

@@ -197,6 +197,17 @@ def create_trigger_node(parent_window):
             1. 从 kwargs 获取当前任务 ID
             2. 向 Runner 索要属于该 ID 的触发数据
             """
+            inputs_raw = {}
+            for input_port in self.input_ports():
+                port_name = input_port.name()
+                connected = input_port.connected_ports()
+                if connected:
+                    if input_port.model.multi_connection:
+                        inputs_raw[port_name] = [up.node()._output_values.get(up.name()) for up in connected]
+                    else:
+                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+            # 将输入变量应用于触发器的回调函数
+            self.plugins[self._active_plugin_name].callback(self.persistent_id, inputs_raw)
             # 从 Runner 中领数据 (不再从节点自身变量拿)
             trigger_data = {}
             # 如果没有 task_id (如手动点击执行节点)，尝试获取 runner 当前正在跑的任务数据
