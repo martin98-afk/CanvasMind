@@ -28,6 +28,7 @@ class MessagePusher(BaseComponent):
 
     outputs = [
         PortDefinition(name="log", label="日志", type=ArgumentType.TEXT),
+        PortDefinition(name="image_urls", label="图片链接", type=ArgumentType.ARRAY),
     ]
 
     properties = {
@@ -263,4 +264,4 @@ class MessagePusher(BaseComponent):
 
         log_str = "\n".join(logs)
         self.logger.info(f"Push Result: {log_str}")
-        return {"log": log_str}
+        return {"log": log_str, "image_urls": img_urls}

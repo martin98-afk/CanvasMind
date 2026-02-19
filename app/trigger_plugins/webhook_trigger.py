@@ -64,7 +64,7 @@ class WebhookManager(BaseTriggerManager):
             endpoint_info = node_to_endpoint.get(node_id)
             if endpoint_info:
                 endpoint, name = endpoint_info
-                callback_url = self.callback_urls.get(node_id, "")
+                callback_url = self.static_callback_urls.get(node_id, "")
                 triggers_info.append({
                     "node_id": node_id,
                     "node_name": name,
