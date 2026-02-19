@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 import os
 import subprocess
 import sys
@@ -16,7 +16,9 @@ from PyQt5.QtWidgets import (
     QHeaderView, QStyledItemDelegate, QFrame, QHBoxLayout, QLabel, QStyle, QTreeWidget
 )
 from loguru import logger
+
 # === Fluent Widgets ===
+
 from qfluentwidgets import (
     TreeWidget, RoundMenu, Action, TextEdit, isDarkTheme, FluentIcon as FIF, BodyLabel, CardWidget, IconWidget
 )
@@ -25,21 +27,25 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from app.utils.utils import get_icon
 
 # === Spyder Plugins (Soft Import) ===
+
 try:
     from spyder.plugins.variableexplorer.widgets.arrayeditor import ArrayEditor
     from spyder.plugins.variableexplorer.widgets.dataframeeditor import DataFrameEditor
     from spyder.plugins.variableexplorer.widgets.namespacebrowser import NamespaceBrowser
 
     HAS_SPYDER = True
+
 except ImportError:
     HAS_SPYDER = False
 
 # === Constants ===
+
 MAX_NESTING_DEPTH = 5
 MAX_DICT_KEYS = 200
 MAX_LIST_ITEMS = 200
 
 # 自定义数据角色，用于加速 Delegate 渲染
+
 ROLE_RAW_VALUE = Qt.UserRole + 1
 ROLE_TYPE_COLOR = Qt.UserRole + 2
 
@@ -76,18 +82,18 @@ class VariableUtils:
             return False
 
     @staticmethod
-    def is_pandas_series(obj):
+    def is_pyarrow_array(obj):
         try:
-            import pandas as pd
-            return isinstance(obj, pd.Series)
+            import pyarrow as pa
+            return isinstance(obj, (pa.Array, pa.ChunkedArray))
         except ImportError:
             return False
 
     @staticmethod
-    def is_dataframe(obj):
+    def is_pyarrow_table(obj):
         try:
-            import pandas as pd
-            return isinstance(obj, pd.DataFrame)
+            import pyarrow as pa
+            return isinstance(obj, pa.Table)
         except ImportError:
             return False
 
@@ -109,6 +115,13 @@ class VariableUtils:
             # 多维数组显示 shape 和类型，防止大数组格式化卡死
             dtype_info = f", {obj.dtype}" if hasattr(obj, 'dtype') else ""
             return f"<{type(obj).__name__}> shape={obj.shape}{dtype_info}"
+
+        # 处理 PyArrow Table / Array
+        if VariableUtils.is_pyarrow_table(obj):
+            return f"<pyarrow.Table> shape={obj.shape}"
+
+        if VariableUtils.is_pyarrow_array(obj):
+            return f"<pyarrow.Array> len={len(obj)}"
 
         # 处理普通标量
         if hasattr(obj, 'dtype') and np.isscalar(obj):
@@ -155,8 +168,8 @@ class VariableUtils:
         if isinstance(obj, dict): return "Dict"
         if isinstance(obj, list): return "List"
         if isinstance(obj, tuple): return "Tuple"
-        if VariableUtils.is_dataframe(obj): return "DF"
-        if VariableUtils.is_pandas_series(obj): return "Ser"
+        if VariableUtils.is_pyarrow_table(obj): return "DF"  # 保持显示为 DF
+        if VariableUtils.is_pyarrow_array(obj): return "Ser"  # 保持显示为 Ser
         # 即使 shape 为 () 依然显示为数组图标，以区分基础类型
         if hasattr(obj, 'shape'): return "Arr"
         if VariableUtils.is_pil_image(obj): return "Img"
@@ -175,7 +188,8 @@ class VariableUtils:
             "Str": "#CE9178", "Int": "#B5CEA8", "Float": "#B5CEA8",
             "Bool": "#569CD6", "List": "#4EC9B0", "Dict": "#C586C0",
             "DF": "#FF9800", "Arr": "#4CAF50", "Img": "#E91E63",
-            "File": "#DCDCAA", "None": "#808080", "Obj": "#9CDCFE"
+            "File": "#DCDCAA", "None": "#808080", "Obj": "#9CDCFE",
+            "Ser": "#FF9800"
         }
         base_color = QColor(colors.get(type_name, "#9CDCFE"))
         bg_rect = QRect(2, 6, size - 4, size - 12)
@@ -249,6 +263,7 @@ class VariableValueDelegate(QStyledItemDelegate):
                 return QSize(size.width(), max(size.height(), text_rect.height() + 10))
         return size
 
+
 # ==========================================
 # 3. 详情弹窗 (Improved Detail Popup)
 # ==========================================
@@ -292,8 +307,14 @@ class VariableDetailPopup(QWidget):
 
         if VariableUtils.is_image_file(obj) or VariableUtils.is_pil_image(obj):
             self.preview_widget = self._load_pixmap(obj)
-        elif VariableUtils.is_dataframe(obj) or VariableUtils.is_pandas_series(obj):
-            text = str(obj.head(10)) + f"\n\nShape: {obj.shape}"
+        elif VariableUtils.is_pyarrow_table(obj) or VariableUtils.is_pyarrow_array(obj):
+            # pyarrow 的 slice 和 to_string
+            try:
+                # 只取前10行显示
+                preview_slice = obj.slice(0, 10)
+                text = str(preview_slice) + f"\n\nShape: {len(obj)} rows"
+            except:
+                text = str(obj)
             self.preview_widget = self._create_text_edit(text)
         else:
             # 防止巨大数组
@@ -440,7 +461,7 @@ class VariableTreeWidget(QTreeWidget):
                 color = QColor("#DCDCAA") if dark else QColor("#795E26")
             else:
                 color = QColor("#CE9178") if dark else QColor("#A31515")
-        elif hasattr(obj, 'shape'):
+        elif hasattr(obj, 'shape') and not (VariableUtils.is_pyarrow_table(obj) or VariableUtils.is_pyarrow_array(obj)):
             # 如果是标量数组，按数值着色
             if obj.shape == ():
                 color = QColor("#B5CEA8") if dark else QColor("#098658")
@@ -459,9 +480,12 @@ class VariableTreeWidget(QTreeWidget):
                 has_children = len(obj) > 0
             elif hasattr(obj, 'shape'):
                 # shape 为 () 的数组没有子维度，不显示展开图标
-                has_children = obj.ndim > 0 and obj.size > 0
-            elif VariableUtils.is_dataframe(obj) or VariableUtils.is_pandas_series(obj):
-                has_children = not obj.empty
+                # PyArrow Table/Array 也有 shape
+                has_children = len(obj) > 0 if hasattr(obj, '__len__') else (obj.ndim > 0 and obj.size > 0)
+            elif VariableUtils.is_pyarrow_table(obj):
+                has_children = obj.num_rows > 0
+            elif VariableUtils.is_pyarrow_array(obj):
+                has_children = len(obj) > 0
             elif hasattr(obj, '__dict__'):
                 has_children = True
         except:
@@ -491,15 +515,20 @@ class VariableTreeWidget(QTreeWidget):
                     child = QTreeWidgetItem([f"[{i}]", ""])
                     self._set_node_metadata(child, obj[i])
                     children.append(child)
-            elif VariableUtils.is_pandas_series(obj):
+            elif VariableUtils.is_pyarrow_array(obj):
+                # PyArrow Array 像 list 一样处理
                 for i in range(min(len(obj), MAX_LIST_ITEMS)):
-                    child = QTreeWidgetItem([str(obj.index[i]), ""])
-                    self._set_node_metadata(child, obj.iloc[i])
+                    child = QTreeWidgetItem([str(i), ""])
+                    # PyArrow 索引返回的是 Scalar，需要转为 python 值或保持 Scalar
+                    val = obj[i]
+                    self._set_node_metadata(child, val)
                     children.append(child)
-            elif VariableUtils.is_dataframe(obj):
-                for col in obj.columns:
-                    child = QTreeWidgetItem([str(col), ""])
-                    self._set_node_metadata(child, obj[col])
+            elif VariableUtils.is_pyarrow_table(obj):
+                # PyArrow Table 遍历列
+                for col_name in obj.column_names:
+                    child = QTreeWidgetItem([str(col_name), ""])
+                    # obj[col_name] 返回 ChunkedArray
+                    self._set_node_metadata(child, obj[col_name])
                     children.append(child)
             elif hasattr(obj, '__dict__'):
                 attrs = {k: v for k, v in obj.__dict__.items() if not k.startswith('__')}
@@ -521,7 +550,7 @@ class VariableTreeWidget(QTreeWidget):
         menu.addAction(Action(FIF.INFO, "查看详情", triggered=lambda: self._show_detail_popup(item, obj)))
         menu.addAction(Action(FIF.COPY, "复制值", triggered=lambda: QApplication.clipboard().setText(str(obj))))
         if HAS_SPYDER:
-            if VariableUtils.is_dataframe(obj) or VariableUtils.is_pandas_series(obj):
+            if VariableUtils.is_pyarrow_table(obj) or VariableUtils.is_pyarrow_array(obj):
                 menu.addAction(
                     Action(get_icon("表格"), "在表格中打开", triggered=lambda: self._open_spyder_editor(obj, name)))
             elif hasattr(obj, 'shape') and hasattr(obj, 'dtype'):
@@ -559,7 +588,6 @@ class VariableTreeWidget(QTreeWidget):
 
     def _open_spyder_editor(self, data, title):
         if not HAS_SPYDER: return
-        if VariableUtils.is_pandas_series(data): data = data.to_frame()
         editor = DataFrameEditor(parent=self, readonly=True, namespacebrowser=NamespaceBrowser(self.parent()))
         if editor.setup_and_check(data, title=title): editor.exec_()
 
@@ -571,14 +599,21 @@ class VariableTreeWidget(QTreeWidget):
 
 if __name__ == "__main__":
     from qfluentwidgets import setTheme, Theme
+    import pyarrow as pa  # Test import
 
     app = QApplication(sys.argv)
     setTheme(Theme.DARK)
+
+    # 构造测试数据，使用 PyArrow 替代 Pandas
+    t1 = pa.Table.from_pydict({'a': [1, 2, 3], 'b': ['x', 'y', 'z']})
+
     data = {
         "Numpy Scalar": np.array(3.14159),  # shape 为 ()，将显示数值
         "Numpy 1D": np.array([1, 2, 3]),
         "Huge Video Mock": np.zeros((100, 100, 100)),
-        "Normal Dict": {"a": 1, "b": np.array(100)}
+        "Normal Dict": {"a": 1, "b": np.array(100)},
+        "PyArrow Table": t1,
+        "PyArrow Array": pa.array([10, 20, 30])
     }
     w = QWidget();
     layout = QVBoxLayout(w)

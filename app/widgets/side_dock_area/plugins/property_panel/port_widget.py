@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import orjson
-import pandas as pd
+import pyarrow as pa
 import os
 import re
 import shutil
 import traceback
 from pathlib import Path
+from pyarrow import csv as pa_csv
 from PyQt5.QtCore import Qt, QSize, QThread, pyqtSignal, QObject, QPoint
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidgetItem, QWidget, QFileDialog, QStackedWidget
 from loguru import logger
@@ -266,7 +267,7 @@ class PortWidget(QWidget):
         """填充/更新卡片业务数据 (优化版：增加缓存比对)"""
         ui = card.ui
 
-        # 1. 基础文本更新 (开销极小，总是执行以防止 label 变化)
+        # 1. 基础文本更新
         ui['title_label'].setText(f"• {p_label} ({p_name}): {p_type}")
 
         # 2. 获取当前数据
@@ -295,12 +296,11 @@ class PortWidget(QWidget):
         # 获取选择器可见性
         selector_visible = self._get_selector_visible(p_name) if supports_selector else False
 
-        # 获取数据筛选配置 (序列化为字符串以便比较)
+        # 获取数据筛选配置
         select_config_str = ""
         if supports_selector:
             data_select = self.node.get_property("_data_select") or {}
             config = data_select.get(p_name, {})
-            # 使用 orjson 快速序列化配置字典作为指纹
             try:
                 select_config_str = orjson.dumps(config, option=orjson.OPT_SORT_KEYS).decode()
             except:
@@ -312,40 +312,47 @@ class PortWidget(QWidget):
             is_global = self.is_in_global_func(self.node, p_name)
 
         # 4. 构建当前状态指纹
-        # 注意：对于 pandas DataFrame 等复杂对象，直接比对内容太慢，比对 id(data) 通常足够
-        # 如果是同一个对象但在内部被修改了（原地修改），UI可能不会刷新，但在节点流中数据通常是新生成的对象。
         current_state_fingerprint = (
-            id(data),  # 数据对象的内存地址
-            type(data),  # 数据类型 (防止 id 复用但类型变的极端情况)
-            selector_visible,  # 选择器是否展开
-            select_config_str,  # 选择器的筛选配置
-            is_global  # 是否在全局变量中
+            id(data),
+            type(data),
+            selector_visible,
+            select_config_str,
+            is_global
         )
 
-        # 5. 检查缓存，如果一致则跳过耗时操作
+        # 5. 检查缓存
         last_state = self._port_states.get(p_name)
         if last_state == current_state_fingerprint:
-            # 即使跳过刷新，也要确保 Global 按钮的显示状态正确（防止被外部修改）
             if is_output and ui['global_btn']:
                 ui['global_btn'].blockSignals(True)
                 ui['global_btn'].setChecked(is_global)
                 ui['global_btn'].blockSignals(False)
-            return  # >>> 命中缓存，直接返回，不刷新 Tree 和 Selector <<<
+            return
 
-        # 更新缓存
         self._port_states[p_name] = current_state_fingerprint
 
-        # ================= 以下是耗时刷新逻辑 (仅在状态变化时执行) =================
+        # ================= 耗时刷新逻辑 =================
 
-        # CSV 轻量预览处理
         raw_data_for_selector = data
         if supports_selector and p_type == ArgumentType.CSV:
             if isinstance(data, str) and data.lower().endswith('.csv'):
                 try:
                     if os.path.exists(data):
-                        # 仅读取用于 selector 的数据，Tree 显示仍使用 display_data
-                        raw_data_for_selector = pd.read_csv(data, nrows=100)
-                except:
+                        # 配置解析选项：开启 newlines_in_values 以支持单元格内换行
+                        parse_opts = pa_csv.ParseOptions(newlines_in_values=True)
+
+                        # 使用 open_csv 进行流式读取，而不是 read_csv 读取全量
+                        with pa_csv.open_csv(data, parse_options=parse_opts) as reader:
+                            try:
+                                # 只读取第一个 Batch (通常几MB)，足以用于预览列名和前几行
+                                batch = reader.read_next_batch()
+                                # 转为 Table 并截取前 100 行
+                                raw_data_for_selector = pa.Table.from_batches([batch]).slice(0, 100)
+                            except StopIteration:
+                                # 文件为空
+                                raw_data_for_selector = pa.Table.from_pydict({})
+                except Exception as e:
+                    logger.warning(f"CSV Preview failed: {e}")
                     pass
 
         # 处理选择器按钮状态
@@ -355,7 +362,6 @@ class PortWidget(QWidget):
             ui['selector_btn'].setChecked(selector_visible)
             ui['selector_btn'].blockSignals(False)
 
-            # 仅在第一次或需要重置时连接信号
             try:
                 ui['selector_btn'].clicked.disconnect()
             except:
@@ -371,7 +377,7 @@ class PortWidget(QWidget):
                 ui['selector_btn'].hide()
             display_data = data
 
-        # 更新 Tree 数据 (耗时操作)
+        # 更新 Tree 数据
         ui['tree'].set_data(display_data, p_name)
         self._text_edit_widgets[p_name] = ui['tree']
 
@@ -394,7 +400,6 @@ class PortWidget(QWidget):
             ui['global_btn'].clicked.connect(
                 lambda: self.handle_global_variable(self.node, p_name, ui['global_btn'].isChecked()))
 
-            # 右键菜单
             try:
                 card.customContextMenuRequested.disconnect()
             except:
@@ -403,7 +408,7 @@ class PortWidget(QWidget):
 
         self._refresh_card_actions(card, p_name, p_label, p_type, is_output)
 
-        # 刷新额外区域 (选择器UI) (耗时操作)
+        # 刷新额外区域
         self._refresh_extra_area(card, p_name, p_type, raw_data_for_selector, is_output, selector_visible)
 
     def _toggle_selector(self, port_name, visible):
@@ -592,20 +597,22 @@ class PortWidget(QWidget):
         if not selector_visible or is_output:
             return  # 不显示任何选择器
 
-        # 根据数据类型添加对应的选择器
-        if isinstance(data, pd.DataFrame) and not data.empty:
+        # 根据数据类型添加对应的选择器 (PyArrow 替换 Pandas)
+        if isinstance(data, pa.Table):
             self._add_column_selector_widget_to_layout(p_name, data, container)
-        elif isinstance(data, (list, tuple)) and len(data) > 0:
+        elif isinstance(data, (list, tuple, pa.Array, pa.ChunkedArray)) and len(data) > 0:
+            # pa.Array 也可以当做 list 处理
             self._add_list_selector_widget_to_layout(p_name, data, container)
         elif isinstance(data, dict) and len(data) > 0:
             self._add_dict_selector_widget_to_layout(p_name, data, container)
 
     def _add_column_selector_widget_to_layout(self, port_name, data, layout):
-        """CSV列选择器 - 统一使用 _data_select"""
-        if not isinstance(data, pd.DataFrame) or data.empty:
+        """CSV列选择器 - 统一使用 _data_select (PyArrow 版)"""
+        if not isinstance(data, pa.Table) or data.num_columns == 0:
             return
 
-        columns = list(data.columns)
+        # PyArrow 获取列名
+        columns = data.column_names
         column_card = CardWidget(self)
         column_card.setFixedHeight(200)
 
@@ -635,8 +642,15 @@ class PortWidget(QWidget):
             self.node.set_property("_data_select", data_select)
 
             if port_name in self._text_edit_widgets:
+                # PyArrow 过滤列：table.select(list_of_names)
+                # 如果没有选任何列，PyArrow 会报错或者返回空，这里处理为空表
+                try:
+                    display_data = data.select(selected) if selected else None
+                except:
+                    display_data = None
+
                 self._text_edit_widgets[port_name].set_data(
-                    data[selected] if selected else pd.DataFrame(),
+                    display_data,
                     port_name
                 )
 
@@ -926,11 +940,17 @@ class PortWidget(QWidget):
 
         t = config.get("type")
         try:
-            if t == "column" and isinstance(original_data, pd.DataFrame):
+            # 处理 PyArrow Table 列选择
+            if t == "column" and isinstance(original_data, pa.Table):
                 cols = config.get("columns", [])
-                return original_data[cols] if cols else original_data
+                # PyArrow: table.select([col1, col2...])
+                return original_data.select(cols) if cols else original_data
+
+            # 处理列表索引 (包括 pyarrow.Array)
             elif t == "list":
                 return self._filter_list_data(original_data, config.get("indices", []))
+
+            # 处理字典
             elif t == "dict":
                 selected_keys = config.get("keys", [])
                 if isinstance(original_data, dict):

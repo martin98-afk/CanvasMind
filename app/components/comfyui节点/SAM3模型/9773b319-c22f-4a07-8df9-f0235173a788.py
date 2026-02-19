@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class ComfySAM3Segmenter(BaseComponent):
     inputs = [
         PortDefinition(name="image", label="输入图片", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
-        PortDefinition(name="sam3_model", label="sam3模型", type=ArgumentType.OBJECT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="sam3_model", label="sam3模型", type=ArgumentType.OBJECT, sub_type="", connection=ConnectionType.SINGLE),
     ]
     name = "SAM3统一分割器"
     category = "comfyui节点/SAM3模型"
@@ -28,7 +28,7 @@ class ComfySAM3Segmenter(BaseComponent):
     outputs = [
         PortDefinition(name="mask", label="MASK", type=ArgumentType.IMAGE),
         PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
-        PortDefinition(name="json_boxes", label="BOXES (JSON)", type=ArgumentType.TEXT),
+        PortDefinition(name="json_boxes", label="BOXES (JSON)", type=ArgumentType.JSON),
     ]
     
     properties = {
@@ -108,6 +108,7 @@ class ComfySAM3Segmenter(BaseComponent):
 
 
     def run(self, params, inputs=None):
+        import json
         from sam3_nodes.segmentation import SAM3Grounding, SAM3Segmentation
 
         # 获取输入
@@ -219,9 +220,8 @@ class ComfySAM3Segmenter(BaseComponent):
         
         pil_mask = self.tensor_to_pil(raw_mask, is_mask=True)
         pil_image = self.tensor_to_pil(raw_visualization, is_mask=False)
-
         return {
             "mask": pil_mask,
             "image": pil_image,
-            "json_boxes": json_boxes
+            "json_boxes": json.loads(json_boxes)
         }

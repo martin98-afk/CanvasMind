@@ -120,5 +120,5 @@ class FileWatcherPlugin(BaseTriggerPlugin):
             "watch_folder_path": {"type": PropertyType.FILE, "label": "监听路径", "default": "folder"}
         }
 
-    def activate(self, canvas_name, node_id, callback, props):
-        self.manager.add_trigger(canvas_name, node_id, callback, watch_path=props.get("watch_folder_path"))
+    def activate(self, canvas_name, node, callback, props):
+        self.manager.add_trigger(canvas_name, node.persistent_id, callback, watch_path=props.get("watch_folder_path"))

@@ -142,12 +142,12 @@ class SingleFileTriggerPlugin(BaseTriggerPlugin):
             }
         }
 
-    def activate(self, canvas_name, node_id, callback, props):
+    def activate(self, canvas_name, node, callback, props):
         path = props.get("target_file_path")
         if path:
             self.manager.add_trigger(
                 canvas_name,
-                node_id,
+                node.persistent_id,
                 callback,
                 target_file=path
             )

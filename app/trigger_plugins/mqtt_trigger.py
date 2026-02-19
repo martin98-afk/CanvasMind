@@ -137,7 +137,7 @@ class MqttTriggerPlugin(BaseTriggerPlugin):
             }
         }
 
-    def activate(self, canvas_name, node_id, callback, properties):
+    def activate(self, canvas_name, node, callback, properties):
         host = properties.get("mqtt_host")
         port = properties.get("mqtt_port")
         topic = properties.get("mqtt_topic")
@@ -145,7 +145,7 @@ class MqttTriggerPlugin(BaseTriggerPlugin):
         if topic:
             self.manager.add_trigger(
                 canvas_name=canvas_name,
-                node_id=node_id,
+                node_id=node.persistent_id,
                 callback=callback,
                 host=host,
                 port=port,

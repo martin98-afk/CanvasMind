@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import copy
-import json
+import orjson
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
@@ -184,7 +184,7 @@ class SelectionActionToolbar(BaseCanvasToolbar):
     def _on_clone(self):
         if hasattr(self.viewer.home_window, 'node_operations'):
             ops = self.viewer.home_window.node_operations
-            ops._copy_selected_nodes();
+            ops._copy_selected_nodes()
             ops._paste_nodes()
             self.viewer._selection_overlay.refresh(full_recalc=False)
 
@@ -962,7 +962,7 @@ class CustomNodeViewer(NodeViewer):
             # --- 情况 B：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
             if mime_data.hasFormat("application/x-global-variable") and target_widget:
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                drag_data = json.loads(data_bytes.decode('utf-8'))
+                drag_data = orjson.loads(data_bytes.decode('utf-8'))
                 # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
@@ -982,7 +982,7 @@ class CustomNodeViewer(NodeViewer):
                 # 变量节点自动设置部分属性，便于与普通节点区分
                 if mime_data.hasFormat("application/x-global-variable"):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                    drag_data = json.loads(data_bytes.decode('utf-8'))
+                    drag_data = orjson.loads(data_bytes.decode('utf-8'))
                     node.set_icon(":/icons/变量.svg")
                     node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
                     node.set_name("\n".join(drag_data['var_name'].split("__")))
@@ -1001,38 +1001,13 @@ class CustomNodeViewer(NodeViewer):
         return super().resizeEvent(event)
 
     def zoom_to_nodes(self, nodes, duration=None):
-        if not Settings.get_instance().node_animation.value:
-            return super().zoom_to_nodes(nodes)
-        if not nodes:
-            return
-
-        # --- 优化 1: 性能设置 ---
-        # 动画期间不仅关闭抗锯齿，建议暂时将视口更新模式设为全视口更新或智能更新，防止局部重绘闪烁
-        # 注意：这里假设 self 是 QGraphicsView 的子类
-        original_render_hint = self.renderHints()
-        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
-        # 这一步能显著提高大场景缩放时的帧率
-        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
-
-        # --- 优化 2: 安全清理旧动画 ---
-        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
-            if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
-                self._zoom_anim_group.stop()
-            # 显式删除以防内存泄漏
-            self._zoom_anim_group.deleteLater()
-            self._zoom_anim_group = None
-
-        # --- 优化 3: 精确计算可见区域 (解决对齐问题) ---
+        # --- 精确计算可见区域 (解决对齐问题) ---
         def get_tight_bbox(item_list):
             rect = QtCore.QRectF()
             first = True
             for node in item_list:
                 # 获取节点自身在场景中的坐标
                 node_scene_rect = node.sceneBoundingRect()
-
-                # 关键修复：如果节点是组或包含子项，我们需要排除隐藏的子项
-                # 这里我们手动遍历一级子项来确定更紧凑的边界
-                # 如果您的节点结构非常复杂，这里逻辑是：取“节点自身”与“可见子项”的并集
 
                 # 1. 先拿节点自身的 boundingRect (通常是背景框)
                 tight_rect = node.mapRectToScene(node.boundingRect())
@@ -1053,6 +1028,32 @@ class CustomNodeViewer(NodeViewer):
                 else:
                     rect = rect.united(tight_rect)
             return rect
+
+        if not Settings.get_instance().node_animation.value:
+            self._scene_range = get_tight_bbox(nodes)
+            self._update_scene()
+
+            if self.get_zoom() > 0.1:
+                self.reset_zoom(self._scene_range.center())
+            return
+        if not nodes:
+            return
+
+        # --- 优化 1: 性能设置 ---
+        # 动画期间不仅关闭抗锯齿，建议暂时将视口更新模式设为全视口更新或智能更新，防止局部重绘闪烁
+        # 注意：这里假设 self 是 QGraphicsView 的子类
+        original_render_hint = self.renderHints()
+        self.setRenderHint(QtGui.QPainter.Antialiasing, False)
+        # 这一步能显著提高大场景缩放时的帧率
+        self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
+
+        # --- 优化 2: 安全清理旧动画 ---
+        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
+            if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
+                self._zoom_anim_group.stop()
+            # 显式删除以防内存泄漏
+            self._zoom_anim_group.deleteLater()
+            self._zoom_anim_group = None
 
         start_rect = QtCore.QRectF(self._scene_range)
         target_rect = get_tight_bbox(nodes)
@@ -1205,13 +1206,13 @@ class CustomNodeGraph(NodeGraph):
             return False
         clipboard = QtWidgets.QApplication.clipboard()
         serial_data = self._serialize(nodes)
-        serial_str = json.dumps(serialize_for_json(serial_data))
+        serial_str = orjson.dumps(serialize_for_json(serial_data)).decode("utf-8")
         if serial_str:
             clipboard.setText(serial_str)
             return True
         return False
 
-    def paste_nodes(self, adjust_graph_style=True):
+    def paste_nodes(self, cb_data, adjust_graph_style=True):
         """
         Pastes nodes copied from the clipboard.
 
@@ -1221,18 +1222,8 @@ class CustomNodeGraph(NodeGraph):
         Returns:
             list[NodeGraphQt.BaseNode]: list of pasted node instances.
         """
-        clipboard = QtWidgets.QApplication.clipboard()
-        cb_text = clipboard.text()
-        if not cb_text:
-            return
 
-        try:
-            serial_data = deserialize_from_json(json.loads(cb_text))
-        except json.decoder.JSONDecodeError as e:
-            print('ERROR: Can\'t Decode Clipboard Data:\n'
-                  '"{}"'.format(cb_text))
-            return
-
+        serial_data = deserialize_from_json(cb_data)
         self._undo_stack.beginMacro('pasted nodes')
         self.clear_selection()
         nodes, _ = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
@@ -1324,9 +1315,9 @@ class CustomNodeGraph(NodeGraph):
         serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
         serial_data['graph']['pipe_style'] = self.pipe_style()
 
-        # connection constrains.
-        serial_data['graph']['accept_connection_types'] = json.dumps(self.model.accept_connection_types, default=list)
-        serial_data['graph']['reject_connection_types'] = json.dumps(self.model.reject_connection_types, default=list)
+        # # connection constrains.
+        # serial_data['graph']['accept_connection_types'] = orjson.dumps(self.model.accept_connection_types, default=list)
+        # serial_data['graph']['reject_connection_types'] = orjson.dumps(self.model.reject_connection_types, default=list)
 
         # serialize nodes.
         for n in nodes:
@@ -1422,17 +1413,17 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_collision(attr_value)
                     elif attr_name == "pipe_slicing":
                         self.set_pipe_slicing(attr_value)
-
-                # connection constrains.
-                if attr_name == 'accept_connection_types':
-                    attr_value = json.loads(attr_value)
-                    convert_last_list_to_set(attr_value)
-                    self.model.accept_connection_types = attr_value
-
-                elif attr_name == 'reject_connection_types':
-                    attr_value = json.loads(attr_value)
-                    convert_last_list_to_set(attr_value)
-                    self.model.reject_connection_types = attr_value
+                #
+                # # connection constrains.
+                # if attr_name == 'accept_connection_types':
+                #     attr_value = orjson.loads(attr_value)
+                #     convert_last_list_to_set(attr_value)
+                #     self.model.accept_connection_types = attr_value
+                #
+                # elif attr_name == 'reject_connection_types':
+                #     attr_value = orjson.loads(attr_value)
+                #     convert_last_list_to_set(attr_value)
+                #     self.model.reject_connection_types = attr_value
 
             # 分离 backdrop 节点和其他节点
             nodes_data = data.get('nodes', {})

@@ -49,10 +49,17 @@ def create_trigger_node(parent_window):
                     "type": PropertyType.CHOICE,
                     "label": "运行策略",
                     "choices": list(parent_window.run_strategies.keys()),
-                    "default": "从此处运行"
+                    "default": "从此处运行",
+                    "description": "选择运行策略，从此处运行: 从当前节点运行；运行到此处：从该节点的前置节点运行到此处；运行所在子图：运行触发器所在的连通图上所有节点；运行所有节点：运行画布的所有节点"
                 },
-                "enable_throttle": {"type": PropertyType.BOOL, "label": "启用节流", "default": False},
-                "throttle_interval": {"type": PropertyType.FLOAT, "label": "节流间隔(s)", "default": 1.0}
+                "enable_throttle": {
+                    "type": PropertyType.BOOL, "label": "启用节流", "default": False,
+                    "description": "是否启用节流，节流将限制触发器每秒触发的次数。"
+                },
+                "throttle_interval": {
+                    "type": PropertyType.FLOAT, "label": "节流间隔(s)", "default": 1.0,
+                    "description": "节流间隔，单位为秒。"
+                }
             }
 
             # UI 防抖
@@ -69,15 +76,20 @@ def create_trigger_node(parent_window):
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self._patch_view_drawing()
             self.view.rename_signal.connect(parent_window.rename_node_vars)
+            self.view.rename_signal.connect(self._do_backend_sync)
 
         # --- UI 逻辑 (保持不变) ---
         def _generate_widgets(self):
             for i, (name, conf) in enumerate(self.property_defs.items()):
-                self._create_and_add_widget(name, conf, 200 - i)
+                widget = self._create_and_add_widget(name, conf, 200 - i)
+                if "description" in conf:
+                    widget.setToolTip(conf["description"])
             for p_name, plugin in self.plugins.items():
                 props = plugin.get_properties(self)
                 for i, (name, conf) in enumerate(props.items()):
                     widget = self._create_and_add_widget(name, conf, 100 - i)
+                    if "description" in conf:
+                        widget.setToolTip(conf["description"])
                     if widget: self.plugin_widgets[p_name].append(widget)
 
         def _create_and_add_widget(self, name, conf, z_value):
@@ -142,7 +154,7 @@ def create_trigger_node(parent_window):
             if curr_type in self.plugins:
                 plugin = self.plugins[curr_type]
                 props = {k: self.get_property(k) for k in plugin.get_properties(self)}
-                plugin.activate(self.parent_window.workflow_name, self.persistent_id, self.trigger_execution, props)
+                plugin.activate(self.parent_window.workflow_name, self, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
 
         def _handle_runner_error_event(self, error_msg):
@@ -185,6 +197,18 @@ def create_trigger_node(parent_window):
             1. 从 kwargs 获取当前任务 ID
             2. 向 Runner 索要属于该 ID 的触发数据
             """
+            inputs_raw = {}
+            for input_port in self.input_ports():
+                port_name = input_port.name()
+                connected = input_port.connected_ports()
+                if connected:
+                    if input_port.model.multi_connection:
+                        inputs_raw[port_name] = [up.node()._output_values.get(up.name()) for up in connected]
+                    else:
+                        inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+            inputs_raw["_webhook_task_id"] = self.parent_window.canvas_runner._current_task.task_id
+            # 将输入变量应用于触发器的回调函数
+            self.plugins[self._active_plugin_name].callback(self.persistent_id, inputs_raw)
             # 从 Runner 中领数据 (不再从节点自身变量拿)
             trigger_data = {}
             # 如果没有 task_id (如手动点击执行节点)，尝试获取 runner 当前正在跑的任务数据

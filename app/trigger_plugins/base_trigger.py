@@ -21,13 +21,16 @@ class BaseTriggerPlugin(ABC):
         return {}
 
     @abstractmethod
-    def activate(self, canvas_name: str, node_id: str, callback: callable, properties: dict):
+    def activate(self, canvas_name: str, node, callback: callable, properties: dict):
         """激活触发器"""
         pass
 
     def deactivate(self, node_id: str):
         """停用触发器"""
         self.manager.remove_trigger(node_id)
+
+    def callback(self, node_id: str, callback_data: dict):
+        self.manager.callback(node_id, callback_data)
 
 
 class BaseTriggerManager(ABC):
@@ -76,6 +79,12 @@ class BaseTriggerManager(ABC):
 
             if canvas_name in self.canvas_mapping:
                 del self.canvas_mapping[canvas_name]
+
+    def callback(self, node_id: str, callback_data: dict):
+        """
+        触发器回调函数
+        """
+        pass
 
     @abstractmethod
     def stop(self):

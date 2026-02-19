@@ -1,17 +1,14 @@
 {
-  "version": "1.0",
   "graph": {
     "graph": {
       "layout_direction": 0,
       "acyclic": true,
       "pipe_collision": false,
       "pipe_slicing": true,
-      "pipe_style": 1,
-      "accept_connection_types": "{}",
-      "reject_connection_types": "{}"
+      "pipe_style": 2
     },
     "nodes": {
-      "0x1b868470250": {
+      "0x25b68e49e50": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "合并MCP配置",
@@ -112,7 +109,7 @@
           }
         }
       },
-      "0x1b8684c2010": {
+      "0x25b68e7c7d0": {
         "type_": "dynamic.StatusDynamicNode_917435cc-5a9a-4dd3-858c-c6d23cec51ae",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具发现 1",
@@ -884,7 +881,7 @@
           }
         }
       },
-      "0x1b8684e6450": {
+      "0x25b68eb0410": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "自定义mcp结构",
@@ -940,7 +937,7 @@
           "text": "{\n  \"mcpServers\": {\n    \"Canvas_获取当前时间\": {\n      \"command\": \"E:/CanvasMind/CanvasMind/_internal/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"E:/CanvasMind/CanvasMind/canvas_files/projects/获取当前时间/mcp_instance.py\"\n      ]\n    }\n  }\n}"
         }
       },
-      "0x1b8684e7dd0": {
+      "0x25b68eb1ed0": {
         "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
         "icon": ":/icons/同心圆.svg",
         "name": "提示词模板",
@@ -1012,7 +1009,7 @@
           "prompt": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述"
         }
       },
-      "0x1b8684f9790": {
+      "0x25b68eb3ad0": {
         "type_": "dynamic.StatusDynamicNode_b160dcb9-52c8-4625-9b75-aa564c0b68c6",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具调用智能体",
@@ -1241,7 +1238,7 @@
           ]
         }
       },
-      "0x1b868507590": {
+      "0x25b68ec5350": {
         "type_": "dynamic.StatusDynamicNode_309f9eab-b2b4-41cd-bec9-2e4f4fd1d261",
         "icon": ":/icons/同心圆.svg",
         "name": "消息推送执行 1",
@@ -1313,7 +1310,7 @@
           "log": "DingTalk[0]: OK"
         }
       },
-      "0x1b868515e90": {
+      "0x25b68ec7b90": {
         "type_": "dynamic.StatusDynamicNode_4c1e1377-6ebc-46a9-8cd9-af2279ade58a",
         "icon": ":/icons/同心圆.svg",
         "name": "文本转json",
@@ -1382,7 +1379,7 @@
           }
         }
       },
-      "0x1b868517750": {
+      "0x25b68ed12d0": {
         "type_": "dynamic.StatusDynamicNode_226d6892-09cc-4486-b5ad-e1e34a9e242c",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具配置 2",
@@ -1465,7 +1462,7 @@
           }
         }
       },
-      "0x1b868534090": {
+      "0x25b68eddf10": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器 1",
@@ -1493,7 +1490,7 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          269.93310742664903,
+          864.5156499017833,
           64.5492213411552
         ],
         "layout_direction": 0,
@@ -1504,7 +1501,7 @@
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "_data_select": {},
-          "trigger_type": "停止触发",
+          "trigger_type": "Webhook触发",
           "run_strategy": "运行所在子图",
           "enable_throttle": false,
           "throttle_interval": 1.0,
@@ -1525,7 +1522,8 @@
           "redis_port": 6379,
           "redis_password": "",
           "redis_channel": "app_events",
-          "webhook_endpoint": "/api/v1/trigger/12a1e05d-78ed-4638-a14c-007c10cc1d46",
+          "webhook_endpoint": "12a1e05d-78ed-4638-a14c-007c10cc1d46",
+          "callback_url": "",
           "FULL_PATH": "触发器/触发器",
           "_status": "last_success"
         },
@@ -1545,7 +1543,7 @@
           "output": {}
         }
       },
-      "0x1b868559750": {
+      "0x25b68ede750": {
         "type_": "dynamic.StatusDynamicNode_cefba941-c9f4-4b57-bf09-0f1bf08951d2",
         "icon": ":/icons/同心圆.svg",
         "name": "Gitee图床配置",
@@ -1600,7 +1598,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x1b86855bd10": {
+      "0x25b7e0edb10": {
         "type_": "dynamic.StatusDynamicNode_67358ab2-5d99-4918-9368-7134940084a1",
         "icon": ":/icons/同心圆.svg",
         "name": "钉钉配置 2",
@@ -1654,7 +1652,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x1b868569bd0": {
+      "0x25b7e0efd50": {
         "type_": "dynamic.StatusDynamicNode_ab01999d-dd29-4763-bebb-e67931ddc635",
         "icon": ":/icons/同心圆.svg",
         "name": "获取当前时间",
@@ -1709,7 +1707,7 @@
           "timestamp": "2026-02-16 02:23:14"
         }
       },
-      "0x1b86856ad50": {
+      "0x25b7e105110": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入",
@@ -1763,107 +1761,349 @@
         "output_values": {
           "text": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述"
         }
+      },
+      "0x25b68e41990": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": ":/icons/同心圆.svg",
+        "name": "文本输入 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1322.834108027198,
+          -1406.4916010249656
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "e5b0ab4f-997a-43ba-8427-2e469fcee95d",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "测试对话效果",
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "测试对话效果"
+        }
+      },
+      "0x25b0101fb10": {
+        "type_": "general.trigger",
+        "icon": ":/icons/触发器.svg",
+        "name": "触发器",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1699.8509667858473,
+          -1406.4916010249656
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "0ca2e748-a058-408f-80c6-81909e11f9d7",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "trigger_type": "Webhook触发",
+          "run_strategy": "运行到此处",
+          "enable_throttle": false,
+          "throttle_interval": 1.0,
+          "cron_expression": "*/30 * * * * *",
+          "db_url": "sqlite:///data.db",
+          "sql": "SELECT COUNT(*) FROM users",
+          "interval": 60,
+          "email_server": "imap.gmail.com",
+          "email_port": 993,
+          "email_username": "",
+          "email_password": "",
+          "target_file_path": "",
+          "watch_folder_path": "",
+          "mqtt_host": "127.0.0.1",
+          "mqtt_port": 1883,
+          "mqtt_topic": "home/sensor/#",
+          "redis_host": "127.0.0.1",
+          "redis_port": 6379,
+          "redis_password": "",
+          "redis_channel": "app_events",
+          "webhook_endpoint": "0ca2e748-a058-408f-80c6-81909e11f9d7",
+          "callback_url": "http://0.0.0.0:5000/api/v1/trigger/12a1e05d-78ed-4638-a14c-007c10cc1d46",
+          "_status": "success",
+          "FULL_PATH": "触发器/触发器"
+        },
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output": {
+            "request_method": "GET",
+            "request_headers": {
+              "host": "127.0.0.1:5000",
+              "accept": "*/*",
+              "accept-encoding": "gzip, deflate, br",
+              "connection": "keep-alive",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "request_ip": "127.0.0.1",
+            "_webhook_task_id": "c7bd8183aa344b60adaf5a49d594988e"
+          }
+        }
+      },
+      "0x25bc9ef5410": {
+        "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
+        "icon": ":/icons/同心圆.svg",
+        "name": "HTTP 请求客户端",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          285.6467654111759,
+          -11.94567385099603
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "ce2b76e4-ee23-436f-8581-d51ab7c33203",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "url": "http://127.0.0.1:5000/api/v1/trigger/0ca2e748-a058-408f-80c6-81909e11f9d7",
+          "method": "GET",
+          "timeout": 10,
+          "verify_ssl": true,
+          "auth_type": "None",
+          "auth_value": "",
+          "headers": [],
+          "params": [],
+          "_status": "success",
+          "FULL_PATH": "网络请求/HTTP 请求客户端"
+        },
+        "input_ports": [
+          {
+            "name": "request_body",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "response",
+            "multi_connection": true
+          },
+          {
+            "name": "status_code",
+            "multi_connection": true
+          },
+          {
+            "name": "headers",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "response": {
+            "status": "success",
+            "task_id": "c7bd8183aa344b60adaf5a49d594988e"
+          },
+          "status_code": 200,
+          "headers": {
+            "date": "Thu, 19 Feb 2026 13:18:35 GMT",
+            "server": "uvicorn",
+            "content-length": "65",
+            "content-type": "application/json"
+          }
+        }
       }
     },
     "connections": [
       {
         "in": [
-          "0x1b868470250",
+          "0x25b68e49e50",
           "input1"
         ],
         "out": [
-          "0x1b868517750",
+          "0x25b68ed12d0",
           "mcp_config"
         ]
       },
       {
         "in": [
-          "0x1b868470250",
+          "0x25b68e49e50",
           "input1"
         ],
         "out": [
-          "0x1b868515e90",
+          "0x25b68ec7b90",
           "output"
         ]
       },
       {
         "out": [
-          "0x1b868470250",
+          "0x25b68e49e50",
           "output1"
         ],
         "in": [
-          "0x1b8684c2010",
+          "0x25b68e7c7d0",
           "mcp_config"
         ]
       },
       {
         "out": [
-          "0x1b8684c2010",
+          "0x25b68e7c7d0",
           "tools_dict"
         ],
         "in": [
-          "0x1b8684f9790",
+          "0x25b68eb3ad0",
           "tools_dict"
         ]
       },
       {
         "out": [
-          "0x1b8684c2010",
+          "0x25b68e7c7d0",
           "mcp_metadata"
         ],
         "in": [
-          "0x1b8684f9790",
+          "0x25b68eb3ad0",
           "mcp_metadata"
         ]
       },
       {
         "out": [
-          "0x1b8684e6450",
+          "0x25b68eb0410",
           "text"
         ],
         "in": [
-          "0x1b868515e90",
+          "0x25b68ec7b90",
           "input"
         ]
       },
       {
         "in": [
-          "0x1b8684e7dd0",
+          "0x25b68eb1ed0",
           "variables"
         ],
         "out": [
-          "0x1b868534090",
+          "0x25b68eddf10",
           "output"
         ]
       },
       {
         "in": [
-          "0x1b8684e7dd0",
+          "0x25b68eb1ed0",
           "variables"
         ],
         "out": [
-          "0x1b86856ad50",
+          "0x25b7e105110",
           "text"
         ]
       },
       {
         "out": [
-          "0x1b8684e7dd0",
+          "0x25b68eb1ed0",
           "prompt"
         ],
         "in": [
-          "0x1b8684f9790",
+          "0x25b68eb3ad0",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x1b8684f9790",
+          "0x25b68eb3ad0",
           "response"
         ],
         "in": [
-          "0x1b868507590",
+          "0x25b68ec5350",
           "message"
+        ]
+      },
+      {
+        "out": [
+          "0x25b68e41990",
+          "text"
+        ],
+        "in": [
+          "0x25b0101fb10",
+          "input"
         ]
       }
     ],
