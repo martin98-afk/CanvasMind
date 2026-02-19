@@ -8,14 +8,14 @@
       "pipe_style": 2
     },
     "nodes": {
-      "0x241a6ab8150": {
+      "0x17a86cc7050": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "代码编辑",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -78,13 +78,13 @@
           "_zmq_ports": "55966/55967",
           "FULL_PATH": "代码执行/代码编辑",
           "FILE_PATH": "DYNAMIC_CODE",
-          "_status": "last_success"
+          "_status": "success"
         },
         "output_values": {
-          "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"3d10bc7a1b9a4d32a61aa7953a96fc04\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_3d10bc7a1b9a4d32a61aa7953a96fc04 = echarts.init(\n            document.getElementById('3d10bc7a1b9a4d32a61aa7953a96fc04'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_3d10bc7a1b9a4d32a61aa7953a96fc04 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_3d10bc7a1b9a4d32a61aa7953a96fc04.setOption(option_3d10bc7a1b9a4d32a61aa7953a96fc04);\n    </script>\n</body>\n</html>\n"
+          "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"51cceddb032744648a7f08581c760d6e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_51cceddb032744648a7f08581c760d6e = echarts.init(\n            document.getElementById('51cceddb032744648a7f08581c760d6e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_51cceddb032744648a7f08581c760d6e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_51cceddb032744648a7f08581c760d6e.setOption(option_51cceddb032744648a7f08581c760d6e);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x241aa4bc750": {
+      "0x17a86e17690": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点 1",
@@ -137,7 +137,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x241aa4bdc90": {
+      "0x17a86e21050": {
         "type_": "dynamic.StatusDynamicNode_f946ed63-36ae-4da3-8a3b-de6d0d80cf01",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "通用ECharts图表绘制",
@@ -209,7 +209,7 @@
           "output1": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"b05d1d3775c545b39133f289b59d2b45\" class=\"chart-container\" style=\"width:700px; height:500px; \"></div>\n    <script>\n        var chart_b05d1d3775c545b39133f289b59d2b45 = echarts.init(\n            document.getElementById('b05d1d3775c545b39133f289b59d2b45'), 'dark', {renderer: 'canvas', locale: 'ZH'});\n        var option_b05d1d3775c545b39133f289b59d2b45 = {\n    \"backgroundColor\": \"transparent\",\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u7cfb\\u52171\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                0,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                1,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2,\n                2\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u7cfb\\u52171\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"textStyle\": {\n                \"color\": \"#cccccc\"\n            },\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"color\": \"#000000\"\n        },\n        \"backgroundColor\": \"#ffffff\",\n        \"borderColor\": \"#666666\",\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"type\": \"category\",\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                0,\n                1,\n                2,\n                3,\n                4,\n                5,\n                6,\n                7,\n                8,\n                9,\n                10,\n                11,\n                12,\n                13,\n                14,\n                15,\n                16,\n                17,\n                18,\n                19,\n                20,\n                21,\n                22,\n                23,\n                24,\n                25,\n                26,\n                27,\n                28,\n                29,\n                30,\n                31,\n                32,\n                33,\n                34,\n                35,\n                36,\n                37,\n                38,\n                39,\n                40,\n                41,\n                42,\n                43,\n                44,\n                45,\n                46,\n                47,\n                48,\n                49,\n                50,\n                51,\n                52,\n                53,\n                54,\n                55,\n                56,\n                57,\n                58,\n                59,\n                60,\n                61,\n                62,\n                63,\n                64,\n                65,\n                66,\n                67,\n                68,\n                69,\n                70,\n                71,\n                72,\n                73,\n                74,\n                75,\n                76,\n                77,\n                78,\n                79,\n                80,\n                81,\n                82,\n                83,\n                84,\n                85,\n                86,\n                87,\n                88,\n                89,\n                90,\n                91,\n                92,\n                93,\n                94,\n                95,\n                96,\n                97,\n                98,\n                99,\n                100,\n                101,\n                102,\n                103,\n                104,\n                105,\n                106,\n                107,\n                108,\n                109,\n                110,\n                111,\n                112,\n                113,\n                114,\n                115,\n                116,\n                117,\n                118,\n                119,\n                120,\n                121,\n                122,\n                123,\n                124,\n                125,\n                126,\n                127,\n                128,\n                129,\n                130,\n                131,\n                132,\n                133,\n                134,\n                135,\n                136,\n                137,\n                138,\n                139,\n                140,\n                141,\n                142,\n                143,\n                144,\n                145,\n                146,\n                147,\n                148,\n                149\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"axisLine\": {\n                \"show\": true,\n                \"onZero\": true,\n                \"onZeroAxisIndex\": 0,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisTick\": {\n                \"show\": true,\n                \"alignWithLabel\": false,\n                \"inside\": false,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#555555\"\n                }\n            },\n            \"axisLabel\": {\n                \"show\": true,\n                \"color\": \"#aaaaaa\",\n                \"margin\": 8,\n                \"valueAnimation\": false\n            },\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\",\n                    \"color\": \"#333333\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false,\n            \"textStyle\": {\n                \"color\": \"#ffffff\"\n            }\n        }\n    ],\n    \"toolbox\": {\n        \"show\": false,\n        \"orient\": \"horizontal\",\n        \"itemSize\": 15,\n        \"itemGap\": 10,\n        \"left\": \"80%\",\n        \"feature\": {\n            \"saveAsImage\": {\n                \"type\": \"png\",\n                \"backgroundColor\": \"auto\",\n                \"connectedBackgroundColor\": \"#fff\",\n                \"show\": true,\n                \"pixelRatio\": 1\n            },\n            \"restore\": {\n                \"show\": true\n            },\n            \"dataView\": {\n                \"show\": true,\n                \"readOnly\": false,\n                \"backgroundColor\": \"#fff\",\n                \"textareaColor\": \"#fff\",\n                \"textareaBorderColor\": \"#333\",\n                \"textColor\": \"#000\",\n                \"buttonColor\": \"#c23531\",\n                \"buttonTextColor\": \"#fff\"\n            },\n            \"dataZoom\": {\n                \"show\": true,\n                \"title\": {},\n                \"icon\": {},\n                \"filterMode\": \"filter\"\n            },\n            \"magicType\": {\n                \"show\": true,\n                \"type\": [\n                    \"line\",\n                    \"bar\",\n                    \"stack\",\n                    \"tiled\"\n                ],\n                \"title\": {},\n                \"icon\": {}\n            }\n        }\n    }\n};\n        chart_b05d1d3775c545b39133f289b59d2b45.setOption(option_b05d1d3775c545b39133f289b59d2b45);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x241aa4d9490": {
+      "0x17a86e405d0": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点 2",
@@ -248,7 +248,7 @@
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "_data_select": {},
-          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"3d10bc7a1b9a4d32a61aa7953a96fc04\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_3d10bc7a1b9a4d32a61aa7953a96fc04 = echarts.init(\n            document.getElementById('3d10bc7a1b9a4d32a61aa7953a96fc04'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_3d10bc7a1b9a4d32a61aa7953a96fc04 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_3d10bc7a1b9a4d32a61aa7953a96fc04.setOption(option_3d10bc7a1b9a4d32a61aa7953a96fc04);\n    </script>\n</body>\n</html>\n",
+          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"51cceddb032744648a7f08581c760d6e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_51cceddb032744648a7f08581c760d6e = echarts.init(\n            document.getElementById('51cceddb032744648a7f08581c760d6e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_51cceddb032744648a7f08581c760d6e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_51cceddb032744648a7f08581c760d6e.setOption(option_51cceddb032744648a7f08581c760d6e);\n    </script>\n</body>\n</html>\n",
           "_column_select": {},
           "FULL_PATH": "可视化/多媒体展示节点",
           "FILE_PATH": ""
@@ -262,7 +262,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x241aa4dcf50": {
+      "0x17a86e4c210": {
         "type_": "dynamic.StatusDynamicNode_076e8486-c5ea-491d-ac67-99987a622dd5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "随机森林分类训练",
@@ -377,7 +377,7 @@
           "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\ba304fa4-3630-4c75-be30-d7df1707d0f1\\result\\model_ba304fa4-3630-4c75-be30-d7df1707d0f1_model.pkl"
         }
       },
-      "0x241aa4ed090": {
+      "0x17a86e1b390": {
         "type_": "dynamic.StatusDynamicNode_c41d7b30-7d50-4765-a806-844d54021fdb",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "MinMax归一化",
@@ -472,7 +472,7 @@
           "scaler": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\3fd34b98-e9c6-42af-bf26-0cdee4adac74\\result\\model_3fd34b98-e9c6-42af-bf26-0cdee4adac74_scaler.pkl"
         }
       },
-      "0x241aa4ee490": {
+      "0x17a86e61450": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归推理(npy) 1",
@@ -540,7 +540,7 @@
           ]
         }
       },
-      "0x241a6b0e950": {
+      "0x17a86e62dd0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "文档上传",
@@ -598,7 +598,7 @@
           "file": "canvas_files\\workflows\\机器学习算法样例模型\\workspace\\7cd1da75-280b-424f-81e3-f40ffd756998\\upload\\iris.csv"
         }
       },
-      "0x241aa4fd450": {
+      "0x17a86e70310": {
         "type_": "dynamic.StatusDynamicNode_e42b5e46-56d9-4089-9b4d-5f2b24802fef",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "模型评估",
@@ -777,7 +777,7 @@
           }
         }
       },
-      "0x241aa4ff890": {
+      "0x17a86e72990": {
         "type_": "dynamic.StatusDynamicNode_generated_d57a82fa-79b2-43ae-aef8-00c135f05ff8",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "Matplotlib画图",
@@ -856,7 +856,7 @@
           "output": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\fa4b5189-cafe-416f-859a-3864b4ec006f\\result\\image_fa4b5189-cafe-416f-859a-3864b4ec006f_output.png"
         }
       },
-      "0x241aa520c10": {
+      "0x17a86e83dd0": {
         "type_": "dynamic.StatusDynamicNode_04f8eaf9-dafd-446a-94b2-d232bae8620a",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "sklearn模型推理(csv)",
@@ -1093,7 +1093,7 @@
           ]
         }
       },
-      "0x241aa521f90": {
+      "0x17a86e89190": {
         "type_": "dynamic.StatusDynamicNode_9262f386-7096-4326-864d-e70ff0901267",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归推理(npy)",
@@ -1310,7 +1310,7 @@
           ]
         }
       },
-      "0x241aa5236d0": {
+      "0x17a86e8a8d0": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "csv转npy 1",
@@ -1559,7 +1559,7 @@
           ]
         }
       },
-      "0x241aa52d0d0": {
+      "0x17a86e9c150": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归训练",
@@ -1664,7 +1664,7 @@
           "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\b7c16be4-b689-4b20-99e4-99ffde6c2819\\result\\model_b7c16be4-b689-4b20-99e4-99ffde6c2819_model.pkl"
         }
       },
-      "0x241aa52f710": {
+      "0x17a86e9e790": {
         "type_": "dynamic.StatusDynamicNode_26f404b9-0029-4f8b-8abc-0740ecad423b",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "CSV读取器",
@@ -1734,7 +1734,7 @@
           }
         }
       },
-      "0x241aa540b90": {
+      "0x17a86e9fdd0": {
         "type_": "dynamic.StatusDynamicNode_76bf63d2-b665-4d1f-9386-c4711ac89fc5",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "csv转npy 2",
@@ -1992,7 +1992,7 @@
           ]
         }
       },
-      "0x241aa542ad0": {
+      "0x17a86eadd50": {
         "type_": "dynamic.StatusDynamicNode_2493f13f-9a89-44a5-8aa6-fe201d4886f9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "逻辑回归训练 1",
@@ -2097,7 +2097,7 @@
           "model": "D:\\work\\CanvasMind\\canvas_files\\workflows\\机器学习算法样例模型\\workspace\\dc38700a-5e2b-41d0-ab95-4528f73e5f31\\result\\model_dc38700a-5e2b-41d0-ab95-4528f73e5f31_model.pkl"
         }
       },
-      "0x241aa550a90": {
+      "0x17a86eafcd0": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点",
@@ -2150,7 +2150,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x241aa5520d0": {
+      "0x17a86ec5350": {
         "type_": "dynamic.StatusDynamicNode_2c162fc3-2275-4f49-aeac-5dd4778911e9",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "归一化推理(npy)",
@@ -2225,7 +2225,7 @@
           }
         }
       },
-      "0x241aa553450": {
+      "0x17a86ec6910": {
         "type_": "dynamic.StatusDynamicNode_a1b716b5-35e3-4885-b907-01ed113f2279",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "输入array",
@@ -2291,7 +2291,7 @@
           }
         }
       },
-      "0x241aa564e50": {
+      "0x17a86ed0450": {
         "type_": "dynamic.StatusDynamicNode_bdd34293-592e-4443-81bb-573f6aeed80c",
         "icon": ":/icons/同心圆.svg",
         "name": "设定自定义全局变量",
@@ -2352,14 +2352,14 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x241aa565810": {
+      "0x17a86e1b0d0": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -2417,7 +2417,7 @@
           "_column_select": {},
           "FULL_PATH": "触发器/触发器",
           "FILE_PATH": "",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [
           {
@@ -2432,10 +2432,27 @@
           }
         ],
         "output_values": {
-          "output": {}
+          "output": {
+            "input": [
+              "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"d8f4e0e16b174fd98892a124f1352b0d\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_d8f4e0e16b174fd98892a124f1352b0d = echarts.init(\n            document.getElementById('d8f4e0e16b174fd98892a124f1352b0d'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_d8f4e0e16b174fd98892a124f1352b0d = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_d8f4e0e16b174fd98892a124f1352b0d.setOption(option_d8f4e0e16b174fd98892a124f1352b0d);\n    </script>\n</body>\n</html>\n"
+            ],
+            "_webhook_task_id": "a2a7953376a34a18bbbad6c78e0dad16",
+            "request_method": "POST",
+            "request_headers": {
+              "host": "0.0.0.0:5000",
+              "user-agent": "python-requests/2.32.5",
+              "content-length": "7599",
+              "accept": "*/*",
+              "accept-encoding": "gzip, deflate",
+              "connection": "close",
+              "content-type": "application/json",
+              "x-node-id": "c7b014c3-c8ef-4c88-8e07-925c020dcb6f"
+            },
+            "request_ip": "127.0.0.1"
+          }
         }
       },
-      "0x241a68bbcd0": {
+      "0x17a86ef3e90": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "代码编辑 1",
@@ -2508,10 +2525,10 @@
           "_status": "success"
         },
         "output_values": {
-          "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"9ea56afaca3842f49863184d6b2431db\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_9ea56afaca3842f49863184d6b2431db = echarts.init(\n            document.getElementById('9ea56afaca3842f49863184d6b2431db'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_9ea56afaca3842f49863184d6b2431db = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_9ea56afaca3842f49863184d6b2431db.setOption(option_9ea56afaca3842f49863184d6b2431db);\n    </script>\n</body>\n</html>\n"
+          "html": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"d8f4e0e16b174fd98892a124f1352b0d\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_d8f4e0e16b174fd98892a124f1352b0d = echarts.init(\n            document.getElementById('d8f4e0e16b174fd98892a124f1352b0d'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_d8f4e0e16b174fd98892a124f1352b0d = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_d8f4e0e16b174fd98892a124f1352b0d.setOption(option_d8f4e0e16b174fd98892a124f1352b0d);\n    </script>\n</body>\n</html>\n"
         }
       },
-      "0x24272fc3550": {
+      "0x17b724b0890": {
         "type_": "visualize.MediaNode",
         "icon": "D:\\work\\CanvasMind\\.venv\\lib\\site-packages\\NodeGraphQt\\widgets\\icons\\node_base.png",
         "name": "多媒体展示节点 3",
@@ -2550,7 +2567,7 @@
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "_data_select": {},
-          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"3d10bc7a1b9a4d32a61aa7953a96fc04\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_3d10bc7a1b9a4d32a61aa7953a96fc04 = echarts.init(\n            document.getElementById('3d10bc7a1b9a4d32a61aa7953a96fc04'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_3d10bc7a1b9a4d32a61aa7953a96fc04 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_3d10bc7a1b9a4d32a61aa7953a96fc04.setOption(option_3d10bc7a1b9a4d32a61aa7953a96fc04);\n    </script>\n</body>\n</html>\n",
+          "media_display": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"9ea56afaca3842f49863184d6b2431db\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_9ea56afaca3842f49863184d6b2431db = echarts.init(\n            document.getElementById('9ea56afaca3842f49863184d6b2431db'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_9ea56afaca3842f49863184d6b2431db = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_9ea56afaca3842f49863184d6b2431db.setOption(option_9ea56afaca3842f49863184d6b2431db);\n    </script>\n</body>\n</html>\n",
           "_column_select": {},
           "FULL_PATH": "可视化/多媒体展示节点",
           "FILE_PATH": ""
@@ -2564,7 +2581,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x24272fcc690": {
+      "0x17b724930d0": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器 1",
@@ -2589,7 +2606,7 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 564.9197604250385,
+        "width": 0.0,
         "height": 0.0,
         "pos": [
           3966.228403862237,
@@ -2624,7 +2641,7 @@
           "redis_port": 6379,
           "redis_password": "",
           "redis_channel": "app_events",
-          "webhook_endpoint": "5b339018-1ec9-4f7b-b33f-28debeb4d99a",
+          "webhook_endpoint": "c7b014c3-c8ef-4c88-8e07-925c020dcb6f",
           "callback_url": "http://0.0.0.0:5000/api/v1/trigger/5b339018-1ec9-4f7b-b33f-28debeb4d99a",
           "_column_select": {},
           "FULL_PATH": "触发器/触发器",
@@ -2645,20 +2662,26 @@
         ],
         "output_values": {
           "output": {
-            "request_method": "GET",
+            "test": "test1",
+            "test2": "test2",
+            "callback_url": "http://0.0.0.0:5000/api/v1/trigger/5b339018-1ec9-4f7b-b33f-28debeb4d99a",
+            "request_method": "POST",
             "request_headers": {
               "host": "0.0.0.0:5000",
-              "user-agent": "python-httpx/0.28.1",
+              "user-agent": "PostmanRuntime/7.51.1",
+              "content-length": "144",
               "accept": "*/*",
-              "accept-encoding": "gzip, deflate",
-              "connection": "close"
+              "accept-encoding": "gzip, deflate, br",
+              "connection": "close",
+              "content-type": "application/json",
+              "postman-token": "b3845ec5-ebff-47c4-bc93-903b2a8f345b"
             },
             "request_ip": "127.0.0.1",
-            "_webhook_task_id": "29e907e8c1d648ffbeb342b81f658d9a"
+            "_webhook_task_id": "182e11204e9043399cec1cc3607e5dc8"
           }
         }
       },
-      "0x242795489d0": {
+      "0x17b724d0750": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 5",
@@ -2709,14 +2732,14 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x2427954b3d0": {
+      "0x17b7d225590": {
         "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
         "icon": ":/icons/同心圆.svg",
         "name": "HTTP 请求客户端 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -2757,7 +2780,7 @@
           "auth_value": "",
           "headers": [],
           "params": [],
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "网络请求/HTTP 请求客户端"
         },
         "input_ports": [
@@ -2797,14 +2820,14 @@
           }
         }
       },
-      "0x2427e0e2d50": {
+      "0x17b7d230750": {
         "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
         "icon": ":/icons/同心圆.svg",
         "name": "HTTP 请求客户端",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -2820,7 +2843,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 0.0,
         "height": 0.0,
@@ -2845,7 +2868,7 @@
           "auth_value": "",
           "headers": [],
           "params": [],
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "网络请求/HTTP 请求客户端"
         },
         "input_ports": [
@@ -2906,7 +2929,7 @@
           }
         }
       },
-      "0x2427e169050": {
+      "0x17b7d23d010": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 6",
@@ -2957,7 +2980,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x2427e16a150": {
+      "0x17b7d23e1d0": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 7",
@@ -3008,7 +3031,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x2427e18e890": {
+      "0x17b7d23fa90": {
         "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
         "icon": ":/icons/同心圆.svg",
         "name": "HTTP 请求客户端 2",
@@ -3098,331 +3121,331 @@
     "connections": [
       {
         "in": [
-          "0x241a6ab8150",
+          "0x17a86cc7050",
           "input1"
         ],
         "out": [
-          "0x241aa565810",
+          "0x17a86e1b0d0",
           "output"
         ]
       },
       {
         "out": [
-          "0x241a6ab8150",
+          "0x17a86cc7050",
           "html"
         ],
         "in": [
-          "0x241aa4d9490",
+          "0x17a86e405d0",
           "data"
         ]
       },
       {
         "in": [
-          "0x241aa4bc750",
+          "0x17a86e17690",
           "data"
         ],
         "out": [
-          "0x241aa4ff890",
+          "0x17a86e72990",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa4bdc90",
+          "0x17a86e21050",
           "x_data"
         ],
         "out": [
-          "0x241aa540b90",
+          "0x17a86e9fdd0",
           "index"
         ]
       },
       {
         "in": [
-          "0x241aa4bdc90",
+          "0x17a86e21050",
           "y_data"
         ],
         "out": [
-          "0x241aa520c10",
+          "0x17a86e83dd0",
           "value"
         ]
       },
       {
         "out": [
-          "0x241aa4bdc90",
+          "0x17a86e21050",
           "output1"
         ],
         "in": [
-          "0x241aa550a90",
+          "0x17a86eafcd0",
           "data"
         ]
       },
       {
         "in": [
-          "0x241aa4dcf50",
+          "0x17a86e4c210",
           "features"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa4dcf50",
+          "0x17a86e4c210",
           "target"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa4ed090",
+          "0x17a86e1b390",
           "input"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "out": [
-          "0x241aa4ed090",
+          "0x17a86e1b390",
           "output"
         ],
         "in": [
-          "0x241aa542ad0",
+          "0x17a86eadd50",
           "feature"
         ]
       },
       {
         "out": [
-          "0x241aa4ed090",
+          "0x17a86e1b390",
           "scaler"
         ],
         "in": [
-          "0x241aa5520d0",
+          "0x17a86ec5350",
           "scaler"
         ]
       },
       {
         "in": [
-          "0x241aa4ee490",
+          "0x17a86e61450",
           "feature"
         ],
         "out": [
-          "0x241aa5520d0",
+          "0x17a86ec5350",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa4ee490",
+          "0x17a86e61450",
           "model"
         ],
         "out": [
-          "0x241aa542ad0",
+          "0x17a86eadd50",
           "model"
         ]
       },
       {
         "out": [
-          "0x241a6b0e950",
+          "0x17a86e62dd0",
           "file"
         ],
         "in": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa4fd450",
+          "0x17a86e70310",
           "predictions"
         ],
         "out": [
-          "0x241aa521f90",
+          "0x17a86e89190",
           "value"
         ]
       },
       {
         "in": [
-          "0x241aa4fd450",
+          "0x17a86e70310",
           "true_labels"
         ],
         "out": [
-          "0x241aa5236d0",
+          "0x17a86e8a8d0",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa4ff890",
+          "0x17a86e72990",
           "x"
         ],
         "out": [
-          "0x241aa540b90",
+          "0x17a86e9fdd0",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa4ff890",
+          "0x17a86e72990",
           "y"
         ],
         "out": [
-          "0x241aa540b90",
+          "0x17a86e9fdd0",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa520c10",
+          "0x17a86e83dd0",
           "feature"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa520c10",
+          "0x17a86e83dd0",
           "model"
         ],
         "out": [
-          "0x241aa52d0d0",
+          "0x17a86e9c150",
           "model"
         ]
       },
       {
         "in": [
-          "0x241aa521f90",
+          "0x17a86e89190",
           "feature"
         ],
         "out": [
-          "0x241aa540b90",
+          "0x17a86e9fdd0",
           "output"
         ]
       },
       {
         "in": [
-          "0x241aa521f90",
+          "0x17a86e89190",
           "model"
         ],
         "out": [
-          "0x241aa52d0d0",
+          "0x17a86e9c150",
           "model"
         ]
       },
       {
         "in": [
-          "0x241aa5236d0",
+          "0x17a86e8a8d0",
           "input"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa52d0d0",
+          "0x17a86e9c150",
           "feature"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "in": [
-          "0x241aa52d0d0",
+          "0x17a86e9c150",
           "target"
         ],
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ]
       },
       {
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ],
         "in": [
-          "0x241aa542ad0",
+          "0x17a86eadd50",
           "target"
         ]
       },
       {
         "out": [
-          "0x241aa52f710",
+          "0x17a86e9e790",
           "csv"
         ],
         "in": [
-          "0x241aa540b90",
+          "0x17a86e9fdd0",
           "input"
         ]
       },
       {
         "in": [
-          "0x241aa5520d0",
+          "0x17a86ec5350",
           "input"
         ],
         "out": [
-          "0x241aa553450",
+          "0x17a86ec6910",
           "output"
         ]
       },
       {
         "out": [
-          "0x241a68bbcd0",
+          "0x17a86ef3e90",
           "html"
         ],
         "in": [
-          "0x24272fc3550",
+          "0x17b724b0890",
           "data"
         ]
       },
       {
         "out": [
-          "0x241a68bbcd0",
+          "0x17a86ef3e90",
           "html"
         ],
         "in": [
-          "0x24272fcc690",
+          "0x17b724930d0",
           "input"
         ]
       },
       {
         "in": [
-          "0x242795489d0",
+          "0x17b724d0750",
           "data"
         ],
         "out": [
-          "0x2427e18e890",
+          "0x17b7d23fa90",
           "response"
         ]
       },
       {
         "out": [
-          "0x2427954b3d0",
+          "0x17b7d225590",
           "response"
         ],
         "in": [
-          "0x2427e169050",
+          "0x17b7d23d010",
           "data"
         ]
       },
       {
         "out": [
-          "0x2427e0e2d50",
+          "0x17b7d230750",
           "response"
         ],
         "in": [
-          "0x2427e16a150",
+          "0x17b7d23e1d0",
           "data"
         ]
       }
@@ -3535,7 +3558,7 @@
       ],
       "node_vars": {
         "代码编辑__html": {
-          "value": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"3d10bc7a1b9a4d32a61aa7953a96fc04\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_3d10bc7a1b9a4d32a61aa7953a96fc04 = echarts.init(\n            document.getElementById('3d10bc7a1b9a4d32a61aa7953a96fc04'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_3d10bc7a1b9a4d32a61aa7953a96fc04 = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_3d10bc7a1b9a4d32a61aa7953a96fc04.setOption(option_3d10bc7a1b9a4d32a61aa7953a96fc04);\n    </script>\n</body>\n</html>\n",
+          "value": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Awesome-pyecharts</title>\n                <script type=\"text/javascript\" src=\"https://assets.pyecharts.org/assets/v5/echarts.min.js\"></script>\n\n    \n</head>\n<body >\n    <div id=\"51cceddb032744648a7f08581c760d6e\" class=\"chart-container\" style=\"width:900px; height:500px; \"></div>\n    <script>\n        var chart_51cceddb032744648a7f08581c760d6e = echarts.init(\n            document.getElementById('51cceddb032744648a7f08581c760d6e'), 'white', {renderer: 'canvas', locale: 'ZH'});\n        var option_51cceddb032744648a7f08581c760d6e = {\n    \"animation\": true,\n    \"animationThreshold\": 2000,\n    \"animationDuration\": 1000,\n    \"animationEasing\": \"cubicOut\",\n    \"animationDelay\": 0,\n    \"animationDurationUpdate\": 300,\n    \"animationEasingUpdate\": \"cubicOut\",\n    \"animationDelayUpdate\": 0,\n    \"aria\": {\n        \"enabled\": false\n    },\n    \"color\": [\n        \"#5470c6\",\n        \"#91cc75\",\n        \"#fac858\",\n        \"#ee6666\",\n        \"#73c0de\",\n        \"#3ba272\",\n        \"#fc8452\",\n        \"#9a60b4\",\n        \"#ea7ccc\"\n    ],\n    \"series\": [\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6A\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                114,\n                55,\n                27,\n                101,\n                125,\n                27,\n                105\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        },\n        {\n            \"type\": \"bar\",\n            \"name\": \"\\u5546\\u5bb6B\",\n            \"legendHoverLink\": true,\n            \"data\": [\n                57,\n                134,\n                137,\n                129,\n                145,\n                60,\n                49\n            ],\n            \"realtimeSort\": false,\n            \"showBackground\": false,\n            \"stackStrategy\": \"samesign\",\n            \"cursor\": \"pointer\",\n            \"barMinHeight\": 0,\n            \"barCategoryGap\": \"20%\",\n            \"barGap\": \"30%\",\n            \"large\": false,\n            \"largeThreshold\": 400,\n            \"seriesLayoutBy\": \"column\",\n            \"datasetIndex\": 0,\n            \"clip\": true,\n            \"zlevel\": 0,\n            \"z\": 2,\n            \"label\": {\n                \"show\": true,\n                \"margin\": 8,\n                \"valueAnimation\": false\n            }\n        }\n    ],\n    \"legend\": [\n        {\n            \"data\": [\n                \"\\u5546\\u5bb6A\",\n                \"\\u5546\\u5bb6B\"\n            ],\n            \"selected\": {},\n            \"show\": true,\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"itemWidth\": 25,\n            \"itemHeight\": 14,\n            \"backgroundColor\": \"transparent\",\n            \"borderColor\": \"#ccc\",\n            \"borderRadius\": 0,\n            \"pageButtonItemGap\": 5,\n            \"pageButtonPosition\": \"end\",\n            \"pageFormatter\": \"{current}/{total}\",\n            \"pageIconColor\": \"#2f4554\",\n            \"pageIconInactiveColor\": \"#aaa\",\n            \"pageIconSize\": 15,\n            \"animationDurationUpdate\": 800,\n            \"selector\": false,\n            \"selectorPosition\": \"auto\",\n            \"selectorItemGap\": 7,\n            \"selectorButtonGap\": 10\n        }\n    ],\n    \"tooltip\": {\n        \"show\": true,\n        \"trigger\": \"item\",\n        \"triggerOn\": \"mousemove|click\",\n        \"axisPointer\": {\n            \"type\": \"line\"\n        },\n        \"showContent\": true,\n        \"alwaysShowContent\": false,\n        \"showDelay\": 0,\n        \"hideDelay\": 100,\n        \"enterable\": false,\n        \"confine\": false,\n        \"appendToBody\": false,\n        \"transitionDuration\": 0.4,\n        \"textStyle\": {\n            \"fontSize\": 14\n        },\n        \"borderWidth\": 0,\n        \"padding\": 5,\n        \"order\": \"seriesAsc\"\n    },\n    \"xAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0,\n            \"data\": [\n                \"\\u886c\\u886b\",\n                \"\\u6bdb\\u8863\",\n                \"\\u9886\\u5e26\",\n                \"\\u88e4\\u5b50\",\n                \"\\u98ce\\u8863\",\n                \"\\u9ad8\\u8ddf\\u978b\",\n                \"\\u889c\\u5b50\"\n            ]\n        }\n    ],\n    \"yAxis\": [\n        {\n            \"show\": true,\n            \"scale\": false,\n            \"nameLocation\": \"end\",\n            \"nameGap\": 15,\n            \"inverse\": false,\n            \"offset\": 0,\n            \"splitNumber\": 5,\n            \"minInterval\": 0,\n            \"splitLine\": {\n                \"show\": true,\n                \"lineStyle\": {\n                    \"show\": true,\n                    \"width\": 1,\n                    \"opacity\": 1,\n                    \"curveness\": 0,\n                    \"type\": \"solid\"\n                }\n            },\n            \"animation\": true,\n            \"animationThreshold\": 2000,\n            \"animationDuration\": 1000,\n            \"animationEasing\": \"cubicOut\",\n            \"animationDelay\": 0,\n            \"animationDurationUpdate\": 300,\n            \"animationEasingUpdate\": \"cubicOut\",\n            \"animationDelayUpdate\": 0\n        }\n    ],\n    \"title\": [\n        {\n            \"show\": true,\n            \"text\": \"\\u67d0\\u5546\\u573a\\u9500\\u552e\\u60c5\\u51b5\",\n            \"target\": \"blank\",\n            \"subtarget\": \"blank\",\n            \"padding\": 5,\n            \"itemGap\": 10,\n            \"textAlign\": \"auto\",\n            \"textVerticalAlign\": \"auto\",\n            \"triggerEvent\": false\n        }\n    ]\n};\n        chart_51cceddb032744648a7f08581c760d6e.setOption(option_51cceddb032744648a7f08581c760d6e);\n    </script>\n</body>\n</html>\n",
           "update_policy": "更新"
         }
       },

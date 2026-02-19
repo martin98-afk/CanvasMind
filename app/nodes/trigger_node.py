@@ -206,6 +206,7 @@ def create_trigger_node(parent_window):
                         inputs_raw[port_name] = [up.node()._output_values.get(up.name()) for up in connected]
                     else:
                         inputs_raw[port_name] = connected[0].node()._output_values.get(connected[0].name())
+            inputs_raw["_webhook_task_id"] = self.parent_window.canvas_runner._current_task.task_id
             # 将输入变量应用于触发器的回调函数
             self.plugins[self._active_plugin_name].callback(self.persistent_id, inputs_raw)
             # 从 Runner 中领数据 (不再从节点自身变量拿)

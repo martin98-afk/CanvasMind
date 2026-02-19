@@ -2,7 +2,7 @@
 import socket
 import threading
 import json
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Set
 from uuid import uuid4
 
 import uvicorn
@@ -39,8 +39,12 @@ class WebhookManager(BaseTriggerManager):
 
         # self.registry 用于存放路径到回调的映射
         self.registry: Dict[str, Callable] = {}
-        # 新增：存放 node_id 到 callback_url 的映射
-        self.callback_urls: Dict[str, str] = {}
+        # 静态回调配置：NodeID -> URL (在节点属性中配置的)
+        self.static_callback_urls: Dict[str, str] = {}
+
+        # 动态回调缓存：TaskID -> URL (请求参数里带来的)
+        # 格式: { "task_id_123": "http://api.com/callback", ... }
+        self.dynamic_callbacks: Dict[str, str] = {}
 
         self.execution_manager = ExecutionManager()
 
@@ -114,7 +118,12 @@ class WebhookManager(BaseTriggerManager):
                             data = dict(await request.form())
                     else:
                         data = dict(request.query_params)
-
+                    # 2. 提取动态 callback_url
+                    # 支持从 JSON body 或 Query Param 中获取 "callback_url"
+                    dynamic_url = data.get("callback_url")
+                    if dynamic_url:
+                        self.dynamic_callbacks[task_id] = dynamic_url
+                        logger.info(f"[Webhook] 捕获动态回调地址 Task[{task_id}]: {dynamic_url}")
                     # 注入请求元数据
                     data.update({
                         "request_method": request.method,
@@ -153,37 +162,29 @@ class WebhookManager(BaseTriggerManager):
             return {"status": "unknown", "exec_id": exec_id}
 
     def add_trigger(self, canvas_name: str, node_id: str, callback: Callable, **kwargs):
-        """
-        注册 Webhook
-        :param kwargs: 包含 'endpoint' 和 'callback_url'
-        """
+        """注册触发器"""
         endpoint = kwargs.get("endpoint", node_id)
-        name = kwargs.get("name", "")
-        callback_url = kwargs.get("callback_url", "")  # 获取回调地址
+        static_url = kwargs.get("callback_url", "").strip()
 
         if endpoint in self.registry:
-            # 注意：简单的重复注册检查可能会阻止更新配置，这里假设 endpoint 是唯一的
-            # 如果只是更新 callback_url，可以在这里处理
-            logger.warning(f"[Webhook] 接口 {endpoint} 已存在")
+            logger.warning(f"[Webhook] 已注册 endpoint: {endpoint}")
             return False
 
         self.registry[endpoint] = callback
 
-        # 记录回调地址
-        if callback_url:
-            self.callback_urls[node_id] = callback_url
-        elif node_id in self.callback_urls:
-            # 如果新配置为空，但旧配置有，则删除
-            del self.callback_urls[node_id]
+        # 更新静态配置
+        if static_url:
+            self.static_callback_urls[node_id] = static_url
+        elif node_id in self.static_callback_urls:
+            del self.static_callback_urls[node_id]
 
+        # 维护基类映射
         self._register_in_mapping(canvas_name, node_id)
-
         if not hasattr(self, '_node_to_endpoint'):
             self._node_to_endpoint = {}
-        self._node_to_endpoint[node_id] = (endpoint, name)
+        self._node_to_endpoint[node_id] = (endpoint, kwargs.get("name", ""))
 
         self.start()
-        logger.info(f"[Webhook] 节点 {node_id} 注册: {endpoint}, 回调: {callback_url if callback_url else '无'}")
         return True
 
     def remove_trigger(self, node_id: str):
@@ -192,46 +193,59 @@ class WebhookManager(BaseTriggerManager):
             endpoint, _ = endpoint_info
             if endpoint in self.registry:
                 del self.registry[endpoint]
-
             del self._node_to_endpoint[node_id]
 
-            # 清理回调地址
-            if node_id in self.callback_urls:
-                del self.callback_urls[node_id]
+        if node_id in self.static_callback_urls:
+            del self.static_callback_urls[node_id]
 
-            self._unregister_from_mapping(node_id)
-            logger.info(f"[Webhook] 已注销接口: {endpoint}")
+        self._unregister_from_mapping(node_id)
 
     def callback(self, node_id: str, callback_data: dict):
         """
-        重写基类的 callback 方法
-        当工作流运行结束时，BaseTriggerPlugin.callback 会调用此方法
+        工作流执行结束后的回调入口
+        :param node_id: 触发该任务的节点ID
+        :param callback_data: 执行结果数据，期望包含输入时注入的 '_webhook_task_id'
         """
-        target_url = self.callback_urls.get(node_id)
+        target_urls = set()
 
-        if not target_url:
+        # 1. 添加静态配置的回调地址 (节点属性里的)
+        if node_id in self.static_callback_urls:
+            target_urls.add(self.static_callback_urls[node_id])
+
+        # 2. 查找并添加动态回调地址 (请求参数里的)
+        # 尝试从结果数据中找 task_id，字段名需与 handle_trigger 中注入的一致
+        task_id = callback_data.get("_webhook_task_id")
+
+        if task_id and task_id in self.dynamic_callbacks:
+            dynamic_url = self.dynamic_callbacks.pop(task_id)  # 获取并移除，防止内存泄漏
+            target_urls.add(dynamic_url)
+            logger.info(f"[Webhook] 找到动态回调地址: {dynamic_url}")
+
+        if not target_urls:
             return
 
+        # 3. 异步发送回调
         threading.Thread(
-            target=self._send_callback_request,
-            args=(target_url, callback_data, node_id),
+            target=self._send_callbacks,
+            args=(target_urls, callback_data, node_id),
             daemon=True
         ).start()
 
-    def _send_callback_request(self, url: str, data: dict, node_id: str):
-        try:
-            logger.info(f"[Webhook] 正在向 {url} 发送节点 {node_id} 的回调数据...")
-            # 发送 POST 请求
-            response = requests.post(
-                url,
-                json=data,
-                headers={"Content-Type": "application/json"},
-                timeout=10
-            )
-            response.raise_for_status()
-            logger.info(f"[Webhook] 回调发送成功: {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[Webhook] 回调发送失败: {e}")
+    def _send_callbacks(self, urls: Set[str], data: dict, node_id: str):
+        """向所有目标地址发送结果"""
+        for url in urls:
+            try:
+                logger.info(f"[Webhook] 发送回调 -> {url}")
+                resp = requests.post(
+                    url,
+                    json=data,
+                    headers={"Content-Type": "application/json", "X-Node-ID": node_id},
+                    timeout=5
+                )
+                if resp.status_code >= 400:
+                    logger.warning(f"[Webhook] 回调失败 {url}: {resp.status_code}")
+            except Exception as e:
+                logger.error(f"[Webhook] 回调异常 {url}: {e}")
 
     def stop(self):
         self.registry.clear()
