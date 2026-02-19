@@ -814,25 +814,31 @@ class DataHandler:
                 return data
         return data
 
-    def _read_csv_data(self, data: Any) -> pd.DataFrame:
-        if isinstance(data, (pd.DataFrame, pd.Series)):
-            return data
+    def _read_csv_data(self, input_value: Any) -> Any:
+        """
+        直接读取内存对象。
+        """
+        if input_value is None:
+            return None
 
-        path = Path(data)
-        if path.is_file():
-            try:
-                # 尝试使用 PyArrow 读取，速度通常快 5-10 倍
-                from pyarrow import csv as pa_csv
-                return pa_csv.read_csv(str(path)).to_pandas()
-            except ImportError:
-                self.logger.warning("未检测到 pyarrow，回退至 Pandas 原生读取")
-                return pd.read_csv(str(path))
-            except Exception as e:
-                # 处理格式不兼容等问题（例如某些特殊的编码或分隔符）
-                self.logger.warning(f"PyArrow 读取 CSV 失败 ({e})，回退至 Pandas 原生读取")
-                return pd.read_csv(str(path))
+        # 1. 核心：处理 PyArrow 对象
+        import pyarrow as pa
+        if isinstance(input_value, (pa.Table, pa.RecordBatch)):
+            return input_value.to_pandas()
 
-        raise ComponentError(f"CSV 文件不存在: {path}")
+        # 2. 处理 Pandas 对象 (兼容旧逻辑)
+        if isinstance(input_value, (pd.DataFrame, pd.Series)):
+            return input_value
+
+        # 4. 如果是文件路径（比如上传的文件），还是得读
+        # (防止之前那种 inputs="D:/data.csv" 的情况报错)
+        if isinstance(input_value, str) and os.path.exists(input_value):
+            # 如果是 CSV 文件，优先用 PyArrow 读成 Table 返回
+            if input_value.endswith(".csv"):
+                from pyarrow import csv
+                return csv.read_csv(input_value).to_pandas()
+
+        return input_value
 
     def _read_json_data(self, data: Any) -> Union[dict, list, str]:
         if data is None or (isinstance(data, str) and not data.strip()): return {}
@@ -986,25 +992,48 @@ class DataHandler:
             self.logger.error(f"存储输出 '{output_name}' 失败: {e}")
             raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
 
-    def _store_csv_data(self, data: pd.DataFrame) -> Union[pd.DataFrame, str, Path]:
-        """存储CSV数据"""
-        if isinstance(data, (pd.DataFrame, pd.Series)):
-            return data
-        elif isinstance(data, (str, Path)):
-            if os.path.exists(data):
-                try:
-                    # 尝试使用 PyArrow 读取，速度通常快 5-10 倍
+    def _store_csv_data(self, output_value: Any) -> Any:
+        """
+        存储输出：
+        Pandas -> 转 PyArrow Table -> 直接返回对象
+        其他 -> 直接返回对象
+        """
+        if output_value is None:
+            return None
+
+        try:
+            import pyarrow as pa
+            # 1. 如果是 Pandas DataFrame/Series，转为 PyArrow Table
+            if isinstance(output_value, (pd.DataFrame, pd.Series)):
+                # Series 转 DataFrame
+                if isinstance(output_value, pd.Series):
+                    output_value = output_value.to_frame()
+
+                # 核心：转为 PyArrow Table (Zero Copy 如果可能)
+                # preserve_index=False 类似 to_csv(index=False)
+                pa_table = pa.Table.from_pandas(output_value, preserve_index=False)
+
+                # self.logger.info(f"转换成功: Pandas -> PyArrow Table ({pa_table.num_rows} rows)")
+                return pa_table
+            elif isinstance(output_value, (str, Path)):
+                if os.path.exists(output_value):
                     from pyarrow import csv as pa_csv
-                    return pa_csv.read_csv(str(data)).to_pandas()
-                except ImportError:
-                    self.logger.warning("未检测到 pyarrow，回退至 Pandas 原生读取")
-                    return pd.read_csv(str(data))
-            else:
-                # 如果是CSV字符串
-                import io
-                return pd.read_csv(io.StringIO(data))
-        else:
-            raise ComponentError(f"无法存储CSV数据: {type(data)}")
+                    return pa_csv.read_csv(str(output_value))
+                else:
+                    # 如果是CSV字符串
+                    import io
+                    return pd.read_csv(io.StringIO(output_value))
+
+            # 2. 如果已经是 PyArrow 对象，直接返回
+            elif isinstance(output_value, (pa.Table, pa.RecordBatch)):
+                return output_value
+
+            # 3. 其他对象（Model, Dict, Image, Int...）直接返回
+            return output_value
+
+        except Exception as e:
+            self.logger.error(f"数据转换失败: {e}")
+            raise ComponentError(f"数据处理失败: {str(e)}")
 
     def _store_json_data(self, data: Any) -> Any:
         """存储JSON数据（直接返回）"""

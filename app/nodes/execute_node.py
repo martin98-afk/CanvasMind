@@ -160,9 +160,12 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.set_port_deletion_allowed(False)
 
         def _toggle_debug_mode(self):
+            self.graph.clear_selection()
+            self.set_selected(True)
             if not self._debug_enabled:
                 self._debug_enabled = True
                 self._enable_debug_mode()
+                QtCore.QTimer.singleShot(0, lambda: self.graph.viewer().zoom_to_nodes([self.view]))
             else:
                 self._debug_enabled = False
                 self._disable_debug_mode()

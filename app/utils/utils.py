@@ -456,26 +456,38 @@ def serialize_for_json(obj, large_list_threshold=1000):
         else:
             # 非大型列表，按常规方式处理
             return [serialize_for_json(v, large_list_threshold) for v in obj]
-    elif isinstance(obj, pd.DataFrame):
+    elif isinstance(obj, (pd.DataFrame, pa.Table)):
         try:
-            # 使用 BytesIO 作为虚拟文件
             buffer = io.BytesIO()
-            # 写入 feather 格式
-            table = pa.Table.from_pandas(obj)
-            feather.write_feather(table, buffer, compression='zstd')  # zstd 压缩率高
-            # 获取二进制数据并编码
+
+            # 1. 统一标准化为 PyArrow Table
+            if isinstance(obj, pd.DataFrame):
+                table = pa.Table.from_pandas(obj)
+                obj_type = "DataFrame"
+                shape = obj.shape
+            else:
+                # 已经是 pa.Table，直接用（零拷贝，速度最快）
+                table = obj
+                obj_type = "PyArrowTable"  # 标记为 PyArrowTable，接收端决定是否转 Pandas
+                shape = (obj.num_rows, obj.num_columns)
+
+            # 2. 写入 feather (Feather 原生支持 PyArrow Table)
+            # 确保引入了: import pyarrow.feather as feather
+            feather.write_feather(table, buffer, compression='zstd')
+
+            # 3. 获取二进制并编码
             buffer.seek(0)
             binary_data = buffer.read()
             encoded_data = base64.b64encode(binary_data).decode('utf-8')
 
             return {
-                "__type__": "DataFrame",
+                "__type__": obj_type,  # 告诉接收端原始类型
                 "data": encoded_data,
                 "format": "feather_base64",
-                "shape": obj.shape  # 便于调试
+                "shape": shape
             }
         except Exception as e:
-            logger.error(f"DataFrame Feather serialization failed: {e}")
+            logger.error(f"Table/DataFrame serialization failed: {e}")
     elif isinstance(obj, pd.Series):
         try:
             df_temp = obj.to_frame()
@@ -530,21 +542,42 @@ def serialize_for_json(obj, large_list_threshold=1000):
         except (TypeError, ValueError):
             return None
 
-
 def deserialize_from_json(obj):
     if isinstance(obj, dict):
-        if obj.get("__type__") == "DataFrame" and obj.get("format") == "feather_base64":
+        obj_type = obj.get("__type__")
+        # ---------------------------------------------------------
+        # 1. 核心修改：DataFrame / PyArrowTable -> 直接返回 PyArrow Table
+        # ---------------------------------------------------------
+        if obj_type in ["DataFrame", "PyArrowTable"] and obj.get("format") == "feather_base64":
             try:
                 # 解码 base64
                 binary_data = base64.b64decode(obj["data"])
                 buffer = io.BytesIO(binary_data)
-                # 读取 feather 格式
+
+                # 直接读取为 PyArrow Table
                 table = feather.read_table(buffer)
-                df = table.to_pandas()
-                return df
+                return table
             except Exception as e:
-                print(f"DataFrame Feather deserialization failed: {e}")
+                print(f"PyArrow Table deserialization failed: {e}")
                 return obj
+
+        # ---------------------------------------------------------
+        # 2. Series -> 提取为 PyArrow ChunkedArray
+        # ---------------------------------------------------------
+        elif obj_type == "Series":
+            # 递归反序列化，这里拿到的 result 现在是 pyarrow.Table 了！
+            table_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
+
+            if isinstance(table_temp, pa.Table):
+                # PyArrow 中没有 Series 概念，最接近的是 Column (ChunkedArray)
+                if table_temp.num_columns >= 1:
+                    return table_temp.column(0)  # 返回 pyarrow.ChunkedArray
+
+            # 兼容旧逻辑（万一上面返回的是 Pandas）
+            if isinstance(table_temp, pd.DataFrame) and len(table_temp.columns) == 1:
+                return table_temp.iloc[:, 0]
+
+            return obj
         elif obj.get("__type__") == "DataFrame":
             try:
                 df = pd.DataFrame(obj["data"], columns=obj["columns"])
