@@ -21,7 +21,7 @@ class BaseTriggerPlugin(ABC):
         return {}
 
     @abstractmethod
-    def activate(self, canvas_name: str, node_id: str, callback: callable, properties: dict):
+    def activate(self, canvas_name: str, node, callback: callable, properties: dict):
         """激活触发器"""
         pass
 

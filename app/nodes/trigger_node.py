@@ -76,6 +76,7 @@ def create_trigger_node(parent_window):
             self.signals.execution_requested.connect(self._on_execution_signal_received)
             self._patch_view_drawing()
             self.view.rename_signal.connect(parent_window.rename_node_vars)
+            self.view.rename_signal.connect(self._do_backend_sync)
 
         # --- UI 逻辑 (保持不变) ---
         def _generate_widgets(self):
@@ -153,7 +154,7 @@ def create_trigger_node(parent_window):
             if curr_type in self.plugins:
                 plugin = self.plugins[curr_type]
                 props = {k: self.get_property(k) for k in plugin.get_properties(self)}
-                plugin.activate(self.parent_window.workflow_name, self.persistent_id, self.trigger_execution, props)
+                plugin.activate(self.parent_window.workflow_name, self, self.trigger_execution, props)
                 self._active_plugin_name = curr_type
 
         def _handle_runner_error_event(self, error_msg):

@@ -58,7 +58,7 @@ class WebhookManager(BaseTriggerManager):
                     "node_id": node_id,
                     "node_name": name,
                     "endpoint": endpoint,
-                    "url": f"http://{self.host}:{self.port}{endpoint}"
+                    "url": f"http://{self.host}:{self.port}/api/v1/trigger/{endpoint}"
                 })
 
         return {
@@ -172,7 +172,7 @@ class WebhookManager(BaseTriggerManager):
 
     def remove_trigger(self, node_id: str):
         """实现基类方法：注销 Webhook"""
-        endpoint = getattr(self, '_node_to_endpoint', {}).get(node_id)
+        endpoint, _ = getattr(self, '_node_to_endpoint', {}).get(node_id)
         if endpoint and endpoint in self.registry:
             del self.registry[endpoint]
             del self._node_to_endpoint[node_id]
@@ -218,7 +218,6 @@ class WebhookPlugin(BaseTriggerPlugin):
     manager = WebhookManager()
 
     def get_properties(self, parent_node=None):
-        self.parent_node = parent_node
         return {
             "webhook_endpoint":
                 {
@@ -229,7 +228,7 @@ class WebhookPlugin(BaseTriggerPlugin):
                 }
         }
 
-    def activate(self, canvas_name, node_id, callback, props):
-        endpoint = props.get("webhook_endpoint") or node_id
-        if not self.manager.add_trigger(canvas_name, node_id, callback, endpoint=endpoint, name=self.parent_node.name()):
-            self.parent_node.set_property("webhook_endpoint", self.parent_node.persistent_id)
+    def activate(self, canvas_name, node, callback, props):
+        endpoint = props.get("webhook_endpoint") or node.persistent_id
+        if not self.manager.add_trigger(canvas_name, node.persistent_id, callback, endpoint=endpoint, name=node.name()):
+            node.set_property("webhook_endpoint", node.persistent_id)

@@ -82,12 +82,12 @@ class CronTriggerPlugin(BaseTriggerPlugin):
             }
         }
 
-    def activate(self, canvas_name, node_id, callback, properties):
+    def activate(self, canvas_name, node, callback, properties):
         cron = properties.get("cron_expression")
         if cron:
             self.manager.add_trigger(
                 canvas_name=canvas_name,
-                node_id=node_id,
+                node_id=node.persistent_id,
                 callback=callback,
                 cron_str=cron
             )

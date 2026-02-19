@@ -138,10 +138,10 @@ class RedisTriggerPlugin(BaseTriggerPlugin):
             }
         }
 
-    def activate(self, canvas_name, node_id, callback, properties):
+    def activate(self, canvas_name, node, callback, properties):
         self.manager.add_trigger(
             canvas_name=canvas_name,
-            node_id=node_id,
+            node_id=node.persistent_id,
             callback=callback,
             redis_host=properties.get("redis_host"),
             redis_port=properties.get("redis_port"),
