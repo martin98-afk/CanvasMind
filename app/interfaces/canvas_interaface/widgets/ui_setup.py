@@ -414,6 +414,7 @@ class CanvasUISetUp:
     def _toggle_nav_panel(self):
         visible = self.nav_panel.isVisible()
         self.nav_panel.setVisible(not visible)
+        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
         self.btn_toggle_nav.setIcon(FluentIcon.MENU if visible else get_icon("左收起"))
 
     def show_splitter(self):

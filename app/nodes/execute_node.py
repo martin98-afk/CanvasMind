@@ -166,6 +166,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self._debug_enabled = True
                 self._enable_debug_mode()
                 QtCore.QTimer.singleShot(0, lambda: self.graph.viewer().zoom_to_nodes([self.view]))
+                parent_window.side_dock_area.switch_to("模型日志")
             else:
                 self._debug_enabled = False
                 self._disable_debug_mode()
