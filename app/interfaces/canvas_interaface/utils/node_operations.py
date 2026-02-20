@@ -594,8 +594,8 @@ class NodeOperations:
         selected_nodes = self.graph.selected_nodes()
         if not selected_nodes:
             return
-        self.graph.copy_nodes()
-        MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self.parent)
+        if self.graph.copy_nodes():
+            MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self.parent)
 
     def _paste_nodes(self):
         clipboard = QtWidgets.QApplication.clipboard()
@@ -605,8 +605,9 @@ class NodeOperations:
         try:
             cb_data = orjson.loads(cb_text)
         except:
+            logger.exception("Invalid clipboard data")
             return
-        if "graph" not in cb_data or "nodes" not in cb_data or "connections" not in cb_data:
+        if "nodes" not in cb_data:
             return
         selected_nodes = self.graph.selected_nodes()
         if selected_nodes:

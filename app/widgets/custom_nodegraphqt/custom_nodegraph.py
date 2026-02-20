@@ -1227,7 +1227,6 @@ class CustomNodeGraph(NodeGraph):
         self._undo_stack.beginMacro('pasted nodes')
         self.clear_selection()
         nodes, _ = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
-        if nodes is None: return
         [n.set_selected(True) for n in nodes]
         self._undo_stack.endMacro()
         return nodes
