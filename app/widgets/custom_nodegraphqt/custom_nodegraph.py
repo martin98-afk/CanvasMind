@@ -1315,10 +1315,6 @@ class CustomNodeGraph(NodeGraph):
         serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
         serial_data['graph']['pipe_style'] = self.pipe_style()
 
-        # # connection constrains.
-        # serial_data['graph']['accept_connection_types'] = orjson.dumps(self.model.accept_connection_types, default=list)
-        # serial_data['graph']['reject_connection_types'] = orjson.dumps(self.model.reject_connection_types, default=list)
-
         # serialize nodes.
         for n in nodes:
             # update the node model.
@@ -1413,17 +1409,6 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_collision(attr_value)
                     elif attr_name == "pipe_slicing":
                         self.set_pipe_slicing(attr_value)
-                #
-                # # connection constrains.
-                # if attr_name == 'accept_connection_types':
-                #     attr_value = orjson.loads(attr_value)
-                #     convert_last_list_to_set(attr_value)
-                #     self.model.accept_connection_types = attr_value
-                #
-                # elif attr_name == 'reject_connection_types':
-                #     attr_value = orjson.loads(attr_value)
-                #     convert_last_list_to_set(attr_value)
-                #     self.model.reject_connection_types = attr_value
 
             # 分离 backdrop 节点和其他节点
             nodes_data = data.get('nodes', {})

@@ -68,7 +68,6 @@ if __name__ == '__main__':
     import os
     import sys
     import NodeGraphQt
-    import matplotlib
     import qtconsole.client
     import warnings
     warnings.filterwarnings("ignore")

@@ -1,6 +1,6 @@
 # log_tool_window.py
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
 from qfluentwidgets import SingleDirectionScrollArea, TransparentToolButton, FluentIcon, \
     StrongBodyLabel
 
@@ -47,11 +47,18 @@ class LogToolWindow(ToolWindow):
         title_layout.addWidget(self.clear_button)
         layout.addWidget(title_container)
         # 日志滚动区域
-        self.scroll_area = SingleDirectionScrollArea(self)
+        self.scroll_area = QScrollArea(self)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setMinimumWidth(400)
-        self.scroll_area.setStyleSheet("background-color: transparent; border: none;")
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
+        self.scroll_area.setStyleSheet("""
+                QScrollArea { background-color: transparent; border: none; }
+                QScrollBar:vertical { background: transparent; width: 6px; margin-right: 2px; }
+                QScrollBar::handle:vertical { background: rgba(120, 120, 120, 150); border-radius: 4px; }
+                QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
+                """)
         self.scroll_area.setViewportMargins(0, 0, 10, 0)
 
         self.container = QWidget()
