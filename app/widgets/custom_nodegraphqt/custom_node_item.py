@@ -243,18 +243,22 @@ class CustomNodeItem(NodeItem):
         self._floating_toolbar = NodeFloatingToolbar(self)
 
         # 往 Toolbar 里加按钮 (原逻辑一个不少)
-        self._center_btn = self._floating_toolbar.add_button("zoom", "聚焦", "#3498db", "#2980b9", False)
+        self._center_btn = self._floating_toolbar.add_button(
+            "zoom", "聚焦", "#3498db", "#2980b9", False)
         self._center_btn.clicked_func = self.center_signal.emit
 
-        self._run_btn = self._floating_toolbar.add_button("run", "执行", "#27ae60", "#2ecc71", False)
+        self._run_btn = self._floating_toolbar.add_button(
+            "run", "执行", "#27ae60", "#2ecc71", False)
         self._run_btn.clicked_func = self.run_signal.emit
 
-        self._mute_btn = self._floating_toolbar.add_button("debug", "调试", "#f39c12", "#f1c40f", False)
+        self._mute_btn = self._floating_toolbar.add_button(
+            "debug", "调试", "#f39c12", "#f1c40f", False)
         self._mute_btn.clicked_func = self.debug_signal.emit
 
         self._floating_toolbar.add_separator()
 
-        self._close_btn = self._floating_toolbar.add_button("close", "删除", "#c0392b", "#e74c3c", False)
+        self._close_btn = self._floating_toolbar.add_button(
+            "close", "删除", "#c0392b", "#e74c3c", False)
         self._close_btn.clicked_func = self.delete_signal.emit
 
         # 这两个依然留在 Header 左右两侧

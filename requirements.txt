@@ -1,5 +1,5 @@
 NodeGraphQt
-PySide6
+PyQt5~=5.15.11
 loguru~=0.7.3
 numpy~=2.2.5
 requests~=2.32.4

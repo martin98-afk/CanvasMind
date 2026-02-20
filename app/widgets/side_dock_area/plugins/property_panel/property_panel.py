@@ -7,7 +7,7 @@ from PyQt5.QtCore import (Qt, QPropertyAnimation, QRect, QParallelAnimationGroup
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect,
                              QScrollArea)
-from qfluentwidgets import SmoothScrollArea, StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
+from qfluentwidgets import StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
 
 # 保持业务相关的引用
 from app.components.base import ArgumentType

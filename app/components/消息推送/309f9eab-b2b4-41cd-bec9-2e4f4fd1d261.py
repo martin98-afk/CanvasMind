@@ -57,44 +57,6 @@ class MessagePusher(BaseComponent):
     }
 
     # === 辅助函数区域 ===
-    def _has_value(self, v):
-        if v is None: return False
-        if isinstance(v, bool): return v
-        if isinstance(v, str): return len(v.strip()) > 0
-        try:
-            if hasattr(v, "size"): return int(v.size) > 0
-            if hasattr(v, "__len__"): return len(v) > 0
-        except: pass
-        return True
-
-    def _tensor_to_bytes(self, tensor):
-        """将任意图像格式转为PNG Bytes"""
-        import io
-        import numpy as np
-        from PIL import Image
-        if isinstance(tensor, Image.Image):
-            buffered = io.BytesIO()
-            tensor.save(buffered, format="PNG")
-            return buffered.getvalue()
-
-        array = None
-        if isinstance(tensor, np.ndarray):
-            if tensor.ndim == 4 and tensor.shape[0] == 1: array = tensor[0]
-            elif tensor.ndim == 3: array = tensor
-            
-            if array is not None:
-                if (array.dtype == np.float32 or array.dtype == np.float64) and array.max() <= 1.0:
-                    array = array * 255.0
-                array = np.clip(array, 0, 255).astype(np.uint8)
-        
-        elif hasattr(tensor, "detach"): # Torch tensor
-             return self._tensor_to_bytes(tensor.detach().cpu().numpy())
-
-        if array is None: return None
-        image = Image.fromarray(array)
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG")
-        return buffered.getvalue()
 
     def _upload_gitee(self, image_base64, config):
         import base64
@@ -231,17 +193,15 @@ class MessagePusher(BaseComponent):
             elif "dd_webhook" in conf:
                 push_targets.append({"type": "dingtalk", "config": conf})
         # 4. 处理内容与图片 (转换为 Bytes)
-        extra_text = []
-        image_bytes_list = []
         img_urls = []
 
         for img in trigger:
             if gitee_conf:
-                self.logger.info(f"Uploading images to Gitee...")
+                self.logger.info("Uploading images to Gitee...")
                 url, err = self._upload_gitee(img, gitee_conf)
-                if url: 
+                if url:
                     img_urls.append(url)
-                else: 
+                else:
                     logs.append(f"Gitee Upload Fail: {err}")
             else:
                 logs.append("Skipped Upload (Images found but no Gitee Config)")

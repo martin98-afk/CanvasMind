@@ -185,6 +185,7 @@ class WebhookManager(BaseTriggerManager):
         self._node_to_endpoint[node_id] = (endpoint, kwargs.get("name", ""))
 
         self.start()
+        logger.info(f"[Webhook] 节点 {node_id} 已注册接口: {endpoint}")
         return True
 
     def remove_trigger(self, node_id: str):
@@ -194,6 +195,7 @@ class WebhookManager(BaseTriggerManager):
             if endpoint in self.registry:
                 del self.registry[endpoint]
             del self._node_to_endpoint[node_id]
+            logger.info(f"[Webhook] 已注销接口: {endpoint}")
 
         if node_id in self.static_callback_urls:
             del self.static_callback_urls[node_id]

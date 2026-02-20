@@ -1227,7 +1227,6 @@ class CustomNodeGraph(NodeGraph):
         self._undo_stack.beginMacro('pasted nodes')
         self.clear_selection()
         nodes, _ = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
-        if nodes is None: return
         [n.set_selected(True) for n in nodes]
         self._undo_stack.endMacro()
         return nodes
@@ -1314,10 +1313,6 @@ class CustomNodeGraph(NodeGraph):
         serial_data['graph']['pipe_collision'] = self.pipe_collision()
         serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
         serial_data['graph']['pipe_style'] = self.pipe_style()
-
-        # # connection constrains.
-        # serial_data['graph']['accept_connection_types'] = orjson.dumps(self.model.accept_connection_types, default=list)
-        # serial_data['graph']['reject_connection_types'] = orjson.dumps(self.model.reject_connection_types, default=list)
 
         # serialize nodes.
         for n in nodes:
@@ -1413,17 +1408,6 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_collision(attr_value)
                     elif attr_name == "pipe_slicing":
                         self.set_pipe_slicing(attr_value)
-                #
-                # # connection constrains.
-                # if attr_name == 'accept_connection_types':
-                #     attr_value = orjson.loads(attr_value)
-                #     convert_last_list_to_set(attr_value)
-                #     self.model.accept_connection_types = attr_value
-                #
-                # elif attr_name == 'reject_connection_types':
-                #     attr_value = orjson.loads(attr_value)
-                #     convert_last_list_to_set(attr_value)
-                #     self.model.reject_connection_types = attr_value
 
             # 分离 backdrop 节点和其他节点
             nodes_data = data.get('nodes', {})
