@@ -724,7 +724,7 @@ class GlobalPanelWidget:
     def zoom_to_node_by_name(self, node_name):
         """根据节点名称跳转到节点"""
         found_node = self.locate_node_by_name(node_name)
-        return self.main_window.canvas_widget.zoom_to_nodes([found_node._view])
+        return self.main_window.graph.viewer().zoom_to_nodes([found_node._view])
 
     def _refresh_env_page(self):
         # 去除最后strech
@@ -1305,7 +1305,7 @@ class GlobalPanelWidget:
             return
 
         # 交互优化：如果有多个引用，可以弹出一个列表，或者直接全部选中并缩放
-        self.main_window.canvas_widget.zoom_to_nodes([n._view for n in nodes_found])
+        self.main_window.graph.viewer().zoom_to_nodes([n._view for n in nodes_found])
 
         # 视觉反馈：让这些节点“闪烁”一下
         for node in nodes_found:

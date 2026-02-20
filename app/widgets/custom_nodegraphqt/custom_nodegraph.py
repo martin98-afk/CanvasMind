@@ -25,6 +25,7 @@ from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
@@ -344,7 +345,7 @@ class SelectionOverlayManager:
 
 class CustomNodeViewer(NodeViewer):
 
-    def __init__(self, parent=None, undo_stack=None):
+    def __init__(self, parent=None, undo_stack=None, scene=None):
         super(CustomNodeViewer, self).__init__(parent)
         self.home_window = parent
         self._panning = False
@@ -353,7 +354,10 @@ class CustomNodeViewer(NodeViewer):
         self._last_drag_target = None  # 记录当前正在高亮的代理控件
         self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
         self._temp_connection_source = None  # 用于存放拉线的起始端口
-        self.setScene(CustomNodeScene(self))
+        if scene:
+            self.setScene(scene)
+        else:
+            self.setScene(CustomNodeScene(self))
         # --- 性能优化：初始开启抗锯齿 ---
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
@@ -396,6 +400,36 @@ class CustomNodeViewer(NodeViewer):
         self._SLICER_PIPE.setVisible(False)
         self.scene().addItem(self._SLICER_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
+        # 设置默认样式（透明边框，防止抖动）
+        self.setObjectName("NodeViewer")
+        self._is_active = False
+        self._update_style()
+
+    def set_active(self, active):
+        """设置活跃状态并刷新样式"""
+        if self._is_active != active:
+            self._is_active = active
+
+    def _update_style(self):
+        """根据是否活跃及 Splitter 状态更新样式"""
+        # 只有在存在多个视角时才显示高亮
+        show_highlight = self._is_active
+
+        if show_highlight:
+            self.setStyleSheet("""
+                #NodeViewer { 
+                    border: 2px solid #3d77ff; 
+                    border-radius: 4px;
+                }
+            """)
+        else:
+            self.setStyleSheet("#NodeViewer {border: none;}")
+
+    def focusInEvent(self, event):
+        """获得焦点时自动设为活跃"""
+        super().focusInEvent(event)
+        if hasattr(self.home_window, 'graph'):
+            self.graph.graph_splitter.set_active_viewer(self)
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""
@@ -568,6 +602,7 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
+        self.home_window.graph.graph_splitter.set_active_viewer(self)
         item = self.itemAt(event.pos())
         if isinstance(item, NodeActionButton):
             # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
@@ -748,10 +783,11 @@ class CustomNodeViewer(NodeViewer):
         items = self.scene().items(scene_pos)
 
         on_port = any(isinstance(i, PortItem) for i in items)
-
         # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
-        if live_pipe_active and start_port and not on_port and event.button() == QtCore.Qt.LeftButton:
+        if self._is_active and live_pipe_active and start_port and not on_port and event.button() == QtCore.Qt.LeftButton:
+
             if hasattr(self, '_custom_menu') and self._custom_menu:
+
                 # 暂存端口，给菜单创建节点后使用
                 self._temp_connection_source = start_port
 
@@ -1156,22 +1192,229 @@ class CustomNodeViewer(NodeViewer):
 
         self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
+    def start_live_connection(self, selected_port):
+        """
+        重写父类方法，修复 _origin_pos 为 None 导致的 mapToScene 崩溃。
+        """
+        # --- 补丁开始 ---
+        if self._origin_pos is None:
+            # 如果没有记录起始位置，手动获取当前鼠标在 View 中的位置
+            try:
+                # 获取屏幕绝对坐标
+                global_mouse_pos = QtGui.QCursor.pos()
+                # 转换为 Viewer 内部坐标
+                self._origin_pos = self.mapFromGlobal(global_mouse_pos)
+            except Exception as e:
+                print(f"Error calculating origin pos: {e}")
+                # 兜底：如果转换失败，设为 (0,0) 防止崩溃，虽然位置可能不对
+                self._origin_pos = QtCore.QPoint(0, 0)
+        # --- 补丁结束 ---
+
+        # 调用父类原有逻辑，此时 self._origin_pos 已经安全了
+        super(CustomNodeViewer, self).start_live_connection(selected_port)
+
+
+class GraphSplitter(ModernSplitter):
+    def __init__(self, parent=None):
+        super(GraphSplitter, self).__init__(QtCore.Qt.Horizontal, parent)
+        self._last_active_viewer = None
+
+    def get_active_viewer(self):
+        """你原来的逻辑，一个字没动"""
+        if self._last_active_viewer and self.indexOf(self._last_active_viewer) != -1:
+            return self._last_active_viewer
+        if self.count() > 0:
+            return self.widget(self.count() - 1)
+        return None
+
+    def set_active_viewer(self, viewer):
+        """切换活跃状态并更新所有视角的边框"""
+        if self._last_active_viewer == viewer:
+            return
+
+        self._last_active_viewer = viewer
+
+        # 遍历所有视角，更新样式
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if isinstance(widget, CustomNodeViewer):
+                widget.set_active(widget == viewer)
+                if self.count() > 1:
+                    widget._update_style()
+                else:
+                    widget.setStyleSheet("#NodeViewer {border: none;}")
+
+
+    def add_viewer(self, viewer):
+        """添加并自动绑定信号"""
+        self.addWidget(viewer)
+        viewer.split_view_func = self.split_view
+        viewer.installEventFilter(self)
+        self.set_active_viewer(viewer)
+
+    def split_view(self, source_viewer=None):
+        """你原来的逻辑，保持不变"""
+        if source_viewer is None:
+            source_viewer = self.get_active_viewer()
+        if source_viewer is None:
+            return
+
+        shared_scene = source_viewer.scene()
+        new_viewer = CustomNodeViewer(parent=source_viewer.home_window, scene=shared_scene)
+
+        new_viewer.setTransform(source_viewer.transform())
+        new_viewer.centerOn(source_viewer.mapToScene(source_viewer.viewport().rect().center()))
+
+        # add_viewer 会处理剩下的 set_active 和信号绑定
+        self.add_viewer(new_viewer)
+        return new_viewer
+
+    def eventFilter(self, obj, event):
+        # 监听焦点和点击切换活跃视角
+        if obj in [self.widget(i) for i in range(self.count())]:
+            if event.type() in [QtCore.QEvent.MouseButtonPress, QtCore.QEvent.FocusIn]:
+                self.set_active_viewer(obj)
+        return super(GraphSplitter, self).eventFilter(obj, event)
+
+    def remove_viewer(self, viewer=None):
+        """移除时也要重置高亮"""
+        if self.count() <= 1: return
+        target = viewer or self.get_active_viewer()
+        target.setParent(None)
+        target.deleteLater()
+        # 激活剩余的最后一个
+        self.set_active_viewer(self.widget(self.count() - 1))
+
 
 class CustomNodeGraph(NodeGraph):
 
     def __init__(self, parent, **kwargs):
+        self.graph_splitter = kwargs.get("splitter")
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
-        self._viewer.graph = self
         self.global_variables = GlobalVariableContext()  # 画布全局变量
+
+    def viewer(self):
+        return self.graph_splitter.get_active_viewer()
+
+    def _wire_signals(self, viewer=None):
+        """
+        Connect up all the signals and slots here.
+        """
+        viewer = viewer or self.viewer()
+        # internal signals.
+        viewer.search_triggered.connect(self._on_search_triggered)
+        viewer.connection_sliced.connect(self._on_connection_sliced)
+        viewer.connection_changed.connect(self._on_connection_changed)
+        viewer.moved_nodes.connect(self._on_nodes_moved)
+        viewer.node_double_clicked.connect(self._on_node_double_clicked)
+        viewer.node_name_changed.connect(self._on_node_name_changed)
+        viewer.node_backdrop_updated.connect(
+            self._on_node_backdrop_updated)
+        viewer.insert_node.connect(self._on_insert_node)
+
+        # pass through translated signals.
+        viewer.node_selected.connect(self._on_node_selected)
+        viewer.node_selection_changed.connect(
+            self._on_node_selection_changed)
+        viewer.data_dropped.connect(self._on_node_data_dropped)
+        viewer.context_menu_prompt.connect(self._on_context_menu_prompt)
+
+    def fit_to_selection(self):
+        """
+        Sets the zoom level to fit selected nodes.
+        If no nodes are selected then all nodes in the graph will be framed.
+        """
+        nodes = self.selected_nodes() or self.all_nodes()
+        if not nodes:
+            return
+        self.viewer().zoom_to_nodes([n.view for n in nodes])
+
+    def reset_zoom(self):
+        """
+        Reset the zoom level
+        """
+        self.viewer().reset_zoom()
+
+    def set_zoom(self, zoom=0):
+        """
+        Set the zoom factor of the Node Graph the default is ``0.0``
+
+        Args:
+            zoom (float): zoom factor (max zoom out ``-0.9`` / max zoom in ``2.0``)
+        """
+        self.viewer().set_zoom(zoom)
+
+    def get_zoom(self):
+        """
+        Get the current zoom level of the node graph.
+
+        Returns:
+            float: the current zoom level.
+        """
+        return self.viewer().get_zoom()
+
+    def center_on(self, nodes=None):
+        """
+        Center the node graph on the given nodes or all nodes by default.
+
+        Args:
+            nodes (list[NodeGraphQt.BaseNode]): a list of nodes.
+        """
+        nodes = nodes or []
+        self.viewer().center_selection([n.view for n in nodes])
+
+    def center_selection(self):
+        """
+        Centers on the current selected nodes.
+        """
+        nodes = self.viewer().selected_nodes()
+        self.viewer().center_selection(nodes)
+
+    def selected_nodes(self):
+        """
+        Return all selected nodes that are in the node graph.
+
+        Returns:
+            list[NodeGraphQt.BaseNode]: list of nodes.
+        """
+        nodes = []
+        for item in self.viewer().selected_nodes():
+            node = self._model.nodes[item.id]
+            nodes.append(node)
+        return nodes
+
+    def selected_pipes(self):
+        """
+        Return all selected pipes that are in the node graph.
+
+        Returns:
+            list[tuple[NodeGraphQt.Port,NodeGraphQt.Port]]: list of port tuples
+        """
+        pipes = []
+        ptypes = {PortTypeEnum.IN.value: "inputs", PortTypeEnum.OUT.value: "outputs"}
+
+        for item in self.viewer().selected_pipes():
+            p1_view = item.input_port
+            p2_view = item.output_port
+
+            node1 = self._model.nodes[p1_view.node.id]
+            node2 = self._model.nodes[p2_view.node.id]
+
+            port1 = getattr(node1, ptypes[p1_view.port_type])()[p1_view.name]
+            port2 = getattr(node2, ptypes[p2_view.port_type])()[p2_view.name]
+
+            pipe = (port1, port2)
+            pipes.append(pipe)
+        return pipes
 
     def _register_context_menu(self):
         """
         Register the default context menus.
         """
-        if not self._viewer:
+        if not self.viewer():
             return
-        menus = self._viewer.context_menus()
+        menus = self.viewer().context_menus()
         if menus.get('graph'):
             self._context_menu['graph'] = NodeGraphMenu(self, menus['graph'])
         if menus.get('nodes'):
@@ -1384,8 +1627,8 @@ class CustomNodeGraph(NodeGraph):
         """
         try:
             if isinstance(data, str): return
-            self._viewer.scene().blockSignals(True)
-            self._viewer.setUpdatesEnabled(False)
+            self.viewer().scene().blockSignals(True)
+            self.viewer().setUpdatesEnabled(False)
             # 反序列化 全局变量
             if data.get("global_variables"):
                 self.global_variables.deserialize(data.get("global_variables"))
@@ -1507,10 +1750,10 @@ class CustomNodeGraph(NodeGraph):
 
             node_objs = nodes.values()
             if relative_pos:
-                self._viewer.move_nodes([n.view for n in node_objs])
+                self.viewer().move_nodes([n.view for n in node_objs])
                 [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
             elif pos:
-                self._viewer.move_nodes([n.view for n in node_objs], pos=pos)
+                self.viewer().move_nodes([n.view for n in node_objs], pos=pos)
                 [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
             QtCore.QTimer.singleShot(150, lambda: self.build_connections(data, nodes))
         except:
@@ -1576,8 +1819,8 @@ class CustomNodeGraph(NodeGraph):
                 print(f"Warning: Failed to connect {len(pending_connections)} lines after {max_attempts} attempts.")
 
             # 恢复 UI 更新
-            self._viewer.setUpdatesEnabled(True)
-            self._viewer.scene().blockSignals(False)
+            self.viewer().setUpdatesEnabled(True)
+            self.viewer().scene().blockSignals(False)
             for n in nodes.values():
                 n.view.draw_node()
 

@@ -4,7 +4,7 @@ import os
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame
 from qfluentwidgets import (TransparentToolButton, FluentIcon, RoundMenu, Action,
-                            ComboBox, setFont, IconWidget)
+                            ComboBox, setFont, IconWidget, InfoBar)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
@@ -36,7 +36,8 @@ class CanvasUISetUp:
         self.save_btn = None
         self.export_model_btn = None
         self.close_btn = None
-
+        self.btn_add_view = None  # 增加视角按钮
+        self.btn_remove_view = None  # 减少视角按钮
         self.name_container = None
         self.buttons_container = None
         self.envs_container = None
@@ -129,6 +130,8 @@ class CanvasUISetUp:
             self._refresh_quick_buttons()
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
+        self.btn_add_view.clicked.connect(self._on_add_view_clicked)
+        self.btn_remove_view.clicked.connect(lambda: self.canvas_manager.graph_splitter.remove_viewer())
         self.btn_zoom_fit.clicked.connect(
             lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
@@ -315,6 +318,7 @@ class CanvasUISetUp:
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(8)
 
+        # 原有按钮
         self.btn_mode_toggle = self._build_tool_btn(get_icon("框选"), "框选/拖拽切换")
         self.btn_mode_toggle.setCheckable(True)
         self.btn_mode_toggle.setChecked(True)
@@ -322,10 +326,29 @@ class CanvasUISetUp:
         self.btn_zen_mode = self._build_tool_btn(get_icon("三图居中"), "切换纯净模式")
         self.btn_canvas_setting = self._build_tool_btn(FluentIcon.SETTING, "画布设置")
 
+        # --- 新增：视角控制按钮 ---
+        # 使用 ADD 和 REMOVE 图标，或者你可以换成 Layout 相关的图标
+        self.btn_add_view = self._build_tool_btn(FluentIcon.ADD, "增加新视角 (Split View)")
+        self.btn_remove_view = self._build_tool_btn(FluentIcon.REMOVE, "关闭当前视角")
+        # ------------------------
+
         self.view = CanvasSettingPopup(self.parent, self.parent.config)
         self.view.hide()
-        for btn in [self.btn_mode_toggle, self.btn_zoom_fit, self.btn_zen_mode, self.btn_canvas_setting]:
+
+        # --- 修改：添加到布局的顺序 ---
+        # 建议顺序：模式 -> 适应 -> [减少视角] -> [增加视角] -> 纯净 -> 设置
+        widgets = [
+            self.btn_mode_toggle,
+            self.btn_zoom_fit,
+            self.btn_remove_view,  # 新增
+            self.btn_add_view,  # 新增
+            self.btn_zen_mode,
+            self.btn_canvas_setting
+        ]
+
+        for btn in widgets:
             layout.addWidget(btn)
+
         self.canvas_controls_container.show()
 
     def _build_tool_btn(self, icon, tooltip):
@@ -438,6 +461,14 @@ class CanvasUISetUp:
         else:
             viewer.set_navigation_mode(True)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
+
+    def _on_add_view_clicked(self):
+        """点击增加视角"""
+        current_viewer = self.graph.viewer()
+        new_viewer = self.canvas_manager.graph_splitter.split_view(current_viewer)
+        new_viewer.graph = self.graph
+        self.graph._wire_signals(new_viewer)
+        self.parent.node_operations.setup_graph_menu(new_viewer)
 
     def toggle_zen_mode(self):
         if not self.is_zen_mode:

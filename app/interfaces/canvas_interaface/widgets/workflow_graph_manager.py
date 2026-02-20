@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any, Set
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget
 
-from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer
+from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer, GraphSplitter
 from ..constants import PIPELINE_STYLE, PIPELINE_DIRECTION, GRID_STYLE
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ class WorkflowCanvasManager(QWidget):
     navigation_changed = pyqtSignal(list)
     # 新增信号：子图被销毁时触发 (id, name)
     graph_destroyed = pyqtSignal(str, str)
+    graph_splitter = None
 
     def __init__(self, parent_window):
         super().__init__(parent_window)
@@ -81,11 +82,23 @@ class WorkflowCanvasManager(QWidget):
             if not self.parent_window:
                 logger.error("Parent window is dead, cannot create graph.")
                 return
-            root_graph = CustomNodeGraph(
-                viewer=CustomNodeViewer(parent=self.parent_window),
-                parent=self.parent_window
-            )
+            # 1. 创建视图分割器容器 (这将是实际显示在 UI 上的控件)
+            self.graph_splitter = GraphSplitter(parent=self.parent_window)
 
+            # 2. 创建主视角 (Master Viewer)
+            # 注意：parent 依然传 parent_window，保证业务逻辑正常
+            master_viewer = CustomNodeViewer(parent=self.parent_window)
+            # 3. 将主视角加入分割器
+            self.graph_splitter.add_viewer(master_viewer)
+
+            # 4. 初始化 Graph，依然绑定主视角
+            # NodeGraphQt 的逻辑主要依赖一个 viewer 进行初始化
+            root_graph = CustomNodeGraph(
+                viewer=master_viewer,
+                parent=self.parent_window,
+                splitter=self.graph_splitter
+            )
+            master_viewer.graph = root_graph
         self._apply_style_to_graph(root_graph)
         self._add_graph_to_stack(root_graph, "Main Workflow", self._root_graph_id)
 
@@ -268,8 +281,8 @@ class WorkflowCanvasManager(QWidget):
         self._active_graph_ids.add(graph_id)
 
         # 添加到UI
-        self.stack_widget.addWidget(graph.widget)
-        self.stack_widget.setCurrentWidget(graph.widget)
+        self.stack_widget.addWidget(self.graph_splitter)
+        self.stack_widget.setCurrentWidget(self.graph_splitter)
 
         # 添加到数据栈
         self._graph_stack_data.append({
