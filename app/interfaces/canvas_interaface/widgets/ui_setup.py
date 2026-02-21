@@ -131,10 +131,10 @@ class CanvasUISetUp:
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         # 画布控制菜单
-        view_split_right_action = Action(FluentIcon.ADD, "向右拆分视角", parent=self.canvas_manager)
+        view_split_right_action = Action(get_icon("向右拆分"), "向右拆分视角", parent=self.canvas_manager)
         view_split_right_action.triggered.connect(self._on_view_split_right)
         self.more_canvas_settings_menu.addAction(view_split_right_action)
-        view_split_down_action = Action(FluentIcon.ADD, "向下拆分视角", parent=self.canvas_manager)
+        view_split_down_action = Action(get_icon("向下拆分"), "向下拆分视角", parent=self.canvas_manager)
         view_split_down_action.triggered.connect(self._on_view_split_down)
         self.more_canvas_settings_menu.addAction(view_split_down_action)
         view_remove_action = Action(FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager)

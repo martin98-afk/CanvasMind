@@ -835,20 +835,15 @@ class CustomNodeViewer(NodeViewer):
             # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
             if live_pipe_active and start_port_item and not on_port and event.button() == QtCore.Qt.LeftButton:
                 if hasattr(self, '_custom_menu') and self._custom_menu:
-                    # 获取逻辑端口对象 (从 GraphicsItem 获取 model)
                     self._temp_connection_source = start_port_item
 
-                    # 弹出菜单
+                    # 手动触发你的自定义菜单显示
                     self._custom_menu.show_at_cursor(event.globalPos())
 
-                    # 停止拉线状态
-                    self._LIVE_PIPE.setVisible(False)
-                    self._start_port = None
+                    # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
                     self.LMB_state = False
-
-                    # 这里的 super 调用要小心，如果已经手动处理了拉线，
-                    # 就不一定要让基类再处理一次，防止它在空白处清理状态时报错
-                    super(NodeViewer, self).mouseReleaseEvent(event)
+                    super(CustomNodeViewer, self).mouseReleaseEvent(event)
+                    self._temp_connection_source = None
                     return
             # 处理平移
             was_panning = self._panning
@@ -1348,9 +1343,18 @@ class CustomNodeViewer(NodeViewer):
 
             if not port.multi_connection and port.connected_ports:
                 self._detached_port = port.connected_ports[0]
+
+            # 开始拉线
             self.start_live_connection(port)
+
+            # --- 优化点 1: 处理断开旧线时的闪现 ---
             if not port.multi_connection:
-                [p.delete() for p in port.connected_pipes]
+                # 暂时阻塞信号，防止删除过程中的中间状态引起重绘
+                self.scene().blockSignals(True)
+                for p in port.connected_pipes:
+                    p.setVisible(False)  # 立即隐藏，防止在 delete 过程中闪现
+                    p.delete()
+                self.scene().blockSignals(False)
             return
 
         if node:
@@ -1384,12 +1388,18 @@ class CustomNodeViewer(NodeViewer):
             self._detached_port = getattr(pipe, attr[from_port.port_type])
             self.start_live_connection(from_port)
             self._LIVE_PIPE.draw_path(self._start_port, cursor_pos=pos)
-            print("pipe deleted")
+
+            # --- 优化点 2: 直接点击连线断开时的处理 ---
+            self.scene().blockSignals(True)
+            pipe.setVisible(False)  # 立即隐藏
             if self.SHIFT_state:
                 self._LIVE_PIPE.shift_selected = True
+                pipe.delete()
+                self.scene().blockSignals(False)
                 return
 
             pipe.delete()
+            self.scene().blockSignals(False)
 
     def sceneMouseReleaseEvent(self, event):
         """
