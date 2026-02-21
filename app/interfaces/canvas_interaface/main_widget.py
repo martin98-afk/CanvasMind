@@ -60,7 +60,6 @@ class CanvasPage(QWidget):
         # 异步注册或分批注册节点
         self.node_operations.register_components()
         self.canvas_widget = self.graph.viewer()
-        self.canvas_widget.setStyleSheet("QWidget {border: none;}")
 
         # 全局变量与基础 IO 工具
         self.canvas_io = CanvasIO(self.graph, self.global_variables, self)

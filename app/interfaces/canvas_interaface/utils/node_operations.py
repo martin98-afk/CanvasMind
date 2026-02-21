@@ -39,6 +39,7 @@ class NodeOperations:
         self._node_id_cache_valid = False  # 标记缓存是否有效
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
+        self.graph_menu = CustomGraphMenu(graph, self.parent.nav_panel, self.parent)
 
     def _reset_registered(self):
         self.node_type_map = {}
@@ -120,22 +121,18 @@ class NodeOperations:
         except Exception as e:
             logger.exception("register_components 执行失败！")  # ← 关键
 
-    def setup_graph_menu(self, graph):
+    def setup_graph_menu(self, viewer):
         """注入函数"""
         left_panel = self.parent.nav_panel
-        self.graph_menu = CustomGraphMenu(graph, self.parent.nav_panel, self.parent)
         left_panel.draggable_tree.filter_changed_signal.connect(self.graph_menu.set_category_filter)
         initial_cats = left_panel.draggable_tree.tree._selected_categories
         self.graph_menu.set_category_filter(initial_cats)
-
-        viewer = graph.viewer()
-        scene_view = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
-        scene_view._custom_menu = self.graph_menu
-        original_context_menu_event = scene_view.contextMenuEvent
+        viewer._custom_menu = self.graph_menu
+        original_context_menu_event = viewer.contextMenuEvent
 
         def custom_context_menu_event(event):
             # 获取点击位置的 Item
-            item = scene_view.itemAt(event.pos())
+            item = viewer.itemAt(event.pos())
 
             show_custom_bg_menu = False
 
@@ -147,7 +144,7 @@ class NodeOperations:
                 # 2. 点在 StickyNoteItem 上
                 # 需要将 View 的坐标转为 Item 的局部坐标来判断点击位置
                 # event.pos() 是 View 坐标 -> mapToScene -> mapFromScene
-                scene_pos = scene_view.mapToScene(event.pos())
+                scene_pos = viewer.mapToScene(event.pos())
                 local_pos = item.mapFromScene(scene_pos)
 
                 # 如果点击的是 Header 区域，显示原生菜单（比如删除节点）
@@ -165,10 +162,10 @@ class NodeOperations:
                 # 其他情况（点击了普通节点、Note的标题栏、Note内部的文字块）-> 原生逻辑
                 original_context_menu_event(event)
 
-        scene_view.contextMenuEvent = custom_context_menu_event
+        viewer.contextMenuEvent = custom_context_menu_event
 
     def setup_context_menu(self):
-        self.setup_graph_menu(self.graph)
+        self.setup_graph_menu(self.graph.viewer())
         # 画布右键菜单注册
         graph_menu = self.graph.get_context_menu('graph')
         graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')

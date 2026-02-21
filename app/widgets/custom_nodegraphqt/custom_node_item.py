@@ -407,56 +407,6 @@ class CustomNodeItem(NodeItem):
         self._set_action_btns_visible(True)
         super(CustomNodeItem, self).hoverEnterEvent(event)
 
-    def auto_switch_mode(self):
-        """
-        精准感应判定：
-        只有在“能看见我”的视口中，寻找最大的物理宽度。
-        """
-        scene = self.scene()
-        if not scene: return
-        all_views = scene.views()
-        if not all_views: return
-
-        node_scene_rect = self.sceneBoundingRect()
-        max_physical_width = 0
-        is_observed_by_any_view = False
-
-        for view in all_views:
-            if not view.isVisible(): continue
-
-            # --- 关键：获取该视口的场景视野矩形 ---
-            # viewport().rect() 是屏幕像素区域，mapToScene 将其转为画布上的坐标区域
-            view_scene_rect = view.mapToScene(view.viewport().rect()).boundingRect()
-
-            # 只有当节点在当前视口的视野内时，才参与判定
-            if view_scene_rect.intersects(node_scene_rect):
-                is_observed_by_any_view = True
-                # 计算在该视口下的物理像素宽度
-                view_rect = view.mapFromScene(node_scene_rect).boundingRect()
-                if view_rect.width() > max_physical_width:
-                    max_physical_width = view_rect.width()
-
-        # 获取配置的阈值（例如 250 像素）
-        proxy_threshold = Settings.get_instance().node_proxy_size.value
-
-        if not is_observed_by_any_view:
-            # 如果没有任何窗口看见这个节点，默认进入 Proxy 模式节省性能
-            self.set_proxy_mode(True)
-        else:
-            # 只要【能看见我】的窗口中有一个离得够近，就显示 Normal
-            self.set_proxy_mode(max_physical_width < proxy_threshold)
-
-    def _set_action_btns_visible(self, visible):
-        """
-        修正 Toolbar 定位。
-        """
-        self.prepareGeometryChange()
-        if visible:
-            # 这里的定位计算会用到 self.viewer()
-            # 确保 Toolbar 根据当前视图的缩放比例进行反向缩放（抗缩放）
-            self._draw_node_horizontal()
-        self._floating_toolbar.setVisible(visible)
-
     def hoverLeaveEvent(self, event):
         if not self.boundingRect().contains(event.pos()):
             self._set_action_btns_visible(False)

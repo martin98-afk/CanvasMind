@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import copy
+import math
+
 import orjson
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, )
+    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, PipeLayoutEnum, PipeEnum, )
 from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -18,6 +20,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
 from Qt import QtGui, QtCore, QtWidgets
 from loguru import logger
+from qfluentwidgets import InfoBar
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
@@ -25,6 +28,7 @@ from app.nodes.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
 from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
@@ -36,6 +40,47 @@ SNAP_COLOR = QtGui.QColor(255, 128, 0, 200)  # 橙色对齐线
 
 
 class CustomNodeScene(NodeScene):
+
+    def drawBackground(self, painter, rect):
+        # 修改点：识别当前正在绘制场景的 painter 属于哪个 View
+        current_painter_viewer = None
+        for v in self.views():
+            if v.viewport() == painter.device():
+                current_painter_viewer = v
+                break
+
+        # 临时设置上下文，让后续调用的 _draw_dots / _draw_grid 能拿到正确的 zoom
+        old_viewer = getattr(self, '_event_viewer', None)
+        self._event_viewer = current_painter_viewer
+
+        super(CustomNodeScene, self).drawBackground(painter, rect)
+
+    def viewer(self):
+        """
+        重写基类方法，不再死板地返回 views()[0]。
+        优先返回当前处于活跃状态(蓝框高亮)的 Viewer。
+        """
+        all_views = self.views()
+        if not all_views:
+            return None
+
+        # 1. 如果只有一个视图，直接返回
+        if len(all_views) == 1:
+            return all_views[0]
+
+        # 2. 尝试从这些视图中找到你自定义标记为 _is_active 的那一个
+        # (你在 GraphSplitter.set_active_viewer 中维护了这个状态)
+        for v in all_views:
+            if hasattr(v, '_is_active') and v._is_active:
+                return v
+
+        # 3. 兜底方案：返回当前拥有焦点的视图
+        active_v = QtWidgets.QApplication.focusWidget()
+        for v in all_views:
+            if v == active_v or v.viewport() == active_v:
+                return v
+
+        return all_views[0]
 
     def _draw_dots(self, painter, rect, pen, grid_size):
         """
@@ -344,7 +389,7 @@ class SelectionOverlayManager:
 
 class CustomNodeViewer(NodeViewer):
 
-    def __init__(self, parent=None, undo_stack=None):
+    def __init__(self, parent=None, undo_stack=None, scene=None):
         super(CustomNodeViewer, self).__init__(parent)
         self.home_window = parent
         self._panning = False
@@ -353,7 +398,10 @@ class CustomNodeViewer(NodeViewer):
         self._last_drag_target = None  # 记录当前正在高亮的代理控件
         self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
         self._temp_connection_source = None  # 用于存放拉线的起始端口
-        self.setScene(CustomNodeScene(self))
+        if scene:
+            self.setScene(scene)
+        else:
+            self.setScene(CustomNodeScene(self))
         # --- 性能优化：初始开启抗锯齿 ---
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
@@ -362,7 +410,7 @@ class CustomNodeViewer(NodeViewer):
         # 优化拖动时的重绘策略
         self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
 
-        # --- 新增：对齐线对象 (初始化一次，复用) ---
+        # --- 对齐线对象 (初始化一次，复用) ---
         self._snap_lines_item = QtWidgets.QGraphicsPathItem()
         self._snap_lines_item.setZValue(Z_VAL_PIPE + 100)  # 最顶层
         snap_pen = QtGui.QPen(SNAP_COLOR, 1.0, QtCore.Qt.DashLine)
@@ -396,10 +444,38 @@ class CustomNodeViewer(NodeViewer):
         self._SLICER_PIPE.setVisible(False)
         self.scene().addItem(self._SLICER_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
+        # 设置默认样式（透明边框，防止抖动）
+        self.setObjectName("NodeViewer")
+        self._is_active = False
+        self._is_main = False
+        self._update_style()
+
+    def set_active(self, active):
+        """设置活跃状态并刷新样式"""
+        if self._is_active != active:
+            self._is_active = active
+
+    def _update_style(self):
+        # 1. 活跃状态 -> 蓝色
+        if self._is_active:
+            border = "2px solid #3d77ff"
+        # 2. 主视角且非活跃 -> 白色
+        elif self._is_main:
+            border = "2px solid #ffffff"
+        # 3. 普通视角 -> 无
+        else:
+            border = "none"
+
+        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 8px; }}")
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""
         self._navigation_mode = enabled
+        if enabled:
+            self.viewport().setCursor(QtCore.Qt.OpenHandCursor)
+        else:
+            self.viewport().setCursor(QtCore.Qt.ArrowCursor)
+
         # 切换模式时，如果正在拉框，强制取消
         if enabled and self._rubber_band.isActive:
             self._rubber_band.hide()
@@ -527,37 +603,38 @@ class CustomNodeViewer(NodeViewer):
     # ---------------------------
 
     def wheelEvent(self, event):
-        # 保持你原本的逻辑不变
-        pos = event.pos()
-        item = self.itemAt(pos)
-        if isinstance(item, CustomNodeBaseWidget):
-            widget = item.widget().get_node_widget()
-            if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
-                widget.code_editor.wheelEvent(event)
-                return
-            elif hasattr(widget, "summary_label") and widget.summary_label.hasFocus():
-                widget.summary_label.wheelEvent(event)
-                return
-        elif isinstance(item, QtWidgets.QGraphicsProxyWidget):
-            for widget in QtWidgets.QApplication.allWidgets():
-                if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
-                    widget.view().wheelEvent(event)
+        self.home_window.graph.graph_splitter.set_active_viewer(self)
+        if self._is_active:
+            # 保持你原本的逻辑不变
+            pos = event.pos()
+            item = self.itemAt(pos)
+            if isinstance(item, CustomNodeBaseWidget):
+                widget = item.widget().get_node_widget()
+                if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
+                    widget.code_editor.wheelEvent(event)
                     return
-        try:
-            delta = event.delta()
-        except AttributeError:
-            delta = event.angleDelta().y()
-            if delta == 0:
-                delta = event.angleDelta().x()
-        try:
-            self._set_viewer_zoom(delta, pos=event.pos())
-        except AttributeError:
-            self._set_viewer_zoom(delta, pos=event.position().toPoint())
-        if self._selection_overlay.is_visible():
-            self._selection_overlay.refresh(full_recalc=False)
+                elif hasattr(widget, "summary_label") and widget.summary_label.hasFocus():
+                    widget.summary_label.wheelEvent(event)
+                    return
+            elif isinstance(item, QtWidgets.QGraphicsProxyWidget):
+                for widget in QtWidgets.QApplication.allWidgets():
+                    if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
+                        widget.view().wheelEvent(event)
+                        return
+            try:
+                delta = event.delta()
+            except AttributeError:
+                delta = event.angleDelta().y()
+                if delta == 0:
+                    delta = event.angleDelta().x()
+            try:
+                self._set_viewer_zoom(delta, pos=event.pos())
+            except AttributeError:
+                self._set_viewer_zoom(delta, pos=event.position().toPoint())
+            if self._selection_overlay.is_visible():
+                self._selection_overlay.refresh(full_recalc=False)
 
     def establish_connection(self, start_port, end_port):
-        # 保持你原本的逻辑不变
         pipe = CustomPipeItem()
         self.scene().addItem(pipe)
         pipe.set_connections(start_port, end_port)
@@ -568,306 +645,315 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
-        item = self.itemAt(event.pos())
-        if isinstance(item, NodeActionButton):
-            # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
-            super(NodeViewer, self).mousePressEvent(event)
-            return
-        if event.button() == QtCore.Qt.LeftButton:
-            # 开始新操作前先隐藏
-            self._selection_overlay.hide()
-        # ----------------------------------------
-        if (event.button() == QtCore.Qt.MiddleButton or
-            (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
-            (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)  # <--- 新增条件
-        ):
-            self._panning = True
-        if event.button() == QtCore.Qt.LeftButton:
-            self.LMB_state = True
-        elif event.button() == QtCore.Qt.RightButton:
-            self.RMB_state = True
-        elif event.button() == QtCore.Qt.MiddleButton:
-            self.MMB_state = True
+        self.home_window.graph.graph_splitter.set_active_viewer(self)
+        self.scene()._viewer = self
+        if self._is_active:
+            item = self.itemAt(event.pos())
+            if isinstance(item, NodeActionButton):
+                # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
+                super(NodeViewer, self).mousePressEvent(event)
+                return
+            if event.button() == QtCore.Qt.LeftButton:
+                # 开始新操作前先隐藏
+                self._selection_overlay.hide()
+            # ----------------------------------------
+            if (event.button() == QtCore.Qt.MiddleButton or
+                (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
+                (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)
+            ):
+                self._panning = True
+                if self._navigation_mode:
+                    self.viewport().setCursor(QtCore.Qt.ClosedHandCursor)
+            if event.button() == QtCore.Qt.LeftButton:
+                self.LMB_state = True
+            elif event.button() == QtCore.Qt.RightButton:
+                self.RMB_state = True
+            elif event.button() == QtCore.Qt.MiddleButton:
+                self.MMB_state = True
 
-        self._origin_pos = event.pos()
-        self._previous_pos = event.pos()
-        (self._prev_selection_nodes,
-         self._prev_selection_pipes) = self.selected_items()
+            self._origin_pos = event.pos()
+            self._previous_pos = event.pos()
+            (self._prev_selection_nodes,
+             self._prev_selection_pipes) = self.selected_items()
 
-        if self._search_widget.isVisible():
-            self.tab_search_toggle()
+            if self._search_widget.isVisible():
+                self.tab_search_toggle()
 
-        map_pos = self.mapToScene(event.pos())
+            map_pos = self.mapToScene(event.pos())
 
-        if self.pipe_slicing:
-            slicer_mode = all([
-                self.ALT_state, self.SHIFT_state, self.LMB_state
-            ])
-            if slicer_mode:
-                self._SLICER_PIPE.draw_path(map_pos, map_pos)
-                self._SLICER_PIPE.setVisible(True)
+            if self.pipe_slicing:
+                slicer_mode = all([
+                    self.ALT_state, self.SHIFT_state, self.LMB_state
+                ])
+                if slicer_mode:
+                    self._SLICER_PIPE.draw_path(map_pos, map_pos)
+                    self._SLICER_PIPE.setVisible(True)
+                    return
+
+            if self.ALT_state:
                 return
 
-        if self.ALT_state:
-            return
+            items = self._items_near(map_pos, None, 20, 20)
+            pipes = []
+            nodes = []
+            backdrop = None
+            for itm in items:
+                if isinstance(itm, PipeItem):
+                    pipes.append(itm)
+                elif isinstance(itm, AbstractNodeItem):
+                    if isinstance(itm, BackdropNodeItem):
+                        backdrop = itm
+                        continue
+                    nodes.append(itm)
 
-        items = self._items_near(map_pos, None, 20, 20)
-        pipes = []
-        nodes = []
-        backdrop = None
-        for itm in items:
-            if isinstance(itm, PipeItem):
-                pipes.append(itm)
-            elif isinstance(itm, AbstractNodeItem):
-                if isinstance(itm, BackdropNodeItem):
-                    backdrop = itm
-                    continue
-                nodes.append(itm)
+            if nodes:
+                self.MMB_state = False
 
-        if nodes:
-            self.MMB_state = False
+            selection = set([])
 
-        selection = set([])
-
-        if self.LMB_state:
-            if self.SHIFT_state:
-                if items and backdrop == items[0]:
-                    backdrop.selected = not backdrop.selected
-                    if backdrop.selected:
-                        selection.add(backdrop)
-                    for n in backdrop.get_nodes():
-                        n.selected = backdrop.selected
+            if self.LMB_state:
+                if self.SHIFT_state:
+                    if items and backdrop == items[0]:
+                        backdrop.selected = not backdrop.selected
                         if backdrop.selected:
-                            selection.add(n)
+                            selection.add(backdrop)
+                        for n in backdrop.get_nodes():
+                            n.selected = backdrop.selected
+                            if backdrop.selected:
+                                selection.add(n)
+                    else:
+                        for node in nodes:
+                            node.selected = not node.selected
+                            if node.selected:
+                                selection.add(node)
+                    self._selection_overlay.refresh(full_recalc=True)
+                elif self.CTRL_state:
+                    if items and backdrop == items[0]:
+                        backdrop.selected = False
+                    else:
+                        for node in nodes:
+                            node.selected = False
+                    self._selection_overlay.refresh(full_recalc=True)
                 else:
+                    select_changed = False
+                    if backdrop:
+                        selection.add(backdrop)
+                        for n in backdrop.get_nodes():
+                            selection.add(n)
+                            select_changed = True
                     for node in nodes:
-                        node.selected = not node.selected
                         if node.selected:
                             selection.add(node)
-                self._selection_overlay.refresh(full_recalc=True)
-            elif self.CTRL_state:
-                if items and backdrop == items[0]:
-                    backdrop.selected = False
-                else:
-                    for node in nodes:
-                        node.selected = False
-                self._selection_overlay.refresh(full_recalc=True)
-            else:
-                select_changed = False
-                if backdrop:
-                    selection.add(backdrop)
-                    for n in backdrop.get_nodes():
-                        selection.add(n)
-                        select_changed = True
-                for node in nodes:
-                    if node.selected:
-                        selection.add(node)
-                        select_changed = True
-                if select_changed:
-                    self._selection_overlay.refresh(full_recalc=False)
+                            select_changed = True
+                    if select_changed:
+                        self._selection_overlay.refresh(full_recalc=False)
 
-        selection.update(self.selected_nodes())
-        self._node_positions.update({n: n.xy_pos for n in selection})
+            selection.update(self.selected_nodes())
+            self._node_positions.update({n: n.xy_pos for n in selection})
 
-        if self.LMB_state and not items and not self._navigation_mode:
-            rect = QtCore.QRect(self._previous_pos, QtCore.QSize())
-            rect = rect.normalized()
-            map_rect = self.mapToScene(rect).boundingRect()
-            self.scene().update(map_rect)
-            self._rubber_band.setGeometry(rect)
-            self._rubber_band.isActive = True
+            if self.LMB_state and not items and not self._navigation_mode:
+                rect = QtCore.QRect(self._previous_pos, QtCore.QSize())
+                rect = rect.normalized()
+                map_rect = self.mapToScene(rect).boundingRect()
+                self.scene().update(map_rect)
+                self._rubber_band.setGeometry(rect)
+                self._rubber_band.isActive = True
 
-        if self.CTRL_state:
-            return
+            if self.CTRL_state:
+                return
 
-        if self.SHIFT_state:
-            if pipes:
-                pipes[0].reset()
-                port = pipes[0].port_from_pos(map_pos, reverse=True)
-                if not port.locked and port.multi_connection:
-                    self._cursor_text.setPlainText('')
-                    self._cursor_text.setVisible(False)
-                    self.start_live_connection(port)
-            return
+            if self.SHIFT_state:
+                if pipes:
+                    pipes[0].reset()
+                    port = pipes[0].port_from_pos(map_pos, reverse=True)
+                    if not port.locked and port.multi_connection:
+                        self._cursor_text.setPlainText('')
+                        self._cursor_text.setVisible(False)
+                        self.start_live_connection(port)
+                return
 
-        if not self._LIVE_PIPE.isVisible():
-            super(NodeViewer, self).mousePressEvent(event)
+            if not self._LIVE_PIPE.isVisible():
+                super(NodeViewer, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # 1. 注入导航模式下的平移逻辑
-        if self._navigation_mode and self.LMB_state and not self.ALT_state:
-            previous_pos = self.mapToScene(self._previous_pos)
-            current_pos = self.mapToScene(event.pos())
-            delta = previous_pos - current_pos
-            self._set_viewer_pan(delta.x(), delta.y())
+        if self._is_active:
+            # 1. 注入导航模式下的平移逻辑
+            if self._navigation_mode and self.LMB_state and not self.ALT_state:
+                previous_pos = self.mapToScene(self._previous_pos)
+                current_pos = self.mapToScene(event.pos())
+                delta = previous_pos - current_pos
+                self._set_viewer_pan(delta.x(), delta.y())
 
-        # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
-        super(CustomNodeViewer, self).mouseMoveEvent(event)
-        # 3. 判定是否正在拖拽节点
-        is_dragging_nodes = (
-                self.LMB_state and
-                not self.ALT_state and
-                not self.SHIFT_state and
-                not self._rubber_band.isActive and
-                not self._navigation_mode
-        )
+            # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
+            super(CustomNodeViewer, self).mouseMoveEvent(event)
+            # 3. 判定是否正在拖拽节点
+            is_dragging_nodes = (
+                    self.LMB_state and
+                    not self.ALT_state and
+                    not self.SHIFT_state and
+                    not self._rubber_band.isActive and
+                    not self._navigation_mode
+            )
 
-        if is_dragging_nodes:
-            selected_nodes = [
-                i for i in self.scene().selectedItems()
-                if isinstance(i, AbstractNodeItem)
-            ]
+            if is_dragging_nodes:
+                selected_nodes = [
+                    i for i in self.scene().selectedItems()
+                    if isinstance(i, AbstractNodeItem)
+                ]
 
-            # 排除正在缩放节点的情况
-            if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
-                self._snap_lines_item.hide()
-                self._selection_overlay.hide()
+                # 排除正在缩放节点的情况
+                if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
+                    self._snap_lines_item.hide()
+                    self._selection_overlay.hide()
+                else:
+                    # 处理对齐线
+                    self._handle_snapping(selected_nodes)
+                    self._selection_overlay.refresh()
             else:
-                # 处理对齐线
-                self._handle_snapping(selected_nodes)
-                self._selection_overlay.refresh()
-        else:
-            if self._snap_lines_item.isVisible():
-                self._snap_lines_item.hide()
+                if self._snap_lines_item.isVisible():
+                    self._snap_lines_item.hide()
 
-            # 如果是在拉框选择，实时更新虚线框 (体验更好)
-            if self._rubber_band.isActive:
-                self._selection_overlay.refresh(full_recalc=True)
+                # 如果是在拉框选择，实时更新虚线框 (体验更好)
+                if self._rubber_band.isActive:
+                    self._selection_overlay.refresh(full_recalc=True)
 
     # ---------------------------------------------
 
     def mouseReleaseEvent(self, event):
-        # -------------------------------------
-        # 1. 记录拉线状态
-        live_pipe_active = self._LIVE_PIPE.isVisible()
-        # 注意：使用 self._start_port，这是 NodeGraphQt 内部记录起始端口的变量
-        start_port = self._LIVE_PIPE._start_port if live_pipe_active else None
+        if self._is_active:
+            # 1. 检查拉线状态 (NodeGraphQt 基类在拉线时会填充 self._start_port)
+            live_pipe_active = self._LIVE_PIPE.isVisible()
+            # 关键：直接访问 viewer 自身的 _start_port
+            start_port_item = self._start_port if hasattr(self, '_start_port') else None
 
-        # 2. 检测释放位置是否是空白处
-        scene_pos = self.mapToScene(event.pos())
-        items = self.scene().items(scene_pos)
+            # 2. 检测释放位置
+            scene_pos = self.mapToScene(event.pos())
+            items = self.scene().items(scene_pos)
+            # 检查鼠标下是否有端口
+            on_port = any(isinstance(i, PortItem) for i in items)
 
-        on_port = any(isinstance(i, PortItem) for i in items)
+            # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
+            if live_pipe_active and start_port_item and not on_port and event.button() == QtCore.Qt.LeftButton:
+                if hasattr(self, '_custom_menu') and self._custom_menu:
+                    self._temp_connection_source = start_port_item
 
-        # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
-        if live_pipe_active and start_port and not on_port and event.button() == QtCore.Qt.LeftButton:
-            if hasattr(self, '_custom_menu') and self._custom_menu:
-                # 暂存端口，给菜单创建节点后使用
-                self._temp_connection_source = start_port
+                    # 手动触发你的自定义菜单显示
+                    self._custom_menu.show_at_cursor(event.globalPos())
 
-                # 手动触发你的自定义菜单显示
-                self._custom_menu.show_at_cursor(event.globalPos())
-
-                # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
+                    # 如果弹出菜单了，可能需要阻止基类的一些默认选择逻辑
+                    self.LMB_state = False
+                    super(CustomNodeViewer, self).mouseReleaseEvent(event)
+                    self._temp_connection_source = None
+                    return
+            # 处理平移
+            was_panning = self._panning
+            if event.button() == QtCore.Qt.LeftButton:
                 self.LMB_state = False
-                super(CustomNodeViewer, self).mouseReleaseEvent(event)
-                self._temp_connection_source = None
-                return
-        # 处理平移
-        was_panning = self._panning
-        if event.button() == QtCore.Qt.LeftButton:
-            self.LMB_state = False
-            if event.modifiers() == QtCore.Qt.AltModifier:
+                if event.modifiers() == QtCore.Qt.AltModifier:
+                    self._panning = False
+            elif event.button() == QtCore.Qt.RightButton:
+                self.RMB_state = False
+            elif event.button() == QtCore.Qt.MiddleButton:
+                self.MMB_state = False
                 self._panning = False
-        elif event.button() == QtCore.Qt.RightButton:
-            self.RMB_state = False
-        elif event.button() == QtCore.Qt.MiddleButton:
-            self.MMB_state = False
-            self._panning = False
-        if self._SLICER_PIPE.isVisible():
-            self._on_pipes_sliced(self._SLICER_PIPE.path())
-            p = QtCore.QPointF(0.0, 0.0)
-            self._SLICER_PIPE.draw_path(p, p)
-            self._SLICER_PIPE.setVisible(False)
+            if self._SLICER_PIPE.isVisible():
+                self._on_pipes_sliced(self._SLICER_PIPE.path())
+                p = QtCore.QPointF(0.0, 0.0)
+                self._SLICER_PIPE.draw_path(p, p)
+                self._SLICER_PIPE.setVisible(False)
 
-        if self._rubber_band.isActive:
-            self._rubber_band.isActive = False
-            if self._rubber_band.isVisible():
-                rect = self._rubber_band.rect()
-                map_rect = self.mapToScene(rect).boundingRect()
-                self._rubber_band.hide()
+            if self._rubber_band.isActive:
+                self._rubber_band.isActive = False
+                if self._rubber_band.isVisible():
+                    rect = self._rubber_band.rect()
+                    map_rect = self.mapToScene(rect).boundingRect()
+                    self._rubber_band.hide()
 
-                rect = QtCore.QRect(self._origin_pos, event.pos()).normalized()
-                rect_items = self.scene().items(
-                    self.mapToScene(rect).boundingRect()
-                )
-                node_ids = []
-                for item in rect_items:
-                    if isinstance(item, AbstractNodeItem):
-                        node_ids.append(item.id)
+                    rect = QtCore.QRect(self._origin_pos, event.pos()).normalized()
+                    rect_items = self.scene().items(
+                        self.mapToScene(rect).boundingRect()
+                    )
+                    node_ids = []
+                    for item in rect_items:
+                        if isinstance(item, AbstractNodeItem):
+                            node_ids.append(item.id)
 
-                self.scene().update(map_rect)
+                    self.scene().update(map_rect)
 
-        moved_nodes = {
-            n: xy_pos for n, xy_pos in self._node_positions.items()
-            if n.xy_pos != xy_pos
-        }
-        if moved_nodes and not self.COLLIDING_state:
-            self.moved_nodes.emit(moved_nodes)
+            moved_nodes = {
+                n: xy_pos for n, xy_pos in self._node_positions.items()
+                if n.xy_pos != xy_pos
+            }
+            if moved_nodes and not self.COLLIDING_state:
+                self.moved_nodes.emit(moved_nodes)
 
-        self._node_positions = {}
+            self._node_positions = {}
 
-        nodes, pipes = self.selected_items()
-        if self.COLLIDING_state and nodes and pipes:
-            self.insert_node.emit(pipes[0], nodes[0].id, moved_nodes)
+            nodes, pipes = self.selected_items()
+            if self.COLLIDING_state and nodes and pipes:
+                self.insert_node.emit(pipes[0], nodes[0].id, moved_nodes)
 
-        if not was_panning:
-            prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
-            nodes, _ = self.selected_items()
-            node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
-            if prev_ids != node_ids:
-                self.node_selection_changed.emit(node_ids, prev_ids)
+            if not was_panning:
+                prev_ids = [n.id for n in self._prev_selection_nodes if not n.selected]
+                nodes, _ = self.selected_items()
+                node_ids = [n.id for n in nodes if n not in self._prev_selection_nodes]
+                if prev_ids != node_ids:
+                    self.node_selection_changed.emit(node_ids, prev_ids)
 
-        self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
-
-        super(CustomNodeViewer, self).mouseReleaseEvent(event)
+            self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
+            if self._navigation_mode:
+                self.LMB_state = False  # 确保状态位已重置
+                self._panning = False  # 停止平移状态
+                self.viewport().setCursor(QtCore.Qt.OpenHandCursor)  # 变回开掌
+            super(CustomNodeViewer, self).mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            if hasattr(focused_widget, 'code_editor'):
-                QApplication.sendEvent(focused_widget.code_editor, event)
-                return
-            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
-                QApplication.sendEvent(focused_widget, event)
+        if self._is_active:
+            focused_widget = QApplication.focusWidget()
+            if focused_widget:
+                if hasattr(focused_widget, 'code_editor'):
+                    QApplication.sendEvent(focused_widget.code_editor, event)
+                    return
+                elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
+                    QApplication.sendEvent(focused_widget, event)
+                    return
+
+            self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
+            self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
+            self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
+            if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
+                self.ALT_state = True
+                self.SHIFT_state = True
+            if self._LIVE_PIPE.isVisible():
+                super(CustomNodeViewer, self).keyPressEvent(event)
                 return
 
-        self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
-        self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
-        self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
-            self.ALT_state = True
-            self.SHIFT_state = True
-        if self._LIVE_PIPE.isVisible():
+            # 国际化悬浮提示文字
+            overlay_text = None
+            self._cursor_text.setVisible(False)
+            if not self.ALT_state:
+                if self.SHIFT_state:
+                    overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
+                elif self.CTRL_state:
+                    overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
+            elif self.ALT_state and self.SHIFT_state:
+                if self.pipe_slicing:
+                    overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
+
+            if overlay_text:
+                self._cursor_text.setPlainText(overlay_text)
+                self._cursor_text.setFont(QtGui.QFont('Arial', 10))
+                self._cursor_text.setDefaultTextColor(Qt.white)
+                self._cursor_text.setPos(self.mapToScene(self._previous_pos))
+                self._cursor_text.setVisible(True)
+
+            if event.modifiers() == QtCore.Qt.ControlModifier:
+                if event.key() == QtCore.Qt.Key_C:
+                    self.home_window.node_operations._copy_selected_nodes()
+                elif event.key() == QtCore.Qt.Key_V:
+                    self.home_window.node_operations._paste_nodes()
+
             super(CustomNodeViewer, self).keyPressEvent(event)
-            return
-
-        # 国际化悬浮提示文字
-        overlay_text = None
-        self._cursor_text.setVisible(False)
-        if not self.ALT_state:
-            if self.SHIFT_state:
-                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
-            elif self.CTRL_state:
-                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
-        elif self.ALT_state and self.SHIFT_state:
-            if self.pipe_slicing:
-                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
-
-        if overlay_text:
-            self._cursor_text.setPlainText(overlay_text)
-            self._cursor_text.setFont(QtGui.QFont('Arial', 10))
-            self._cursor_text.setDefaultTextColor(Qt.white)
-            self._cursor_text.setPos(self.mapToScene(self._previous_pos))
-            self._cursor_text.setVisible(True)
-
-        if event.modifiers() == QtCore.Qt.ControlModifier:
-            if event.key() == QtCore.Qt.Key_C:
-                self.home_window.node_operations._copy_selected_nodes()
-            elif event.key() == QtCore.Qt.Key_V:
-                self.home_window.node_operations._paste_nodes()
-
-        super(CustomNodeViewer, self).keyPressEvent(event)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -1156,26 +1242,593 @@ class CustomNodeViewer(NodeViewer):
 
         self._zoom_anim_group.start(QtCore.QAbstractAnimation.DeleteWhenStopped)
 
+    def start_live_connection(self, selected_port):
+        """确保在任何视角开始连线时，坐标都是初始化的"""
+        # 如果是从右键菜单或其他非鼠标点击方式触发，确保 origin_pos 有值
+        if self._origin_pos is None:
+            self._origin_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+
+        # 记录起始端口到 viewer 自身
+        self._start_port = selected_port
+        super(CustomNodeViewer, self).start_live_connection(selected_port)
+
+    def sceneMouseMoveEvent(self, event):
+        """
+        triggered mouse move event for the scene.
+         - redraw the live connection pipe.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if not self._LIVE_PIPE.isVisible():
+            return
+        if not self._start_port:
+            return
+
+        pos = event.scenePos()
+        pointer_color = None
+        for item in self.scene().items(pos):
+            if not isinstance(item, PortItem):
+                continue
+
+            x = item.boundingRect().width() / 2
+            y = item.boundingRect().height() / 2
+            pos = item.scenePos()
+            pos.setX(pos.x() + x)
+            pos.setY(pos.y() + y)
+            if item == self._start_port:
+                break
+            pointer_color = PipeEnum.HIGHLIGHT_COLOR.value
+            # accept = self._validate_accept_connection(self._start_port, item)
+            # if not accept:
+            #     pointer_color = [150, 60, 255]
+            #     break
+            # reject = self._validate_reject_connection(self._start_port, item)
+            # if reject:
+            #     pointer_color = [150, 60, 255]
+            #     break
+
+            if self.acyclic:
+                if item.node == self._start_port.node:
+                    pointer_color = PipeEnum.DISABLED_COLOR.value
+                elif item.port_type == self._start_port.port_type:
+                    pointer_color = PipeEnum.DISABLED_COLOR.value
+            break
+
+        self._LIVE_PIPE.draw_path(
+            self._start_port, cursor_pos=pos, color=pointer_color
+        )
+
+    def sceneMousePressEvent(self, event):
+        """
+        triggered mouse press event for the scene (takes priority over viewer event).
+         - detect selected pipe and start connection.
+         - remap Shift and Ctrl modifier.
+
+        Args:
+            event (QtWidgets.QGraphicsScenePressEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        # pipe slicer enabled.
+        if self.ALT_state and self.SHIFT_state:
+            return
+
+        # viewer pan mode.
+        if self.ALT_state:
+            return
+
+        if self._LIVE_PIPE.isVisible():
+            self.apply_live_connection(event)
+            return
+
+        pos = event.scenePos()
+        items = self._items_near(pos, None, 5, 5)
+
+        # filter from the selection stack in the following order
+        # "node, port, pipe" this is to avoid selecting items under items.
+        node, port, pipe = None, None, None
+        for item in items:
+            if isinstance(item, AbstractNodeItem):
+                node = item
+            elif isinstance(item, PortItem):
+                port = item
+            elif isinstance(item, PipeItem):
+                pipe = item
+            if any([node, port, pipe]):
+                break
+        if port:
+            if port.locked:
+                return
+
+            if not port.multi_connection and port.connected_ports:
+                self._detached_port = port.connected_ports[0]
+
+            # 开始拉线
+            self.start_live_connection(port)
+
+            # --- 优化点 1: 处理断开旧线时的闪现 ---
+            if not port.multi_connection:
+                # 暂时阻塞信号，防止删除过程中的中间状态引起重绘
+                self.scene().blockSignals(True)
+                for p in port.connected_pipes:
+                    p.setVisible(False)  # 立即隐藏，防止在 delete 过程中闪现
+                    p.delete()
+                self.scene().blockSignals(False)
+            return
+
+        if node:
+            node_items = self._items_near(pos, AbstractNodeItem, 3, 3)
+
+            # record the node positions at selection time.
+            for n in node_items:
+                self._node_positions[n] = n.xy_pos
+
+            # emit selected node id with LMB.
+            if event.button() == QtCore.Qt.LeftButton:
+                self.node_selected.emit(node.id)
+
+            if not isinstance(node, BackdropNodeItem):
+                return
+
+        if pipe:
+            if not self.LMB_state:
+                return
+
+            from_port = pipe.port_from_pos(pos, True)
+            if from_port.locked:
+                return
+
+            from_port.hovered = True
+
+            attr = {
+                PortTypeEnum.IN.value: 'output_port',
+                PortTypeEnum.OUT.value: 'input_port'
+            }
+            self._detached_port = getattr(pipe, attr[from_port.port_type])
+            self.start_live_connection(from_port)
+            self._LIVE_PIPE.draw_path(self._start_port, cursor_pos=pos)
+
+            # --- 优化点 2: 直接点击连线断开时的处理 ---
+            self.scene().blockSignals(True)
+            pipe.setVisible(False)  # 立即隐藏
+            if self.SHIFT_state:
+                self._LIVE_PIPE.shift_selected = True
+                pipe.delete()
+                self.scene().blockSignals(False)
+                return
+
+            pipe.delete()
+            self.scene().blockSignals(False)
+
+    def sceneMouseReleaseEvent(self, event):
+        """
+        triggered mouse release event for the scene.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if event.button() != QtCore.Qt.MiddleButton:
+            self.apply_live_connection(event)
+
+    def apply_live_connection(self, event):
+        """
+        triggered mouse press/release event for the scene.
+        - verifies the live connection pipe.
+        - makes a connection pipe if valid.
+        - emits the "connection changed" signal.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if not self._LIVE_PIPE.isVisible():
+            return
+
+        self._start_port.hovered = False
+
+        # find the end port.
+        end_port = None
+        for item in self.scene().items(event.scenePos()):
+            if isinstance(item, PortItem):
+                end_port = item
+                break
+
+        connected = []
+        disconnected = []
+
+        # if port disconnected from existing pipe.
+        if end_port is None:
+            if self._detached_port and not self._LIVE_PIPE.shift_selected:
+                dist = math.hypot(self._previous_pos.x() - self._origin_pos.x(),
+                                  self._previous_pos.y() - self._origin_pos.y())
+                if dist <= 2.0:  # cursor pos threshold.
+                    self.establish_connection(self._start_port,
+                                              self._detached_port)
+                    self._detached_port = None
+                else:
+                    disconnected.append((self._start_port, self._detached_port))
+                    self.connection_changed.emit(disconnected, connected)
+
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        else:
+            if self._start_port is end_port:
+                return
+
+        # if connection to itself
+        same_node_connection = end_port.node == self._start_port.node
+        if not self.acyclic:
+            # allow a node cycle connection.
+            same_node_connection = False
+
+        # constrain check
+        # accept_connection = self._validate_accept_connection(
+        #     self._start_port, end_port
+        # )
+        # reject_connection = self._validate_reject_connection(
+        #     self._start_port, end_port
+        # )
+
+        # restore connection check.
+        restore_connection = any([
+            # if the end port is locked.
+            end_port.locked,
+            # if same port type.
+            end_port.port_type == self._start_port.port_type,
+            # if connection to itself.
+            same_node_connection,
+            # if end port is the start port.
+            end_port == self._start_port,
+            # if detached port is the end port.
+            self._detached_port == end_port,
+        ])
+        if restore_connection:
+            if self._detached_port:
+                to_port = self._detached_port or end_port
+                self.establish_connection(self._start_port, to_port)
+                self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # end connection if starting port is already connected.
+        if self._start_port.multi_connection and \
+                self._start_port in end_port.connected_ports:
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # register as disconnected if not acyclic.
+        if self.acyclic and not self.acyclic_check(self._start_port, end_port):
+            if self._detached_port:
+                disconnected.append((self._start_port, self._detached_port))
+
+            self.connection_changed.emit(disconnected, connected)
+
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # make connection.
+        if not end_port.multi_connection and end_port.connected_ports:
+            dettached_end = end_port.connected_ports[0]
+            disconnected.append((end_port, dettached_end))
+
+        if self._detached_port:
+            disconnected.append((self._start_port, self._detached_port))
+
+        connected.append((self._start_port, end_port))
+
+        self.connection_changed.emit(disconnected, connected)
+
+        self._detached_port = None
+        self.end_live_connection()
+
+
+class GraphSplitter(ModernSplitter):
+    def __init__(self, orientation=QtCore.Qt.Horizontal, parent=None):
+        super(GraphSplitter, self).__init__(orientation, parent)
+        self.parent_window = parent
+        self._last_active_viewer = None
+        self.setChildrenCollapsible(False)
+
+    def get_active_viewer(self):
+        # 检查 last_active 是否还在视图树中（不再使用 indexOf 限制在当前层）
+        if self._last_active_viewer and not sip.isdeleted(self._last_active_viewer):
+            return self._last_active_viewer
+        return self._find_fallback_viewer()
+
+    def _find_fallback_viewer(self):
+        """递归寻找最后一个可用的 Viewer"""
+        for i in range(self.count() - 1, -1, -1):
+            w = self.widget(i)
+            if isinstance(w, CustomNodeViewer): return w
+            if isinstance(w, GraphSplitter): return w._find_fallback_viewer()
+        return None
+
+    def set_active_viewer(self, viewer):
+        """切换活跃状态，并递归更新全局所有视角的边框"""
+        if self._last_active_viewer == viewer:
+            return
+        self._last_active_viewer = viewer
+
+        # 找到最顶层 splitter 触发全局样式刷新
+        root = self
+        while isinstance(root.parent(), GraphSplitter):
+            root = root.parent()
+        root._refresh_all_styles(viewer)
+
+    def _refresh_all_styles(self, active_viewer):
+        """递归遍历所有子控件更新样式"""
+        for i in range(self.count()):
+            w = self.widget(i)
+            if isinstance(w, CustomNodeViewer):
+                w.set_active(w == active_viewer)
+                if self.count() > 1:
+                    w._update_style()
+                else:
+                    w.setStyleSheet("#NodeViewer {border: none;}")
+            elif isinstance(w, GraphSplitter):
+                w._refresh_all_styles(active_viewer)
+
+    # --- 拆分逻辑：向右、向下 ---
+    def split_right(self):
+        return self._do_split(QtCore.Qt.Horizontal)
+
+    def split_down(self):
+        return self._do_split(QtCore.Qt.Vertical)
+
+    def _do_split(self, orientation):
+        source = self.get_active_viewer()
+        if not source: return
+
+        shared_scene = source.scene()
+        new_viewer = CustomNodeViewer(parent=source.home_window, scene=shared_scene)
+
+        # 找到 source 所在的那个直接父 Splitter
+        parent_sp = source.parent()
+        if not isinstance(parent_sp, GraphSplitter): return
+
+        idx = parent_sp.indexOf(source)
+
+        if parent_sp.orientation() == orientation:
+            # 同向拆分：直接插入
+            parent_sp.insertWidget(idx + 1, new_viewer)
+            # 强制设置伸缩因子，确保 50/50 比例
+            parent_sp.setStretchFactor(idx, 1)
+            parent_sp.setStretchFactor(idx + 1, 1)
+
+            # 物理调整大小
+            sizes = parent_sp.sizes()
+            total = sizes[idx] + sizes[idx + 1]
+            sizes[idx] = total // 2
+            sizes[idx + 1] = total // 2
+            parent_sp.setSizes(sizes)
+        else:
+            # 异向拆分（向下）：在当前位置嵌套
+            # 先记录 source 的当前大小，防止嵌套后丢失比例
+            old_sizes = parent_sp.sizes()
+            current_size = old_sizes[idx]
+
+            nested = GraphSplitter(orientation, self.parent_window)
+            parent_sp.insertWidget(idx, nested)
+
+            nested.addWidget(source)
+            nested.addWidget(new_viewer)
+
+            # 设置嵌套内部的比例
+            nested.setStretchFactor(0, 1)
+            nested.setStretchFactor(1, 1)
+            nested.setSizes([1000, 1000])  # 初始给个大值，Splitter 会自动等分
+
+            # 确保父层级中，新嵌套的这个控件依然占据原来的宽度
+            parent_sp.setStretchFactor(idx, 1)
+            parent_sp.setSizes(old_sizes)
+
+        parent_sp.set_active_viewer(new_viewer)
+        return new_viewer
+
+    # --- 你原本的接口 ---
+    def add_viewer(self, viewer):
+        self.addWidget(viewer)
+        viewer.split_view_func = self.split_view
+        self.set_active_viewer(viewer)
+
+    def split_view(self, source_viewer=None):
+        # 原逻辑默认向右拆分
+        self.split_right()
+
+    def remove_viewer(self, viewer=None):
+        target = viewer or self.get_active_viewer()
+        if target._is_main:
+            InfoBar.warning("无法删除主视角", "", parent=self.parent_window)
+            return
+
+        p = target.parent() # 这里的 p 是当前的嵌套 Splitter
+        target.setParent(None)
+        target.deleteLater()
+
+        # --- 自动拆箱逻辑 (Recursive Unwrapping) ---
+        # 如果 p 不是最顶层的 splitter，且删得只剩一个孩子了
+        if isinstance(p, GraphSplitter) and p.count() == 1:
+            pp = p.parent()
+            if isinstance(pp, GraphSplitter):
+                last_widget = p.widget(0)
+                idx = pp.indexOf(p)
+                # 把剩下的视角从嵌套里拎出来，放到父级对应的位置
+                pp.insertWidget(idx, last_widget)
+                p.setParent(None)
+                p.deleteLater()
+                # 重新定位父级的比例，防止新提拔上来的控件缩成一团
+                pp.setStretchFactor(idx, 1)
+
+        # 刷新全局活跃状态
+        new_active = self._find_fallback_viewer()
+        self.set_active_viewer(new_active)
+
 
 class CustomNodeGraph(NodeGraph):
 
     def __init__(self, parent, **kwargs):
+        self.graph_splitter = kwargs.get("splitter")
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
-        self._viewer.graph = self
         self.global_variables = GlobalVariableContext()  # 画布全局变量
+
+    def viewer(self):
+        return self.graph_splitter.get_active_viewer()
+
+    def _wire_signals(self, viewer=None):
+        """
+        Connect up all the signals and slots here.
+        """
+        viewer = viewer or self.viewer()
+        # internal signals.
+        viewer.search_triggered.connect(self._on_search_triggered)
+        viewer.connection_sliced.connect(self._on_connection_sliced)
+        viewer.connection_changed.connect(self._on_connection_changed)
+        viewer.moved_nodes.connect(self._on_nodes_moved)
+        viewer.node_double_clicked.connect(self._on_node_double_clicked)
+        viewer.node_name_changed.connect(self._on_node_name_changed)
+        viewer.node_backdrop_updated.connect(
+            self._on_node_backdrop_updated)
+        viewer.insert_node.connect(self._on_insert_node)
+
+        # pass through translated signals.
+        viewer.node_selected.connect(self._on_node_selected)
+        viewer.node_selection_changed.connect(
+            self._on_node_selection_changed)
+        viewer.data_dropped.connect(self._on_node_data_dropped)
+        viewer.context_menu_prompt.connect(self._on_context_menu_prompt)
+
+    def fit_to_selection(self):
+        """
+        Sets the zoom level to fit selected nodes.
+        If no nodes are selected then all nodes in the graph will be framed.
+        """
+        nodes = self.selected_nodes() or self.all_nodes()
+        if not nodes:
+            return
+        self.viewer().zoom_to_nodes([n.view for n in nodes])
+
+    def reset_zoom(self):
+        """
+        Reset the zoom level
+        """
+        self.viewer().reset_zoom()
+
+    def set_zoom(self, zoom=0):
+        """
+        Set the zoom factor of the Node Graph the default is ``0.0``
+
+        Args:
+            zoom (float): zoom factor (max zoom out ``-0.9`` / max zoom in ``2.0``)
+        """
+        self.viewer().set_zoom(zoom)
+
+    def get_zoom(self):
+        """
+        Get the current zoom level of the node graph.
+
+        Returns:
+            float: the current zoom level.
+        """
+        return self.viewer().get_zoom()
+
+    def center_on(self, nodes=None):
+        """
+        Center the node graph on the given nodes or all nodes by default.
+
+        Args:
+            nodes (list[NodeGraphQt.BaseNode]): a list of nodes.
+        """
+        nodes = nodes or []
+        self.viewer().center_selection([n.view for n in nodes])
+
+    def center_selection(self):
+        """
+        Centers on the current selected nodes.
+        """
+        nodes = self.viewer().selected_nodes()
+        self.viewer().center_selection(nodes)
+
+    def selected_nodes(self):
+        """
+        Return all selected nodes that are in the node graph.
+
+        Returns:
+            list[NodeGraphQt.BaseNode]: list of nodes.
+        """
+        nodes = []
+        for item in self.viewer().selected_nodes():
+            node = self._model.nodes[item.id]
+            nodes.append(node)
+        return nodes
+
+    def selected_pipes(self):
+        """
+        Return all selected pipes that are in the node graph.
+
+        Returns:
+            list[tuple[NodeGraphQt.Port,NodeGraphQt.Port]]: list of port tuples
+        """
+        pipes = []
+        ptypes = {PortTypeEnum.IN.value: "inputs", PortTypeEnum.OUT.value: "outputs"}
+
+        for item in self.viewer().selected_pipes():
+            p1_view = item.input_port
+            p2_view = item.output_port
+
+            node1 = self._model.nodes[p1_view.node.id]
+            node2 = self._model.nodes[p2_view.node.id]
+
+            port1 = getattr(node1, ptypes[p1_view.port_type])()[p1_view.name]
+            port2 = getattr(node2, ptypes[p2_view.port_type])()[p2_view.name]
+
+            pipe = (port1, port2)
+            pipes.append(pipe)
+        return pipes
 
     def _register_context_menu(self):
         """
         Register the default context menus.
         """
-        if not self._viewer:
+        if not self.viewer():
             return
-        menus = self._viewer.context_menus()
+        menus = self.viewer().context_menus()
         if menus.get('graph'):
             self._context_menu['graph'] = NodeGraphMenu(self, menus['graph'])
         if menus.get('nodes'):
             self._context_menu['nodes'] = CustomNodesMenu(self, menus['nodes'])
+
+    def set_pipe_style(self, style=PipeLayoutEnum.CURVED.value):
+        """
+        Set node graph pipes to be drawn as curved `(default)`, straight or angled.
+
+        .. code-block:: python
+            :linenos:
+
+            graph = NodeGraph()
+            graph.set_pipe_style(PipeLayoutEnum.CURVED.value)
+
+        See: :attr:`NodeGraphQt.constants.PipeLayoutEnum`
+
+        .. image:: ../_images/pipe_layout_types.gif
+            :width: 80%
+
+
+        Args:
+            style (int): pipe layout style.
+        """
+        pipe_max = max([PipeLayoutEnum.CURVED.value,
+                        PipeLayoutEnum.STRAIGHT.value,
+                        PipeLayoutEnum.ANGLE.value])
+        style = style if 0 <= style <= pipe_max else PipeLayoutEnum.CURVED.value
+        self._model.pipe_style = style
+        self.viewer().set_pipe_layout(style)
 
     def _on_node_selected(self, node_id):
         """
@@ -1384,8 +2037,8 @@ class CustomNodeGraph(NodeGraph):
         """
         try:
             if isinstance(data, str): return
-            self._viewer.scene().blockSignals(True)
-            self._viewer.setUpdatesEnabled(False)
+            self.viewer().scene().blockSignals(True)
+            self.viewer().setUpdatesEnabled(False)
             # 反序列化 全局变量
             if data.get("global_variables"):
                 self.global_variables.deserialize(data.get("global_variables"))
@@ -1507,10 +2160,10 @@ class CustomNodeGraph(NodeGraph):
 
             node_objs = nodes.values()
             if relative_pos:
-                self._viewer.move_nodes([n.view for n in node_objs])
+                self.viewer().move_nodes([n.view for n in node_objs])
                 [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
             elif pos:
-                self._viewer.move_nodes([n.view for n in node_objs], pos=pos)
+                self.viewer().move_nodes([n.view for n in node_objs], pos=pos)
                 [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
             QtCore.QTimer.singleShot(150, lambda: self.build_connections(data, nodes))
         except:
@@ -1576,8 +2229,8 @@ class CustomNodeGraph(NodeGraph):
                 print(f"Warning: Failed to connect {len(pending_connections)} lines after {max_attempts} attempts.")
 
             # 恢复 UI 更新
-            self._viewer.setUpdatesEnabled(True)
-            self._viewer.scene().blockSignals(False)
+            self.viewer().setUpdatesEnabled(True)
+            self.viewer().scene().blockSignals(False)
             for n in nodes.values():
                 n.view.draw_node()
 
