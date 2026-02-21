@@ -5,17 +5,17 @@
       "acyclic": true,
       "pipe_collision": false,
       "pipe_slicing": true,
-      "pipe_style": 2
+      "pipe_style": 1
     },
     "nodes": {
-      "0x196b734ae90": {
+      "0x1c4516d4440": {
         "type_": "dynamic.DYNAMIC_CODE",
         "icon": ":/icons/代码执行.svg",
         "name": "合并MCP配置",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -90,7 +90,7 @@
           "code": "def run(self, params, inputs=None):\n    \"\"\"\n    params: 节点属性（来自UI）\n    inputs: 上游输入（key=输入端口名）\n    return: 输出数据（key=输出端口名）\n    \"\"\"\n    mcp_config = {\n      \"mcpServers\": {}\n    }\n    for config in inputs.input1:\n        mcp_config[\"mcpServers\"].update(config.get(\"mcpServers\"))\n        \n    return {\n        \"output1\": mcp_config\n    }",
           "_zmq_ports": "62877/62878",
           "FULL_PATH": "代码执行/代码编辑",
-          "_status": "last_success"
+          "_status": "success"
         },
         "output_values": {
           "output1": {
@@ -109,14 +109,14 @@
           }
         }
       },
-      "0x196b734b250": {
+      "0x1c4519e4690": {
         "type_": "dynamic.StatusDynamicNode_917435cc-5a9a-4dd3-858c-c6d23cec51ae",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具发现 1",
         "color": [
-          139,
-          115,
-          85,
+          192,
+          57,
+          43,
           255
         ],
         "border_color": [
@@ -132,13 +132,13 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          2267.8509196183013,
-          372.5130465281392
+          2327.933350823052,
+          366.2406125280054
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -777,7 +777,7 @@
           "_column_select": {},
           "_zmq_ports": "62891/62892",
           "FULL_PATH": "大模型组件/mcp工具/MCP工具发现",
-          "_status": "last_success",
+          "_status": "failed",
           "_data_selector_visible": {
             "mcp_config": false
           }
@@ -802,93 +802,16 @@
             "multi_connection": true
           }
         ],
-        "output_values": {
-          "tools_dict": {
-            "fetch-mcp_fetch": {
-              "type": "function",
-              "function": {
-                "name": "fetch-mcp_fetch",
-                "description": "None",
-                "parameters": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string"
-                    },
-                    "max_length": {
-                      "type": "number",
-                      "default": 5000
-                    },
-                    "start_index": {
-                      "type": "number",
-                      "default": 0
-                    },
-                    "raw": {
-                      "type": "boolean",
-                      "default": false
-                    }
-                  },
-                  "required": [
-                    "url"
-                  ]
-                }
-              }
-            },
-            "Canvas_获取当前时间_run_获取当前时间": {
-              "type": "function",
-              "function": {
-                "name": "Canvas_获取当前时间_run_获取当前时间",
-                "description": "工具名称: 获取当前时间\n描述: 此工具由可视化画布导出，用于执行特定的 AI/数据工作流任务。\n\n=== 输入参数详细定义 ===\n=== 输出结果结构预览 ===\n- 输出字段: timestamp\n  来自节点: 获取当前时间\n  数据格式: TEXT",
-                "parameters": {
-                  "type": "object",
-                  "properties": {},
-                  "required": []
-                }
-              }
-            }
-          },
-          "tool_names": [
-            "fetch-mcp_fetch",
-            "Canvas_获取当前时间_run_获取当前时间"
-          ],
-          "mcp_metadata": {
-            "original_config": {
-              "mcpServers": {
-                "fetch-mcp": {
-                  "url": "https://remote.mcpservers.org/fetch/mcp",
-                  "type": "http"
-                },
-                "Canvas_获取当前时间": {
-                  "command": "E:/CanvasMind/CanvasMind/_internal/envs/miniconda/envs/3.11/python.exe",
-                  "args": [
-                    "E:/CanvasMind/CanvasMind/canvas_files/projects/获取当前时间/mcp_instance.py"
-                  ]
-                }
-              }
-            },
-            "auth_injected": false,
-            "discovery_timestamp": 1771409672.2729697,
-            "discovery_time_iso": "2026-02-18 18:14:32",
-            "tool_count": 2,
-            "tool_names": [
-              "fetch-mcp_fetch",
-              "Canvas_获取当前时间_run_获取当前时间"
-            ],
-            "server_names": [
-              "fetch-mcp",
-              "Canvas_获取当前时间"
-            ]
-          }
-        }
+        "output_values": {}
       },
-      "0x196b734b390": {
+      "0x1c4519e4cd0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "自定义mcp结构",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -924,7 +847,7 @@
           "input": "{\n  \"mcpServers\": {\n    \"Canvas_获取当前时间\": {\n      \"command\": \"E:/CanvasMind/CanvasMind/_internal/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"E:/CanvasMind/CanvasMind/canvas_files/projects/获取当前时间/mcp_instance.py\"\n      ]\n    }\n  }\n}",
           "_zmq_ports": "62815/62818",
           "FULL_PATH": "数据集成/文本输入",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [],
         "output_ports": [
@@ -937,14 +860,14 @@
           "text": "{\n  \"mcpServers\": {\n    \"Canvas_获取当前时间\": {\n      \"command\": \"E:/CanvasMind/CanvasMind/_internal/envs/miniconda/envs/3.11/python.exe\",\n      \"args\": [\n        \"E:/CanvasMind/CanvasMind/canvas_files/projects/获取当前时间/mcp_instance.py\"\n      ]\n    }\n  }\n}"
         }
       },
-      "0x196b734b4d0": {
+      "0x1c4519e4e10": {
         "type_": "dynamic.StatusDynamicNode_5e69aed2-c012-4b57-9e43-868bf8854ea5",
         "icon": ":/icons/同心圆.svg",
         "name": "提示词模板",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -991,7 +914,7 @@
           },
           "_zmq_ports": "62817/62820",
           "FULL_PATH": "大模型组件/提示词模板",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [
           {
@@ -1006,17 +929,17 @@
           }
         ],
         "output_values": {
-          "prompt": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述"
+          "prompt": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接"
         }
       },
-      "0x196b734b610": {
+      "0x1c4519e4f50": {
         "type_": "dynamic.StatusDynamicNode_b160dcb9-52c8-4625-9b75-aa564c0b68c6",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具调用智能体",
         "color": [
-          139,
-          115,
-          85,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -1037,8 +960,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          2723.685564212164,
-          92.51304652813923
+          2686.0509602113607,
+          86.24061252800539
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1095,7 +1018,7 @@
             "mcp_metadata": false
           },
           "FULL_PATH": "大模型组件/mcp工具/MCP工具调用智能体",
-          "_status": "last_success"
+          "_status": "unrun"
         },
         "input_ports": [
           {
@@ -1238,14 +1161,14 @@
           ]
         }
       },
-      "0x196b7349310": {
+      "0x1c4519e5090": {
         "type_": "dynamic.StatusDynamicNode_309f9eab-b2b4-41cd-bec9-2e4f4fd1d261",
         "icon": ":/icons/同心圆.svg",
         "name": "消息推送执行 1",
         "color": [
-          139,
-          115,
-          85,
+          13,
+          18,
+          23,
           255
         ],
         "border_color": [
@@ -1288,7 +1211,7 @@
           "_column_select": {},
           "_zmq_ports": "57962/57963",
           "FULL_PATH": "消息推送/消息推送执行",
-          "_status": "last_success"
+          "_status": "unrun"
         },
         "input_ports": [
           {
@@ -1314,14 +1237,14 @@
           "log": "DingTalk[0]: OK"
         }
       },
-      "0x196b734b750": {
+      "0x1c4519e51d0": {
         "type_": "dynamic.StatusDynamicNode_4c1e1377-6ebc-46a9-8cd9-af2279ade58a",
         "icon": ":/icons/同心圆.svg",
         "name": "文本转json",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1356,7 +1279,7 @@
           "version": "latest",
           "_zmq_ports": "62861/62862",
           "FULL_PATH": "数据转换/文本转json",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [
           {
@@ -1383,14 +1306,14 @@
           }
         }
       },
-      "0x196b7349590": {
+      "0x1c4519e5310": {
         "type_": "dynamic.StatusDynamicNode_226d6892-09cc-4486-b5ad-e1e34a9e242c",
         "icon": ":/icons/同心圆.svg",
         "name": "MCP工具配置 2",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1446,7 +1369,7 @@
           "_zmq_ports": "62816/62819",
           "debug_code": "# -*- coding: utf-8 -*-\nimport importlib.util\nfrom pathlib import Path\nbase_path = Path(__file__).parent.parent / \"base.py\" if (Path(__file__).parent.parent / \"base.py\").exists() else Path(__file__).parent.parent.parent / \"base.py\"\nspec = importlib.util.spec_from_file_location(\"base\", str(base_path))\nbase_module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(base_module)\n\n# 导入所需项目\nBaseComponent = base_module.BaseComponent\nPortDefinition = base_module.PortDefinition\nPropertyDefinition = base_module.PropertyDefinition\nPropertyType = base_module.PropertyType\nArgumentType = base_module.ArgumentType\nConnectionType = base_module.ConnectionType\n\n\nclass Component(BaseComponent):\n    name = \"MCP工具配置\"\n    category = \"大模型组件/mcp工具\"\n    description = \"配置MCP服务连接参数\"\n    requirements = \"\"\n    \n    inputs = [\n    ]\n    \n    outputs = [\n        PortDefinition(name=\"mcp_config\", label=\"MCP配置\", type=ArgumentType.JSON),\n    ]\n    \n    properties = {\n        \"mcp_config\": PropertyDefinition(\n            type=PropertyType.DYNAMICFORM,\n            label=\"MCP配置\",\n            schema={\n                \"name\": PropertyDefinition(\n                    type=PropertyType.TEXT,\n                    default=\"\",\n                    label=\"工具名称\",\n                ),\n                \"url\": PropertyDefinition(\n                    type=PropertyType.TEXT,\n                    default=\"http://localhost:8080\",\n                    label=\"服务地址\",\n                    description=\"MCP服务的HTTP/HTTPS地址\",\n                ),\n                \"type\": PropertyDefinition(\n                    type=PropertyType.CHOICE,\n                    default=\"http\",\n                    label=\"协议类型\",\n                    description=\"MCP服务通信协议\",\n                    choices=[\"http\", \"stdio\", \"websocket\", \"sse\"]\n                ),\n                \"disabled\": PropertyDefinition(\n                    type=PropertyType.BOOL,\n                    default=False,\n                    label=\"是否禁用工具\",\n                ),\n            }\n        ),\n    }\n\n    def run(self, params, inputs=None):\n        \"\"\"\n        生成MCP工具配置对象\n        \n        Args:\n            params: 节点属性（来自UI）\n            inputs: 上游输入（本节点无输入）\n            \n        Returns:\n            dict: 包含mcp_config输出端口的配置字典\n        \"\"\"\n        # 获取配置参数\n        configs = params.get(\"mcp_config\", {})\n        mcp_configs = {}\n        for config in configs:\n            if config.disabled:\n                continue\n            # 构建标准化配置\n            mcp_configs[config.name] = {\n                \"url\": config[\"url\"].strip(),\n                \"type\": config[\"type\"]\n            }\n        \n        self.logger.info(f\"生成MCP配置: {mcp_configs}\")\n        \n        return {\n            \"mcp_config\":  {\n              \"mcpServers\": mcp_configs\n            }\n        }\n",
           "FULL_PATH": "大模型组件/mcp工具/MCP工具配置",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [],
         "output_ports": [
@@ -1466,14 +1389,14 @@
           }
         }
       },
-      "0x196b73491d0": {
+      "0x1c4519e5450": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器 1",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1494,8 +1417,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          864.5156499017833,
-          64.5492213411552
+          901.4332835428536,
+          57.83692431550604
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1513,10 +1436,6 @@
           "db_url": "sqlite:///data.db",
           "sql": "SELECT COUNT(*) FROM users",
           "interval": 60,
-          "email_server": "imap.gmail.com",
-          "email_port": 993,
-          "email_username": "",
-          "email_password": "",
           "target_file_path": "",
           "watch_folder_path": "",
           "mqtt_host": "127.0.0.1",
@@ -1528,8 +1447,12 @@
           "redis_channel": "app_events",
           "webhook_endpoint": "12a1e05d-78ed-4638-a14c-007c10cc1d46",
           "callback_url": "",
+          "email_server": "imap.gmail.com",
+          "email_port": 993,
+          "email_username": "",
+          "email_password": "",
           "FULL_PATH": "触发器/触发器",
-          "_status": "last_success"
+          "_status": "success"
         },
         "input_ports": [
           {
@@ -1544,10 +1467,27 @@
           }
         ],
         "output_values": {
-          "output": {}
+          "output": {
+            "input": [
+              "测试对话效果"
+            ],
+            "_webhook_task_id": "94c4ef01797a4f3ebf5062d80f837701",
+            "request_method": "POST",
+            "request_headers": {
+              "host": "127.0.0.1:5000",
+              "user-agent": "python-requests/2.32.5",
+              "accept-encoding": "gzip, deflate",
+              "accept": "*/*",
+              "connection": "keep-alive",
+              "content-type": "application/json",
+              "x-node-id": "0ca2e748-a058-408f-80c6-81909e11f9d7",
+              "content-length": "77"
+            },
+            "request_ip": "127.0.0.1"
+          }
         }
       },
-      "0x196b7349450": {
+      "0x1c4519e56d0": {
         "type_": "dynamic.StatusDynamicNode_cefba941-c9f4-4b57-bf09-0f1bf08951d2",
         "icon": ":/icons/同心圆.svg",
         "name": "Gitee图床配置",
@@ -1602,7 +1542,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x196b7434690": {
+      "0x1c4519e5810": {
         "type_": "dynamic.StatusDynamicNode_67358ab2-5d99-4918-9368-7134940084a1",
         "icon": ":/icons/同心圆.svg",
         "name": "钉钉配置 2",
@@ -1656,7 +1596,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x196b74347d0": {
+      "0x1c4519e5950": {
         "type_": "dynamic.StatusDynamicNode_ab01999d-dd29-4763-bebb-e67931ddc635",
         "icon": ":/icons/同心圆.svg",
         "name": "获取当前时间",
@@ -1711,14 +1651,14 @@
           "timestamp": "2026-02-16 02:23:14"
         }
       },
-      "0x196b7434a50": {
+      "0x1c4519e5bd0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1752,7 +1692,7 @@
           "_data_select": {},
           "version": "latest",
           "input": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接",
-          "_status": "last_success",
+          "_status": "success",
           "FULL_PATH": "数据集成/文本输入"
         },
         "input_ports": [],
@@ -1763,10 +1703,10 @@
           }
         ],
         "output_values": {
-          "text": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接,并根据链接内容总结200字对应新闻的内容概述"
+          "text": "从这个页面https://news.baidu.com/，抓取当前的热点新闻，形成一个新闻快讯,markdown格式，每条新闻附带对应的跳转链接"
         }
       },
-      "0x196b7434cd0": {
+      "0x1c4519e5e50": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入 1",
@@ -1821,14 +1761,14 @@
           "text": "测试对话效果"
         }
       },
-      "0x196b7434f50": {
+      "0x1c4519e60d0": {
         "type_": "general.trigger",
         "icon": ":/icons/触发器.svg",
         "name": "触发器",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -1846,10 +1786,10 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 585.5800708809056,
+        "width": 0.0,
         "height": 0.0,
         "pos": [
-          1699.8509667858473,
+          1681.1059348008603,
           -1406.4916010249656
         ],
         "layout_direction": 0,
@@ -1868,10 +1808,6 @@
           "db_url": "sqlite:///data.db",
           "sql": "SELECT COUNT(*) FROM users",
           "interval": 60,
-          "email_server": "imap.gmail.com",
-          "email_port": 993,
-          "email_username": "",
-          "email_password": "",
           "target_file_path": "",
           "watch_folder_path": "",
           "mqtt_host": "127.0.0.1",
@@ -1883,7 +1819,11 @@
           "redis_channel": "app_events",
           "webhook_endpoint": "0ca2e748-a058-408f-80c6-81909e11f9d7",
           "callback_url": "http://127.0.0.1:5000/api/v1/trigger/12a1e05d-78ed-4638-a14c-007c10cc1d46",
-          "_status": "last_success",
+          "email_server": "imap.gmail.com",
+          "email_port": 993,
+          "email_username": "",
+          "email_password": "",
+          "_status": "success",
           "FULL_PATH": "触发器/触发器"
         },
         "input_ports": [
@@ -1899,21 +1839,10 @@
           }
         ],
         "output_values": {
-          "output": {
-            "request_method": "GET",
-            "request_headers": {
-              "host": "127.0.0.1:5000",
-              "accept": "*/*",
-              "accept-encoding": "gzip, deflate, br",
-              "connection": "keep-alive",
-              "user-agent": "python-httpx/0.28.1"
-            },
-            "request_ip": "127.0.0.1",
-            "_webhook_task_id": "c7bd8183aa344b60adaf5a49d594988e"
-          }
+          "output": {}
         }
       },
-      "0x196b7435090": {
+      "0x1c4519e6210": {
         "type_": "dynamic.StatusDynamicNode_c423384e-7e12-4cf4-8593-1d1390e294ef",
         "icon": ":/icons/同心圆.svg",
         "name": "HTTP 请求客户端",
@@ -1990,111 +1919,111 @@
     "connections": [
       {
         "in": [
-          "0x196b734ae90",
+          "0x1c4516d4440",
           "input1"
         ],
         "out": [
-          "0x196b7349590",
+          "0x1c4519e5310",
           "mcp_config"
         ]
       },
       {
         "in": [
-          "0x196b734ae90",
+          "0x1c4516d4440",
           "input1"
         ],
         "out": [
-          "0x196b734b750",
+          "0x1c4519e51d0",
           "output"
         ]
       },
       {
         "out": [
-          "0x196b734ae90",
+          "0x1c4516d4440",
           "output1"
         ],
         "in": [
-          "0x196b734b250",
+          "0x1c4519e4690",
           "mcp_config"
         ]
       },
       {
         "out": [
-          "0x196b734b250",
+          "0x1c4519e4690",
           "tools_dict"
         ],
         "in": [
-          "0x196b734b610",
+          "0x1c4519e4f50",
           "tools_dict"
         ]
       },
       {
         "out": [
-          "0x196b734b250",
+          "0x1c4519e4690",
           "mcp_metadata"
         ],
         "in": [
-          "0x196b734b610",
+          "0x1c4519e4f50",
           "mcp_metadata"
         ]
       },
       {
         "out": [
-          "0x196b734b390",
+          "0x1c4519e4cd0",
           "text"
         ],
         "in": [
-          "0x196b734b750",
+          "0x1c4519e51d0",
           "input"
         ]
       },
       {
         "in": [
-          "0x196b734b4d0",
+          "0x1c4519e4e10",
           "variables"
         ],
         "out": [
-          "0x196b73491d0",
+          "0x1c4519e5450",
           "output"
         ]
       },
       {
         "in": [
-          "0x196b734b4d0",
+          "0x1c4519e4e10",
           "variables"
         ],
         "out": [
-          "0x196b7434a50",
+          "0x1c4519e5bd0",
           "text"
         ]
       },
       {
         "out": [
-          "0x196b734b4d0",
+          "0x1c4519e4e10",
           "prompt"
         ],
         "in": [
-          "0x196b734b610",
+          "0x1c4519e4f50",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x196b734b610",
+          "0x1c4519e4f50",
           "response"
         ],
         "in": [
-          "0x196b7349310",
+          "0x1c4519e5090",
           "message"
         ]
       },
       {
         "out": [
-          "0x196b7434cd0",
+          "0x1c4519e5e50",
           "text"
         ],
         "in": [
-          "0x196b7434f50",
+          "0x1c4519e60d0",
           "input"
         ]
       }
@@ -2175,9 +2104,9 @@
   },
   "runtime": {
     "environment": {
-      "name": "comfyui",
+      "name": "3.11",
       "type": "local",
-      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\comfyui\\python.exe"
+      "path": "E:\\CanvasMind\\CanvasMind\\_internal\\envs\\miniconda\\envs\\3.11\\python.exe"
     }
   }
 }

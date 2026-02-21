@@ -1,1 +1,0 @@
-pyinstaller --onedir --add-data "app;app" --add-data "venv\Lib\site-packages\spyder;spyder" --add-data "resource;resource" --add-data "examples;examples" --copy-metadata jupyter_client --hidden-import jupyter_client.provisioning.local --hidden-import ipykernel -i ./icons/logoico.ico --windowed main.py
