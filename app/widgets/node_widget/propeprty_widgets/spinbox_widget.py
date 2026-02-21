@@ -213,7 +213,7 @@ class NumberWidgetWrapper(CustomNodeBaseWidget):
 
         # --- 修复方案：不要赋值给 self.widget，使用局部变量 ---
         inner_widget = SpinBoxWidget(default=default, parent=window, type=type)
-        self.set_custom_widget(inner_widget)
+        self.set_custom_widget(inner_widget, add_on_label=True)
 
         # 连接信号
         inner_widget.valueChanged.connect(self.on_value_changed)

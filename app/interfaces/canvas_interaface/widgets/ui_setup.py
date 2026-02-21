@@ -4,7 +4,7 @@ import os
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame
 from qfluentwidgets import (TransparentToolButton, FluentIcon, RoundMenu, Action,
-                            ComboBox, setFont, IconWidget)
+                            ComboBox, setFont, IconWidget, InfoBar)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
@@ -36,7 +36,8 @@ class CanvasUISetUp:
         self.save_btn = None
         self.export_model_btn = None
         self.close_btn = None
-
+        self.btn_add_view = None  # 增加视角按钮
+        self.btn_remove_view = None  # 减少视角按钮
         self.name_container = None
         self.buttons_container = None
         self.envs_container = None
@@ -129,6 +130,17 @@ class CanvasUISetUp:
             self._refresh_quick_buttons()
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
+        # 画布控制菜单
+        view_split_right_action = Action(get_icon("向右拆分"), "向右拆分视角", parent=self.canvas_manager)
+        view_split_right_action.triggered.connect(self._on_view_split_right)
+        self.more_canvas_settings_menu.addAction(view_split_right_action)
+        view_split_down_action = Action(get_icon("向下拆分"), "向下拆分视角", parent=self.canvas_manager)
+        view_split_down_action.triggered.connect(self._on_view_split_down)
+        self.more_canvas_settings_menu.addAction(view_split_down_action)
+        view_remove_action = Action(FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager)
+        view_remove_action.triggered.connect(lambda: self.canvas_manager.graph_splitter.remove_viewer())
+        self.more_canvas_settings_menu.addAction(view_remove_action)
+        self.more_canvas_settings_button.clicked.connect(self._show_canvas_more_menu)
         self.btn_zoom_fit.clicked.connect(
             lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
         )
@@ -315,6 +327,7 @@ class CanvasUISetUp:
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(8)
 
+        # 原有按钮
         self.btn_mode_toggle = self._build_tool_btn(get_icon("框选"), "框选/拖拽切换")
         self.btn_mode_toggle.setCheckable(True)
         self.btn_mode_toggle.setChecked(True)
@@ -322,10 +335,28 @@ class CanvasUISetUp:
         self.btn_zen_mode = self._build_tool_btn(get_icon("三图居中"), "切换纯净模式")
         self.btn_canvas_setting = self._build_tool_btn(FluentIcon.SETTING, "画布设置")
 
+        # --- 新增：视角控制按钮 ---
+        # 使用 ADD 和 REMOVE 图标，或者你可以换成 Layout 相关的图标
+        self.more_canvas_settings_button = self._build_tool_btn(FluentIcon.MORE, "更多画布控制功能")
+        self.more_canvas_settings_menu = RoundMenu(parent=self.canvas_manager)
+        # ------------------------
+
         self.view = CanvasSettingPopup(self.parent, self.parent.config)
         self.view.hide()
-        for btn in [self.btn_mode_toggle, self.btn_zoom_fit, self.btn_zen_mode, self.btn_canvas_setting]:
+
+        # --- 修改：添加到布局的顺序 ---
+        # 建议顺序：模式 -> 适应 -> [减少视角] -> [增加视角] -> 纯净 -> 设置
+        widgets = [
+            self.btn_mode_toggle,
+            self.btn_zoom_fit,
+            self.btn_zen_mode,
+            self.more_canvas_settings_button,
+            self.btn_canvas_setting
+        ]
+
+        for btn in widgets:
             layout.addWidget(btn)
+
         self.canvas_controls_container.show()
 
     def _build_tool_btn(self, icon, tooltip):
@@ -439,6 +470,22 @@ class CanvasUISetUp:
             viewer.set_navigation_mode(True)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
 
+    def _on_view_split_right(self):
+        """点击增加视角"""
+        new_viewer = self.canvas_manager.graph_splitter.split_right()
+        new_viewer.graph = self.graph
+        self.graph._wire_signals(new_viewer)
+        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
+        self.parent.node_operations.setup_graph_menu(new_viewer)
+
+    def _on_view_split_down(self):
+        """点击增加视角"""
+        new_viewer = self.canvas_manager.graph_splitter.split_down()
+        new_viewer.graph = self.graph
+        self.graph._wire_signals(new_viewer)
+        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
+        self.parent.node_operations.setup_graph_menu(new_viewer)
+
     def toggle_zen_mode(self):
         if not self.is_zen_mode:
             self.saved_splitter_sizes = self.splitter.sizes()
@@ -494,6 +541,21 @@ class CanvasUISetUp:
             action.triggered.connect(lambda _, p=fp, i=ip: self.parent.create_next_node(p, i))
             self.more_quick_menu.addAction(action)
         self.more_quick_menu.exec_(self.more_quick_button.mapToGlobal(QPoint(0, self.more_quick_button.height())))
+
+    def _show_canvas_more_menu(self):
+        # 获取按钮左上角的全局坐标
+        btn_pos = self.more_canvas_settings_button.mapToGlobal(QPoint(0, 0))
+
+        # 获取菜单的推荐尺寸
+        menu_height = self.more_canvas_settings_menu.sizeHint().height()
+        menu_width = self.more_canvas_settings_menu.sizeHint().width()
+        # 计算 X 和 Y
+        # X 保持对齐，Y 向上偏移（按钮上方再留一点间距，比如 5 像素）
+        x = btn_pos.x() - menu_width // 2
+        y = btn_pos.y() - menu_height - 30
+
+        # 3. 弹出
+        self.more_canvas_settings_menu.exec_(QPoint(x, y))
 
     def _setup_pipeline_style(self):
         # 仅用于初始化，后续由 Manager 接管

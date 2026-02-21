@@ -52,6 +52,9 @@ class ModernStyles:
                 border: 1px solid {ModernStyles.ACCENT_COLOR};
                 background-color: #2D2D2D; /* 聚焦时更深一点 */
             }}
+            QScrollBar:vertical {{ background: transparent; width: 6px; margin-right: 2px; }}
+            QScrollBar::handle:vertical {{ background: rgba(120, 120, 120, 200); border-radius: 4px; }}
+            QScrollBar::add-line, QScrollBar::sub-line {{ height: 0px; }}
         """
 
     @staticmethod

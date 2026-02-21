@@ -174,7 +174,7 @@ class NodeListPanelWidget(QWidget):
 
         node_list_widget = InternalNodeList(status_list, name_list, self)
         node_list_widget.itemDoubleClicked.connect(
-            lambda item: self.main_window.canvas_widget.zoom_to_nodes(
+            lambda item: self.main_window.graph.viewer().zoom_to_nodes(
                 [topo_sorted[node_list_widget.row(item)]._view]
             )
         )
