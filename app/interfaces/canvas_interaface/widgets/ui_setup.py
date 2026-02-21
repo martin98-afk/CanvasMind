@@ -475,6 +475,7 @@ class CanvasUISetUp:
         new_viewer = self.canvas_manager.graph_splitter.split_right()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
+        new_viewer._ctx_node_menu = self.graph.master_viewer._ctx_node_menu
         new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
         self.parent.node_operations.setup_graph_menu(new_viewer)
 
@@ -483,6 +484,7 @@ class CanvasUISetUp:
         new_viewer = self.canvas_manager.graph_splitter.split_down()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
+        new_viewer._ctx_node_menu = self.graph.master_viewer._ctx_node_menu
         new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
         self.parent.node_operations.setup_graph_menu(new_viewer)
 

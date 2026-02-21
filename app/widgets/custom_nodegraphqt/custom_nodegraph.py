@@ -466,7 +466,7 @@ class CustomNodeViewer(NodeViewer):
         else:
             border = "none"
 
-        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 8px; }}")
+        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 4px; }}")
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""
@@ -1280,14 +1280,6 @@ class CustomNodeViewer(NodeViewer):
             if item == self._start_port:
                 break
             pointer_color = PipeEnum.HIGHLIGHT_COLOR.value
-            # accept = self._validate_accept_connection(self._start_port, item)
-            # if not accept:
-            #     pointer_color = [150, 60, 255]
-            #     break
-            # reject = self._validate_reject_connection(self._start_port, item)
-            # if reject:
-            #     pointer_color = [150, 60, 255]
-            #     break
 
             if self.acyclic:
                 if item.node == self._start_port.node:
@@ -1677,6 +1669,7 @@ class CustomNodeGraph(NodeGraph):
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
         self._register_context_menu()
         self.global_variables = GlobalVariableContext()  # 画布全局变量
+        self.master_viewer = None
 
     def viewer(self):
         return self.graph_splitter.get_active_viewer()

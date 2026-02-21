@@ -22,6 +22,11 @@ class GlowPortItem(PortItem):
     def boundingRect(self):
         return QtCore.QRectF(0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height)
 
+    def hoverEnterEvent(self, event):
+        self._hovered = True
+        self.update()  # 强制触发所有视口重绘
+        super(PortItem, self).hoverEnterEvent(event)
+
     def paint(self, painter, option, widget):
         # --- 1. 动态层级 ---
         parent_node = self.node

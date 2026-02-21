@@ -1,6 +1,4 @@
 import fnmatch
-import re
-from distutils.version import LooseVersion
 
 from NodeGraphQt import NodeGraphCommand, NodeGraphMenu
 from NodeGraphQt.constants import ViewerEnum
@@ -180,10 +178,7 @@ class CustomNodesMenu(NodeGraphMenu):
             if isinstance(icon, QtGui.QIcon):
                 action.setIcon(icon)
         # ===================
-
-        if LooseVersion(QtCore.qVersion()) >= LooseVersion('5.10'):
-            action.setShortcutVisibleInContextMenu(True)
-
+        action.setShortcutVisibleInContextMenu(True)
         if shortcut:
             self._set_shortcut(action, shortcut)
         if func:
