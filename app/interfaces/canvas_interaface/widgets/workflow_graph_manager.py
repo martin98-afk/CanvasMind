@@ -99,6 +99,7 @@ class WorkflowCanvasManager(QWidget):
                 parent=self.parent_window,
                 splitter=self.graph_splitter
             )
+            root_graph.master_viewer = master_viewer
             master_viewer.graph = root_graph
         self._apply_style_to_graph(root_graph)
         self._add_graph_to_stack(root_graph, "Main Workflow", self._root_graph_id)

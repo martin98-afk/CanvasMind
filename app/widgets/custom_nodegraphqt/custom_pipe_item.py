@@ -105,7 +105,7 @@ class CustomPipeItem(PipeItem):
         painter.drawPath(path)
 
         # 4. 绘制流光动画 (只有放大时才画动画，解决多视角卡顿)
-        if lod > 0.5 and getattr(self, '_flow_running', False):
+        if lod > 0.2 and getattr(self, '_flow_running', False):
             painter.save()
             # 使用半透明黑或白，增强对比
             f_pen = QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 3)
@@ -124,86 +124,56 @@ class CustomPipeItem(PipeItem):
     # 路径绘制核心逻辑 (完美还原你的避让算法)
     # ==========================================================
     def _draw_path_horizontal(self, start_port, pos1, pos2, path):
-        if pos1 == pos2: return
-
         layout = self.viewer_pipe_layout()
 
-        # 1. 曲线模式 (保持原样，曲线通常不强调物理避让)
         if layout == PipeLayoutEnum.CURVED.value:
-            dx = pos2.x() - pos1.x()
-            ctr_offset = max(abs(dx) * 0.5, 40.0)
-            if dx < 0: ctr_offset = max(abs(dx) * 0.7, 120.0)
-            ctr_offset = min(ctr_offset, 300.0)
-            cp1 = QtCore.QPointF(pos1.x() + ctr_offset, pos1.y())
-            cp2 = QtCore.QPointF(pos2.x() - ctr_offset, pos2.y())
+            # 改进贝塞尔曲线：根据距离动态调整曲率
+            dist = math.hypot(pos2.x() - pos1.x(), pos2.y() - pos1.y())
+            offset = min(dist * 0.5, 150.0)
+
+            cp1 = QtCore.QPointF(pos1.x() + offset, pos1.y())
+            cp2 = QtCore.QPointF(pos2.x() - offset, pos2.y())
+
             if start_port.port_type == PortTypeEnum.IN.value:
-                cp1 = QtCore.QPointF(pos1.x() - ctr_offset, pos1.y())
-                cp2 = QtCore.QPointF(pos2.x() + ctr_offset, pos2.y())
+                cp1, cp2 = QtCore.QPointF(pos1.x() - offset, pos1.y()), QtCore.QPointF(pos2.x() + offset, pos2.y())
+
             path.cubicTo(cp1, cp2, pos2)
 
-        # 2. 折线模式 (增强版避让算法)
         elif layout == PipeLayoutEnum.ANGLE.value:
-            points = []
+            # 改进的折线避让逻辑
+            points = self._calculate_smart_angles(start_port, pos1, pos2)
+            self._draw_rounded_path(path, points, radius=12.0)
 
-            # 获取端口方向
-            # 1 表示向右出, -1 表示向左出
-            direction = 1 if start_port.port_type == PortTypeEnum.OUT.value else -1
-
-            # 基础间距
-            margin_x = 30.0
-
-            # 计算逻辑：
-            # 如果是正常向前连线 (Output 在 Input 左侧)
-            is_forward = (pos2.x() > pos1.x() + margin_x * 2) if direction == 1 else (
-                        pos2.x() < pos1.x() - margin_x * 2)
-
-            if is_forward:
-                # 三段式 (Z型)
-                mid_x = pos1.x() + (pos2.x() - pos1.x()) / 2
-                points = [
-                    pos1,
-                    QtCore.QPointF(mid_x, pos1.y()),
-                    QtCore.QPointF(mid_x, pos2.y()),
-                    pos2
-                ]
-            else:
-                # 五段式避让 (U型绕路)
-                # 1. 获取节点信息
-                node_item = start_port.node
-                node_rect = node_item.sceneBoundingRect()
-
-                # 2. 决定向上绕还是向下绕
-                # 如果终点在起点上方，则从上方绕行；反之亦然
-                padding = 20.0
-                if pos2.y() < pos1.y():
-                    # 向上避让：节点的顶部再往上一点
-                    bypass_y = node_rect.top() - padding
-                else:
-                    # 向下避让：节点的底部再往下一点
-                    bypass_y = node_rect.bottom() + padding
-
-                # 3. 计算5个关键转折点
-                # p1: 出口水平延伸
-                p1 = QtCore.QPointF(pos1.x() + margin_x * direction, pos1.y())
-                # p2: 垂直转折到避让高度
-                p2 = QtCore.QPointF(pos1.x() + margin_x * direction, bypass_y)
-                # p3: 水平跨越节点，到达终点前的水平位置
-                p3 = QtCore.QPointF(pos2.x() - margin_x * direction, bypass_y)
-                # p4: 垂直转折到终点高度
-                p4 = QtCore.QPointF(pos2.x() - margin_x * direction, pos2.y())
-
-                points = [pos1, p1, p2, p3, p4, pos2]
-
-            # 过滤重合点并绘制圆角
-            clean_points = [points[0]]
-            for i in range(1, len(points)):
-                if (points[i] - clean_points[-1]).manhattanLength() > 0.1:
-                    clean_points.append(points[i])
-
-            self._draw_rounded_path(path, clean_points, radius=15.0)
-        elif layout == PipeLayoutEnum.STRAIGHT.value:
-            pass
         self.setPath(path)
+
+    def _calculate_smart_angles(self, start_port, pos1, pos2):
+        """计算带避让的折线点集"""
+        is_out = start_port.port_type == PortTypeEnum.OUT.value
+        dir_x = 1 if is_out else -1
+        margin = 40.0
+
+        # 判断是否需要“掉头”避让 (即终点在起点的后方)
+        needs_bypass = (pos2.x() < pos1.x() + margin) if is_out else (pos2.x() > pos1.x() - margin)
+
+        if not needs_bypass:
+            # 标准 Z 型走线
+            mid_x = pos1.x() + (pos2.x() - pos1.x()) * 0.5
+            return [pos1, QtCore.QPointF(mid_x, pos1.y()), QtCore.QPointF(mid_x, pos2.y()), pos2]
+        else:
+            # 绕路避让逻辑
+            node_rect = start_port.node.sceneBoundingRect()
+            # 自动选择最短绕行路径（上或下）
+            dist_top = abs(pos1.y() - node_rect.top())
+            dist_bot = abs(pos1.y() - node_rect.bottom())
+
+            offset_y = -(dist_top + 20) if dist_top < dist_bot else (dist_bot + 20)
+            bypass_y = pos1.y() + offset_y
+
+            p1 = QtCore.QPointF(pos1.x() + margin * dir_x, pos1.y())
+            p2 = QtCore.QPointF(pos1.x() + margin * dir_x, bypass_y)
+            p3 = QtCore.QPointF(pos2.x() - margin * dir_x, bypass_y)
+            p4 = QtCore.QPointF(pos2.x() - margin * dir_x, pos2.y())
+            return [pos1, p1, p2, p3, p4, pos2]
 
     def _draw_rounded_path(self, path, points, radius=10.0):
         if not points: return
