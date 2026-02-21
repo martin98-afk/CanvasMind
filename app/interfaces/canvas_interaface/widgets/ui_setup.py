@@ -131,7 +131,7 @@ class CanvasUISetUp:
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         # 画布控制菜单
-        view_add_action = Action(FluentIcon.ADD, "增加新视角 (Split View)", parent=self.canvas_manager)
+        view_add_action = Action(FluentIcon.ADD, "增加新视角", parent=self.canvas_manager)
         view_add_action.triggered.connect(self._on_add_view_clicked)
         self.more_canvas_settings_menu.addAction(view_add_action)
         view_remove_action = Action(FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager)

@@ -3,9 +3,9 @@ import math
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum, PortTypeEnum, PipeEnum,
-    Z_VAL_PIPE, Z_VAL_PORT
+    Z_VAL_PIPE, Z_VAL_PORT, Z_VAL_NODE_WIDGET
 )
-from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
+from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem, LivePipePolygonItem
 from PyQt5 import QtGui, QtCore
 
 from app.utils.config import Settings
@@ -343,6 +343,7 @@ class CustomPipeItem(PipeItem):
 
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
+
     def __init__(self):
         self._flow_running = False
         self._start_port = None
@@ -352,6 +353,8 @@ class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
         super(CustomLivePipeItem, self).__init__()
 
     def draw_path(self, start_port, end_port=None, cursor_pos=None, color=None):
+        if cursor_pos is None:
+            return
         self._start_port = start_port
         LivePipeItem.draw_path(self, start_port, end_port, cursor_pos, color)
         self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("highlight"),

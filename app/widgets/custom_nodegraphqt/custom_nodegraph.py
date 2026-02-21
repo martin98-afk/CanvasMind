@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
+import math
+
 import orjson
 import traceback
 
@@ -38,6 +40,33 @@ SNAP_COLOR = QtGui.QColor(255, 128, 0, 200)  # 橙色对齐线
 
 
 class CustomNodeScene(NodeScene):
+
+    def viewer(self):
+        """
+        重写基类方法，不再死板地返回 views()[0]。
+        优先返回当前处于活跃状态(蓝框高亮)的 Viewer。
+        """
+        all_views = self.views()
+        if not all_views:
+            return None
+
+        # 1. 如果只有一个视图，直接返回
+        if len(all_views) == 1:
+            return all_views[0]
+
+        # 2. 尝试从这些视图中找到你自定义标记为 _is_active 的那一个
+        # (你在 GraphSplitter.set_active_viewer 中维护了这个状态)
+        for v in all_views:
+            if hasattr(v, '_is_active') and v._is_active:
+                return v
+
+        # 3. 兜底方案：返回当前拥有焦点的视图
+        active_v = QtWidgets.QApplication.focusWidget()
+        for v in all_views:
+            if v == active_v or v.viewport() == active_v:
+                return v
+
+        return all_views[0]
 
     def _draw_dots(self, painter, rect, pen, grid_size):
         """
@@ -604,6 +633,7 @@ class CustomNodeViewer(NodeViewer):
 
     def mousePressEvent(self, event):
         self.home_window.graph.graph_splitter.set_active_viewer(self)
+        self.scene()._viewer = self
         if self._is_active:
             item = self.itemAt(event.pos())
             if isinstance(item, NodeActionButton):
@@ -1242,14 +1272,14 @@ class CustomNodeViewer(NodeViewer):
             if item == self._start_port:
                 break
             pointer_color = PipeEnum.HIGHLIGHT_COLOR.value
-            accept = self._validate_accept_connection(self._start_port, item)
-            if not accept:
-                pointer_color = [150, 60, 255]
-                break
-            reject = self._validate_reject_connection(self._start_port, item)
-            if reject:
-                pointer_color = [150, 60, 255]
-                break
+            # accept = self._validate_accept_connection(self._start_port, item)
+            # if not accept:
+            #     pointer_color = [150, 60, 255]
+            #     break
+            # reject = self._validate_reject_connection(self._start_port, item)
+            # if reject:
+            #     pointer_color = [150, 60, 255]
+            #     break
 
             if self.acyclic:
                 if item.node == self._start_port.node:
@@ -1329,7 +1359,6 @@ class CustomNodeViewer(NodeViewer):
                 return
 
             from_port = pipe.port_from_pos(pos, True)
-            print(from_port)
             if from_port.locked:
                 return
 
@@ -1360,6 +1389,120 @@ class CustomNodeViewer(NodeViewer):
         if event.button() != QtCore.Qt.MiddleButton:
             self.apply_live_connection(event)
 
+    def apply_live_connection(self, event):
+        """
+        triggered mouse press/release event for the scene.
+        - verifies the live connection pipe.
+        - makes a connection pipe if valid.
+        - emits the "connection changed" signal.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if not self._LIVE_PIPE.isVisible():
+            return
+
+        self._start_port.hovered = False
+
+        # find the end port.
+        end_port = None
+        for item in self.scene().items(event.scenePos()):
+            if isinstance(item, PortItem):
+                end_port = item
+                break
+
+        connected = []
+        disconnected = []
+
+        # if port disconnected from existing pipe.
+        if end_port is None:
+            if self._detached_port and not self._LIVE_PIPE.shift_selected:
+                dist = math.hypot(self._previous_pos.x() - self._origin_pos.x(),
+                                  self._previous_pos.y() - self._origin_pos.y())
+                if dist <= 2.0:  # cursor pos threshold.
+                    self.establish_connection(self._start_port,
+                                              self._detached_port)
+                    self._detached_port = None
+                else:
+                    disconnected.append((self._start_port, self._detached_port))
+                    self.connection_changed.emit(disconnected, connected)
+
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        else:
+            if self._start_port is end_port:
+                return
+
+        # if connection to itself
+        same_node_connection = end_port.node == self._start_port.node
+        if not self.acyclic:
+            # allow a node cycle connection.
+            same_node_connection = False
+
+        # constrain check
+        # accept_connection = self._validate_accept_connection(
+        #     self._start_port, end_port
+        # )
+        # reject_connection = self._validate_reject_connection(
+        #     self._start_port, end_port
+        # )
+
+        # restore connection check.
+        restore_connection = any([
+            # if the end port is locked.
+            end_port.locked,
+            # if same port type.
+            end_port.port_type == self._start_port.port_type,
+            # if connection to itself.
+            same_node_connection,
+            # if end port is the start port.
+            end_port == self._start_port,
+            # if detached port is the end port.
+            self._detached_port == end_port,
+        ])
+        if restore_connection:
+            if self._detached_port:
+                to_port = self._detached_port or end_port
+                self.establish_connection(self._start_port, to_port)
+                self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # end connection if starting port is already connected.
+        if self._start_port.multi_connection and \
+                self._start_port in end_port.connected_ports:
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # register as disconnected if not acyclic.
+        if self.acyclic and not self.acyclic_check(self._start_port, end_port):
+            if self._detached_port:
+                disconnected.append((self._start_port, self._detached_port))
+
+            self.connection_changed.emit(disconnected, connected)
+
+            self._detached_port = None
+            self.end_live_connection()
+            return
+
+        # make connection.
+        if not end_port.multi_connection and end_port.connected_ports:
+            dettached_end = end_port.connected_ports[0]
+            disconnected.append((end_port, dettached_end))
+
+        if self._detached_port:
+            disconnected.append((self._start_port, self._detached_port))
+
+        connected.append((self._start_port, end_port))
+
+        self.connection_changed.emit(disconnected, connected)
+
+        self._detached_port = None
+        self.end_live_connection()
 
 
 class GraphSplitter(ModernSplitter):
