@@ -176,9 +176,25 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self._zmq_transceiver.start()
 
     def stop_zmq(self):
-        """停止 ZMQ 线程 (节点运行结束或删除时调用)"""
+        """
+        停止 ZMQ 线程并清理资源
+        """
         if self._zmq_transceiver:
-            self._zmq_transceiver.stop()
+            # 1. 尝试优雅停止
+            if hasattr(self._zmq_transceiver, 'stop'):
+                self._zmq_transceiver.stop()
+
+            # 2. 请求线程退出事件循环
+            self._zmq_transceiver.quit()
+
+            # 3. 等待线程结束 (设置超时防止界面卡死)
+            if not self._zmq_transceiver.wait(2000):  # 等待2秒
+                logger.warning(f"Node {self.name()}: ZMQ thread did not finish cleanly, forcing termination.")
+                self._zmq_transceiver.terminate()  # 强制结束（兜底方案）
+                self._zmq_transceiver.wait()
+
+            # 4. 显式删除对象
+            self._zmq_transceiver.deleteLater()
             self._zmq_transceiver = None
 
     def _on_zmq_intervention_req(self, payload: dict):
@@ -447,3 +463,46 @@ class BasicNodeWithGlobalProperty(NodeObject):
             for w in self._inline_widgets.values():
                 self.view.remove_widget(w)
             self._inline_widgets.clear()
+
+    def on_deleted(self):
+        """
+        节点删除时的析构逻辑
+        """
+        # --- 1. 停止活跃任务 ---
+        # 停止 UI 刷新定时器
+        if hasattr(self, '_ui_update_timer') and self._ui_update_timer.isActive():
+            self._ui_update_timer.stop()
+            self._ui_update_timer.deleteLater()
+
+        # 停止 ZMQ 线程
+        self.stop_zmq()
+
+        # --- 2. 清理数据缓存 (释放大内存) ---
+        self._output_values.clear()
+        self._input_values.clear()
+        self._log_buffer.clear()
+        self._visual_dirty_buffer.clear()
+        self._stream_buffer.clear()
+        self._last_intercepted_data = None
+
+        # --- 3. 清理 UI 资源 ---
+        self.hide_inline_widgets()
+
+        # --- 4. 清理日志句柄 ---
+        if hasattr(self, "log_capture") and self.log_capture:
+            # 假设 NodeLogHandler 有 close 方法，如果没有建议加上
+            if hasattr(self.log_capture, "close"):
+                self.log_capture.close()
+            # 解除引用
+            self.log_capture = None
+
+        # --- 5. 断开信号连接 (防止僵尸对象响应信号) ---
+        try:
+            # 断开自身信号管理器
+            self.signals.disconnect()
+        except Exception:
+            pass  # 可能已经断开
+
+        # 提示 GC
+        import gc
+        gc.collect()

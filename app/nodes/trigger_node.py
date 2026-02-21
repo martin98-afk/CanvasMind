@@ -228,5 +228,6 @@ def create_trigger_node(parent_window):
             self._ui_sync_timer.stop()
             if self._active_plugin_name in self.plugins:
                 self.plugins[self._active_plugin_name].deactivate(self.persistent_id)
+            super(TriggerNode, self).on_deleted()
 
     return TriggerNode

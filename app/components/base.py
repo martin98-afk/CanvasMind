@@ -1018,7 +1018,8 @@ class DataHandler:
             elif isinstance(output_value, (str, Path)):
                 if os.path.exists(output_value):
                     from pyarrow import csv as pa_csv
-                    return pa_csv.read_csv(str(output_value))
+                    parse_opts = pa_csv.ParseOptions(newlines_in_values=True)
+                    return pa_csv.read_csv(str(output_value), parse_options=parse_opts)
                 else:
                     # 如果是CSV字符串
                     import io
