@@ -61,6 +61,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def __init__(self, qgraphics_item=None):
         super().__init__(qgraphics_item)
+        self._view._node = self
         self.signals = NodeSignals()
         self.parent_window = None
         self.set_icon(":/icons/同心圆.svg")

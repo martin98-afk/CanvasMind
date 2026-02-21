@@ -180,6 +180,7 @@ class NodeFloatingToolbar(BaseCanvasToolbar):
 class CustomNodeItem(NodeItem):
     current_mode = "subprocess"
     ICON_NODE_BASE = ":/icons/同心圆.svg"
+    _node = None
     _is_collapsed = False
     _is_resizing = False  # 初始化缩放状态锁
     _rename_signal_block = False
@@ -302,10 +303,6 @@ class CustomNodeItem(NodeItem):
                 path.addEllipse(btn.boundingRect().translated(btn.pos()))
         return path
 
-    def _set_action_btns_visible(self, visible):
-        self.prepareGeometryChange()
-        self._floating_toolbar.setVisible(visible)
-
     def _update_elements_visibility(self):
         widgets_visible = not self._is_collapsed and not self._proxy_mode
         for w in self._widgets.values():
@@ -393,9 +390,50 @@ class CustomNodeItem(NodeItem):
         self._draw_node_horizontal()
         self.update()
 
+    def viewer(self):
+        """
+        覆盖父类方法。
+        确保节点始终通过 Graph -> Splitter 获取当前用户正在操作的那个视图。
+        """
+        if self._node and self._node.graph:
+            return self._node.graph.viewer()
+        return super(CustomNodeItem, self).viewer()
+
     def hoverEnterEvent(self, event):
+        """
+        当鼠标进入节点时，强制将当前鼠标所在的视图设为活跃视图。
+        """
+        # 切换活跃视图后再显示 Toolbar，这样 Toolbar 里的 view 相关计算就是准确的
         self._set_action_btns_visible(True)
         super(CustomNodeItem, self).hoverEnterEvent(event)
+
+    def auto_switch_mode(self):
+        """
+        随活跃视图的缩放自动切换 Proxy 模式。
+        """
+        view = self.viewer()  # 这里现在会返回活跃的视图
+        if view is None:
+            return
+
+        # 计算该节点在当前活跃视图中的物理像素宽度
+        rect = self.sceneBoundingRect()
+        # 将场景坐标映射到视图坐标
+        view_rect = view.mapFromScene(rect).boundingRect()
+
+        # 根据物理像素宽度判断是否开启代理模式
+        proxy_threshold = Settings.get_instance().node_proxy_size.value
+        self.set_proxy_mode(view_rect.width() < proxy_threshold)
+
+    def _set_action_btns_visible(self, visible):
+        """
+        修正 Toolbar 定位。
+        """
+        self.prepareGeometryChange()
+        if visible:
+            # 这里的定位计算会用到 self.viewer()
+            # 确保 Toolbar 根据当前视图的缩放比例进行反向缩放（抗缩放）
+            self._draw_node_horizontal()
+        self._floating_toolbar.setVisible(visible)
 
     def hoverLeaveEvent(self, event):
         if not self.boundingRect().contains(event.pos()):
@@ -638,13 +676,6 @@ class CustomNodeItem(NodeItem):
             text.setDefaultTextColor(muted)
         self._text_item.setDefaultTextColor(QtCore.Qt.white)
         self._proxy_text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 180))
-
-    def auto_switch_mode(self):
-        if self.viewer() is None: return
-        rect = self.sceneBoundingRect()
-        l = self.viewer().mapToGlobal(self.viewer().mapFromScene(rect.topLeft()))
-        r = self.viewer().mapToGlobal(self.viewer().mapFromScene(rect.topRight()))
-        self.set_proxy_mode((r.x() - l.x()) < Settings.get_instance().node_proxy_size.value)
 
     def set_proxy_mode(self, mode):
         if mode is self._proxy_mode: return
