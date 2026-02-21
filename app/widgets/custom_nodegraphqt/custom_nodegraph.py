@@ -41,6 +41,20 @@ SNAP_COLOR = QtGui.QColor(255, 128, 0, 200)  # 橙色对齐线
 
 class CustomNodeScene(NodeScene):
 
+    def drawBackground(self, painter, rect):
+        # 修改点：识别当前正在绘制场景的 painter 属于哪个 View
+        current_painter_viewer = None
+        for v in self.views():
+            if v.viewport() == painter.device():
+                current_painter_viewer = v
+                break
+
+        # 临时设置上下文，让后续调用的 _draw_dots / _draw_grid 能拿到正确的 zoom
+        old_viewer = getattr(self, '_event_viewer', None)
+        self._event_viewer = current_painter_viewer
+
+        super(CustomNodeScene, self).drawBackground(painter, rect)
+
     def viewer(self):
         """
         重写基类方法，不再死板地返回 views()[0]。
@@ -433,6 +447,7 @@ class CustomNodeViewer(NodeViewer):
         # 设置默认样式（透明边框，防止抖动）
         self.setObjectName("NodeViewer")
         self._is_active = False
+        self._is_main = False
         self._update_style()
 
     def set_active(self, active):
@@ -441,19 +456,17 @@ class CustomNodeViewer(NodeViewer):
             self._is_active = active
 
     def _update_style(self):
-        """根据是否活跃及 Splitter 状态更新样式"""
-        # 只有在存在多个视角时才显示高亮
-        show_highlight = self._is_active
-
-        if show_highlight:
-            self.setStyleSheet("""
-                #NodeViewer { 
-                    border: 2px solid #3d77ff; 
-                    border-radius: 4px;
-                }
-            """)
+        # 1. 活跃状态 -> 蓝色
+        if self._is_active:
+            border = "2px solid #3d77ff"
+        # 2. 主视角且非活跃 -> 白色
+        elif self._is_main:
+            border = "2px solid #ffffff"
+        # 3. 普通视角 -> 无
         else:
-            self.setStyleSheet("#NodeViewer {border: none;}")
+            border = "none"
+
+        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 8px; }}")
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""
@@ -1506,68 +1519,145 @@ class CustomNodeViewer(NodeViewer):
 
 
 class GraphSplitter(ModernSplitter):
-    def __init__(self, parent=None):
-        super(GraphSplitter, self).__init__(QtCore.Qt.Horizontal, parent)
+    def __init__(self, orientation=QtCore.Qt.Horizontal, parent=None):
+        super(GraphSplitter, self).__init__(orientation, parent)
         self.parent_window = parent
         self._last_active_viewer = None
+        self.setChildrenCollapsible(False)
 
     def get_active_viewer(self):
-        """你原来的逻辑，一个字没动"""
-        if self._last_active_viewer and self.indexOf(self._last_active_viewer) != -1:
+        # 检查 last_active 是否还在视图树中（不再使用 indexOf 限制在当前层）
+        if self._last_active_viewer and not sip.isdeleted(self._last_active_viewer):
             return self._last_active_viewer
-        if self.count() > 0:
-            return self.widget(self.count() - 1)
+        return self._find_fallback_viewer()
+
+    def _find_fallback_viewer(self):
+        """递归寻找最后一个可用的 Viewer"""
+        for i in range(self.count() - 1, -1, -1):
+            w = self.widget(i)
+            if isinstance(w, CustomNodeViewer): return w
+            if isinstance(w, GraphSplitter): return w._find_fallback_viewer()
         return None
 
     def set_active_viewer(self, viewer):
-        """切换活跃状态并更新所有视角的边框"""
+        """切换活跃状态，并递归更新全局所有视角的边框"""
         if self._last_active_viewer == viewer:
             return
-
         self._last_active_viewer = viewer
 
-        # 遍历所有视角，更新样式
+        # 找到最顶层 splitter 触发全局样式刷新
+        root = self
+        while isinstance(root.parent(), GraphSplitter):
+            root = root.parent()
+        root._refresh_all_styles(viewer)
+
+    def _refresh_all_styles(self, active_viewer):
+        """递归遍历所有子控件更新样式"""
         for i in range(self.count()):
-            widget = self.widget(i)
-            if isinstance(widget, CustomNodeViewer):
-                widget.set_active(widget == viewer)
+            w = self.widget(i)
+            if isinstance(w, CustomNodeViewer):
+                w.set_active(w == active_viewer)
                 if self.count() > 1:
-                    widget._update_style()
+                    w._update_style()
                 else:
-                    widget.setStyleSheet("#NodeViewer {border: none;}")
+                    w.setStyleSheet("#NodeViewer {border: none;}")
+            elif isinstance(w, GraphSplitter):
+                w._refresh_all_styles(active_viewer)
 
+    # --- 拆分逻辑：向右、向下 ---
+    def split_right(self):
+        return self._do_split(QtCore.Qt.Horizontal)
 
+    def split_down(self):
+        return self._do_split(QtCore.Qt.Vertical)
+
+    def _do_split(self, orientation):
+        source = self.get_active_viewer()
+        if not source: return
+
+        shared_scene = source.scene()
+        new_viewer = CustomNodeViewer(parent=source.home_window, scene=shared_scene)
+
+        # 找到 source 所在的那个直接父 Splitter
+        parent_sp = source.parent()
+        if not isinstance(parent_sp, GraphSplitter): return
+
+        idx = parent_sp.indexOf(source)
+
+        if parent_sp.orientation() == orientation:
+            # 同向拆分：直接插入
+            parent_sp.insertWidget(idx + 1, new_viewer)
+            # 强制设置伸缩因子，确保 50/50 比例
+            parent_sp.setStretchFactor(idx, 1)
+            parent_sp.setStretchFactor(idx + 1, 1)
+
+            # 物理调整大小
+            sizes = parent_sp.sizes()
+            total = sizes[idx] + sizes[idx + 1]
+            sizes[idx] = total // 2
+            sizes[idx + 1] = total // 2
+            parent_sp.setSizes(sizes)
+        else:
+            # 异向拆分（向下）：在当前位置嵌套
+            # 先记录 source 的当前大小，防止嵌套后丢失比例
+            old_sizes = parent_sp.sizes()
+            current_size = old_sizes[idx]
+
+            nested = GraphSplitter(orientation, self.parent_window)
+            parent_sp.insertWidget(idx, nested)
+
+            nested.addWidget(source)
+            nested.addWidget(new_viewer)
+
+            # 设置嵌套内部的比例
+            nested.setStretchFactor(0, 1)
+            nested.setStretchFactor(1, 1)
+            nested.setSizes([1000, 1000])  # 初始给个大值，Splitter 会自动等分
+
+            # 确保父层级中，新嵌套的这个控件依然占据原来的宽度
+            parent_sp.setStretchFactor(idx, 1)
+            parent_sp.setSizes(old_sizes)
+
+        parent_sp.set_active_viewer(new_viewer)
+        return new_viewer
+
+    # --- 你原本的接口 ---
     def add_viewer(self, viewer):
-        """添加并自动绑定信号"""
         self.addWidget(viewer)
         viewer.split_view_func = self.split_view
         self.set_active_viewer(viewer)
 
     def split_view(self, source_viewer=None):
-        """你原来的逻辑，保持不变"""
-        if source_viewer is None:
-            source_viewer = self.get_active_viewer()
-        if source_viewer is None:
-            return
-
-        shared_scene = source_viewer.scene()
-        new_viewer = CustomNodeViewer(parent=source_viewer.home_window, scene=shared_scene)
-
-        # add_viewer 会处理剩下的 set_active 和信号绑定
-        self.add_viewer(new_viewer)
-        return new_viewer
+        # 原逻辑默认向右拆分
+        self.split_right()
 
     def remove_viewer(self, viewer=None):
-        """移除时也要重置高亮"""
-        if self.count() <= 1: return
         target = viewer or self.get_active_viewer()
-        if self.indexOf(self._last_active_viewer) == 0:
+        if target._is_main:
             InfoBar.warning("无法删除主视角", "", parent=self.parent_window)
             return
+
+        p = target.parent() # 这里的 p 是当前的嵌套 Splitter
         target.setParent(None)
         target.deleteLater()
-        # 激活剩余的最后一个
-        self.set_active_viewer(self.widget(self.count() - 1))
+
+        # --- 自动拆箱逻辑 (Recursive Unwrapping) ---
+        # 如果 p 不是最顶层的 splitter，且删得只剩一个孩子了
+        if isinstance(p, GraphSplitter) and p.count() == 1:
+            pp = p.parent()
+            if isinstance(pp, GraphSplitter):
+                last_widget = p.widget(0)
+                idx = pp.indexOf(p)
+                # 把剩下的视角从嵌套里拎出来，放到父级对应的位置
+                pp.insertWidget(idx, last_widget)
+                p.setParent(None)
+                p.deleteLater()
+                # 重新定位父级的比例，防止新提拔上来的控件缩成一团
+                pp.setStretchFactor(idx, 1)
+
+        # 刷新全局活跃状态
+        new_active = self._find_fallback_viewer()
+        self.set_active_viewer(new_active)
 
 
 class CustomNodeGraph(NodeGraph):

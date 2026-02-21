@@ -131,9 +131,12 @@ class CanvasUISetUp:
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         # 画布控制菜单
-        view_add_action = Action(FluentIcon.ADD, "增加新视角", parent=self.canvas_manager)
-        view_add_action.triggered.connect(self._on_add_view_clicked)
-        self.more_canvas_settings_menu.addAction(view_add_action)
+        view_split_right_action = Action(FluentIcon.ADD, "向右拆分视角", parent=self.canvas_manager)
+        view_split_right_action.triggered.connect(self._on_view_split_right)
+        self.more_canvas_settings_menu.addAction(view_split_right_action)
+        view_split_down_action = Action(FluentIcon.ADD, "向下拆分视角", parent=self.canvas_manager)
+        view_split_down_action.triggered.connect(self._on_view_split_down)
+        self.more_canvas_settings_menu.addAction(view_split_down_action)
         view_remove_action = Action(FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager)
         view_remove_action.triggered.connect(lambda: self.canvas_manager.graph_splitter.remove_viewer())
         self.more_canvas_settings_menu.addAction(view_remove_action)
@@ -467,13 +470,20 @@ class CanvasUISetUp:
             viewer.set_navigation_mode(True)
             self.btn_mode_toggle.setIcon(FluentIcon.MOVE)
 
-    def _on_add_view_clicked(self):
+    def _on_view_split_right(self):
         """点击增加视角"""
-        current_viewer = self.graph.viewer()
-        new_viewer = self.canvas_manager.graph_splitter.split_view(current_viewer)
+        new_viewer = self.canvas_manager.graph_splitter.split_right()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
-        new_viewer.zoom_to_nodes([n.view for n in self.graph.all_nodes()])
+        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
+        self.parent.node_operations.setup_graph_menu(new_viewer)
+
+    def _on_view_split_down(self):
+        """点击增加视角"""
+        new_viewer = self.canvas_manager.graph_splitter.split_down()
+        new_viewer.graph = self.graph
+        self.graph._wire_signals(new_viewer)
+        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
         self.parent.node_operations.setup_graph_menu(new_viewer)
 
     def toggle_zen_mode(self):

@@ -54,7 +54,12 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 <img src="images/复杂节点控件1.png" width="100%" height="100%"><br>
 
-<img src="images/复杂节点控件2.png" width="100%" height="100%"><br>
+### 🪟 Multi-View Splitting 🛰️
+*   **Recursive Viewport Splitting** – Split the canvas horizontally or vertically to monitor distant parts of a large-scale graph simultaneously.
+*   **Synchronized Scene State** – All viewports share the same live scene. Editing a node in one view reflects instantly across all others, enabling high-efficiency cross-node referencing.
+*   **Distant Node Tracking** – Ideal for complex pipelines where you need to watch the "Source Node" parameters in one view while observing the "Terminal Output" behavior in another.
+
+<img src="images/视角拆分.png" width="100%" height="100%"><br>
 
 ### ⚡ Distributed & Hybrid Execution Engine
 *   **Parallel DAG Execution** – Independent branches are executed concurrently via a high-performance task scheduler, maximizing CPU/GPU utilization across the workflow.

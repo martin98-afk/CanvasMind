@@ -88,6 +88,7 @@ class WorkflowCanvasManager(QWidget):
             # 2. 创建主视角 (Master Viewer)
             # 注意：parent 依然传 parent_window，保证业务逻辑正常
             master_viewer = CustomNodeViewer(parent=self.parent_window)
+            master_viewer._is_main = True
             # 3. 将主视角加入分割器
             self.graph_splitter.add_viewer(master_viewer)
 
