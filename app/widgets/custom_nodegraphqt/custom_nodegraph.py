@@ -5,7 +5,7 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, PipeLayoutEnum, )
+    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, PipeLayoutEnum, PipeEnum, )
 from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QTextEdit, QLineEdit
 from Qt import QtGui, QtCore, QtWidgets
 from loguru import logger
+from qfluentwidgets import InfoBar
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
@@ -366,7 +367,7 @@ class CustomNodeViewer(NodeViewer):
         # 优化拖动时的重绘策略
         self.setOptimizationFlag(QtWidgets.QGraphicsView.DontAdjustForAntialiasing)
 
-        # --- 新增：对齐线对象 (初始化一次，复用) ---
+        # --- 对齐线对象 (初始化一次，复用) ---
         self._snap_lines_item = QtWidgets.QGraphicsPathItem()
         self._snap_lines_item.setZValue(Z_VAL_PIPE + 100)  # 最顶层
         snap_pen = QtGui.QPen(SNAP_COLOR, 1.0, QtCore.Qt.DashLine)
@@ -785,7 +786,6 @@ class CustomNodeViewer(NodeViewer):
             # 2. 检测释放位置
             scene_pos = self.mapToScene(event.pos())
             items = self.scene().items(scene_pos)
-
             # 检查鼠标下是否有端口
             on_port = any(isinstance(i, PortItem) for i in items)
 
@@ -1214,10 +1214,158 @@ class CustomNodeViewer(NodeViewer):
         self._start_port = selected_port
         super(CustomNodeViewer, self).start_live_connection(selected_port)
 
+    def sceneMouseMoveEvent(self, event):
+        """
+        triggered mouse move event for the scene.
+         - redraw the live connection pipe.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if not self._LIVE_PIPE.isVisible():
+            return
+        if not self._start_port:
+            return
+
+        pos = event.scenePos()
+        pointer_color = None
+        for item in self.scene().items(pos):
+            if not isinstance(item, PortItem):
+                continue
+
+            x = item.boundingRect().width() / 2
+            y = item.boundingRect().height() / 2
+            pos = item.scenePos()
+            pos.setX(pos.x() + x)
+            pos.setY(pos.y() + y)
+            if item == self._start_port:
+                break
+            pointer_color = PipeEnum.HIGHLIGHT_COLOR.value
+            accept = self._validate_accept_connection(self._start_port, item)
+            if not accept:
+                pointer_color = [150, 60, 255]
+                break
+            reject = self._validate_reject_connection(self._start_port, item)
+            if reject:
+                pointer_color = [150, 60, 255]
+                break
+
+            if self.acyclic:
+                if item.node == self._start_port.node:
+                    pointer_color = PipeEnum.DISABLED_COLOR.value
+                elif item.port_type == self._start_port.port_type:
+                    pointer_color = PipeEnum.DISABLED_COLOR.value
+            break
+
+        self._LIVE_PIPE.draw_path(
+            self._start_port, cursor_pos=pos, color=pointer_color
+        )
+
+    def sceneMousePressEvent(self, event):
+        """
+        triggered mouse press event for the scene (takes priority over viewer event).
+         - detect selected pipe and start connection.
+         - remap Shift and Ctrl modifier.
+
+        Args:
+            event (QtWidgets.QGraphicsScenePressEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        # pipe slicer enabled.
+        if self.ALT_state and self.SHIFT_state:
+            return
+
+        # viewer pan mode.
+        if self.ALT_state:
+            return
+
+        if self._LIVE_PIPE.isVisible():
+            self.apply_live_connection(event)
+            return
+
+        pos = event.scenePos()
+        items = self._items_near(pos, None, 5, 5)
+
+        # filter from the selection stack in the following order
+        # "node, port, pipe" this is to avoid selecting items under items.
+        node, port, pipe = None, None, None
+        for item in items:
+            if isinstance(item, AbstractNodeItem):
+                node = item
+            elif isinstance(item, PortItem):
+                port = item
+            elif isinstance(item, PipeItem):
+                pipe = item
+            if any([node, port, pipe]):
+                break
+        if port:
+            if port.locked:
+                return
+
+            if not port.multi_connection and port.connected_ports:
+                self._detached_port = port.connected_ports[0]
+            self.start_live_connection(port)
+            if not port.multi_connection:
+                [p.delete() for p in port.connected_pipes]
+            return
+
+        if node:
+            node_items = self._items_near(pos, AbstractNodeItem, 3, 3)
+
+            # record the node positions at selection time.
+            for n in node_items:
+                self._node_positions[n] = n.xy_pos
+
+            # emit selected node id with LMB.
+            if event.button() == QtCore.Qt.LeftButton:
+                self.node_selected.emit(node.id)
+
+            if not isinstance(node, BackdropNodeItem):
+                return
+
+        if pipe:
+            if not self.LMB_state:
+                return
+
+            from_port = pipe.port_from_pos(pos, True)
+            print(from_port)
+            if from_port.locked:
+                return
+
+            from_port.hovered = True
+
+            attr = {
+                PortTypeEnum.IN.value: 'output_port',
+                PortTypeEnum.OUT.value: 'input_port'
+            }
+            self._detached_port = getattr(pipe, attr[from_port.port_type])
+            self.start_live_connection(from_port)
+            self._LIVE_PIPE.draw_path(self._start_port, cursor_pos=pos)
+            print("pipe deleted")
+            if self.SHIFT_state:
+                self._LIVE_PIPE.shift_selected = True
+                return
+
+            pipe.delete()
+
+    def sceneMouseReleaseEvent(self, event):
+        """
+        triggered mouse release event for the scene.
+
+        Args:
+            event (QtWidgets.QGraphicsSceneMouseEvent):
+                The event handler from the QtWidgets.QGraphicsScene
+        """
+        if event.button() != QtCore.Qt.MiddleButton:
+            self.apply_live_connection(event)
+
+
 
 class GraphSplitter(ModernSplitter):
     def __init__(self, parent=None):
         super(GraphSplitter, self).__init__(QtCore.Qt.Horizontal, parent)
+        self.parent_window = parent
         self._last_active_viewer = None
 
     def get_active_viewer(self):
@@ -1270,6 +1418,9 @@ class GraphSplitter(ModernSplitter):
         """移除时也要重置高亮"""
         if self.count() <= 1: return
         target = viewer or self.get_active_viewer()
+        if self.indexOf(self._last_active_viewer) == 0:
+            InfoBar.warning("无法删除主视角", "", parent=self.parent_window)
+            return
         target.setParent(None)
         target.deleteLater()
         # 激活剩余的最后一个

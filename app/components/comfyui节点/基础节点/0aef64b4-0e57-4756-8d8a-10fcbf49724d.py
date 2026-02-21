@@ -19,7 +19,7 @@ class KSampler(BaseComponent):
     name = "K采样器"
     category = "comfyui节点/基础节点"
     description = "使用指定模型和条件对潜空间进行降噪采样，生成最终图像潜变量"
-    requirements = "comfy,torch,latent_preview"
+    requirements = "#comfy,torch,latent_preview"
     inputs = [
         PortDefinition(name="model", label="模型", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
         PortDefinition(name="positive", label="正向条件", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
