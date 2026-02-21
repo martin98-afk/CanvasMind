@@ -201,7 +201,8 @@ class CustomPipeItem(PipeItem):
                     clean_points.append(points[i])
 
             self._draw_rounded_path(path, clean_points, radius=15.0)
-
+        elif layout == PipeLayoutEnum.STRAIGHT.value:
+            pass
         self.setPath(path)
 
     def _draw_rounded_path(self, path, points, radius=10.0):
