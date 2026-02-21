@@ -466,7 +466,7 @@ class CustomNodeViewer(NodeViewer):
         else:
             border = "none"
 
-        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 8px; }}")
+        self.setStyleSheet(f"#NodeViewer {{ border: {border}; border-radius: 4px; }}")
 
     def set_navigation_mode(self, enabled):
         """设置是否为拖拽模式"""

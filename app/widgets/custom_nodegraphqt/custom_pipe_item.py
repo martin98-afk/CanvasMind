@@ -3,9 +3,9 @@ import math
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum, PortTypeEnum, PipeEnum,
-    Z_VAL_PIPE, Z_VAL_PORT, Z_VAL_NODE_WIDGET
+    Z_VAL_PIPE, Z_VAL_PORT
 )
-from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem, LivePipePolygonItem
+from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from PyQt5 import QtGui, QtCore
 
 from app.utils.config import Settings
@@ -16,23 +16,28 @@ from app.utils.config import Settings
 # ==========================================================
 class FlowController(QtCore.QObject):
     _instance = None
-    frame_updated = QtCore.pyqtSignal(float)
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(FlowController, cls).__new__(cls)
             cls._instance.timer = QtCore.QTimer()
-            cls._instance.timer.setInterval(30)
-            cls._instance.timer.timeout.connect(cls._instance._on_timeout)
+            cls._instance.timer.setInterval(35)  # 稍微降低频率，30-35ms 视觉足够平滑
+            cls._instance.timer.timeout.connect(cls._instance._refresh_pipes)
             cls._instance.offset = 0.0
             cls._instance.running_pipes = set()
         return cls._instance
 
-    def _on_timeout(self):
-        self.offset -= 1.0
-        if self.offset <= -100.0:
+    def _refresh_pipes(self):
+        self.offset += 1.5  # 步长稍大一点，视觉更流畅
+        if self.offset >= 100.0:
             self.offset = 0.0
-        self.frame_updated.emit(self.offset)
+
+        # 批量通知更新，避免信号分发开销
+        for pipe in list(self.running_pipes):
+            # 只有在场景中且可见时才触发
+            if pipe.scene():
+                pipe._current_flow_offset = self.offset
+                pipe.update()
 
     def register_pipe(self, pipe):
         self.running_pipes.add(pipe)
@@ -62,66 +67,58 @@ class CustomPipeItem(PipeItem):
         self.setAcceptHoverEvents(True)
 
     def paint(self, painter, option, widget):
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        # --- 性能优化核心：获取当前视图的缩放比例 (Level of Detail) ---
+        lod = option.levelOfDetailFromTransform(painter.worldTransform())
+
         path = self.path()
         if path.isEmpty(): return
 
-        # --- 颜色逻辑 ---
         c = self.color
         base_color = QtGui.QColor(c[0], c[1], c[2], c[3])
 
         if self._running:
-            if self._running_type == "input":
-                base_color = QtGui.QColor(64, 158, 255, 255)  # 蓝
-            else:
-                base_color = QtGui.QColor(50, 205, 50, 255)  # 绿
-
+            base_color = QtGui.QColor(64, 158, 255) if self._running_type == "input" else QtGui.QColor(50, 205, 50)
         if self._active:
             base_color = QtGui.QColor(*PipeEnum.ACTIVE_COLOR.value)
         elif self._highlight and not self._running:
             base_color = QtGui.QColor(*PipeEnum.HIGHLIGHT_COLOR.value)
 
-        # 1. 绘制底层阴影
-        painter.save()
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 80), self.pen().widthF() + 1.5))
-        painter.drawPath(path)
-        painter.restore()
+        # 1. 绘制底层阴影 (极小缩放时不画)
+        if lod > 0.4:
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 80), self.pen().widthF() + 1.5))
+            painter.drawPath(path)
 
-        # 2. 绘制发光层
-        if self._active or self._highlight or self._is_hovered or self._running:
-            painter.save()
-            glow_steps = 3 if self._active else 2
-            alpha_val = 40 if self._active else 25
+        # 2. 绘制发光层 (只有在中等以上缩放才画，这是性能大户)
+        if lod > 0.7 and (self._active or self._highlight or self._is_hovered or self._running):
+            glow_steps = 2  # 减少循环次数
             for i in range(glow_steps, 0, -1):
-                g_col = QtGui.QColor(base_color.red(), base_color.green(), base_color.blue(), alpha_val)
-                g_pen = QtGui.QPen(g_col, self.pen().widthF() + (i * 4.5))
+                g_col = QtGui.QColor(base_color.red(), base_color.green(), base_color.blue(), 30)
+                g_pen = QtGui.QPen(g_col, self.pen().widthF() + (i * 5))
                 g_pen.setCapStyle(QtCore.Qt.RoundCap)
                 painter.setPen(g_pen)
                 painter.drawPath(path)
-            painter.restore()
 
-        # 3. 绘制主干线
-        painter.save()
+        # 3. 绘制主干线 (必须画)
         main_pen = QtGui.QPen(base_color, self.pen().widthF())
         main_pen.setCapStyle(QtCore.Qt.RoundCap)
         painter.setPen(main_pen)
         painter.drawPath(path)
-        painter.restore()
 
-        # 4. 绘制流光动画 (亮白色)
-        if getattr(self, '_flow_running', False):
+        # 4. 绘制流光动画 (只有放大时才画动画，解决多视角卡顿)
+        if lod > 0.5 and getattr(self, '_flow_running', False):
             painter.save()
-            bright_white = QtGui.QColor(0, 0, 0, 180)
-            f_pen = QtGui.QPen(bright_white, 2.0)
+            # 使用半透明黑或白，增强对比
+            f_pen = QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 3)
             f_pen.setDashPattern([10, 15])
-            f_pen.setDashOffset(-self._current_flow_offset)
+            f_pen.setDashOffset(self._current_flow_offset)
             f_pen.setCapStyle(QtCore.Qt.RoundCap)
             painter.setPen(f_pen)
             painter.drawPath(path)
             painter.restore()
 
-        # 5. 绘制方向箭头
-        self._draw_direction_pointer()
+        # 5. 绘制方向箭头 (极小时不画)
+        if lod > 0.6:
+            self._draw_direction_pointer()
 
     # ==========================================================
     # 路径绘制核心逻辑 (完美还原你的避让算法)
@@ -251,19 +248,13 @@ class CustomPipeItem(PipeItem):
     def start_flow(self):
         if not getattr(self, '_flow_running', False):
             self._flow_running = True
-            self._controller.frame_updated.connect(self._update_anim)
+            # 直接向控制器注册自己
             self._controller.register_pipe(self)
-            self.update()
 
     def stop_flow(self):
-        if hasattr(self, '_flow_running') and self._flow_running:
+        if getattr(self, '_flow_running', False):
             self._flow_running = False
-            try:
-                self._controller.frame_updated.disconnect(self._update_anim)
-            except:
-                pass
             self._controller.unregister_pipe(self)
-            self.update()
 
     def _update_anim(self, offset):
         if self.scene() and self.isVisible():
