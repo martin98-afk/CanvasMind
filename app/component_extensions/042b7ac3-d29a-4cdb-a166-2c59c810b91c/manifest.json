@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.042b7ac3-d29a-4cdb-a166-2c59c810b91c",
+  "uuid": "042b7ac3-d29a-4cdb-a166-2c59c810b91c",
+  "name": "潜空间缩放",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "直接缩放 Latent 尺寸 (常用于 Hires Fix)",
+  "category": "comfyui节点/潜空间处理",
+  "updated_at": "2026-02-10 01:07:43",
+  "author": "black"
+}

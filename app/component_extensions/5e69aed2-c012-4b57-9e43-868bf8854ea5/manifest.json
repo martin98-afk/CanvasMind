@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.5e69aed2-c012-4b57-9e43-868bf8854ea5",
+  "uuid": "5e69aed2-c012-4b57-9e43-868bf8854ea5",
+  "name": "提示词模板",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "",
+  "category": "大模型组件",
+  "updated_at": "2026-02-22 01:12:47",
+  "author": "black"
+}

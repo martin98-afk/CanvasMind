@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.687b65b0-8e58-4616-ae3c-a07cfc9068c5",
+  "uuid": "687b65b0-8e58-4616-ae3c-a07cfc9068c5",
+  "name": "Agent 技能执行智能体",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "基于选中技能文档执行 Agent 技能，LLM 自主决策 + 沙箱执行",
+  "category": "大模型组件/智能体SKILLS",
+  "updated_at": "2026-02-22 23:17:00",
+  "author": "black"
+}

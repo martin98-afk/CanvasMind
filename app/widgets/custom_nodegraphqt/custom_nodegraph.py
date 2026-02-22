@@ -1643,7 +1643,7 @@ class GraphSplitter(ModernSplitter):
 
         shared_scene = source.scene()
         new_viewer = CustomNodeViewer(parent=source.home_window, scene=shared_scene)
-
+        new_viewer._ctx_node_menu = source._ctx_node_menu
         # 找到 source 所在的那个直接父 Splitter
         parent_sp = source.parent()
         if not isinstance(parent_sp, GraphSplitter): return

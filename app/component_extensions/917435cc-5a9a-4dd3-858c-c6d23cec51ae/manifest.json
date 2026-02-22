@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.917435cc-5a9a-4dd3-858c-c6d23cec51ae",
+  "uuid": "917435cc-5a9a-4dd3-858c-c6d23cec51ae",
+  "name": "MCP工具发现",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "连接MCP服务器并返回工具字典（tool_name → schema 映射）",
+  "category": "大模型组件/mcp工具",
+  "updated_at": "2026-02-14 22:50:08",
+  "author": "black"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.01777eeb-962c-495c-ba18-0650c8f6d5b6",
+  "uuid": "01777eeb-962c-495c-ba18-0650c8f6d5b6",
+  "name": "运行计数器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "简单的节点控制自身property样例，初始次数为0，每运行一次，计数器+1",
+  "category": "逻辑控制",
+  "updated_at": "2026-02-13 23:48:30",
+  "author": "black"
+}

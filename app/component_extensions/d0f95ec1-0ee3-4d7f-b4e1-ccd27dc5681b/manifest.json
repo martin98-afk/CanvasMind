@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.d0f95ec1-0ee3-4d7f-b4e1-ccd27dc5681b",
+  "uuid": "d0f95ec1-0ee3-4d7f-b4e1-ccd27dc5681b",
+  "name": "过滤数值型数据",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "过滤csv中数值型数据",
+  "category": "数据预处理",
+  "updated_at": "2026-02-20 17:06:16",
+  "author": "black"
+}

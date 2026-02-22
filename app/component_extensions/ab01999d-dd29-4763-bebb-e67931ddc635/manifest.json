@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.ab01999d-dd29-4763-bebb-e67931ddc635",
+  "uuid": "ab01999d-dd29-4763-bebb-e67931ddc635",
+  "name": "获取当前时间",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "使用datetime获取当前时间，返回结果格式：yyyy-mm-dd HH:MM:SS",
+  "category": "数据集成",
+  "updated_at": "2026-02-14 23:55:25",
+  "author": "black"
+}

@@ -16,23 +16,29 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyKSamplerWithPreview(BaseComponent):
-    requirements = "torch,comfy,nodes,Pillow,numpy"
+    requirements = "torch,#comfy,#nodes,Pillow,numpy"
     name = "K采样器(预览版)"
     category = "comfyui节点/基础节点"
     description = "ComfyUI 采样器封装，支持实时发送 Latent 预览图"
-    
+
     inputs = [
-        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT, sub_type="MODEL", connection=ConnectionType.SINGLE),
-        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT, sub_type="VAE", connection=ConnectionType.SINGLE),
-        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
-        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT", connection=ConnectionType.SINGLE),
+        PortDefinition(name="model", label="MODEL", type=ArgumentType.OBJECT,
+                       sub_type="MODEL", connection=ConnectionType.SINGLE),
+        PortDefinition(name="vae", label="VAE", type=ArgumentType.OBJECT,
+                       sub_type="VAE", connection=ConnectionType.SINGLE),
+        PortDefinition(name="positive", label="正向提示词", type=ArgumentType.OBJECT,
+                       sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="negative", label="负向提示词", type=ArgumentType.OBJECT,
+                       sub_type="Conditioning", connection=ConnectionType.SINGLE),
+        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT,
+                       sub_type="LATENT", connection=ConnectionType.SINGLE),
     ]
     outputs = [
-        PortDefinition(name="latent", label="LATENT", type=ArgumentType.OBJECT, sub_type="LATENT"),
+        PortDefinition(name="latent", label="LATENT",
+                       type=ArgumentType.OBJECT, sub_type="LATENT"),
         PortDefinition(name="image", label="最终图像", type=ArgumentType.IMAGE),
     ]
-    
+
     properties = {
         "steps": PropertyDefinition(
             type=PropertyType.INT,
@@ -51,13 +57,15 @@ class ComfyKSamplerWithPreview(BaseComponent):
             type=PropertyType.CHOICE,
             default="euler",
             label="采样器",
-            choices=["euler", "euler_ancestral", "heun", "dpmpp_2m", "dpmpp_2m_sde", "ddim"]
+            choices=["euler", "euler_ancestral", "heun",
+                     "dpmpp_2m", "dpmpp_2m_sde", "ddim"]
         ),
         "scheduler": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="normal",
             label="调度器",
-            choices=["normal", "karras", "exponential", "simple", "sgm_uniform"]
+            choices=["normal", "karras",
+                     "exponential", "simple", "sgm_uniform"]
         ),
         "denoise": PropertyDefinition(
             type=PropertyType.RANGE,
@@ -80,7 +88,8 @@ class ComfyKSamplerWithPreview(BaseComponent):
     }
 
     def ensure_comfy_exist(self):
-        import os, sys
+        import os
+        import sys
         path = self.global_variable.comfy_extension
         if path not in sys.path:
             sys.path.append(path)
@@ -90,7 +99,8 @@ class ComfyKSamplerWithPreview(BaseComponent):
         self.ensure_comfy_exist()
         import torch
         import numpy as np
-        import io, base64
+        import io
+        import base64
         from PIL import Image
         import comfy.model_management as mm
         import nodes
@@ -101,7 +111,8 @@ class ComfyKSamplerWithPreview(BaseComponent):
             arr = (tensor.cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
             # 2. 核心：如果维度大于3，不停地取第0个索引，直到只剩3维 (H, W, C)
             while arr.ndim > 3:
-                if arr.shape[0] == 0: break # 防止空数组
+                if arr.shape[0] == 0:
+                    break  # 防止空数组
                 arr = arr[0]
             # 3. 如果第一维依然是1 (比如 1, 512, 3)，继续挤压
             if arr.ndim == 3 and arr.shape[0] == 1:
@@ -114,7 +125,7 @@ class ComfyKSamplerWithPreview(BaseComponent):
         positive = inputs.get("positive")
         negative = inputs.get("negative")
         latent = inputs.get("latent")
-        
+
         # 2. 获取参数
         steps = int(params.get("steps", 20))
         cfg = float(params.get("cfg", 7.0))
@@ -123,11 +134,12 @@ class ComfyKSamplerWithPreview(BaseComponent):
         denoise = float(params.get("denoise", 1.0))
         preview_step = int(params.get("preview_step", 3))
         seed = int(params.get("seed", -1))
-        if seed == -1: seed = np.random.randint(2**16)
+        if seed == -1:
+            seed = np.random.randint(2**16)
         with torch.no_grad():
             # 3. 显存管理
             mm.load_models_gpu([model])
-    
+
             # 4. 实时预览回调
             def preview_callback(step, x0, x, total_steps):
                 if step % preview_step == 0:
@@ -136,32 +148,37 @@ class ComfyKSamplerWithPreview(BaseComponent):
                             decoded = vae.decode(x0)
                             # 使用暴力降维函数
                             pil_img = tensor_to_pil(decoded).resize((512, 512))
-                            
+
                             buffered = io.BytesIO()
                             pil_img.save(buffered, format="JPEG", quality=60)
-                            img_str = base64.b64encode(buffered.getvalue()).decode()
+                            img_str = base64.b64encode(
+                                buffered.getvalue()).decode()
                             self.emit_message(
                                 method="display_image",
-                                params={"output": {"data": f"data:image/jpeg;base64,{img_str}"}}
+                                params={"output": {
+                                    "data": f"data:image/jpeg;base64,{img_str}"}}
                             )
                         except Exception as e:
                             print(f"预览转换失败: {e}")
-    
+
             # 5. 调用采样 (Hook 模式)
             import comfy.sample
             sampler_node = nodes.KSampler()
             original_sample = comfy.sample.sample
+
             def hooked_sample(*args, **kwargs):
                 kwargs['callback'] = preview_callback
                 return original_sample(*args, **kwargs)
-    
+
             comfy.sample.sample = hooked_sample
             try:
                 # 这里的 latent["samples"] 确保是 (1, 4, 64, 64)
-                result = sampler_node.sample(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise)
+                result = sampler_node.sample(
+                    model, seed, steps, cfg, sampler_name, scheduler, positive, 
+                    negative, latent, denoise)
             finally:
                 comfy.sample.sample = original_sample
-    
+
             # 6. 最终解码 (修复 decode_tiled 报错)
             final_latent = result[0]
             self.logger.info("正在执行最终 Tiled 解码...")
@@ -178,15 +195,15 @@ class ComfyKSamplerWithPreview(BaseComponent):
                 self.logger.info("执行显存回收...")
                 # 将所有模型从 GPU 挪到 CPU（内存）
                 mm.unload_all_models()
-                
+
                 # 软清理缓存（ComfyUI 内部机制）
                 mm.soft_empty_cache()
-                
+
                 # 强力清理 PyTorch 缓存（真正的显存释放）
                 import torch
                 torch.cuda.empty_cache()
-                torch.cuda.ipc_collect() # 清理进程间通信残留
-                
+                torch.cuda.ipc_collect()  # 清理进程间通信残留
+
             except Exception as e:
                 self.logger.warning(f"显存回收时出现小问题: {e}")
         return {

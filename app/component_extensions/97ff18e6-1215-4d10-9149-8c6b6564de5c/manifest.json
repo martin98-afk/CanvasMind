@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.97ff18e6-1215-4d10-9149-8c6b6564de5c",
+  "uuid": "97ff18e6-1215-4d10-9149-8c6b6564de5c",
+  "name": "VAE解码器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将潜空间数据解码为可视化图像",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-02-13 21:05:22",
+  "author": "black"
+}

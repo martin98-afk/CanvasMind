@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.0aef64b4-0e57-4756-8d8a-10fcbf49724d",
+  "uuid": "0aef64b4-0e57-4756-8d8a-10fcbf49724d",
+  "name": "K采样器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "使用指定模型和条件对潜空间进行降噪采样，生成最终图像潜变量",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-02-21 11:45:38",
+  "author": "black"
+}
