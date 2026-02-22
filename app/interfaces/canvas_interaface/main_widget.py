@@ -575,16 +575,14 @@ class CanvasPage(QWidget):
 
         # 2. 分类节点：找出 Backdrop 和其他节点
         # 使用 set 提高后续查找速度
-        selected_set = set(selected_nodes)
+        selected_set = set([n for n in selected_nodes if hasattr(n, "execute_sync")])
         backdrops = [n for n in selected_nodes if isinstance(n, ControlFlowBackdrop)]
-
         # 3. 收集所有被选中 Backdrop 的内部节点
         # 使用 set 存储内部节点，查找复杂度从 O(N) 降为 O(1)
         all_backdrop_internals = set()
         for bd in backdrops:
             # 假设 bd.nodes() 返回的是列表或迭代器
             all_backdrop_internals.update(bd.nodes())
-
         # 4. 判断 "仅选中 Backdrop 模式"
         target_backdrop_update = None
 
@@ -597,7 +595,6 @@ class CanvasPage(QWidget):
                 if remaining_selection and remaining_selection.issubset(bd_internals):
                     target_backdrop_update = bd
                     break
-
         if target_backdrop_update:
             # 命中特殊逻辑：只显示 Backdrop 属性
             self.nav_view.clear_recommendations()

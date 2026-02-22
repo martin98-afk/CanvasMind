@@ -1,12 +1,13 @@
 #!/usr/bin/python
 import math
+import weakref
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum, PortTypeEnum, PipeEnum,
     Z_VAL_PIPE, Z_VAL_PORT
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, sip
 
 from app.utils.config import Settings
 
@@ -21,23 +22,34 @@ class FlowController(QtCore.QObject):
         if cls._instance is None:
             cls._instance = super(FlowController, cls).__new__(cls)
             cls._instance.timer = QtCore.QTimer()
-            cls._instance.timer.setInterval(35)  # 稍微降低频率，30-35ms 视觉足够平滑
+            cls._instance.timer.setInterval(35)
             cls._instance.timer.timeout.connect(cls._instance._refresh_pipes)
             cls._instance.offset = 0.0
-            cls._instance.running_pipes = set()
+            # 使用 WeakSet：当 pipe 被销毁时，它会自动从这里移除
+            cls._instance.running_pipes = weakref.WeakSet()
         return cls._instance
 
     def _refresh_pipes(self):
-        self.offset += 1.5  # 步长稍大一点，视觉更流畅
+        self.offset += 1.5
         if self.offset >= 100.0:
             self.offset = 0.0
 
-        # 批量通知更新，避免信号分发开销
+        # 转换为 list 进行遍历，防止遍历时集合大小改变
         for pipe in list(self.running_pipes):
-            # 只有在场景中且可见时才触发
-            if pipe.scene():
-                pipe._current_flow_offset = self.offset
-                pipe.update()
+            try:
+                # 双重保险检查：
+                # 1. sip.isdeleted 检查 C++ 对象是否还在
+                # 2. pipe.scene() 检查是否还在场景中
+                if not sip.isdeleted(pipe) and pipe.scene():
+                    if pipe.isVisible():
+                        pipe._current_flow_offset = self.offset
+                        pipe.update()
+                else:
+                    # 如果对象失效，虽然 WeakSet 会处理，但我们手动清理更安全
+                    self.unregister_pipe(pipe)
+            except (RuntimeError, ReferenceError):
+                # 捕获可能的残留引用错误
+                continue
 
     def register_pipe(self, pipe):
         self.running_pipes.add(pipe)
@@ -45,8 +57,9 @@ class FlowController(QtCore.QObject):
             self.timer.start()
 
     def unregister_pipe(self, pipe):
+        # WeakSet 不需要像 set 那样频繁 discard，但为了逻辑严密保留
         if pipe in self.running_pipes:
-            self.running_pipes.remove(pipe)
+            self.running_pipes.discard(pipe)
         if not self.running_pipes:
             self.timer.stop()
 
