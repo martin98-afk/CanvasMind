@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import watchdog
-import uvicorn
-import apscheduler
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer
@@ -24,10 +21,10 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
-from app.node_plugins.plugin_manager import NodePluginManager
+from app.plugins.node_plugins.plugin_manager import NodePluginManager
+from app.plugins.trigger_plugins.plugin_manager import TriggerPluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
-from app.trigger_plugins.plugin_manager import TriggerPluginManager
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
@@ -82,11 +79,11 @@ class LowCodeWindow(FluentWindow):
         ComponentScanner()  # 日志实时监控服务
         # ------------插件预加载
         plugin_manager = NodePluginManager()
-        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "node_plugins"))
+        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "node_plugins"))
         plugin_manager.load_plugins(plugin_dir)
         # ------------加载触发器插件
         trigger_manager = TriggerPluginManager()
-        trigger_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "trigger_plugins"))
+        trigger_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins"))
         trigger_manager.load_plugins(trigger_dir)
         # ------------加载配置
         self.config = Settings.get_instance()

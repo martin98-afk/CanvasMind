@@ -12,7 +12,7 @@ from qfluentwidgets import (
     setFont, isDarkTheme, InfoBarPosition
 )
 
-from app.node_plugins.plugin_manager import NodePluginManager
+from app.plugins.node_plugins.plugin_manager import NodePluginManager
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 

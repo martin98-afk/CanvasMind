@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.components.base import PropertyType
 from app.nodes.status_node import StatusNode
-from app.trigger_plugins.plugin_manager import TriggerPluginManager
+from app.plugins.trigger_plugins.plugin_manager import TriggerPluginManager
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port

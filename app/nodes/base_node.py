@@ -4,6 +4,7 @@ import re
 import uuid
 
 from app.nodes.node_zmq import NodeZmqTransceiver
+from app.plugins.node_plugins.plugin_manager import NodePluginManager
 
 # 尝试导入高性能 json 库，如果不存在则回退
 try:
@@ -19,7 +20,6 @@ from typing import Dict, Any, Set
 
 # 导入业务相关的组件协议
 from app.components.base import ComponentMessage, PROGRESS_MARKER
-from app.node_plugins.plugin_manager import NodePluginManager
 from app.utils.node_logger import NodeLogHandler
 from app.widgets.dialog_widget.component_log_message_box import LogMessageBox
 

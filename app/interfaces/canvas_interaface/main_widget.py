@@ -22,8 +22,8 @@ from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base_node import BasicNodeWithGlobalProperty
 from app.nodes.status_node import NodeStatus
+from app.plugins.trigger_plugins.base_trigger import ALL_MANAGERS
 from app.scan_components import ComponentScanner
-from app.trigger_plugins.base_trigger import ALL_MANAGERS
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
