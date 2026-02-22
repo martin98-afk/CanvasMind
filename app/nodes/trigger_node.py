@@ -5,7 +5,8 @@ from loguru import logger
 
 from app.components.base import PropertyType
 from app.nodes.status_node import StatusNode
-from app.plugins.trigger_plugins.plugin_manager import TriggerPluginManager
+from app.plugins.constants import PluginType
+from app.plugins.plugin_manager import UnifiedPluginManager
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port
@@ -30,7 +31,7 @@ def create_trigger_node(parent_window):
             self.set_icon(":/icons/触发器.svg")
 
             # 插件管理
-            self.plugins = TriggerPluginManager().plugins
+            self.plugins = UnifiedPluginManager.get_instance().list_plugins(PluginType.TRIGGER)
             self.plugin_widgets = {name: [] for name in self.plugins.keys()}
 
             self._active_plugin_name = None

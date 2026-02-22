@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
 
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 
 from app.components.base import PropertyType
 
@@ -70,7 +70,9 @@ class SchedulerManager(BaseTriggerManager):
 
 
 class CronTriggerPlugin(BaseTriggerPlugin):
-    NAME = "定时触发"
+    plugin_id = "cron_trigger"
+    plugin_name = "定时触发"
+    plugin_desc = "定时触发"
     manager = SchedulerManager()
 
     def get_properties(self, parent_node=None):

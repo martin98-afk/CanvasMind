@@ -21,8 +21,8 @@ from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
-from app.plugins.node_plugins.plugin_manager import NodePluginManager
-from app.plugins.trigger_plugins.plugin_manager import TriggerPluginManager
+from app.plugins.constants import PluginType
+from app.plugins.plugin_manager import UnifiedPluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
@@ -78,13 +78,15 @@ class LowCodeWindow(FluentWindow):
         ComponentUsageTracker()  # 日志使用情况监督
         ComponentScanner()  # 日志实时监控服务
         # ------------插件预加载
-        plugin_manager = NodePluginManager()
-        plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "node_plugins"))
-        plugin_manager.load_plugins(plugin_dir)
+        plugin_manager = UnifiedPluginManager.get_instance()
+
+        # ------------插件预加载（节点）
+        node_plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "node_plugins"))
+        plugin_manager.load_plugins(node_plugin_dir, plugin_type=PluginType.NODE)
+
         # ------------加载触发器插件
-        trigger_manager = TriggerPluginManager()
-        trigger_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins"))
-        trigger_manager.load_plugins(trigger_dir)
+        trigger_plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins"))
+        plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
         # ------------加载配置
         self.config = Settings.get_instance()
         setFontFamilies([self.config.canvas_font_type.value])

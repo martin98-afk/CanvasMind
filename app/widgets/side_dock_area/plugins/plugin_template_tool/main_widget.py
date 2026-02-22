@@ -12,7 +12,8 @@ from qfluentwidgets import (
     setFont, isDarkTheme, InfoBarPosition
 )
 
-from app.plugins.node_plugins.plugin_manager import NodePluginManager
+from app.plugins.constants import PluginType
+from app.plugins.plugin_manager import UnifiedPluginManager
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -119,7 +120,7 @@ class PluginTemplateToolWindow(ToolWindow):
     default_position = DockPosition.TOP
 
     def setup_ui(self):
-        self.plugin_manager = NodePluginManager()
+        self.plugin_manager = UnifiedPluginManager.get_instance()
         self.all_data = []
 
         self.main_layout = QVBoxLayout(self)
@@ -208,7 +209,7 @@ class PluginTemplateToolWindow(ToolWindow):
         # 1. 内置模板
         self.all_data.extend(self.get_built_in_templates())
         # 2. 插件动态模板
-        for p in self.plugin_manager.plugins.values():
+        for p in self.plugin_manager.list_plugins(PluginType.NODE).values():
             if hasattr(p, 'plugin_template') and p.plugin_template:
                 self.all_data.append({
                     "name": getattr(p, 'plugin_name', p.plugin_id),

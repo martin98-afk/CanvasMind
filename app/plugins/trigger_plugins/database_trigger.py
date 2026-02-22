@@ -4,7 +4,7 @@ import time
 from sqlalchemy import create_engine, text
 from loguru import logger
 
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 from app.components.base import PropertyType
 
 
@@ -111,7 +111,9 @@ class SQLWatchManager(BaseTriggerManager):
 
 
 class SQLTriggerPlugin(BaseTriggerPlugin):
-    NAME = "数据库变更"
+    plugin_id = "database_trigger"
+    plugin_name = "数据库变更触发"
+    plugin_desc = "数据库变更触发"
     manager = SQLWatchManager()
 
     def get_properties(self, parent_node=None):

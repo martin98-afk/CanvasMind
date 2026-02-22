@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
 from typing import Dict, Set, Any
-from loguru import logger
 
+from app.plugins.constants import PluginType
 
 ALL_MANAGERS = []
 
 
 class BaseTriggerPlugin(ABC):
     # 插件显示的名称，如 "定时触发"
-    NAME = "Abstract"
+    plugin_id = ""
+    plugin_name = ""
+    plugin_desc = ""
+    plugin_type = PluginType.TRIGGER
     manager = None
 
     def __init__(self):

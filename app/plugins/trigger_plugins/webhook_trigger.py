@@ -12,7 +12,7 @@ from loguru import logger
 
 from app.components.base import PropertyType
 from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import ExecutionManager
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 
 
 class WebhookManager(BaseTriggerManager):
@@ -277,7 +277,9 @@ class WebhookManager(BaseTriggerManager):
 
 
 class WebhookPlugin(BaseTriggerPlugin):
-    NAME = "Webhook触发"
+    plugin_id = "webhook_trigger"
+    plugin_name = "Webhook触发"
+    plugin_desc = "Webhook触发"
     manager = WebhookManager()
 
     def get_properties(self, parent_node=None):

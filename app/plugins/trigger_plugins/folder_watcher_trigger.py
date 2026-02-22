@@ -9,7 +9,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from app.components.base import PropertyType
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 
 
 class FileWatcherHandler(FileSystemEventHandler):
@@ -111,8 +111,10 @@ class FileWatcherManager(BaseTriggerManager):
             logger.info("FileWatcher 监听服务已彻底停止")
 
 
-class FileWatcherPlugin(BaseTriggerPlugin):
-    NAME = "文件夹监听触发"
+class FolderWatcherPlugin(BaseTriggerPlugin):
+    plugin_id = "folder_watcher_trigger"
+    plugin_name = "文件夹监听触发"
+    plugin_desc = "文件夹监听触发"
     manager = FileWatcherManager()
 
     def get_properties(self, parent_node=None):

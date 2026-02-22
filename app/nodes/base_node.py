@@ -4,7 +4,7 @@ import re
 import uuid
 
 from app.nodes.node_zmq import NodeZmqTransceiver
-from app.plugins.node_plugins.plugin_manager import NodePluginManager
+from app.plugins.plugin_manager import UnifiedPluginManager
 
 # 尝试导入高性能 json 库，如果不存在则回退
 try:
@@ -66,7 +66,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         self.parent_window = None
         self.set_icon(":/icons/同心圆.svg")
 
-        self.plugin_manager = NodePluginManager()
+        self.plugin_manager = UnifiedPluginManager.get_instance()
 
         # --- 核心数据存储优化 ---
         self._output_values: Dict[str, Any] = {}
@@ -205,7 +205,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
         """
         # 解析 payload，例如: {"msg": "Confirm?", "data": {...}}
         msg = ComponentMessage(**payload)
-        plugin = self.plugin_manager.get_plugin(msg.method)
+        plugin = self.plugin_manager.get_node_plugin(msg.method)
         if plugin:
             response = plugin.handle(self, msg.params, msg)
         else:
@@ -338,7 +338,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
     def _message_router(self, msg_dict: dict):
         msg = ComponentMessage(**msg_dict)
-        plugin = self.plugin_manager.get_plugin(msg.method)
+        plugin = self.plugin_manager.get_node_plugin(msg.method)
         if plugin:
             plugin.handle(self, msg.params, msg)
         elif msg.method in ("stream.output", "stream_output"):
@@ -397,7 +397,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
             if not should_display:
                 self._remove_inline_widget(port_name)
                 continue
-            plugin = self.plugin_manager.get_plugin(plugin_type)
+            plugin = self.plugin_manager.get_node_plugin(plugin_type)
             if plugin:
                 data = self._output_values.get(port_name)
                 plugin.handle(self, {port_name: {"data": data}})

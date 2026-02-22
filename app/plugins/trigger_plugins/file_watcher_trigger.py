@@ -9,7 +9,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from app.components.base import PropertyType
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 
 
 class SingleFileEventHandler(FileSystemEventHandler):
@@ -129,8 +129,10 @@ class SingleFileManager(BaseTriggerManager):
             logger.info("SingleFileMonitor 服务已停止")
 
 
-class SingleFileTriggerPlugin(BaseTriggerPlugin):
-    NAME = "文件内容变更触发"
+class FileWatcherTriggerPlugin(BaseTriggerPlugin):
+    plugin_id = "file_watcher_trigger"
+    plugin_name = "文件监听触发"
+    plugin_desc = "文件监听触发"
     manager = SingleFileManager()
 
     def get_properties(self, parent_node=None):

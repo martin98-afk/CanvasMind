@@ -6,7 +6,7 @@ import email
 from email.header import decode_header
 from loguru import logger
 
-from app.plugins.trigger_plugins.base_trigger import BaseTriggerManager, BaseTriggerPlugin
+from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
 from app.components.base import PropertyType
 
 
@@ -126,7 +126,9 @@ class EmailTriggerManager(BaseTriggerManager):
 
 
 class EmailTriggerPlugin(BaseTriggerPlugin):
-    NAME = "收到邮件时"
+    plugin_id = "email_trigger"
+    plugin_name = "收到邮件时触发"
+    plugin_desc = "收到邮件时触发"
     manager = EmailTriggerManager()
 
     def get_properties(self, parent_node=None):

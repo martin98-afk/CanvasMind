@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from abc import ABC, abstractmethod
 
-from app.utils.config import Settings
+from app.plugins.constants import PluginType
 from app.utils.utils import ssh_send_file
 
 
@@ -15,6 +15,7 @@ class BaseNodePlugin(ABC):
     plugin_id = ""
     plugin_name = ""
     plugin_desc = ""
+    plugin_type = PluginType.NODE
     plugin_template = ""
 
     @abstractmethod
