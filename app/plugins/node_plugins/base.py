@@ -6,6 +6,7 @@ import uuid
 from abc import ABC, abstractmethod
 
 from app.plugins.constants import PluginType
+from app.utils.config import Settings
 from app.utils.utils import ssh_send_file
 
 

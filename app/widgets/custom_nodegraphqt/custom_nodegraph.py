@@ -2141,8 +2141,8 @@ class CustomNodeGraph(NodeGraph):
                 identifier = n_data['type_']
                 node_width, node_height = n_data.get('width'), n_data.get('height')
                 node = self._node_factory.create_node_instance(identifier)
-                node._output_values = deserialize_from_json(n_data.get('output_values', {}))
                 if node:
+                    node._output_values = deserialize_from_json(n_data.get('output_values', {}))
                     # 避免复制时触发重命名信号
                     node.NODE_NAME = n_data.get('name', node.NODE_NAME)
                     # set properties.
