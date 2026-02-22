@@ -4,8 +4,8 @@
   "name": "Agent 技能执行智能体",
   "version": "1.0.0",
   "api_version": "2.0",
-  "description": "基于选中技能文档执行 Agent 技能，LLM 自主决策 + 沙箱执行",
+  "description": "基于选中技能文档执行 Agent 技能，支持 LLM 主动问询 + 沙箱执行",
   "category": "大模型组件/智能体SKILLS",
-  "updated_at": "2026-02-22 23:17:00",
+  "updated_at": "2026-02-23 01:47:12",
   "author": "black"
 }
