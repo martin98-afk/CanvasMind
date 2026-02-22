@@ -41,40 +41,22 @@ SNAP_COLOR = QtGui.QColor(255, 128, 0, 200)  # 橙色对齐线
 
 class CustomNodeScene(NodeScene):
 
-    def drawBackground(self, painter, rect):
-        # 修改点：识别当前正在绘制场景的 painter 属于哪个 View
-        current_painter_viewer = None
-        for v in self.views():
-            if v.viewport() == painter.device():
-                current_painter_viewer = v
-                break
-
-        # 临时设置上下文，让后续调用的 _draw_dots / _draw_grid 能拿到正确的 zoom
-        old_viewer = getattr(self, '_event_viewer', None)
-        self._event_viewer = current_painter_viewer
-
-        super(CustomNodeScene, self).drawBackground(painter, rect)
-
     def viewer(self):
         """
-        重写基类方法，不再死板地返回 views()[0]。
-        优先返回当前处于活跃状态(蓝框高亮)的 Viewer。
+        重写基类方法。
+        优先级：1. 事件上下文锁定 > 2. 活跃 Viewer > 3. 焦点 Viewer > 4. 兜底。
         """
+        if getattr(self, '_event_viewer', None):
+            return self._event_viewer
+
         all_views = self.views()
-        if not all_views:
-            return None
+        if not all_views: return None
+        if len(all_views) == 1: return all_views[0]
 
-        # 1. 如果只有一个视图，直接返回
-        if len(all_views) == 1:
-            return all_views[0]
-
-        # 2. 尝试从这些视图中找到你自定义标记为 _is_active 的那一个
-        # (你在 GraphSplitter.set_active_viewer 中维护了这个状态)
         for v in all_views:
             if hasattr(v, '_is_active') and v._is_active:
                 return v
 
-        # 3. 兜底方案：返回当前拥有焦点的视图
         active_v = QtWidgets.QApplication.focusWidget()
         for v in all_views:
             if v == active_v or v.viewport() == active_v:
@@ -82,15 +64,53 @@ class CustomNodeScene(NodeScene):
 
         return all_views[0]
 
+    def drawBackground(self, painter, rect):
+        """
+        完全重写背景绘制，解决 Python 3 / PyQt5 的类型错误。
+        不再调用 super().drawBackground()。
+        """
+        # 1. 识别当前 View 上下文
+        current_painter_viewer = None
+        for v in self.views():
+            if v.viewport() == painter.device():
+                current_painter_viewer = v
+                break
+
+        old_viewer = getattr(self, '_event_viewer', None)
+        self._event_viewer = current_painter_viewer
+
+        # 2. 执行绘图逻辑 (手动实现库的功能)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, False)
+        # 填充背景色
+        painter.fillRect(rect, self.backgroundBrush())
+
+        # 获取网格配置
+        grid_size = ViewerEnum.GRID_SIZE.value
+
+        # 绘制网格
+        if self.grid_mode == ViewerEnum.GRID_DISPLAY_DOTS.value:
+            pen = QtGui.QPen(QtGui.QColor(*self.grid_color), 1.0)
+            self._draw_dots(painter, rect, pen, grid_size)
+        elif self.grid_mode == ViewerEnum.GRID_DISPLAY_LINES.value:
+            zoom = self.viewer().get_zoom()
+            # 细网格
+            if zoom > -0.5:
+                pen = QtGui.QPen(QtGui.QColor(*self.grid_color), 0.65)
+                self._draw_grid(painter, rect, pen, grid_size)
+            # 粗网格
+            color = QtGui.QColor(*self.background_color).darker(200)
+            if zoom < -0.0:
+                color = color.darker(100 - int(zoom * 110))
+            pen = QtGui.QPen(color, 0.65)
+            self._draw_grid(painter, rect, pen, grid_size * 8)
+
+        painter.restore()
+        self._event_viewer = old_viewer
+
     def _draw_dots(self, painter, rect, pen, grid_size):
         """
-        draws the grid dots in the scene.
-
-        Args:
-            painter (QtGui.QPainter): painter object.
-            rect (QtCore.QRectF): rect object.
-            pen (QtGui.QPen): pen object.
-            grid_size (int): grid size.
+        绘制网格点，确保参数全部为 int。
         """
         zoom = self.viewer().get_zoom()
         if zoom < 0:
@@ -104,25 +124,84 @@ class CustomNodeScene(NodeScene):
         first_left = left - (left % grid_size)
         first_top = top - (top % grid_size)
 
-        pen.setWidth(grid_size // 10)
+        # 核心修复：使用 // 确保 setWidth 得到 int
+        pen.setWidth(max(1, grid_size // 10))
         painter.setPen(pen)
 
-        [painter.drawPoint(int(x), int(y))
-         for x in range(first_left, right, grid_size)
-         for y in range(first_top, bottom, grid_size)]
+        for x in range(first_left, right, grid_size):
+            for y in range(first_top, bottom, grid_size):
+                painter.drawPoint(int(x), int(y))
+
+    def _draw_grid(self, painter, rect, pen, grid_size):
+        """
+        绘制网格线，确保坐标为 int。
+        """
+        left = int(rect.left())
+        right = int(rect.right())
+        top = int(rect.top())
+        bottom = int(rect.bottom())
+
+        first_left = left - (left % grid_size)
+        first_top = top - (top % grid_size)
+
+        lines = []
+        for x in range(first_left, right, grid_size):
+            lines.append(QtCore.QLineF(float(x), float(top), float(x), float(bottom)))
+        for y in range(first_top, bottom, grid_size):
+            lines.append(QtCore.QLineF(float(left), float(y), float(right), float(y)))
+
+        painter.setPen(pen)
+        painter.drawLines(lines)
+
+    def _get_connecting_viewer(self):
+        """查找当前哪个视图正处于拉线状态"""
+        for v in self.views():
+            if hasattr(v, '_LIVE_PIPE') and v._LIVE_PIPE.isVisible():
+                return v
+        return None
 
     def mousePressEvent(self, event):
-        selected_nodes = self.viewer().selected_nodes()
-        if self.viewer():
-            self.viewer().sceneMousePressEvent(event)
-        super(NodeScene, self).mousePressEvent(event)
-        keep_selection = any([
-            event.button() == QtCore.Qt.MiddleButton,
-            event.modifiers() == QtCore.Qt.AltModifier
-        ])
-        if keep_selection:
-            for node in selected_nodes:
-                node.setSelected(True)
+        connecting_viewer = self._get_connecting_viewer()
+        if connecting_viewer:
+            self._event_viewer = connecting_viewer
+            if hasattr(connecting_viewer.home_window.graph, 'graph_splitter'):
+                connecting_viewer.home_window.graph.graph_splitter.set_active_viewer(connecting_viewer)
+            connecting_viewer.sceneMousePressEvent(event)
+            self._event_viewer = None
+            return
+
+        source_v = None
+        for v in self.views():
+            if v.viewport() == event.widget():
+                source_v = v
+                break
+
+        if source_v:
+            self._event_viewer = source_v
+            if hasattr(source_v.home_window.graph, 'graph_splitter'):
+                source_v.home_window.graph.graph_splitter.set_active_viewer(source_v)
+            source_v.sceneMousePressEvent(event)
+
+        if event.button() != QtCore.Qt.MiddleButton:
+            QtWidgets.QGraphicsScene.mousePressEvent(self, event)
+        self._event_viewer = None
+
+    def mouseMoveEvent(self, event):
+        connecting_viewer = self._get_connecting_viewer()
+        if connecting_viewer:
+            self._event_viewer = connecting_viewer
+            connecting_viewer.sceneMouseMoveEvent(event)
+            self._event_viewer = None
+        super(CustomNodeScene, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        connecting_viewer = self._get_connecting_viewer()
+        if connecting_viewer:
+            self._event_viewer = connecting_viewer
+            connecting_viewer.sceneMouseReleaseEvent(event)
+            self._event_viewer = None
+            return
+        super(CustomNodeScene, self).mouseReleaseEvent(event)
 
 
 class SelectionOverlayItem(QtWidgets.QGraphicsItem):
