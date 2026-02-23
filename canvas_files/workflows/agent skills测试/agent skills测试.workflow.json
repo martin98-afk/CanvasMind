@@ -8,14 +8,14 @@
       "pipe_style": 1
     },
     "nodes": {
-      "0x202d072ba10": {
+      "0x247a7514770": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -31,7 +31,7 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
         "width": 0.0,
         "height": 0.0,
@@ -49,7 +49,7 @@
           "_data_select": {},
           "version": "latest",
           "input": "生成一个类似时钟转动效果的gif图",
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "数据集成/文本输入"
         },
         "input_ports": [],
@@ -63,7 +63,7 @@
           "text": "生成一个类似时钟转动效果的gif图"
         }
       },
-      "0x202bfcdf110": {
+      "0x247a7515350": {
         "type_": "dynamic.StatusDynamicNode_e97750fe-61f7-4261-8ba5-f3cbcc66c7bc",
         "icon": ":/icons/同心圆.svg",
         "name": "本地技能包加载器",
@@ -510,14 +510,14 @@
           ]
         }
       },
-      "0x202bfcdf890": {
+      "0x247a7515480": {
         "type_": "dynamic.StatusDynamicNode_430c46f6-d987-4181-96bc-59254d464802",
         "icon": ":/icons/同心圆.svg",
         "name": "技能路由选择器",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -555,7 +555,7 @@
           "max_selected": 1,
           "min_match_score": 0.3,
           "enable_fallback": true,
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "大模型组件/智能体SKILLS/技能路由选择器"
         },
         "input_ports": [
@@ -605,7 +605,7 @@
           "fallback_to_chat": false
         }
       },
-      "0x202e28bad70": {
+      "0x247a75155b0": {
         "type_": "dynamic.StatusDynamicNode_a5754c54-98ac-44ca-b5ef-4313a3410400",
         "icon": ":/icons/同心圆.svg",
         "name": "大型文件选择",
@@ -660,14 +660,14 @@
           "file": "D:/work/CanvasMind/测试.pptx"
         }
       },
-      "0x202e28bab10": {
+      "0x247a75156e0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -701,7 +701,7 @@
           "_data_select": {},
           "version": "latest",
           "input": "帮我分析pdf内容",
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "数据集成/文本输入"
         },
         "input_ports": [],
@@ -715,7 +715,7 @@
           "text": "帮我分析pdf内容"
         }
       },
-      "0x202e28ba8b0": {
+      "0x247a7515810": {
         "type_": "dynamic.StatusDynamicNode_e97750fe-61f7-4261-8ba5-f3cbcc66c7bc",
         "icon": ":/icons/同心圆.svg",
         "name": "本地技能包加载器 1",
@@ -1162,14 +1162,14 @@
           ]
         }
       },
-      "0x202e28ba780": {
+      "0x247a7515940": {
         "type_": "dynamic.StatusDynamicNode_430c46f6-d987-4181-96bc-59254d464802",
         "icon": ":/icons/同心圆.svg",
         "name": "技能路由选择器 1",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1207,7 +1207,7 @@
           "max_selected": 1,
           "min_match_score": 0.3,
           "enable_fallback": true,
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "大模型组件/智能体SKILLS/技能路由选择器"
         },
         "input_ports": [
@@ -1257,7 +1257,7 @@
           "fallback_to_chat": false
         }
       },
-      "0x202e28ba650": {
+      "0x247a7515a70": {
         "type_": "dynamic.StatusDynamicNode_430c46f6-d987-4181-96bc-59254d464802",
         "icon": ":/icons/同心圆.svg",
         "name": "技能路由选择器 2",
@@ -1352,7 +1352,7 @@
           "fallback_to_chat": false
         }
       },
-      "0x202e28ba520": {
+      "0x247a7515ba0": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": ":/icons/同心圆.svg",
         "name": "文本输入 2",
@@ -1407,7 +1407,7 @@
           "text": "帮我排查一个项目的代码质量"
         }
       },
-      "0x202e28ba3f0": {
+      "0x247a7515cd0": {
         "type_": "dynamic.StatusDynamicNode_e97750fe-61f7-4261-8ba5-f3cbcc66c7bc",
         "icon": ":/icons/同心圆.svg",
         "name": "本地技能包加载器 2",
@@ -1547,14 +1547,14 @@
           ]
         }
       },
-      "0x202e28bb5c0": {
+      "0x247a7515e00": {
         "type_": "dynamic.StatusDynamicNode_687b65b0-8e58-4616-ae3c-a07cfc9068c5",
         "icon": ":/icons/同心圆.svg",
         "name": "Agent 技能执行智能体 2",
         "color": [
-          39,
-          174,
-          96,
+          139,
+          115,
+          85,
           255
         ],
         "border_color": [
@@ -1599,7 +1599,7 @@
           "auto_retry": true,
           "output_clean": true,
           "enable_ask_user": true,
-          "_status": "success",
+          "_status": "last_success",
           "FULL_PATH": "大模型组件/智能体SKILLS/Agent 技能执行智能体"
         },
         "input_ports": [
@@ -1737,196 +1737,7 @@
           "execution_status": "success"
         }
       },
-      "0x202bfbd6fd0": {
-        "type_": "dynamic.StatusDynamicNode_687b65b0-8e58-4616-ae3c-a07cfc9068c5",
-        "icon": ":/icons/同心圆.svg",
-        "name": "Agent 技能执行智能体",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 0.0,
-        "height": 0.0,
-        "pos": [
-          1509.11707526004,
-          2026.7702681389724
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "b6fda307-b243-496b-b2f9-661e32dd1cec",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_data_select": {},
-          "version": "latest",
-          "model": "custom.qwen3.5大模型配置",
-          "system_prompt": "你是一个具备技能执行能力的智能助手。\n\n## 📚 可用技能\n下方提供了技能文档（SKILL.md），请仔细阅读每个技能的：\n- **description**（frontmatter 中）：何时使用这个技能\n- **Trigger/When to use**：具体的触发条件\n- **Commands/Usage**：如何执行（命令、参数、示例）\n- **Guidelines/QA**：执行时的注意事项和质量检查\n\n## 🔑 执行原则\n1. **先判断后行动**：分析用户请求，匹配技能的触发条件\n2. **信息不足时主动问询**：如果缺少关键参数，使用 <ask_user> 格式询问用户\n3. **严格遵循文档**：按 SKILL.md 中的步骤执行，不要自行发明命令\n4. **命令灵活性**：优先使用 SKILL.md 中提到的命令，但可根据实际情况调整（白名单非强制）\n5. **安全底线**：不要执行包含 `rm -rf`、`eval`、`exec` 等危险模式的命令\n6. **结果验证**：执行后检查输出，必要时按 QA 指南重试\n\n## 📤 响应格式\n在没有结束前严格按照以下结构化信息返回内容。\n\n### 情况 A：需要执行技能\n当需要使用技能时，严格按以下格式回复（仅输出代码块）：\n```skill\n{\n  \"skill_id\": \"技能 ID（与 selected_skills_detail 的 key  一致）\",\n  \"command\": \"要执行的命令（必须来自 SKILL.md 的 Commands 部分）\",\n  \"reason\": \"简要说明为什么调用这个技能\"\n}\n```\n\n### 情况 B：需要用户补充信息\n当缺少关键信息时，使用以下格式询问用户（仅输出代码块）：\n```ask_user\n{\n  \"title\": \"简短标题，如'需要 API Key'\",\n  \"message\": \"详细说明需要什么信息，为什么需要，如何获取\",\n  \"fields\": [\n    {\n      \"name\": \"字段名（英文小写+下划线，如 api_key）\",\n      \"label\": \"显示标签（如'API Key'）\",\n      \"type\": \"字段类型（见下方支持列表）\",\n      \"default\": \"默认值（可选）\",\n      \"choices\": [\"选项1\", \"选项2\"]  // 仅当 type=choice 时需要\n    }\n  ]\n}\n```\n📋 补充信息支持的字段类型（必须严格使用以下值）\n\n| type 值 | 说明 | 示例 |\n|---------|------|------|\n| `text` | 单行文本输入 | `{\"name\": \"city\", \"type\": \"text\", \"default\": \"北京\"}` |\n| `bool` | 复选框（true/false） | `{\"name\": \"use_https\", \"type\": \"bool\", \"default\": true}` |\n| `float` | 浮点数输入 | `{\"name\": \"threshold\", \"type\": \"float\", \"default\": 0.5}` |\n| `int` | 整数输入 | `{\"name\": \"count\", \"type\": \"int\", \"default\": 3}` |\n| `choice` | 下拉选择（必须带 choices） | `{\"name\": \"mode\", \"type\": \"choice\", \"choices\": [\"fast\", \"slow\"], \"default\": \"fast\"}` |\n\n⚠️ 补充信息重要规则\n1. **字段名**：只用小写字母+下划线，如 `api_key`，不要用中文或特殊字符\n2. **choice 类型**：必须包含 `choices` 数组，且 `default` 必须是数组中的值\n3. **bool 类型**：`default` 必须是 `true` 或 `false`（布尔值，不是字符串）\n4. **number 类型**：`default` 必须是数字，不是字符串（`3` 不是 `\"3\"`）\n5. **一次性问完**：尽量在一个问询中收集所有需要的信息，避免多次打断用户\n\n## ⚠️ 重要\n- 如果 SKILL.md 中提到需要多个步骤，请一次只执行一个命令，等待结果后再决定下一步\n- 如果命令执行失败，分析错误原因，参考 SKILL.md 的 Troubleshooting 部分重试或告知用户\n- 问询时尽量一次性问清楚所有需要的信息，避免多次打断用户\n",
-          "max_command_rounds": 5,
-          "command_timeout": 60,
-          "temperature": 0.7,
-          "max_tokens": 2000,
-          "allowed_commands": "",
-          "blocked_patterns": "rm -rf\nchmod 777\neval\nexec\n__import__\nos.system\nsubprocess",
-          "intervent": false,
-          "auto_retry": true,
-          "output_clean": true,
-          "enable_ask_user": true,
-          "_status": "success",
-          "FULL_PATH": "大模型组件/智能体SKILLS/Agent 技能执行智能体"
-        },
-        "input_ports": [
-          {
-            "name": "input_data",
-            "multi_connection": false
-          },
-          {
-            "name": "history",
-            "multi_connection": false
-          },
-          {
-            "name": "selected_skills_detail",
-            "multi_connection": false
-          },
-          {
-            "name": "skill_registry",
-            "multi_connection": false
-          },
-          {
-            "name": "workspace_path",
-            "multi_connection": false
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "response",
-            "multi_connection": true
-          },
-          {
-            "name": "raw_output",
-            "multi_connection": true
-          },
-          {
-            "name": "history",
-            "multi_connection": true
-          },
-          {
-            "name": "executed_commands",
-            "multi_connection": true
-          },
-          {
-            "name": "skill_used",
-            "multi_connection": true
-          },
-          {
-            "name": "execution_status",
-            "multi_connection": true
-          }
-        ],
-        "output_values": {
-          "response": "## 📄 PDF 内容分析报告\n\n### 基本信息\n- **文件路径**: `D:\\work\\CanvasMind\\dist\\Special Structure (v6).pdf`\n- **总页数**: 41 页\n- **主题**: 深度学习中的特殊网络结构\n\n---\n\n### 📚 核心内容结构\n\n| 章节 | 页码 | 主题 |\n|------|------|------|\n| 1 | 1-14 | Spatial Transformer Networks (空间变换网络) |\n| 2 | 15-24 | Highway Network & Grid LSTM |\n| 3 | 25-39 | Recursive Structure (递归结构) |\n| 4 | 40-41 | Batch Normalization |\n\n---\n\n### 🔍 各部分详细分析\n\n#### 1️⃣ Spatial Transformer Networks (STN)\n**核心问题**: CNN 对缩放、旋转不具备不变性\n\n**解决方案**:\n- 使用 6 参数仿射变换矩阵描述图像变换\n- 通过插值方法使梯度可传播（解决离散采样梯度为零的问题）\n- 可端到端学习\n\n**应用场景**:\n- 街景门牌号识别（单/多变换层）\n- 桥梁识别\n\n#### 2️⃣ Highway Network & Grid LSTM\n**Highway Network**:\n- 引入门控机制 `z = σ(W'a)`\n- 公式：`aᵗ = z ⊙ aᵗ⁻¹ + (1-z) ⊙ h'`\n- 自动决定需要的网络层数\n- 与 Residual Network 类似\n\n**Grid LSTM**:\n- 同时在**时间**和**深度**两个维度维护记忆\n- 可扩展至 3D Grid LSTM\n\n#### 3️⃣ Recursive Structure (递归结构)\n**情感分析应用**:\n- 词向量组合：`V(w₁w₂) ≠ V(w₁) + V(w₂)`\n- 示例：\"not good\" ≠ \"not\" + \"good\"（语义反转）\n- 5 类情感分类：(--, -, 0, +, ++)\n\n**模型变体**:\n- Recursive Neural Tensor Network (RNTN)\n- Matrix-Vector Recursive Network\n- Tree LSTM\n\n**其他应用**: 句子相关性判断\n\n#### 4️⃣ Batch Normalization\n- 仅提及标题，实验结果页内容较少\n\n---\n\n### 📌 关键参考文献\n1. Spatial Transformer Networks - NIPS 2015\n2. Highway Networks - arXiv:1507.0622\n3. Residual Networks - arXiv:1512.03385\n4. Recursive Deep Models for Sentiment Analysis - EMNLP 2013\n5. Tree LSTM - arXiv:1503.00075\n\n---\n\n### 💡 总结\n这份文档是一份深度学习高级网络结构的讲义，重点讲解了三种特殊架构：\n1. **STN** 解决空间变换不变性问题\n2. **Highway/Grid LSTM** 解决深层网络训练和信息流动问题\n3. **Recursive/Tree 结构** 处理具有层次结构的数据（如句子句法树）\n\n如需对特定章节进行深入分析或提取图表，请告诉我！",
-          "raw_output": {
-            "id": "chatcmpl-c5d22127-e5c4-995e-a2e6-ad16d8ec825a",
-            "choices": [
-              {
-                "finish_reason": "stop",
-                "index": 0,
-                "logprobs": null,
-                "message": {
-                  "content": "## 📄 PDF 内容分析报告\n\n### 基本信息\n- **文件路径**: `D:\\work\\CanvasMind\\dist\\Special Structure (v6).pdf`\n- **总页数**: 41 页\n- **主题**: 深度学习中的特殊网络结构\n\n---\n\n### 📚 核心内容结构\n\n| 章节 | 页码 | 主题 |\n|------|------|------|\n| 1 | 1-14 | Spatial Transformer Networks (空间变换网络) |\n| 2 | 15-24 | Highway Network & Grid LSTM |\n| 3 | 25-39 | Recursive Structure (递归结构) |\n| 4 | 40-41 | Batch Normalization |\n\n---\n\n### 🔍 各部分详细分析\n\n#### 1️⃣ Spatial Transformer Networks (STN)\n**核心问题**: CNN 对缩放、旋转不具备不变性\n\n**解决方案**:\n- 使用 6 参数仿射变换矩阵描述图像变换\n- 通过插值方法使梯度可传播（解决离散采样梯度为零的问题）\n- 可端到端学习\n\n**应用场景**:\n- 街景门牌号识别（单/多变换层）\n- 桥梁识别\n\n#### 2️⃣ Highway Network & Grid LSTM\n**Highway Network**:\n- 引入门控机制 `z = σ(W'a)`\n- 公式：`aᵗ = z ⊙ aᵗ⁻¹ + (1-z) ⊙ h'`\n- 自动决定需要的网络层数\n- 与 Residual Network 类似\n\n**Grid LSTM**:\n- 同时在**时间**和**深度**两个维度维护记忆\n- 可扩展至 3D Grid LSTM\n\n#### 3️⃣ Recursive Structure (递归结构)\n**情感分析应用**:\n- 词向量组合：`V(w₁w₂) ≠ V(w₁) + V(w₂)`\n- 示例：\"not good\" ≠ \"not\" + \"good\"（语义反转）\n- 5 类情感分类：(--, -, 0, +, ++)\n\n**模型变体**:\n- Recursive Neural Tensor Network (RNTN)\n- Matrix-Vector Recursive Network\n- Tree LSTM\n\n**其他应用**: 句子相关性判断\n\n#### 4️⃣ Batch Normalization\n- 仅提及标题，实验结果页内容较少\n\n---\n\n### 📌 关键参考文献\n1. Spatial Transformer Networks - NIPS 2015\n2. Highway Networks - arXiv:1507.0622\n3. Residual Networks - arXiv:1512.03385\n4. Recursive Deep Models for Sentiment Analysis - EMNLP 2013\n5. Tree LSTM - arXiv:1503.00075\n\n---\n\n### 💡 总结\n这份文档是一份深度学习高级网络结构的讲义，重点讲解了三种特殊架构：\n1. **STN** 解决空间变换不变性问题\n2. **Highway/Grid LSTM** 解决深层网络训练和信息流动问题\n3. **Recursive/Tree 结构** 处理具有层次结构的数据（如句子句法树）\n\n如需对特定章节进行深入分析或提取图表，请告诉我！",
-                  "refusal": null,
-                  "role": "assistant",
-                  "annotations": null,
-                  "audio": null,
-                  "function_call": null,
-                  "tool_calls": null,
-                  "reasoning_content": "现在我已经获取了 PDF 的全部 41 页内容。让我对这份文档进行全面的分析和总结。\n\n从内容来看，这是一份关于深度学习特殊网络结构的讲义/演示文稿，主要涵盖以下几个主题：\n\n1. **Spatial Transformer Networks (STN)** - 第 1-14 页\n   - 解决 CNN 对缩放和旋转不变性的问题\n   - 仿射变换参数（6 个参数）\n   - 插值方法使梯度可传播\n\n2. **Highway Network & Grid LSTM** - 第 15-24 页\n   - Highway Network：门控机制，类似残差连接\n   - Grid LSTM：时间和深度两个维度的记忆\n\n3. **Recursive Structure** - 第 25-39 页\n   - 递归神经网络用于情感分析\n   - 句法结构组合\n   - Recursive Neural Tensor Network\n   - Tree LSTM\n\n4. **Batch Normalization** - 第 40-41 页\n   - 只提到标题，内容较少\n\n让我为用户提供一个清晰、结构化的分析总结。"
-                }
-              }
-            ],
-            "created": 1771816961,
-            "model": "qwen3.5-plus",
-            "object": "chat.completion",
-            "service_tier": null,
-            "system_fingerprint": null,
-            "usage": {
-              "completion_tokens": 964,
-              "prompt_tokens": 8687,
-              "total_tokens": 9651,
-              "completion_tokens_details": {
-                "accepted_prediction_tokens": null,
-                "audio_tokens": null,
-                "reasoning_tokens": 240,
-                "rejected_prediction_tokens": null,
-                "text_tokens": 964
-              },
-              "prompt_tokens_details": {
-                "audio_tokens": null,
-                "cached_tokens": null,
-                "text_tokens": 8687
-              }
-            }
-          },
-          "history": [
-            {
-              "role": "user",
-              "content": "帮我分析pdf内容"
-            },
-            {
-              "role": "assistant",
-              "content": "## 📄 PDF 内容分析报告\n\n### 基本信息\n- **文件路径**: `D:\\work\\CanvasMind\\dist\\Special Structure (v6).pdf`\n- **总页数**: 41 页\n- **主题**: 深度学习中的特殊网络结构\n\n---\n\n### 📚 核心内容结构\n\n| 章节 | 页码 | 主题 |\n|------|------|------|\n| 1 | 1-14 | Spatial Transformer Networks (空间变换网络) |\n| 2 | 15-24 | Highway Network & Grid LSTM |\n| 3 | 25-39 | Recursive Structure (递归结构) |\n| 4 | 40-41 | Batch Normalization |\n\n---\n\n### 🔍 各部分详细分析\n\n#### 1️⃣ Spatial Transformer Networks (STN)\n**核心问题**: CNN 对缩放、旋转不具备不变性\n\n**解决方案**:\n- 使用 6 参数仿射变换矩阵描述图像变换\n- 通过插值方法使梯度可传播（解决离散采样梯度为零的问题）\n- 可端到端学习\n\n**应用场景**:\n- 街景门牌号识别（单/多变换层）\n- 桥梁识别\n\n#### 2️⃣ Highway Network & Grid LSTM\n**Highway Network**:\n- 引入门控机制 `z = σ(W'a)`\n- 公式：`aᵗ = z ⊙ aᵗ⁻¹ + (1-z) ⊙ h'`\n- 自动决定需要的网络层数\n- 与 Residual Network 类似\n\n**Grid LSTM**:\n- 同时在**时间**和**深度**两个维度维护记忆\n- 可扩展至 3D Grid LSTM\n\n#### 3️⃣ Recursive Structure (递归结构)\n**情感分析应用**:\n- 词向量组合：`V(w₁w₂) ≠ V(w₁) + V(w₂)`\n- 示例：\"not good\" ≠ \"not\" + \"good\"（语义反转）\n- 5 类情感分类：(--, -, 0, +, ++)\n\n**模型变体**:\n- Recursive Neural Tensor Network (RNTN)\n- Matrix-Vector Recursive Network\n- Tree LSTM\n\n**其他应用**: 句子相关性判断\n\n#### 4️⃣ Batch Normalization\n- 仅提及标题，实验结果页内容较少\n\n---\n\n### 📌 关键参考文献\n1. Spatial Transformer Networks - NIPS 2015\n2. Highway Networks - arXiv:1507.0622\n3. Residual Networks - arXiv:1512.03385\n4. Recursive Deep Models for Sentiment Analysis - EMNLP 2013\n5. Tree LSTM - arXiv:1503.00075\n\n---\n\n### 💡 总结\n这份文档是一份深度学习高级网络结构的讲义，重点讲解了三种特殊架构：\n1. **STN** 解决空间变换不变性问题\n2. **Highway/Grid LSTM** 解决深层网络训练和信息流动问题\n3. **Recursive/Tree 结构** 处理具有层次结构的数据（如句子句法树）\n\n如需对特定章节进行深入分析或提取图表，请告诉我！"
-            }
-          ],
-          "executed_commands": [
-            {
-              "skill_id": "pdf",
-              "command": "python -c \"import pdfplumber; pdf = pdfplumber.open(r'D:\\work\\CanvasMind\\dist\\Special Structure (v6).pdf'); print(f'总页数：{len(pdf.pages)}'); [print(f'\\n=== 第 {i+1} 页 ===\\n{page.extract_text()}') for i, page in enumerate(pdf.pages)]\"",
-              "reason": "使用 pdfplumber 库读取并提取 PDF 文件的文本内容，以便分析文件结构和内容",
-              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
-              "start_time": "2026-02-23T11:22:14.015418",
-              "success": true,
-              "stdout": "总页数：41\n\n=== 第 1 页 ===\nSpatial Transformer\nRef: Max Jaderberg, Karen Simonyan, Andrew Zisserman, Koray\nKavukcuoglu, “Spatial Transformer Networks”, NIPS, 2015\n\n=== 第 2 页 ===\nSpatial Transformer Layer\n• CNN is not invariant to scaling and rotation\nCNN 5\nCNN 6\nNN layer\nCan also transform\nEnd-to-end learn\nfeature map\n\n=== 第 3 页 ===\nSpatial Transformer Layer\n• How to transform an image/feature map\nLayer l-1 Layer l\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 Spatial Transformer Layer 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n11 12 13 11 12 13\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n21 22 23 21 22 23\nTranslate\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n31 32 33 31 32 33\n3 3\n𝑙 𝑙 𝑙−1\nGeneral layer: 𝑎 = ෍ ෍ 𝑤 𝑎\n𝑛𝑚 𝑛𝑚,𝑖𝑗 𝑖𝑗\n𝑖=1 𝑗=1\n𝑙 𝑙−1\nIf we want translate as above: 𝑎 = 𝑎\n𝑛𝑚 (𝑛−1)𝑚\n𝑙 𝑙\n𝑤 = 1 𝑖𝑓 𝑖 = 𝑛 − 1, 𝑗 = 𝑚 𝑤 = 0 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒\n𝑛𝑚,𝑖𝑗 𝑛𝑚,𝑖𝑗\n\n=== 第 4 页 ===\nSpatial Transformer Layer\n• How to transform an image/feature map\nLayer l-1 Layer l Layer l-1 Layer l\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n11 12 13 11 12 13 11 12 13 11 12 13\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n21 22 23 21 22 23 21 22 23 21 22 23\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n31 32 33 31 32 33 31 32 33 31 32 33\nControl the Control the\nconnection connection\nNN\nNN\n\n=== 第 5 页 ===\nImage Transformation\nExpansion, Compression, Translation\n𝑥′\n𝑥\n𝑥′ 2 0 0\n𝑦′\n= +\n𝑦\n𝑦′ 0 2 0\n𝑥\n1\n𝑦\n𝑥′\n𝑦′\n1\n𝑥\n𝑥′ 0.5 0 0.5\n= +\n𝑦\n𝑦′ 0 0.5 0.5\n\n=== 第 6 页 ===\nhttps://home.gamer.com.tw/c\nreationDetail.php?sn=792585\nImage Transformation\n• Rotation\n𝑥\n𝑥′ 𝑐𝑜𝑠𝜃 −𝑠𝑖𝑛𝜃 0\n= +\n𝑦\n𝑦′ 𝑠𝑖𝑛𝜃 𝑐𝑜𝑠𝜃 0\n𝑥\n𝑥′\n𝑦\n𝑦′\nRotate\n°\n𝜃\n\n=== 第 7 页 ===\nSpatial Transformer Layer\n𝑥 𝑒\n𝑥′ 𝑎 𝑏 6 parameters to describe\n= +\n𝑦′ 𝑐 𝑑 𝑦 𝑓 the affine transformation\nIndex of layer l-1 Index of layer l\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n11 12 13 11 12 13\nLayer l-1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙 Layer l\n21 22 23 21 22 23\n𝑒\n𝑎 𝑏\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙 𝑎 𝑙 𝑎 𝑙\n𝑓\n31 32 33 𝑐 𝑑 31 32 33\nNN\n\n=== 第 8 页 ===\nSpatial Transformer Layer\n𝑥 𝑒\n𝑥′ 0𝑎 1𝑏 −1 6 parameters to describe\n= +\n𝑦′ 1𝑐 0𝑑 𝑦 − 𝑓 1 the affine transformation\nIndex of layer l-1 Index of layer l\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙\n11 12 13 1111 1122 1133\nLayer l-1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙 Layer l\n21 22 23 2211 2222 2233\n0𝑎 1𝑏 −𝑒1\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙 𝑎𝑎 𝑙𝑙\n31 32 33 1𝑐 0𝑑 −𝑓1 3311 3322 3333\nNN\n\n=== 第 9 页 ===\nSpatial Transformer Layer\n𝑥 𝑒\n1.𝑥6′ 0𝑎 0𝑏.5 2 0.6 6 parameters to describe\n= +\n2.𝑦4′ 1𝑐 0𝑑 𝑦 2 0 𝑓 .4 the affine transformation\nIndex of layer l-1 Index of layer l\nWhat is the problem?\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙\n11 12 13 111111 111222 111333\nLayer l-1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 Layer l\n21 22 23 222111 222222 222333\n0 𝑎 0.𝑏5 0𝑒.6\n𝑎 𝑙−1 𝑎 𝑙−1 𝑎 𝑙−1 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙\n31 32 33 1 𝑐 0𝑑\n0𝑓.4\n333111 333222 333333\nGradient is\nNN\nalways zero\n\n=== 第 10 页 ===\nInterpolation\nNow we can use gradient descent\n𝑥 𝑒\n1.𝑥6′ 0𝑎 0𝑏.5 2 0.6 6 parameters to describe\n= +\n2.𝑦4′ 1𝑐 0𝑑 𝑦 2 0 𝑓 .4 the affine transformation\nIndex of layer l-1 Index of layer l\n𝑎𝑎𝑎\n𝑙𝑙𝑙\n𝑎𝑎𝑎\n𝑙𝑙𝑙\n𝑎𝑎𝑎\n𝑙𝑙𝑙\n111111 111222 111333\n𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 𝑎𝑎𝑎 𝑙𝑙𝑙 Layer l\n0.4 0.6 222111 222222 222333\n𝑙𝑙𝑙 𝑙𝑙𝑙 𝑙𝑙𝑙\n𝑎𝑎𝑎 𝑎𝑎𝑎 𝑎𝑎𝑎\n333111 333222 333333\n0.6 0.6\n𝑙 𝑙−1\n𝑎 = (1 − 0.4) × (1 − 0.4) × 𝑎\n1.6\n22 22\n𝑙−1\n+ 1 − 0.6 × (1 − 0.4) × 𝑎\n2.4\n0.4 0.4 12\n𝑙−1\n+ 1 − 0.6 × (1 − 0.6) × 𝑎\n13\n𝑙−1\n0.4 0.6 + 1 − 0.4 × (1 − 0.6) × 𝑎\n23\n\n=== 第 11 页 ===\n\n\n=== 第 12 页 ===\n\n\n=== 第 13 页 ===\nStreet View\nHouse Number\nSingle: one transformation layer\nMulti: many transformation layer\n\n=== 第 14 页 ===\n𝑒\n𝑎 𝑏\n0\nBrid Recognition 𝑓\n𝑐 𝑑\n0\n\n=== 第 15 页 ===\nHighway Network &\nGrid LSTM\n\n=== 第 16 页 ===\nFeedforward v.s. Recurrent\n1. Feedforward network does not have input at each step\n2. Feedforward network has different parameters for each layer\nx f a1 f a2 f a3 f y\n1 2 3 4\n𝑡 𝑡−1 𝑡 𝑡−1 𝑡\n𝑎 = 𝑓 𝑎 = 𝜎 𝑊 𝑎 + 𝑏 t is layer\n𝑙\nh0 f h1 f h2 f h3 f g y4\nx1 x2 x3 x4\nt is time step\n𝑡 𝑡−1 𝑡 ℎ 𝑡−1 𝑖 𝑡 𝑖\n𝑎 = 𝑓 𝑎 , 𝑥 = 𝜎 𝑊 𝑎 + 𝑊 𝑥 + 𝑏\nApplying gated structure in feedforward network\n\n=== 第 17 页 ===\nGRU → Highway Network\nyt\nNo input xt at each\nhatt--11 ⨀ hatt\n＋\nstep\nNo output yt at\n⨀\neach step 1-\n⨀\nat-1 is the output of\nthe (t-1)-th layer\nreset update\nat is the output of\nr z h'\nthe t-th layer\nNo reset gate\nahtt--11 xt xt\n\n=== 第 18 页 ===\n′ 𝑡−1\nℎ = 𝜎 𝑊𝑎\n𝑡−1\nHighway Network 𝑧 = 𝜎 𝑊′𝑎\n𝑡 𝑡−1\n𝑎 = 𝑧 ⊙ 𝑎 + 1 − 𝑧 ⊙ ℎ\n• Highway Network • Residual Network\n𝑎 𝑡 𝑎 𝑡\n+\n𝑡−1\n𝑧 𝑎\n′\nℎ\nℎ′\nGate\ncopy\ncopy\ncontroller\n𝑎 𝑡−1 𝑎 𝑡−1\nTraining Very Deep Networks Deep Residual Learning for Image\nhttps://arxiv.org/pdf/1507.0622 Recognition\n8v2.pdf http://arxiv.org/abs/1512.03385\n\n=== 第 19 页 ===\noutput layer output layer output layer\nHighway Network automatically\ndetermines the layers needed!\nInput layer Input layer Input layer\n\n=== 第 20 页 ===\nHighway Network\n\n=== 第 21 页 ===\nGrid LSTM\nMemory for both\ntime and depth\ndepth\ny a’ b’\nc c’ c c’\nGrid\nLSTM\nLSTM\nh ht h h’\nx a b\ntime\n\n=== 第 22 页 ===\nal+1 bl+1 al+1 bl+1\nct-1 ct ct+1\nGrid Grid\nLSTM’ LSTM’\nht-1 ht ht+1\nal bl al bl\nct-1 ct ct+1\nGrid Grid\nLSTM LSTM\nht-1 ht ht+1\nal-1 bl-1 al-1 bl-1\n\n=== 第 23 页 ===\nGrid LSTM\nh' b'\nc c'\na’ b’\na ⨀ ＋ ⨀ a'\ntanh\nc\nc’\nGrid ⨀\nLSTM\nh\nh’\nzf zi z zo\na b\nh b\n\n=== 第 24 页 ===\n3D Grid LSTM\na’ b’\ne’ f’\nc c’\nh h’\ne f\na b\n\n=== 第 25 页 ===\nRecursive Structure\n\n=== 第 26 页 ===\nApplication: Sentiment Analysis\nh0 f h1 f h2 f h3 f g sentiment\nx1 x2 x3 x4 word vector\nWord Sequence\nh3 g\nRecurrent Structure\nf\nSpecial case of recursive\nstructure\nsame\nh1 h2\ndimension\nRecursive Structure\nf f\nHow to stack function f\nis already determined\nx1 x2 x3 x4\n\n=== 第 27 页 ===\nRecursive Model\nsyntactic structure\nHow to do it is out\nof the scope\nnot very good\nword sequence:\nnot very good\n\n=== 第 28 页 ===\nRecursive Model\nsyntactic structure\nBy composing the two\nmeaning, what should\nnot very good\nthe meaning be.\nDimension of word\nMeaning of “very good”\nvector = |Z|\nV(“very good”)\nInput: 2 X |Z|, output: |Z|\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 29 页 ===\nRecursive Model\nsyntactic structure\nV(w w ) ≠ V(w ) + V(w )\nA B A B\n“not”: neutral\nnot very good\n“good”: positive\n“not good”: negative Meaning of “very good”\nV(“very good”)\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 30 页 ===\nRecursive Model\nsyntactic structure\nV(w w ) ≠ V(w ) + V(w )\nA B A B\n“棒”: positive\nnot very good\n“好棒”: positive\n“好棒棒”: negative\nMeaning of “very good”\nV(“very good”)\nnetwork f\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 31 页 ===\nRecursive Model\nsyntactic structure\n“not good” “not bad”\nnot very good\nf f\nMeaning of “very good”\n“not” “good” “not”\n“bad”\nV(“very good”)\n: “reverse” another input\nf\n“not”\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 32 页 ===\nRecursive Model\nsyntactic structure\n“very good” “very bad”\nnot very good\nf f\nMeaning of “very good”\n“very” “good” “very”\n“bad”\nV(“very good”)\n: “emphasize” another input\nf\n“very”\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 33 页 ===\nref\n-\n5 classes\noutput\n( -- , - , 0 , + , ++ )\ng\nTrain both …\nV(“not very\ngood”) f\nf\ng\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 34 页 ===\nRecursive Neural Tensor Network\n𝑝\n= 𝜎 W\nf\nLittle interaction between\n𝑎\na and b 𝑏\n෍ 𝑊 𝑥 𝑥\n𝑖𝑗 𝑖 𝑗\nW x\n𝑖,𝑗\nxT\n= 𝜎\n+\n\n=== 第 35 页 ===\nExperiments\n5-class sentiment classification ( -- , - , 0 , + , ++ )\nDemo: http://nlp.stanford.edu:8080/sentiment/rntnDemo.html\n\n=== 第 36 页 ===\nExperiments\nSocher, Richard, et al. \"Recursive deep models for semantic compositionality\nover a sentiment treebank.\" Proceedings of the conference on empirical\nmethods in natural language processing (EMNLP). Vol. 1631. 2013.\n\n=== 第 37 页 ===\nMatrix-Vector Recursive Network\nf\ninherent how it changes\nmeaning the others\n=\n𝜎 = =\nW W\nM\n=\nInformative?\n𝑎 𝐴 𝑏 𝐵\nZero? −1 0\nIdentity?\n?\n0 −1\nnot good\n\n=== 第 38 页 ===\nht-1 ht\nTree LSTM\nLSTM\nTypical LSTM\nmt-1 mt\nTree LSTM\nxt\nh3 m3\nLSTM\nh1 m1 m2 h2\n\n=== 第 39 页 ===\nMore Applications\n• Sentence relatedness\nNN\nRecursive Recursive\nTai, Kai Sheng, Richard Socher, and\nChristopher D. Manning. \"Improved Neural Neural\nsemantic representations from tree-\nNetwork Network\nstructured long short-term memory\nnetworks.\" arXiv preprint\narXiv:1503.00075 (2015).\nSentence 1 Sentence 2\n\n=== 第 40 页 ===\nBatch\nNormalization\n\n=== 第 41 页 ===\nExperimental Results\n",
-              "stderr": "",
-              "returncode": 0,
-              "duration": 1.0704231262207031,
-              "round": 2
-            },
-            {
-              "skill_id": "pdf",
-              "command": "python -c \"import pdfplumber; pdf = pdfplumber.open(r'D:\\work\\CanvasMind\\dist\\Special Structure (v6).pdf'); [print(f'\\n=== 第 {i+1} 页 ===\\n{page.extract_text()}') for i, page in enumerate(pdf.pages) if i >= 17]\"",
-              "reason": "继续提取 PDF 文件第 18-41 页的剩余内容，以完成完整分析",
-              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
-              "start_time": "2026-02-23T11:22:20.264354",
-              "success": true,
-              "stdout": "\n=== 第 18 页 ===\n′ 𝑡−1\nℎ = 𝜎 𝑊𝑎\n𝑡−1\nHighway Network 𝑧 = 𝜎 𝑊′𝑎\n𝑡 𝑡−1\n𝑎 = 𝑧 ⊙ 𝑎 + 1 − 𝑧 ⊙ ℎ\n• Highway Network • Residual Network\n𝑎 𝑡 𝑎 𝑡\n+\n𝑡−1\n𝑧 𝑎\n′\nℎ\nℎ′\nGate\ncopy\ncopy\ncontroller\n𝑎 𝑡−1 𝑎 𝑡−1\nTraining Very Deep Networks Deep Residual Learning for Image\nhttps://arxiv.org/pdf/1507.0622 Recognition\n8v2.pdf http://arxiv.org/abs/1512.03385\n\n=== 第 19 页 ===\noutput layer output layer output layer\nHighway Network automatically\ndetermines the layers needed!\nInput layer Input layer Input layer\n\n=== 第 20 页 ===\nHighway Network\n\n=== 第 21 页 ===\nGrid LSTM\nMemory for both\ntime and depth\ndepth\ny a’ b’\nc c’ c c’\nGrid\nLSTM\nLSTM\nh ht h h’\nx a b\ntime\n\n=== 第 22 页 ===\nal+1 bl+1 al+1 bl+1\nct-1 ct ct+1\nGrid Grid\nLSTM’ LSTM’\nht-1 ht ht+1\nal bl al bl\nct-1 ct ct+1\nGrid Grid\nLSTM LSTM\nht-1 ht ht+1\nal-1 bl-1 al-1 bl-1\n\n=== 第 23 页 ===\nGrid LSTM\nh' b'\nc c'\na’ b’\na ⨀ ＋ ⨀ a'\ntanh\nc\nc’\nGrid ⨀\nLSTM\nh\nh’\nzf zi z zo\na b\nh b\n\n=== 第 24 页 ===\n3D Grid LSTM\na’ b’\ne’ f’\nc c’\nh h’\ne f\na b\n\n=== 第 25 页 ===\nRecursive Structure\n\n=== 第 26 页 ===\nApplication: Sentiment Analysis\nh0 f h1 f h2 f h3 f g sentiment\nx1 x2 x3 x4 word vector\nWord Sequence\nh3 g\nRecurrent Structure\nf\nSpecial case of recursive\nstructure\nsame\nh1 h2\ndimension\nRecursive Structure\nf f\nHow to stack function f\nis already determined\nx1 x2 x3 x4\n\n=== 第 27 页 ===\nRecursive Model\nsyntactic structure\nHow to do it is out\nof the scope\nnot very good\nword sequence:\nnot very good\n\n=== 第 28 页 ===\nRecursive Model\nsyntactic structure\nBy composing the two\nmeaning, what should\nnot very good\nthe meaning be.\nDimension of word\nMeaning of “very good”\nvector = |Z|\nV(“very good”)\nInput: 2 X |Z|, output: |Z|\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 29 页 ===\nRecursive Model\nsyntactic structure\nV(w w ) ≠ V(w ) + V(w )\nA B A B\n“not”: neutral\nnot very good\n“good”: positive\n“not good”: negative Meaning of “very good”\nV(“very good”)\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 30 页 ===\nRecursive Model\nsyntactic structure\nV(w w ) ≠ V(w ) + V(w )\nA B A B\n“棒”: positive\nnot very good\n“好棒”: positive\n“好棒棒”: negative\nMeaning of “very good”\nV(“very good”)\nnetwork f\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 31 页 ===\nRecursive Model\nsyntactic structure\n“not good” “not bad”\nnot very good\nf f\nMeaning of “very good”\n“not” “good” “not”\n“bad”\nV(“very good”)\n: “reverse” another input\nf\n“not”\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 32 页 ===\nRecursive Model\nsyntactic structure\n“very good” “very bad”\nnot very good\nf f\nMeaning of “very good”\n“very” “good” “very”\n“bad”\nV(“very good”)\n: “emphasize” another input\nf\n“very”\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 33 页 ===\nref\n-\n5 classes\noutput\n( -- , - , 0 , + , ++ )\ng\nTrain both …\nV(“not very\ngood”) f\nf\ng\nf\nV(“not”) V(“very”) V(“good”)\nnot very good\n\n=== 第 34 页 ===\nRecursive Neural Tensor Network\n𝑝\n= 𝜎 W\nf\nLittle interaction between\n𝑎\na and b 𝑏\n෍ 𝑊 𝑥 𝑥\n𝑖𝑗 𝑖 𝑗\nW x\n𝑖,𝑗\nxT\n= 𝜎\n+\n\n=== 第 35 页 ===\nExperiments\n5-class sentiment classification ( -- , - , 0 , + , ++ )\nDemo: http://nlp.stanford.edu:8080/sentiment/rntnDemo.html\n\n=== 第 36 页 ===\nExperiments\nSocher, Richard, et al. \"Recursive deep models for semantic compositionality\nover a sentiment treebank.\" Proceedings of the conference on empirical\nmethods in natural language processing (EMNLP). Vol. 1631. 2013.\n\n=== 第 37 页 ===\nMatrix-Vector Recursive Network\nf\ninherent how it changes\nmeaning the others\n=\n𝜎 = =\nW W\nM\n=\nInformative?\n𝑎 𝐴 𝑏 𝐵\nZero? −1 0\nIdentity?\n?\n0 −1\nnot good\n\n=== 第 38 页 ===\nht-1 ht\nTree LSTM\nLSTM\nTypical LSTM\nmt-1 mt\nTree LSTM\nxt\nh3 m3\nLSTM\nh1 m1 m2 h2\n\n=== 第 39 页 ===\nMore Applications\n• Sentence relatedness\nNN\nRecursive Recursive\nTai, Kai Sheng, Richard Socher, and\nChristopher D. Manning. \"Improved Neural Neural\nsemantic representations from tree-\nNetwork Network\nstructured long short-term memory\nnetworks.\" arXiv preprint\narXiv:1503.00075 (2015).\nSentence 1 Sentence 2\n\n=== 第 40 页 ===\nBatch\nNormalization\n\n=== 第 41 页 ===\nExperimental Results\n",
-              "stderr": "",
-              "returncode": 0,
-              "duration": 0.6550114154815674,
-              "round": 3
-            }
-          ],
-          "skill_used": "pdf",
-          "execution_status": "success"
-        }
-      },
-      "0x202e28bb490": {
+      "0x247a7516060": {
         "type_": "dynamic.StatusDynamicNode_687b65b0-8e58-4616-ae3c-a07cfc9068c5",
         "icon": ":/icons/同心圆.svg",
         "name": "Agent 技能执行智能体 1",
@@ -2030,216 +1841,434 @@
           }
         ],
         "output_values": {}
+      },
+      "0x247a7517bb0": {
+        "type_": "dynamic.StatusDynamicNode_687b65b0-8e58-4616-ae3c-a07cfc9068c5",
+        "icon": ":/icons/同心圆.svg",
+        "name": "Agent 技能执行智能体 3",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": true,
+        "visible": true,
+        "width": 0.0,
+        "height": 0.0,
+        "pos": [
+          1570.8134582249231,
+          1821.6156070171378
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "7d7dd334-94b1-4b5c-ac98-852ae974b623",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "model": "custom.qwen3.5大模型配置",
+          "system_prompt": "你是一个具备技能执行能力的智能助手。\n\n## 📚 可用技能\n下方提供了技能文档（SKILL.md），请仔细阅读每个技能的：\n- **description**（frontmatter 中）：何时使用这个技能\n- **Trigger/When to use**：具体的触发条件\n- **Commands/Usage**：如何执行（命令、参数、示例）\n- **Guidelines/QA**：执行时的注意事项和质量检查\n\n## 🔑 执行原则\n1. **先判断后行动**：分析用户请求，匹配技能的触发条件\n2. **信息不足时主动问询**：如果缺少关键参数，使用 <ask_user> 格式询问用户\n3. **严格遵循文档**：按 SKILL.md 中的步骤执行，不要自行发明命令\n4. **命令灵活性**：优先使用 SKILL.md 中提到的命令，但可根据实际情况调整（白名单非强制）\n5. **安全底线**：不要执行包含 `rm -rf`、`eval`、`exec` 等危险模式的命令\n6. **结果验证**：执行后检查输出，必要时按 QA 指南重试\n\n## 📤 响应格式\n在没有结束前严格按照以下结构化信息返回内容。\n\n### 情况 A：需要执行技能\n当需要使用技能时，严格按以下格式回复（仅输出代码块）：\n```skill\n{\n  \"skill_id\": \"技能 ID（与 selected_skills_detail 的 key  一致）\",\n  \"command\": \"要执行的命令（必须来自 SKILL.md 的 Commands 部分）\",\n  \"reason\": \"简要说明为什么调用这个技能\"\n}\n```\n\n### 情况 B：需要用户补充信息\n当缺少关键信息时，使用以下格式询问用户（仅输出代码块）：\n```ask_user\n{\n  \"title\": \"简短标题，如'需要 API Key'\",\n  \"message\": \"详细说明需要什么信息，为什么需要，如何获取\",\n  \"schema\": {\n    \"output_path\": {\"type\": \"file\", \"label\": \"输出文件路径\", \"ext\": \".txt\", \"default\": \"/data/output/result.txt\"},\n    \"is_correct\": {\"type\": \"bool\", \"label\": \"确认无误\", \"default\": True},\n    \"confidence\": {\"type\": \"float\", \"label\": \"置信度\", \"default\": 0.95, \"min\": 0.0, \"max\": 1.0},\n    \"category\": {\"type\": \"choice\", \"label\": \"分类\", \"choices\": [\"A 类\", \"B 类\", \"C 类\"], \"default\": \"A 类\"},\n    \"count\": {\"type\": \"int\", \"label\": \"数量\", \"default\": 1, \"min\": 0},\n    \"remark\": {\"type\": \"text\", \"label\": \"备注说明\", \"default\": \"\"},\n    \"detail_log\": {\"type\": \"long_text\", \"label\": \"详细日志\", \"default\": \"\"}\n  }\n}\n```\n📋 补充信息支持的字段类型（必须严格使用以下值）\n\n| type 值 | 说明 |\n|---------|------|\n| `text` | 单行文本输入 |\n| `bool` | 复选框（true/false）|\n| `float` | 浮点数输入 |\n| `int` | 整数输入 |\n| `choice` | 下拉选择（必须带 choices）|\n| `file` | 文件选择器 | 本地/远程文件路径，需配 `ext` |\n\n## ⚠️ 重要\n- 如果 SKILL.md 中提到需要多个步骤，请一次只执行一个命令，等待结果后再决定下一步\n- 如果命令执行失败，分析错误原因，参考 SKILL.md 的 Troubleshooting 部分重试或告知用户\n- 问询时尽量一次性问清楚所有需要的信息，避免多次打断用户\n",
+          "max_command_rounds": 5,
+          "command_timeout": 60,
+          "temperature": 0.7,
+          "max_tokens": 2000,
+          "allowed_commands": "",
+          "blocked_patterns": "rm -rf\nchmod 777\neval\nexec\n__import__\nos.system\nsubprocess",
+          "intervent": false,
+          "auto_retry": true,
+          "output_clean": true,
+          "enable_ask_user": true,
+          "_status": "success",
+          "FULL_PATH": "大模型组件/智能体SKILLS/Agent 技能执行智能体"
+        },
+        "input_ports": [
+          {
+            "name": "input_data",
+            "multi_connection": false
+          },
+          {
+            "name": "history",
+            "multi_connection": false
+          },
+          {
+            "name": "selected_skills_detail",
+            "multi_connection": false
+          },
+          {
+            "name": "skill_registry",
+            "multi_connection": false
+          },
+          {
+            "name": "workspace_path",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "response",
+            "multi_connection": true
+          },
+          {
+            "name": "raw_output",
+            "multi_connection": true
+          },
+          {
+            "name": "history",
+            "multi_connection": true
+          },
+          {
+            "name": "executed_commands",
+            "multi_connection": true
+          },
+          {
+            "name": "skill_used",
+            "multi_connection": true
+          },
+          {
+            "name": "execution_status",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "response": "## 📊 PDF 图片提取结果总结\n\n### 执行情况\n| 尝试方法 | 状态 | 结果 |\n|---------|------|------|\n| pdfimages 命令 | ❌ 失败 | 系统未安装 poppler-utils |\n| pypdf 库 | ⚠️ 成功但无结果 | 提取到 0 张图片 |\n| PyMuPDF (fitz) | ❌ 失败 | 模块未安装 |\n\n### 问题分析\n1. **pypdf 提取到 0 张图片** 可能的原因：\n   - PDF 中的图片可能不是作为独立 XObject 嵌入的\n   - 图片可能被压缩或以特殊格式存储\n   - PDF 可能使用矢量图形而非位图图片\n\n2. **缺少必要的工具/库**：\n   - poppler-utils (pdfimages)\n   - PyMuPDF (fitz)\n\n### 建议解决方案\n\n**方案 1：安装 PyMuPDF（推荐）**\n```bash\npip install PyMuPDF\n```\n安装后我可以重新尝试提取图片。\n\n**方案 2：安装 poppler-utils**\n- Windows: 下载并安装 [poppler](https://github.com/oschwartz10612/poppler-windows/releases)\n- 添加到系统 PATH 后重试\n\n**方案 3：检查 PDF 是否真的有图片**\n该 PDF 可能是纯矢量图形（如 Canvas 导出的结构图），不包含可提取的位图图片。您可以：\n- 用 PDF 阅读器打开查看是否有图片\n- 或者考虑将 PDF 页面转换为图片（截图方式）\n\n---\n\n**请问您想：**\n1. 安装 PyMuPDF 后让我重新尝试提取？\n2. 改为将 PDF 页面转换为图片？\n3. 还是进行其他类型的 PDF 分析（如提取文本/表格）？",
+          "raw_output": {
+            "id": "chatcmpl-773cb444-7df2-974d-8f2f-daa60f779b50",
+            "choices": [
+              {
+                "finish_reason": "stop",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": "```skill\n{\n  \"skill_id\": \"pdf\",\n  \"command\": \"python -c \\\"\\nimport os\\nimport fitz  # PyMuPDF\\n\\npdf_path = 'D:/work/CanvasMind/dist/Special Structure (v6).pdf'\\noutput_dir = 'D:/work/CanvasMind/dist/extracted_images'\\nos.makedirs(output_dir, exist_ok=True)\\n\\ndoc = fitz.open(pdf_path)\\nimg_count = 0\\n\\nfor page_num in range(len(doc)):\\n    page = doc[page_num]\\n    image_list = page.get_images(full=True)\\n    for img_index, img in enumerate(image_list):\\n        xref = img[0]\\n        try:\\n            base_image = doc.extract_image(xref)\\n            image_bytes = base_image['image']\\n            image_ext = base_image['ext']\\n            img_count += 1\\n            img_path = os.path.join(output_dir, f'image_page{page_num+1}_{img_count}.{image_ext}')\\n            with open(img_path, 'wb') as f:\\n                f.write(image_bytes)\\n            print(f'提取: {img_path}')\\n        except Exception as e:\\n            print(f'跳过图片 {xref}: {e}')\\n\\ndoc.close()\\nprint(f'\\\\\\\\n总共提取 {img_count} 张图片到: {output_dir}')\\n\\\"\",\n  \"reason\": \"pypdf 未能提取到图片，改用 PyMuPDF (fitz) 库，它通常能更可靠地提取 PDF 中的嵌入图片。fitz 的 get_images() 和 extract_image() 方法能更好地处理各种图片格式。\"\n}\n```",
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": null,
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": null,
+                  "reasoning_content": "提取结果为 0 张图片，这可能有几个原因：\n1. PDF 中确实没有嵌入的图片\n2. 图片可能以其他方式存储（如作为表单 XObject 或其他类型）\n3. 可能需要使用其他库如 pdfplumber 或 PyMuPDF (fitz) 来提取\n\n让我尝试使用 PyMuPDF (fitz) 库，它通常能更好地提取 PDF 中的图片。"
+                }
+              }
+            ],
+            "created": 1771820645,
+            "model": "qwen3.5-plus",
+            "object": "chat.completion",
+            "service_tier": null,
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 466,
+              "prompt_tokens": 4512,
+              "total_tokens": 4978,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": null,
+                "audio_tokens": null,
+                "reasoning_tokens": 89,
+                "rejected_prediction_tokens": null,
+                "text_tokens": 466
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": null,
+                "cached_tokens": null,
+                "text_tokens": 4512
+              }
+            }
+          },
+          "history": [
+            {
+              "role": "user",
+              "content": "帮我分析pdf内容"
+            },
+            {
+              "role": "assistant",
+              "content": "## 📊 PDF 图片提取结果总结\n\n### 执行情况\n| 尝试方法 | 状态 | 结果 |\n|---------|------|------|\n| pdfimages 命令 | ❌ 失败 | 系统未安装 poppler-utils |\n| pypdf 库 | ⚠️ 成功但无结果 | 提取到 0 张图片 |\n| PyMuPDF (fitz) | ❌ 失败 | 模块未安装 |\n\n### 问题分析\n1. **pypdf 提取到 0 张图片** 可能的原因：\n   - PDF 中的图片可能不是作为独立 XObject 嵌入的\n   - 图片可能被压缩或以特殊格式存储\n   - PDF 可能使用矢量图形而非位图图片\n\n2. **缺少必要的工具/库**：\n   - poppler-utils (pdfimages)\n   - PyMuPDF (fitz)\n\n### 建议解决方案\n\n**方案 1：安装 PyMuPDF（推荐）**\n```bash\npip install PyMuPDF\n```\n安装后我可以重新尝试提取图片。\n\n**方案 2：安装 poppler-utils**\n- Windows: 下载并安装 [poppler](https://github.com/oschwartz10612/poppler-windows/releases)\n- 添加到系统 PATH 后重试\n\n**方案 3：检查 PDF 是否真的有图片**\n该 PDF 可能是纯矢量图形（如 Canvas 导出的结构图），不包含可提取的位图图片。您可以：\n- 用 PDF 阅读器打开查看是否有图片\n- 或者考虑将 PDF 页面转换为图片（截图方式）\n\n---\n\n**请问您想：**\n1. 安装 PyMuPDF 后让我重新尝试提取？\n2. 改为将 PDF 页面转换为图片？\n3. 还是进行其他类型的 PDF 分析（如提取文本/表格）？"
+            }
+          ],
+          "executed_commands": [
+            {
+              "skill_id": "pdf",
+              "command": "pdfimages -j \"D:/work/CanvasMind/dist/Special Structure (v6).pdf\" extracted_images",
+              "reason": "根据用户需求从 PDF 中提取图片，使用 pdfimages 工具（来自 poppler-utils），-j 参数表示将图片输出为 JPEG 格式，输出文件将以 extracted_images-000.jpg 等格式命名",
+              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
+              "start_time": "2026-02-23T12:23:37.527092",
+              "success": false,
+              "stdout": "",
+              "stderr": "'pdfimages' �����ڲ����ⲿ���Ҳ���ǿ����еĳ���\n���������ļ���\n",
+              "returncode": 1,
+              "duration": 0.02976226806640625,
+              "error": "❌ 执行错误：'pdfimages' �����ڲ����ⲿ���Ҳ���ǿ����еĳ���\n���������ļ���",
+              "round": 2
+            },
+            {
+              "skill_id": "pdf",
+              "command": "python -c \"from pypdf import PdfReader; import os; reader = PdfReader('D:/work/CanvasMind/dist/Special Structure (v6).pdf'); output_dir = 'D:/work/CanvasMind/dist/extracted_images'; os.makedirs(output_dir, exist_ok=True); img_count = 0; from pypdf._xobj_image_helpers import _handle_flate; [page.extract_images() for page in reader.pages]; print('使用 pypdf 提取图片')\"",
+              "reason": "pdfimages 命令不可用（poppler-utils 未安装），改用 Python 的 pypdf 库来提取 PDF 中的图片。将创建一个输出目录来存放提取的图片。",
+              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
+              "start_time": "2026-02-23T12:23:44.662865",
+              "success": false,
+              "stdout": "",
+              "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf\\tmp469ulked.py\", line 1, in <module>\n    from pypdf import PdfReader; import os; reader = PdfReader('D:/work/CanvasMind/dist/Special Structure (v6).pdf'); output_dir = 'D:/work/CanvasMind/dist/extracted_images'; os.makedirs(output_dir, exist_ok=True); img_count = 0; from pypdf._xobj_image_helpers import _handle_flate; [page.extract_images() for page in reader.pages]; print('使用 pypdf 提取图片')\n                                                                                                                                                                                                                                                                                            ^^^^^^^^^^^^^^^^^^^\nAttributeError: 'PageObject' object has no attribute 'extract_images'\n",
+              "returncode": 1,
+              "duration": 0.22754478454589844,
+              "error": "❌ 执行错误：Traceback (most recent call last):\n  File \"C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf\\tmp469ulked.py\", line 1, in <module>\n    from pypdf import PdfReader; import os; reader = PdfReader('D:/work/CanvasMind/dist/Special Structure (v6).pdf'); output_dir = 'D:/work/CanvasMind/dist/extracted_images'; os.makedirs(output_dir, exist_ok=True); img_count = 0; from pypdf._xobj_image_helpers import _handle_flate; [page.extract_images() for page in reader.pages]; print('使用 pypdf 提取图片')\n                                                                                                                                                                                                                                                                                            ^^^^^^^^^^^^^^^^^^^\nAttributeError: 'PageObject' object has no attribute 'extract_images'",
+              "round": 3
+            },
+            {
+              "skill_id": "pdf",
+              "command": "python -c \"\nimport os\nfrom pypdf import PdfReader\nfrom pypdf.filters import decode_stream_data\n\npdf_path = 'D:/work/CanvasMind/dist/Special Structure (v6).pdf'\noutput_dir = 'D:/work/CanvasMind/dist/extracted_images'\nos.makedirs(output_dir, exist_ok=True)\n\nreader = PdfReader(pdf_path)\nimg_count = 0\n\nfor page_num, page in enumerate(reader.pages):\n    if '/XObject' in page:\n        xobjects = page['/XObject']\n        for obj_name in xobjects:\n            obj = xobjects[obj_name]\n            if obj['/Subtype'] == '/Image':\n                img_count += 1\n                img_data = obj.get_data()\n                img_ext = obj.get('/Filter', '')\n                if '/DCTDecode' in str(obj.get('/Filter', '')) or img_data[:2] == b'\\\\xff\\\\xd8':\n                    ext = 'jpg'\n                elif '/JPXDecode' in str(obj.get('/Filter', '')):\n                    ext = 'jp2'\n                else:\n                    ext = 'png'\n                img_path = os.path.join(output_dir, f'image_{page_num+1}_{img_count}.{ext}')\n                with open(img_path, 'wb') as f:\n                    f.write(img_data)\n                print(f'提取: {img_path}')\n\nprint(f'总共提取 {img_count} 张图片')\n\"",
+              "reason": "修正之前的错误，使用正确的 pypdf 方法提取图片。通过访问页面的 /XObject 对象来获取嵌入的图片，并根据图片的过滤器类型确定文件扩展名。",
+              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
+              "start_time": "2026-02-23T12:23:53.557136",
+              "success": true,
+              "stdout": "总共提取 0 张图片\n",
+              "stderr": "",
+              "returncode": 0,
+              "duration": 0.20857524871826172,
+              "round": 4
+            },
+            {
+              "skill_id": "pdf",
+              "command": "python -c \"\nimport os\nimport fitz  # PyMuPDF\n\npdf_path = 'D:/work/CanvasMind/dist/Special Structure (v6).pdf'\noutput_dir = 'D:/work/CanvasMind/dist/extracted_images'\nos.makedirs(output_dir, exist_ok=True)\n\ndoc = fitz.open(pdf_path)\nimg_count = 0\n\nfor page_num in range(len(doc)):\n    page = doc[page_num]\n    image_list = page.get_images(full=True)\n    for img_index, img in enumerate(image_list):\n        xref = img[0]\n        try:\n            base_image = doc.extract_image(xref)\n            image_bytes = base_image['image']\n            image_ext = base_image['ext']\n            img_count += 1\n            img_path = os.path.join(output_dir, f'image_page{page_num+1}_{img_count}.{image_ext}')\n            with open(img_path, 'wb') as f:\n                f.write(image_bytes)\n            print(f'提取: {img_path}')\n        except Exception as e:\n            print(f'跳过图片 {xref}: {e}')\n\ndoc.close()\nprint(f'\\\\n总共提取 {img_count} 张图片到: {output_dir}')\n\"",
+              "reason": "pypdf 未能提取到图片，改用 PyMuPDF (fitz) 库，它通常能更可靠地提取 PDF 中的嵌入图片。fitz 的 get_images() 和 extract_image() 方法能更好地处理各种图片格式。",
+              "workspace": "C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf",
+              "start_time": "2026-02-23T12:24:02.770325",
+              "success": false,
+              "stdout": "",
+              "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf\\tmpek2lps35.py\", line 3, in <module>\n    import fitz  # PyMuPDF\n    ^^^^^^^^^^^\nModuleNotFoundError: No module named 'fitz'\n",
+              "returncode": 1,
+              "duration": 0.06520843505859375,
+              "error": "❌ 执行错误：Traceback (most recent call last):\n  File \"C:\\Users\\black\\Downloads\\skills-main\\skills-main\\skills\\pdf\\tmpek2lps35.py\", line 3, in <module>\n    import fitz  # PyMuPDF\n    ^^^^^^^^^^^\nModuleNotFoundError: No module named 'fitz'",
+              "round": 5
+            }
+          ],
+          "skill_used": "pdf",
+          "execution_status": "success"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x202d072ba10",
+          "0x247a7514770",
           "text"
         ],
         "in": [
-          "0x202bfcdf890",
+          "0x247a7515480",
           "user_input"
         ]
       },
       {
         "out": [
-          "0x202d072ba10",
+          "0x247a7514770",
           "text"
         ],
         "in": [
-          "0x202e28bb5c0",
+          "0x247a7515e00",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x202bfcdf110",
+          "0x247a7515350",
           "skill_docs"
         ],
         "in": [
-          "0x202bfcdf890",
+          "0x247a7515480",
           "skill_docs"
         ]
       },
       {
         "out": [
-          "0x202bfcdf110",
+          "0x247a7515350",
           "skill_registry"
         ],
         "in": [
-          "0x202e28bb5c0",
+          "0x247a7515e00",
           "skill_registry"
         ]
       },
       {
         "out": [
-          "0x202bfcdf110",
+          "0x247a7515350",
           "workspace_path"
         ],
         "in": [
-          "0x202e28bb5c0",
+          "0x247a7515e00",
           "workspace_path"
         ]
       },
       {
         "out": [
-          "0x202bfcdf110",
+          "0x247a7515350",
           "skills_list"
         ],
         "in": [
-          "0x202bfcdf890",
+          "0x247a7515480",
           "skills_list"
         ]
       },
       {
         "out": [
-          "0x202bfcdf890",
+          "0x247a7515480",
           "selected_skills_detail"
         ],
         "in": [
-          "0x202e28bb5c0",
+          "0x247a7515e00",
           "selected_skills_detail"
         ]
       },
       {
         "out": [
-          "0x202e28bab10",
+          "0x247a75156e0",
           "text"
         ],
         "in": [
-          "0x202e28ba780",
+          "0x247a7515940",
           "user_input"
         ]
       },
       {
         "out": [
-          "0x202e28bab10",
+          "0x247a75156e0",
           "text"
         ],
         "in": [
-          "0x202bfbd6fd0",
+          "0x247a7517bb0",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x202e28ba8b0",
+          "0x247a7515810",
           "skill_docs"
         ],
         "in": [
-          "0x202e28ba780",
+          "0x247a7515940",
           "skill_docs"
         ]
       },
       {
         "out": [
-          "0x202e28ba8b0",
+          "0x247a7515810",
           "skill_registry"
         ],
         "in": [
-          "0x202bfbd6fd0",
+          "0x247a7517bb0",
           "skill_registry"
         ]
       },
       {
         "out": [
-          "0x202e28ba8b0",
+          "0x247a7515810",
           "workspace_path"
         ],
         "in": [
-          "0x202bfbd6fd0",
+          "0x247a7517bb0",
           "workspace_path"
         ]
       },
       {
         "out": [
-          "0x202e28ba8b0",
+          "0x247a7515810",
           "skills_list"
         ],
         "in": [
-          "0x202e28ba780",
+          "0x247a7515940",
           "skills_list"
         ]
       },
       {
         "out": [
-          "0x202e28ba780",
+          "0x247a7515940",
           "selected_skills_detail"
         ],
         "in": [
-          "0x202bfbd6fd0",
+          "0x247a7517bb0",
           "selected_skills_detail"
         ]
       },
       {
         "in": [
-          "0x202e28ba650",
+          "0x247a7515a70",
           "user_input"
         ],
         "out": [
-          "0x202e28ba520",
+          "0x247a7515ba0",
           "text"
         ]
       },
       {
         "in": [
-          "0x202e28ba650",
+          "0x247a7515a70",
           "skill_docs"
         ],
         "out": [
-          "0x202e28ba3f0",
+          "0x247a7515cd0",
           "skill_docs"
         ]
       },
       {
         "in": [
-          "0x202e28ba650",
+          "0x247a7515a70",
           "skills_list"
         ],
         "out": [
-          "0x202e28ba3f0",
+          "0x247a7515cd0",
           "skills_list"
         ]
       },
       {
         "out": [
-          "0x202e28ba650",
+          "0x247a7515a70",
           "selected_skills_detail"
         ],
         "in": [
-          "0x202e28bb490",
+          "0x247a7516060",
           "selected_skills_detail"
         ]
       },
       {
         "out": [
-          "0x202e28ba520",
+          "0x247a7515ba0",
           "text"
         ],
         "in": [
-          "0x202e28bb490",
+          "0x247a7516060",
           "input_data"
         ]
       },
       {
         "out": [
-          "0x202e28ba3f0",
+          "0x247a7515cd0",
           "skill_registry"
         ],
         "in": [
-          "0x202e28bb490",
+          "0x247a7516060",
           "skill_registry"
         ]
       },
       {
         "out": [
-          "0x202e28ba3f0",
+          "0x247a7515cd0",
           "workspace_path"
         ],
         "in": [
-          "0x202e28bb490",
+          "0x247a7516060",
           "workspace_path"
         ]
       }
