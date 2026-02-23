@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.7ee8d5e2-7c4d-4240-a5c6-f01747e7a8ae",
+  "uuid": "7ee8d5e2-7c4d-4240-a5c6-f01747e7a8ae",
+  "name": "Comfy条件合并",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将两个 Conditioning 合并 (例如连接多段提示词)",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-02-10 00:32:19",
+  "author": "black"
+}

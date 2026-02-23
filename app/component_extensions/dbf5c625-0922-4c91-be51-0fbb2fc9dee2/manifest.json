@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.dbf5c625-0922-4c91-be51-0fbb2fc9dee2",
+  "uuid": "dbf5c625-0922-4c91-be51-0fbb2fc9dee2",
+  "name": "图片高级裁切",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "弹出图片高级裁切交互界面，对图像进行交互式裁切",
+  "category": "图像处理",
+  "updated_at": "2026-02-05 23:27:24",
+  "author": "black"
+}

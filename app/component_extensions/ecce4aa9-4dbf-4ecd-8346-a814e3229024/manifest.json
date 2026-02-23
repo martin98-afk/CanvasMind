@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.ecce4aa9-4dbf-4ecd-8346-a814e3229024",
+  "uuid": "ecce4aa9-4dbf-4ecd-8346-a814e3229024",
+  "name": "VAE编码",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "由用户动态生成的组件",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-02-13 20:29:28",
+  "author": "black"
+}

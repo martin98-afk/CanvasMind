@@ -155,7 +155,8 @@ class ComponentStorageManager:
             self.ui.current_comp_uuid = comp_uuid
             self.ui._update_file_manager_path(comp_uuid)
             self.ui.tab_manager.change_main_tab_name(getattr(component, 'name', ''))
-
+            if component is None:
+                return
             QTimer.singleShot(300, lambda: self.parent.update_usage_table(component.uuid))
         except Exception as e:
             logger.error(traceback.format_exc())

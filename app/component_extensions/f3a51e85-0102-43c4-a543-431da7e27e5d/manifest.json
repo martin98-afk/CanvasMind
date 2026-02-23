@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.f3a51e85-0102-43c4-a543-431da7e27e5d",
+  "uuid": "f3a51e85-0102-43c4-a543-431da7e27e5d",
+  "name": "API 分页查询器",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "自动处理 API 分页，支持 offset/limit、page/size、cursor 等分页模式，聚合所有结果",
+  "category": "网络请求",
+  "updated_at": "2026-02-14 02:53:36",
+  "author": "black"
+}

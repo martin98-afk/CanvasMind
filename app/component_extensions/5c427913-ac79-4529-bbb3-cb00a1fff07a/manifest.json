@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.5c427913-ac79-4529-bbb3-cb00a1fff07a",
+  "uuid": "5c427913-ac79-4529-bbb3-cb00a1fff07a",
+  "name": "Qwen3 TTS 多角色对话",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "执行多角色脚本，生成带停顿控制的连续对话语音 (需 Base 模型)",
+  "category": "comfyui节点/Qwen-TTS",
+  "updated_at": "2026-02-10 01:06:25",
+  "author": "black"
+}

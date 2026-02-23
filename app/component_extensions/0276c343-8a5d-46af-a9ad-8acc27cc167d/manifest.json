@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.0276c343-8a5d-46af-a9ad-8acc27cc167d",
+  "uuid": "0276c343-8a5d-46af-a9ad-8acc27cc167d",
+  "name": "Wan 2.6 文生图",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "调用阿里云 DashScope Wan 2.6 模型生成图像",
+  "category": "API调用/文生图",
+  "updated_at": "2026-02-03 20:40:38",
+  "author": "black"
+}

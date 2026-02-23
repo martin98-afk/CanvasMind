@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.f575b6e7-2508-4930-924d-504b0d15b4e6",
+  "uuid": "f575b6e7-2508-4930-924d-504b0d15b4e6",
+  "name": "K采样器(高级)",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "高级K采样器，支持精确步数控制(Start/End Step)和噪声注入控制，适用于图生视频或多重采样工作流。",
+  "category": "comfyui节点/基础节点",
+  "updated_at": "2026-02-14 22:41:26",
+  "author": "black"
+}

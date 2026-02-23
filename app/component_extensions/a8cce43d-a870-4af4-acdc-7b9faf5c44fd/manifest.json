@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.a8cce43d-a870-4af4-acdc-7b9faf5c44fd",
+  "uuid": "a8cce43d-a870-4af4-acdc-7b9faf5c44fd",
+  "name": "VAE音频编码",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将音频波形编码为潜空间表示，自动重采样至44100Hz",
+  "category": "comfyui节点/音频基础节点",
+  "updated_at": "2026-02-10 00:28:38",
+  "author": "black"
+}

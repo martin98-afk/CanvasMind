@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.f693f1c3-d0e4-4439-bd0a-0f4f0b8a8ec5",
+  "uuid": "f693f1c3-d0e4-4439-bd0a-0f4f0b8a8ec5",
+  "name": "潜空间色调映射Reinhard",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "应用Reinhard色调映射压缩潜空间动态范围，防止过曝",
+  "category": "comfyui节点/潜空间处理",
+  "updated_at": "2026-02-10 01:07:55",
+  "author": "black"
+}

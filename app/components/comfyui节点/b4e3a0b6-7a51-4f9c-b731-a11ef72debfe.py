@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class ComfyUIConfig(BaseComponent):
-    requirements = "# comfy"
+    requirements = "# comfy,Pillow,SQLAlchemy,aiohttp>=3.11.8,alembic,av>=14.2.0,comfy-kitchen>=0.2.7,comfyui-embedded-docs==0.4.0,comfyui-frontend-package==1.37.11,comfyui-workflow-templates==0.8.15,einops,kornia>=0.7.1,numpy>=1.25.0,psutil,pydantic-settings~=2.0,pydantic~=2.0,pyyaml,safetensors>=0.4.2,scipy,sentencepiece,spandrel,tokenizers>=0.13.3,torch,torchaudio,torchsde,torchvision,tqdm,transformers>=4.50.3,yarl>=1.18.0"
     name = "ComfyUI全局配置"
     category = "comfyui节点"
     description = "自动初始化ComfyUI环境并设置显存管理策略"

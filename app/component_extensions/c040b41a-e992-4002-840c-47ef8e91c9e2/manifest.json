@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.c040b41a-e992-4002-840c-47ef8e91c9e2",
+  "uuid": "c040b41a-e992-4002-840c-47ef8e91c9e2",
+  "name": "空音频潜空间",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "",
+  "category": "comfyui节点/Ace-Step",
+  "updated_at": "2026-02-10 00:31:44",
+  "author": "black"
+}

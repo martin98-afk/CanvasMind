@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.2cc9f95b-0bf7-426f-a77b-7d8b5ce964ea",
+  "uuid": "2cc9f95b-0bf7-426f-a77b-7d8b5ce964ea",
+  "name": "音频保存",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将音频对象保存为指定格式的音频文件（支持wav/flac/mp3/opus）",
+  "category": "comfyui节点/音频基础节点",
+  "updated_at": "2026-02-10 01:10:59",
+  "author": "black"
+}

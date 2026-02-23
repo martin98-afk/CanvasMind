@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.1c95a5f8-8c90-4990-ad5b-159cee3dfac8",
+  "uuid": "1c95a5f8-8c90-4990-ad5b-159cee3dfac8",
+  "name": "模型潜空间操作-CFG增强",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "修改模型采样器，在CFG过程中自动应用Reinhard色调映射，提升生成稳定性",
+  "category": "comfyui节点/潜空间处理",
+  "updated_at": "2026-02-10 01:08:07",
+  "author": "black"
+}

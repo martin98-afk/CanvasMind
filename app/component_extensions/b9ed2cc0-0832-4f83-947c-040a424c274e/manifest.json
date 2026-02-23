@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.b9ed2cc0-0832-4f83-947c-040a424c274e",
+  "uuid": "b9ed2cc0-0832-4f83-947c-040a424c274e",
+  "name": "json筛选",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "",
+  "category": "数据预处理",
+  "updated_at": "2026-02-07 12:06:30",
+  "author": "black"
+}

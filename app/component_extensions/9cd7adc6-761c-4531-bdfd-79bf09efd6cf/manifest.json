@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.9cd7adc6-761c-4531-bdfd-79bf09efd6cf",
+  "uuid": "9cd7adc6-761c-4531-bdfd-79bf09efd6cf",
+  "name": "AceStep音频文本编码",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "将文本标签和歌词编码为音频生成条件，支持歌词强度调节",
+  "category": "comfyui节点/Ace-Step",
+  "updated_at": "2026-02-15 18:02:59",
+  "author": "black"
+}
