@@ -194,12 +194,9 @@ subprocess""",
         exec_start = time.time()
 
         # === 日志：执行开始 ===
-        self.logger.info(f"🚀 [START] AgentSkills 执行开始 | 时间:{
-                         datetime.now().strftime('%H:%M:%S')}")
-        self.logger.info(f"📥 输入: user_input='{(inputs.input_data or '')[
-                         :50]}...', history_len={len(inputs.history or [])}")
-        self.logger.info(f"📦 技能文档数:{len(inputs.selected_skills_detail or {})} | 技能列表:{
-                         list((inputs.selected_skills_detail or {}).keys())}")
+        self.logger.info(f"🚀 [START] AgentSkills 执行开始 | 时间:{datetime.now().strftime('%H:%M:%S')}")
+        self.logger.info(f"📥 输入: user_input='{(inputs.input_data or '')[:50]}...', history_len={len(inputs.history or [])}")
+        self.logger.info(f"📦 技能文档数:{len(inputs.selected_skills_detail or {})} | 技能列表:{list((inputs.selected_skills_detail or {}).keys())}")
 
         user_input = (inputs.input_data or "").strip() or "你好"
         history = self._parse_history(inputs.history)
@@ -216,8 +213,7 @@ subprocess""",
         skill_context = self._build_skill_context(skill_docs)
         system_prompt = params.system_prompt + "\n\n" + \
             skill_context if skill_context else params.system_prompt
-        self.logger.info(f"⏱️  [PROMPT] 构建完成 | 耗时:{
-                         time.time()-prompt_start:.3f}s | 长度:{len(system_prompt)} chars")
+        self.logger.info(f"⏱️  [PROMPT] 构建完成 | 耗时:{time.time()-prompt_start:.3f}s | 长度:{len(system_prompt)} chars")
 
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(history)
@@ -230,8 +226,7 @@ subprocess""",
         api_url = model_cfg.get(
             "API_URL", "https://api.openai.com/v1").strip().rstrip("/")
         model_name = model_cfg.get("模型名称", "gpt-4o").strip()
-        self.logger.info(f"🤖 [MODEL] 配置: name={model_name} | url={
-                         api_url[:30]}... | temp={params.temperature}")
+        self.logger.info(f"🤖 [MODEL] 配置: name={model_name} | url={api_url[:30]}... | temp={params.temperature}")
 
         client = OpenAI(api_key=api_key if api_key else "", base_url=api_url)
 
@@ -263,8 +258,7 @@ subprocess""",
                 message = response.choices[0].message
                 llm_text = message.content or ""
                 print(llm_text)
-                self.logger.info(f"✅ [LLM] 响应接收 | 耗时:{
-                                 llm_duration:.3f}s | 内容长度:{len(llm_text)}")
+                self.logger.info(f"✅ [LLM] 响应接收 | 耗时:{llm_duration:.3f}s | 内容长度:{len(llm_text)}")
             except Exception as e:
                 self.logger.exception(f"❌ [LLM] 调用失败: {str(e)}")
                 final_reply = f"❌ 模型调用失败：{str(e)}"
@@ -274,8 +268,7 @@ subprocess""",
             if params.enable_ask_user and ask_user_count < 3:  # 最多问询 3 次
                 ask_request = self._parse_ask_user_request(llm_text)
                 if ask_request:
-                    self.logger.info(f"💬 [ASK_USER] 解析到问询请求 | title={
-                                     ask_request['title']}")
+                    self.logger.info(f"💬 [ASK_USER] 解析到问询请求 | title={ask_request['title']}")
                     ask_user_count += 1
 
                     # 弹出交互框获取用户输入
@@ -299,8 +292,7 @@ subprocess""",
                     messages.append({"role": "user", "content": user_msg})
 
                     round_duration = time.time() - round_start
-                    self.logger.info(f"⏱️ [ROUND {round_idx}] 问询完成 | 耗时:{
-                                     round_duration:.2f}s\n")
+                    self.logger.info(f"⏱️ [ROUND {round_idx}] 问询完成 | 耗时:{round_duration:.2f}s\n")
                     continue  # 不消耗命令轮数，继续下一轮 LLM 调用
 
             # === 优先级 2: 解析技能执行请求 ===
@@ -311,23 +303,19 @@ subprocess""",
                 messages.append({"role": "assistant", "content": final_reply})
                 break
 
-            self.logger.info(f"🔧 [SKILL_REQ] 解析成功 | skill_id={
-                             skill_request['skill_id']} | reason={skill_request['reason'][:50]}...")
+            self.logger.info(f"🔧 [SKILL_REQ] 解析成功 | skill_id={skill_request['skill_id']} | reason={skill_request['reason'][:50]}...")
 
             # --- 校验技能 ---
             if skill_request["skill_id"] not in skill_docs:
-                self.logger.warning(f"⚠️ [SKILL] 技能 '{skill_request['skill_id']}' 未加载，可用:{
-                                    list(skill_docs.keys())}")
-                feedback = f"❌ 技能 '{skill_request['skill_id']}' 未加载，可用技能：{
-                    list(skill_docs.keys())}"
+                self.logger.warning(f"⚠️ [SKILL] 技能 '{skill_request['skill_id']}' 未加载，可用:{list(skill_docs.keys())}")
+                feedback = f"❌ 技能 '{skill_request['skill_id']}' 未加载，可用技能：{list(skill_docs.keys())}"
                 messages.append({"role": "assistant", "content": llm_text})
                 messages.append({"role": "user", "content": feedback})
                 continue
 
             # --- 白名单检查 ---
             allowed_cmds = self._get_allowed_commands()
-            self.logger.debug(f"🔐 [WHITELIST] 允许的命令前缀:{allowed_cmds[:5]}{
-                              '...' if len(allowed_cmds) > 5 else ''}")
+            self.logger.debug(f"🔐 [WHITELIST] 允许的命令前缀:{allowed_cmds[:5]}{'...' if len(allowed_cmds) > 5 else ''}")
 
             # --- 人工确认 ---
             if params.intervent:
@@ -335,29 +323,24 @@ subprocess""",
                 confirm_result = self._ask_user_confirm(
                     skill_request, allowed_cmds)
                 if confirm_result is False:
-                    self.logger.info(f"🚫 [INTERVENT] 用户取消执行 | 耗时:{
-                                     time.time()-confirm_start:.2f}s")
-                    messages.append({"role": "user", "content": f"🚫 用户取消了技能执行：{
-                                    skill_request['reason']}"})
+                    self.logger.info(f"🚫 [INTERVENT] 用户取消执行 | 耗时:{time.time()-confirm_start:.2f}s")
+                    messages.append({"role": "user", "content": f"🚫 用户取消了技能执行：{skill_request['reason']}"})
                     continue
                 elif isinstance(confirm_result, str):
                     skill_request["command"] = confirm_result
-                    self.logger.info(f"✏️ [INTERVENT] 命令已修改 | 新命令:{
-                                     confirm_result[:50]}...")
+                    self.logger.info(f"✏️ [INTERVENT] 命令已修改 | 新命令:{confirm_result[:50]}...")
 
             # --- 获取工作目录 ---
             workdir_start = time.time()
             skill_workdir = self._get_skill_workdir(
                 skill_request["skill_id"], skill_registry, workspace)
-            self.logger.info(f"📂 [WORKDIR] 技能目录推导 | 耗时:{
-                             time.time()-workdir_start:.3f}s | path={skill_workdir}")
+            self.logger.info(f"📂 [WORKDIR] 技能目录推导 | 耗时:{time.time()-workdir_start:.3f}s | path={skill_workdir}")
             if not Path(skill_workdir).exists():
                 self.logger.error(f"❌ [WORKDIR] 目录不存在: {skill_workdir}")
 
             # --- 执行命令 ---
             cmd_start = time.time()
-            self.logger.info(f"⚙️ [EXEC] 执行命令 | cmd={
-                             skill_request['command'][:80]}... | cwd={skill_workdir}")
+            self.logger.info(f"⚙️ [EXEC] 执行命令 | cmd={skill_request['command'][:80]}... | cwd={skill_workdir}")
             cmd_result = self._execute_command(
                 skill_request["command"],
                 skill_workdir,
@@ -373,27 +356,22 @@ subprocess""",
             if cmd_result["success"]:
                 output_preview = (cmd_result.get("stdout")
                                   or cmd_result.get("stderr") or "")[:200]
-                self.logger.info(f"✅ [EXEC] 命令成功 | 耗时:{
-                                 cmd_duration:.2f}s | 输出预览:{output_preview}...")
-                feedback = f"✅ 命令执行成功\n\n输出:\n```\n{
-                    (cmd_result.get('stdout') or cmd_result.get('stderr') or '')[:4000]}\n```"
+                self.logger.info(f"✅ [EXEC] 命令成功 | 耗时:{cmd_duration:.2f}s | 输出预览:{output_preview}...")
+                feedback = f"✅ 命令执行成功\n\n输出:\n```\n{(cmd_result.get('stdout') or cmd_result.get('stderr') or '')[:4000]}\n```"
             else:
                 error_msg = cmd_result.get("error") or cmd_result.get(
                     "stderr") or "Unknown error"
-                self.logger.error(f"❌ [EXEC] 命令失败 | 耗时:{
-                                  cmd_duration:.2f}s | 错误:{error_msg}...")
+                self.logger.error(f"❌ [EXEC] 命令失败 | 耗时:{cmd_duration:.2f}s | 错误:{error_msg}...")
                 feedback = f"❌ 命令执行失败\n\n错误:\n{error_msg}"
                 if params.auto_retry and round_idx < int(params.max_command_rounds):
                     feedback += "\n\n请分析错误原因，参考 SKILL.md 的 Troubleshooting 部分，修正后重试。"
-                    self.logger.info(f"🔄 [RETRY] 已启用自动重试，剩余轮数:{
-                                     int(params.max_command_rounds)-round_idx}")
+                    self.logger.info(f"🔄 [RETRY] 已启用自动重试，剩余轮数:{int(params.max_command_rounds)-round_idx}")
 
             # --- 更新消息历史 ---
             messages.append({"role": "assistant", "content": llm_text})
             messages.append({"role": "user", "content": feedback})
             round_duration = time.time() - round_start
-            self.logger.info(f"⏱️ [ROUND {round_idx}] 完成 | 总耗时:{
-                             round_duration:.2f}s\n")
+            self.logger.info(f"⏱️ [ROUND {round_idx}] 完成 | 总耗时:{round_duration:.2f}s\n")
 
         # === 强制总结 ===
         if not final_reply:
@@ -408,8 +386,7 @@ subprocess""",
                     max_tokens=int(params.max_tokens),
                 )
                 final_reply = summary_resp.choices[0].message.content or ""
-                self.logger.info(f"✅ [SUMMARY] 生成完成 | 耗时:{
-                                 time.time()-summary_start:.2f}s | 长度:{len(final_reply)}")
+                self.logger.info(f"✅ [SUMMARY] 生成完成 | 耗时:{time.time()-summary_start:.2f}s | 长度:{len(final_reply)}")
             except Exception as e:
                 final_reply = f"⚠️ 无法生成总结：{str(e)}"
                 self.logger.error(f"❌ [SUMMARY] 生成失败: {str(e)}")
@@ -420,15 +397,13 @@ subprocess""",
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": final_reply}
         ]) if params.output_clean else messages
-        self.logger.debug(f"🧹 [HISTORY] 清洗完成 | 原始:{len(history)} → 输出:{
-                          len(output_history)} 条 | 耗时:{time.time()-output_start:.3f}s")
+        self.logger.debug(f"🧹 [HISTORY] 清洗完成 | 原始:{len(history)} → 输出:{len(output_history)} 条 | 耗时:{time.time()-output_start:.3f}s")
 
         total_duration = time.time() - exec_start
         status = "success" if final_reply and not any(err in final_reply[:50] for err in [
                                                       "❌", "⚠️", "失败"]) else ("partial" if exec_log else "failed")
 
-        self.logger.info(f"✅ [END] AgentSkills 执行完成 | 状态:{status} | 总耗时:{total_duration:.2f}s | 技能:{
-                         skill_used or '无'} | 调用次数:{len(exec_log)} | 问询次数:{ask_user_count}")
+        self.logger.info(f"✅ [END] AgentSkills 执行完成 | 状态:{status} | 总耗时:{total_duration:.2f}s | 技能:{skill_used or '无'} | 调用次数:{len(exec_log)} | 问询次数:{ask_user_count}")
 
         return {
             "response": final_reply,
@@ -462,8 +437,7 @@ subprocess""",
                     # 确保 fields 是列表
                     if "schema" in request and not isinstance(request["schema"], dict):
                         request["schema"] = {}
-                    self.logger.debug(f"✅ [ASK_PARSE] 解析成功: title={request['title']} | fields={
-                                      len(request.get('schema', {}))}")
+                    self.logger.debug(f"✅ [ASK_PARSE] 解析成功: title={request['title']} | fields={len(request.get('schema', {}))}")
                     return {
                         "title": str(request["title"]).strip(),
                         "message": str(request["message"]).strip(),
@@ -486,8 +460,7 @@ subprocess""",
                         "default": "请输入您想补充的信息..."
                     }
                 }
-            self.logger.info(f"🔐 [ASK_UI] 弹出问询框 | title={
-                             ask_request['title']} | fields:{list(schema.keys())}")
+            self.logger.info(f"🔐 [ASK_UI] 弹出问询框 | title={ask_request['title']} | fields:{list(schema.keys())}")
             self.logger.debug(f"🔐 [ASK_UI] schema: {schema}")
             confirm_resp = self.emit_interactive_message(
                 method="ask_user",
@@ -513,8 +486,7 @@ subprocess""",
         """获取技能对应的工作目录（带详细日志）"""
         from pathlib import Path
 
-        self.logger.debug(f"🔍 [WORKDIR] 推导技能 '{
-                          skill_id}' 目录 | workspace={workspace}")
+        self.logger.debug(f"🔍 [WORKDIR] 推导技能 '{skill_id}' 目录 | workspace={workspace}")
 
         # 方案 1：从 file_path 推导（最可靠）
         skill_info = skill_registry.get("skills", {}).get(skill_id, {})
@@ -597,8 +569,7 @@ subprocess""",
             sections.append("")
 
         duration = time.time() - start
-        self.logger.debug(f"⏱️ [CONTEXT] 构建技能上下文 | 技能数:{len(skill_docs)} | 耗时:{
-                          duration:.3f}s | 总长度:{len(''.join(sections))} chars")
+        self.logger.debug(f"⏱️ [CONTEXT] 构建技能上下文 | 技能数:{len(skill_docs)} | 耗时:{duration:.3f}s | 总长度:{len(''.join(sections))} chars")
         return "\n".join(sections)
 
     def _parse_skill_request(self, llm_response):
@@ -618,16 +589,14 @@ subprocess""",
                     if not request.get("skill_id") or not request.get("command"):
                         self.logger.warning(f"⚠️ [PARSE] 技能请求缺少必要字段：{request}")
                         return None
-                    self.logger.debug(f"✅ [PARSE] 解析成功: skill_id={request['skill_id']} | cmd={
-                                      request['command'][:50]}...")
+                    self.logger.debug(f"✅ [PARSE] 解析成功: skill_id={request['skill_id']} | cmd={request['command'][:50]}...")
                     return {
                         "skill_id": str(request["skill_id"]).strip(),
                         "command": str(request["command"]).strip(),
                         "reason": str(request.get("reason", "")).strip(),
                     }
                 except Exception as e:
-                    self.logger.warning(f"⚠️ [PARSE] JSON 解析失败: {e} | 原始内容:{
-                                        match.group(1)[:100]}...")
+                    self.logger.warning(f"⚠️ [PARSE] JSON 解析失败: {e} | 原始内容:{match.group(1)[:100]}...")
         self.logger.debug(f"⚠️ [PARSE] 未匹配到技能请求格式")
         return None
 
@@ -639,8 +608,7 @@ subprocess""",
             return []
         items = re.split(r'[,\n]', raw)
         result = [cmd.strip() for cmd in items if cmd.strip()]
-        self.logger.debug(f"🔐 [WHITELIST] 解析白名单 | 结果:{
-                          result if result else '无限制'}")
+        self.logger.debug(f"🔐 [WHITELIST] 解析白名单 | 结果:{result if result else '无限制'}")
         return result
 
     def _execute_command(self, command, workspace, timeout, allowed_cmds):
@@ -674,8 +642,7 @@ subprocess""",
                    for p in self.params.blocked_patterns.split("\n") if p.strip()]
         for pattern in blocked:
             if pattern and re.search(pattern, command, re.IGNORECASE):
-                self.logger.error(f"❌ [EXEC] 黑名单拒绝：`{
-                                  pattern}` matched in `{command[:50]}...`")
+                self.logger.error(f"❌ [EXEC] 黑名单拒绝：`{pattern}` matched in `{command[:50]}...`")
                 return {
                     **result,
                     "success": False,
@@ -718,14 +685,12 @@ subprocess""",
                             f.write(script_content)
                         temp_files.append(temp_path)
                         prefix_match = re.search(r'(python\s*)', exec_command)
-                        exec_command = f'python "{
-                            temp_path}"' if prefix_match else f'"{temp_path}"'
+                        exec_command = f'python "{temp_path}"' if prefix_match else f'"{temp_path}"'
                         self.logger.info(
                             f"🪟 [EXEC] heredoc 转换为临时文件：{temp_path}")
 
             # === 4. 执行命令 ===
-            self.logger.info(f"⚙️ [EXEC] 执行：{exec_command[:200]}{
-                             '...' if len(exec_command) > 200 else ''} | cwd={workspace}")
+            self.logger.info(f"⚙️ [EXEC] 执行：{exec_command[:200]}{'...' if len(exec_command) > 200 else ''} | cwd={workspace}")
 
             env = os.environ.copy()
             if workspace:
@@ -768,10 +733,8 @@ subprocess""",
 
             # === 6. 详细错误日志 ===
             if proc.returncode != 0:
-                error_detail = stderr.strip() if stderr.strip() else f"returncode={
-                    proc.returncode}"
-                self.logger.error(f"❌ [EXEC] 命令失败 | code={
-                                  proc.returncode} | stderr={error_detail[:300]}...")
+                error_detail = stderr.strip() if stderr.strip() else f"returncode={proc.returncode}"
+                self.logger.error(f"❌ [EXEC] 命令失败 | code={proc.returncode} | stderr={error_detail[:300]}...")
                 if "python" in stderr.lower() and ("not found" in stderr.lower() or "不是内部命令" in stderr):
                     result["error"] = "❌ 未找到 python 命令，请确保 Python 已安装并添加到 PATH"
                 elif "can't open file" in stderr.lower() or "no such file" in stderr.lower():
@@ -779,8 +742,7 @@ subprocess""",
                 else:
                     result["error"] = f"❌ 执行错误：{error_detail}"
             else:
-                self.logger.debug(f"✅ [EXEC] 成功 | stdout_len={
-                                  len(stdout)} | stderr_len={len(stderr)}")
+                self.logger.debug(f"✅ [EXEC] 成功 | stdout_len={len(stdout)} | stderr_len={len(stderr)}")
 
             return result
 
@@ -831,8 +793,7 @@ subprocess""",
 
     def _ask_user_confirm(self, skill_request, allowed_cmds):
         try:
-            self.logger.info(f"🔐 [INTERVENT] 弹出确认框 | skill={
-                             skill_request['skill_id']} | cmd={skill_request['command'][:50]}...")
+            self.logger.info(f"🔐 [INTERVENT] 弹出确认框 | skill={skill_request['skill_id']} | cmd={skill_request['command'][:50]}...")
             confirm_resp = self.emit_interactive_message(
                 method="ask_user",
                 params={

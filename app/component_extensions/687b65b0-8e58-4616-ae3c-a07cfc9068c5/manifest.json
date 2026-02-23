@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "基于选中技能文档执行 Agent 技能，支持 LLM 主动问询 + 沙箱执行",
   "category": "大模型组件/智能体SKILLS",
-  "updated_at": "2026-02-23 12:20:58",
+  "updated_at": "2026-02-23 12:39:06",
   "author": "black"
 }
