@@ -3,334 +3,263 @@ import os
 from typing import Any, Dict
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (QScrollArea, QFormLayout, QWidget, QDialog,
-                             QSizePolicy, QHBoxLayout, QFileDialog)
+                             QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame, QFileDialog)
 from qfluentwidgets import (MessageBoxBase, SubtitleLabel, BodyLabel, ComboBox,
                             DoubleSpinBox, SpinBox, LineEdit, TextEdit,
-                            SwitchButton, TransparentToolButton)
+                            SwitchButton, TransparentToolButton, CaptionLabel,
+                            StrongBodyLabel, SmoothScrollArea)
 
 from app.plugins.node_plugins.base import InteractivePlugin
 from app.utils.utils import get_icon
-from app.widgets.dialog_widget.ssh_remote_file_dialog import SSHRemoteFileDialog
+
+# 模拟 SSHRemoteFileDialog，如果没有则定义为空
+try:
+    from app.widgets.dialog_widget.ssh_remote_file_dialog import SSHRemoteFileDialog
+except ImportError:
+    SSHRemoteFileDialog = None
 
 
 # ==============================================================================
-# 1. 文件选择控件
+# 1. 优化后的文件选择控件
 # ==============================================================================
-class FileSelectWidget(QWidget):
-    """文件/文件夹选择控件，支持本地和 SSH 远程模式"""
+class FileSelectWidget(QFrame):
+    """优化后的文件选择控件：增加边框反馈和更好的布局"""
     valueChanged = pyqtSignal(str)
-    fixed_height = True
 
-    def __init__(self, parent=None, default_ext="", get_port_func=None):
+    def __init__(self, parent=None, default_ext="", is_remote=False):
         super().__init__(parent)
-        # parent 应为主窗口，用于获取 env_data 和 global_variables
-        self.main_window = parent
         self._path = ""
         self._is_folder_mode = default_ext.lower() == "folder"
+        self.is_remote = is_remote
 
-        self._file_filter = "All Files (*)"
-        if not self._is_folder_mode and default_ext:
-            ext = default_ext if default_ext.startswith('.') else f".{default_ext}"
-            clean_ext = ext.replace('.', '')
-            self._file_filter = f"{clean_ext.upper()} Files (*{ext});;All Files (*)"
+        # 设置样式
+        self.setObjectName("FileSelectWidget")
+        self.setStyleSheet("""
+            #FileSelectWidget {
+                color: white;
+                border: 1px solid rgba(0, 0, 0, 15);
+                border-radius: 6px;
+                background-color: rgba(255, 255, 255, 10);
+            }
+            #FileSelectWidget:hover {
+                border: 1px solid rgba(0, 0, 0, 30);
+                background-color: rgba(255, 255, 255, 20);
+            }
+        """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(2)
 
-        # 获取全局变量支持
-        gv = getattr(self.main_window, 'global_variables', None) if self.main_window else None
-
-        # 创建输入框
+        # 输入框：移除边框以嵌入容器
         self.path_edit = LineEdit(self)
-
+        self.path_edit.setPlaceholderText("选择文件夹..." if self._is_folder_mode else "选择文件...")
+        self.path_edit.setStyleSheet("LineEdit { border: none; background: transparent; color: white}")
         self.path_edit.textChanged.connect(self._on_text_changed)
-        self.path_edit.setMinimumWidth(180)
-        placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
-        self.path_edit.setPlaceholderText(placeholder)
 
         # 清空按钮
-        self.btn_clear = TransparentToolButton(get_icon("清空参数") if get_icon else None)
-        self.btn_clear.setToolTip("清空路径")
-        self.btn_clear.setFixedSize(32, 32)
-        self.btn_clear.clicked.connect(self._on_clear)
+        self.btn_clear = TransparentToolButton(get_icon("清空参数"), self)
+        self.btn_clear.setFixedSize(28, 28)
+        self.btn_clear.setToolTip("清空")
+        self.btn_clear.clicked.connect(lambda: self.set_value(""))
         self.btn_clear.setVisible(False)
 
         # 浏览按钮
-        self.btn_browse = TransparentToolButton(get_icon("文件选择") if get_icon else None)
-        self.btn_browse.setIconSize(QSize(30, 30))
-        self.btn_browse.setFixedSize(32, 32)
-        self.btn_browse.setToolTip(placeholder)
-        self.btn_browse.clicked.connect(self._on_browse)
+        icon_name = "文件夹" if self._is_folder_mode else "文件选择"
+        self.btn_browse = TransparentToolButton(get_icon(icon_name), self)
+        self.btn_browse.setFixedSize(28, 28)
+        self.btn_browse.clicked.connect(self._handle_browse)
 
         layout.addWidget(self.path_edit)
         layout.addWidget(self.btn_clear)
         layout.addWidget(self.btn_browse)
 
-    def _on_browse(self):
-        """核心逻辑：判断是本地还是远程"""
-        if not self.main_window:
-            return
-
-        env_data = getattr(self.main_window, "env_data", {})
+    def _handle_browse(self):
+        # 逻辑保持不变，但增加 UI 反馈
+        main_win = self.window()
+        env_data = getattr(main_win, "env_data", {})
         is_ssh = env_data.get("type") == "ssh"
 
-        # SSH 远程模式
         if is_ssh and SSHRemoteFileDialog:
-            if not self._is_folder_mode:
-                path = os.path.dirname(self._path) if self._path else ""
-            else:
-                path = self._path
-
             dialog = SSHRemoteFileDialog(
                 env_data=env_data,
                 selection_mode="folder" if self._is_folder_mode else "file",
-                file_filter=self._file_filter,
-                parent=self.main_window,
-                initial_path=path
+                parent=main_win
             )
             if dialog.exec_() == QDialog.Accepted:
-                path = dialog.get_selected_result()
-                if path:
-                    self.set_value(path)
-                    self.valueChanged.emit(path)
+                self.set_value(dialog.get_selected_result())
         else:
-            # 本地模式
-            start_dir = ""
-            if self._path:
-                if os.path.isdir(self._path):
-                    start_dir = self._path
-                elif os.path.isfile(self._path):
-                    start_dir = os.path.dirname(self._path)
-            if not start_dir:
-                start_dir = os.getcwd()
-
             if self._is_folder_mode:
-                dir_path = QFileDialog.getExistingDirectory(
-                    self.main_window, "选择目录", start_dir,
-                    QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
-                )
-                if dir_path:
-                    self.set_value(dir_path)
-                    self.valueChanged.emit(dir_path)
+                path = QFileDialog.getExistingDirectory(self, "选择目录", self._path or os.getcwd())
             else:
-                file_path, _ = QFileDialog.getOpenFileName(
-                    self.main_window, "选择文件", start_dir, self._file_filter
-                )
-                if file_path:
-                    self.set_value(file_path)
-                    self.valueChanged.emit(file_path)
-
-    def _on_clear(self):
-        self.set_value("")
-        self.valueChanged.emit("")
+                path, _ = QFileDialog.getOpenFileName(self, "选择文件", self._path or os.getcwd())
+            if path:
+                self.set_value(path)
 
     def _on_text_changed(self, text):
         self._path = text
+        self.btn_clear.setVisible(bool(text))
         self.valueChanged.emit(text)
 
-    def get_value(self):
-        return self._path
-
     def set_value(self, value):
-        self._path = value or ""
-        self.path_edit.setText(self._path)
-        if self._path:
-            self.path_edit.setCursorPosition(len(self._path))
-        self.btn_clear.setVisible(bool(self._path))
+        self.path_edit.setText(value or "")
+        self.path_edit.setCursorPosition(len(value or ""))
 
-    def sizeHint(self):
-        return QSize(240, 30)
+    def get_value(self):
+        return self.path_edit.text()
 
 
 # ==============================================================================
-# 2. 干预对话框 (支持文件选择)
+# 2. 优化后的干预对话框
 # ==============================================================================
 class InterventionDialog(MessageBoxBase):
     """
-    自适应动态表单对话框，用于人工干预
-    优化点：支持滚动、表单布局、文件选择、数据校验
+    自适应动态表单对话框
+    优化点：使用了 StrongBodyLabel，增加了 HelpText 支持，优化了滚动区域，支持必填项标记
     """
 
     def __init__(self, title: str, message: str, schema: dict, main_window=None, parent=None):
         super().__init__(parent)
-        self.schema = schema or {}
-        # main_window 用于 FileSelectWidget 访问 env_data 和 global_variables
+        self.schema = schema
         self.main_window = main_window or parent
         self.field_widgets: Dict[str, Any] = {}
-        self.field_types: Dict[str, str] = {}
 
-        # 1. 标题
+        # 1. 头部美化
         self.titleLabel = SubtitleLabel(title)
-        self.titleLabel.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
         self.viewLayout.addWidget(self.titleLabel)
 
-        # 2. 提示信息
         if message:
-            self.messageLabel = BodyLabel(message)
-            self.messageLabel.setWordWrap(True)
-            self.messageLabel.setStyleSheet("margin-bottom: 15px;")
-            self.viewLayout.addWidget(self.messageLabel)
+            self.msgLabel = BodyLabel(message)
+            self.msgLabel.setTextColor(QColor(100, 100, 100))
+            self.msgLabel.setWordWrap(True)
+            self.viewLayout.addWidget(self.msgLabel)
 
-        # 3. 滚动区域容器
-        self.scroll_area = QScrollArea()
+        self.viewLayout.addSpacing(10)
+
+        # 2. 使用平滑滚动区域
+        self.scroll_area = SmoothScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
-        self.form_container = QWidget()
-        self.form_layout = QFormLayout()
-        self.form_layout.setSpacing(5)
-        self.form_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        self.form_container.setLayout(self.form_layout)
-
-        self.scroll_area.setWidget(self.form_container)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
-        self.scroll_area.setStyleSheet("""
-            QScrollArea { background-color: transparent; border: none; }
-            QScrollBar:vertical { background: transparent; width: 6px; margin-right: 2px; }
-            QScrollBar::handle:vertical { background: rgba(120, 120, 120, 150); border-radius: 4px; }
-            QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
-        """)
+
+        self.container = QWidget()
+        self.form_layout = QFormLayout(self.container)
+        self.form_layout.setContentsMargins(0, 0, 15, 0)
+        self.form_layout.setSpacing(15)
+        self.form_layout.setLabelAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.form_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+
+        self.scroll_area.setWidget(self.container)
         self.viewLayout.addWidget(self.scroll_area)
 
-        # 4. 动态生成表单
-        self._setup_dynamic_form()
+        # 3. 动态构建
+        self._build_form()
 
-        # 5. 对话框尺寸
-        self.widget.setMinimumWidth(600)
+        # 4. 设置窗口
+        self.widget.setMinimumWidth(650)
+        self.widget.setMaximumHeight(800)
 
-    def _setup_dynamic_form(self):
-        """根据 schema 动态创建表单控件"""
-        for field_name, prop_def in self.schema.items():
-            if not isinstance(prop_def, dict):
-                continue
+    def _build_form(self):
+        for field_id, info in self.schema.items():
+            label_text = info.get("label", field_id)
+            is_required = info.get("required", False)
+            description = info.get("description", "")
 
-            label_text = prop_def.get("label", field_name)
-            prop_type = prop_def.get("type", "text")
-            default = prop_def.get("default")
-            required = prop_def.get("required", False)
+            # 创建标签容器（支持必填星号和描述文字）
+            label_container = QWidget()
+            label_vbox = QVBoxLayout(label_container)
+            label_vbox.setContentsMargins(0, 4, 0, 0)
+            label_vbox.setSpacing(2)
 
-            if required:
-                label_text += " *"
+            display_name = f"{label_text} *" if is_required else label_text
+            field_label = StrongBodyLabel(display_name)
+            label_vbox.addWidget(field_label)
 
-            # 文件选择控件需要 main_window 作为 parent 以访问 env_data
-            widget_parent = self.main_window if prop_type == "file" else self
-            widget = self._create_widget_by_type(prop_type, prop_def, default, parent=widget_parent)
+            if description:
+                desc_label = CaptionLabel(description)
+                desc_label.setTextColor(QColor(120, 120, 120))
+                desc_label.setWordWrap(True)
+                label_vbox.addWidget(desc_label)
 
-            self.field_widgets[field_name] = widget
-            self.field_types[field_name] = prop_type
-            self.form_layout.addRow(label_text, widget)
+            # 创建控件
+            widget = self._create_control(field_id, info)
+            self.field_widgets[field_id] = widget
 
-    def _create_widget_by_type(self, prop_type: str, prop_def: dict, default: Any, parent=None) -> QWidget:
-        """工厂方法：根据类型创建对应的 Fluent 控件"""
+            self.form_layout.addRow(label_container, widget)
 
-        # 文件选择类型
-        if prop_type == "file":
-            ext = prop_def.get("ext", "")
-            widget = FileSelectWidget(parent=parent, default_ext=ext)
-            if default:
-                widget.set_value(str(default))
-            return widget
+    def _create_control(self, field_id, info) -> QWidget:
+        t = info.get("type", "text")
+        default = info.get("default")
 
-        # 布尔型 -> 开关
-        elif prop_type == "bool":
-            widget = SwitchButton()
-            widget.setChecked(bool(default) if default is not None else False)
-            return widget
+        if t == "file":
+            w = FileSelectWidget(default_ext=info.get("ext", ""))
+            w.set_value(str(default) if default else "")
+            return w
 
-        # 选择型 -> 下拉框
-        elif prop_type == "choice":
-            widget = ComboBox()
-            choices = prop_def.get("choices", [])
-            widget.addItems(choices)
-            if default and default in choices:
-                widget.setCurrentText(default)
-            elif choices:
-                widget.setCurrentIndex(0)
-            return widget
+        elif t == "choice":
+            w = ComboBox()
+            w.addItems(info.get("choices", []))
+            if default: w.setCurrentText(str(default))
+            w.setMinimumWidth(200)
+            return w
 
-        # 数值型 -> 数字输入框
-        elif prop_type == "int":
-            widget = SpinBox()
-            min_val = int(prop_def.get("min", -2147483648))
-            max_val = int(prop_def.get("max", 2147483647))
-            widget.setRange(min_val, max_val)
-            widget.setValue(int(default) if default is not None else 0)
-            return widget
+        elif t == "bool":
+            w = SwitchButton()
+            w.setChecked(bool(default))
+            # 让开关居左显示，不填满行
+            container = QWidget()
+            h_layout = QHBoxLayout(container)
+            h_layout.setContentsMargins(0, 0, 0, 0)
+            h_layout.addWidget(w)
+            h_layout.addStretch()
+            # 存入 widget 引用，方便取值
+            container.inner_widget = w
+            return container
 
-        elif prop_type == "float":
-            widget = DoubleSpinBox()
-            min_val = float(prop_def.get("min", -1e9))
-            max_val = float(prop_def.get("max", 1e9))
-            widget.setRange(min_val, max_val)
-            widget.setDecimals(prop_def.get("decimals", 2))
-            widget.setValue(float(default) if default is not None else 0.0)
-            return widget
+        elif t == "int" or t == "float":
+            w = SpinBox() if t == "int" else DoubleSpinBox()
+            w.setRange(info.get("min", -999999), info.get("max", 999999))
+            if t == "float": w.setDecimals(info.get("decimals", 2))
+            w.setValue(default if default is not None else 0)
+            w.setMinimumWidth(150)
+            return w
 
-        # 多行文本 -> TextEdit
-        elif prop_type == "long_text":
-            widget = TextEdit()
-            widget.setPlaceholderText("请输入详细内容...")
-            widget.setText(str(default) if default is not None else "")
-            widget.setMaximumHeight(150)
-            return widget
+        elif t == "long_text":
+            w = TextEdit()
+            w.setPlaceholderText(info.get("placeholder", ""))
+            w.setText(str(default) if default else "")
+            w.setFixedHeight(100)
+            return w
 
-        # 默认单行文本 -> LineEdit
-        else:
-            widget = LineEdit()
-            widget.setPlaceholderText(f"请输入{prop_def.get('label')}")
-            widget.setText(str(default) if default is not None else "")
-            return widget
+        else:  # text
+            w = LineEdit()
+            w.setPlaceholderText(info.get("placeholder", ""))
+            w.setText(str(default) if default else "")
+            return w
 
     def get_result(self) -> Dict[str, Any]:
-        """解析所有控件的值并返回字典，进行类型转换"""
-        result = {}
-        for field_name, widget in self.field_widgets.items():
-            prop_type = self.field_types.get(field_name, "text")
-            val = None
-
-            try:
-                # 专门处理 FileSelectWidget
-                if isinstance(widget, FileSelectWidget):
-                    val = widget.get_value()
-                elif isinstance(widget, SwitchButton):
-                    val = widget.isChecked()
-                elif isinstance(widget, ComboBox):
-                    val = widget.currentText()
-                elif isinstance(widget, (SpinBox, DoubleSpinBox)):
-                    val = widget.value()
-                elif isinstance(widget, TextEdit):
-                    val = widget.toPlainText()
-                elif isinstance(widget, LineEdit):
-                    val = widget.text()
-                else:
-                    val = str(widget)
-            except Exception as e:
-                print(f"Error getting value for {field_name}: {e}")
+        res = {}
+        for fid, widget in self.field_widgets.items():
+            # 提取逻辑优化
+            if isinstance(widget, FileSelectWidget):
+                val = widget.get_value()
+            elif hasattr(widget, "inner_widget"):  # 处理带容器的 SwitchButton
+                val = widget.inner_widget.isChecked()
+            elif isinstance(widget, ComboBox):
+                val = widget.currentText()
+            elif isinstance(widget, (SpinBox, DoubleSpinBox)):
+                val = widget.value()
+            elif isinstance(widget, TextEdit):
+                val = widget.toPlainText()
+            elif isinstance(widget, LineEdit):
+                val = widget.text()
+            else:
                 val = None
-
-            # 类型转换
-            if val is not None and val != "":
-                if prop_type == "int":
-                    try:
-                        val = int(val)
-                    except (ValueError, TypeError):
-                        pass
-                elif prop_type == "float":
-                    try:
-                        val = float(val)
-                    except (ValueError, TypeError):
-                        pass
-                elif prop_type == "bool":
-                    val = bool(val)
-
-            result[field_name] = val
-
-        return result
-
+            res[fid] = val
+        return res
 
 # ==============================================================================
 # 3. 插件定义

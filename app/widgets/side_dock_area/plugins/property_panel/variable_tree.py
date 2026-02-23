@@ -20,7 +20,8 @@ from loguru import logger
 # === Fluent Widgets ===
 
 from qfluentwidgets import (
-    TreeWidget, RoundMenu, Action, TextEdit, isDarkTheme, FluentIcon as FIF, BodyLabel, CardWidget, IconWidget
+    TreeWidget, RoundMenu, Action, TextEdit, isDarkTheme, FluentIcon as FIF, BodyLabel, CardWidget, IconWidget,
+    CaptionLabel
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
@@ -270,70 +271,105 @@ class VariableValueDelegate(QStyledItemDelegate):
 
 class VariableDetailPopup(QWidget):
     """
-    悬浮显示的变量详情卡片
+    优化后的变量详情卡片 - 修复了 show_at_left_of 缺失问题
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # 设置窗口属性
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 100); border-radius:12px;")
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.card = CardWidget(self)
-        self.main_layout.addWidget(self.card)
-        self.content_layout = QVBoxLayout(self.card)
-        self.content_layout.setContentsMargins(16, 12, 16, 16)
+        self.setAttribute(Qt.WA_TranslucentBackground)
 
-        # 标题栏
-        header_layout = QHBoxLayout()
+        # 主布局，留出阴影空间
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # 卡片容器
+        self.card = CardWidget(self)
+        self.card.setStyleSheet("""
+            CardWidget {
+                background-color: #2b2b2b; 
+                border: 1px solid #454545; 
+                border-radius: 12px;
+            }
+        """)
+        self.main_layout.addWidget(self.card)
+
+        # 卡片内部布局
+        self.content_layout = QVBoxLayout(self.card)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(0)
+
+        # 1. 标题栏 (固定高度，解决高度异常)
+        self.header_container = QFrame()
+        self.header_container.setFixedHeight(45)
+        self.header_container.setStyleSheet(
+            "background-color: rgba(255, 255, 255, 0.04); border-top-left-radius: 12px; border-top-right-radius: 12px;")
+        header_layout = QHBoxLayout(self.header_container)
+        header_layout.setContentsMargins(15, 0, 15, 0)
+
         self.icon_label = IconWidget(FIF.INFO)
-        self.icon_label.setFixedSize(18, 18)
-        self.title_label = BodyLabel("Variable Detail")
-        self.title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFA500;")
+        self.icon_label.setFixedSize(16, 16)
+
+        self.title_label = BodyLabel("Detail")
+        self.title_label.setStyleSheet("font-weight: 600; font-size: 13px; color: #FFA500;")
+
+        self.type_label = CaptionLabel("type")
+        self.type_label.setStyleSheet("color: #858585; margin-left: 8px;")
+
         header_layout.addWidget(self.icon_label)
         header_layout.addWidget(self.title_label)
+        header_layout.addWidget(self.type_label)
         header_layout.addStretch()
-        self.content_layout.addLayout(header_layout)
 
-        # 分隔线
-        self.content_layout.addWidget(CardSeparator(self))
+        self.content_layout.addWidget(self.header_container)
+        self.content_layout.addWidget(CardSeparator(self.card))
+
+        # 2. 内容区
+        self.display_area = QVBoxLayout()
+        self.display_area.setContentsMargins(15, 12, 15, 15)
+        self.content_layout.addLayout(self.display_area)
+
         self.preview_widget = None
 
     def set_data(self, obj, name=""):
-        self.title_label.setText(f"{name} ({type(obj).__name__})")
-        if self.preview_widget:
-            self.preview_widget.deleteLater()
-            self.preview_widget = None
+        """填充数据"""
+        self.title_label.setText(str(name) if name else "Variable")
+        self.type_label.setText(f"({type(obj).__name__})")
 
+        if self.preview_widget:
+            self.display_area.removeWidget(self.preview_widget)
+            self.preview_widget.deleteLater()
+
+        # 数据预览逻辑
         if VariableUtils.is_image_file(obj) or VariableUtils.is_pil_image(obj):
             self.preview_widget = self._load_pixmap(obj)
-        elif VariableUtils.is_pyarrow_table(obj) or VariableUtils.is_pyarrow_array(obj):
-            # pyarrow 的 slice 和 to_string
-            try:
-                # 只取前10行显示
-                preview_slice = obj.slice(0, 10)
-                text = str(preview_slice) + f"\n\nShape: {len(obj)} rows"
-            except:
-                text = str(obj)
-            self.preview_widget = self._create_text_edit(text)
         else:
-            # 防止巨大数组
-            if hasattr(obj, 'shape') and hasattr(obj, 'nbytes') and obj.nbytes > 1024 * 1024 and obj.ndim > 0:
-                text = f"Large Object: {type(obj).__name__}\nShape: {obj.shape}\nDtype: {obj.dtype}\n\n[Data Truncated for UI performance]"
+            if hasattr(obj, 'shape') and hasattr(obj, 'nbytes') and obj.nbytes > 1024 * 1024:
+                text = f"Large Object\nShape: {obj.shape}\nDtype: {obj.dtype}\nSize: {obj.nbytes / 1024 ** 2:.2f} MB"
             else:
                 text = str(obj)
             self.preview_widget = self._create_text_edit(text)
 
-        self.content_layout.addWidget(self.preview_widget)
-        self.adjustSize()
+        self.display_area.addWidget(self.preview_widget)
+
+        # 根据内容自动设置弹窗大小
+        self._auto_size(obj)
+
+    def _auto_size(self, obj):
+        """动态设置尺寸"""
+        if VariableUtils.is_image_file(obj) or VariableUtils.is_pil_image(obj):
+            self.setFixedSize(620, 520)
+        else:
+            self.setFixedSize(550, 400)
 
     def _create_text_edit(self, text):
-        widget = TextEdit()
-        widget.setPlainText(text)
-        widget.setReadOnly(True)
-        widget.setFixedSize(500, 300)
-        widget.setFont(QFont("Consolas", 10))
-        return widget
+        te = TextEdit()
+        te.setPlainText(text)
+        te.setReadOnly(True)
+        te.setStyleSheet(
+            "TextEdit{background: #1e1e1e; border: 1px solid #333; border-radius: 6px; color: white;}")
+        return te
 
     def _load_pixmap(self, obj):
         pixmap = None
@@ -341,58 +377,50 @@ class VariableDetailPopup(QWidget):
             pixmap = QPixmap(obj)
         elif VariableUtils.is_pil_image(obj):
             try:
-                img = obj
-                if img.mode not in ('RGB', 'RGBA'): img = img.convert('RGBA' if 'A' in img.mode else 'RGB')
-                data = img.tobytes()
-                qim = QImage(data, img.width, img.height,
-                             QImage.Format_RGBA8888 if img.mode == 'RGBA' else QImage.Format_RGB8888)
+                img = obj.convert('RGBA')
+                qim = QImage(img.tobytes(), img.width, img.height, QImage.Format_RGBA8888)
                 pixmap = QPixmap.fromImage(qim)
             except:
                 pass
+
+        lbl = QLabel()
         if pixmap and not pixmap.isNull():
-            scaled = pixmap.scaled(500, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            img_label = QLabel()
-            img_label.setPixmap(scaled)
-            img_label.setAlignment(Qt.AlignCenter)
-            img_label.setStyleSheet("background: #1e1e1e; border-radius: 6px; padding: 8px;")
-            return img_label
-        return BodyLabel("⚠️ 图像加载失败", self)
+            lbl.setPixmap(pixmap.scaled(580, 420, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            lbl.setText("Image Load Failed")
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet("background: #121212; border-radius: 6px;")
+        return lbl
+
+    # --- 定位逻辑修复区 ---
 
     def show_at_left_of(self, reference_widget: QWidget):
-        self.adjustSize()
-
-        ref_rect = reference_widget.rect()
-        ref_global = reference_widget.mapToGlobal(ref_rect.topLeft())
-        popup_w = self.width()
-        popup_h = self.height()
-
-        x = ref_global.x() - popup_w - 4
-        y = ref_global.y()
-
-        screen = QApplication.primaryScreen()
-        if screen:
-            geom = screen.availableGeometry()
-            x = max(x, geom.left())
-            if x + popup_w > geom.right():
-                x = ref_global.x() + ref_rect.width() + 4
-            if y + popup_h > geom.bottom():
-                y = geom.bottom() - popup_h
-            y = max(y, geom.top())
-
-        self.move(x, y)
-        self.show()
-        self.setFocus()
+        """兼容旧代码：显示在参考控件的左侧"""
+        # 获取参考控件的全局矩形
+        rect = reference_widget.rect()
+        global_pos = reference_widget.mapToGlobal(rect.topLeft())
+        self.show_near(QRect(global_pos, rect.size()))
 
     def show_near(self, rect_global: QRect):
-        """智能显示在目标区域左侧或右侧"""
-        screen_geo = QApplication.primaryScreen().availableGeometry()
+        """智能定位：优先左侧，空间不足则切右侧，并防止超出屏幕上下沿"""
         self.adjustSize()
+        screen_geo = QApplication.primaryScreen().availableGeometry()
+
         w, h = self.width(), self.height()
 
-        # 尝试显示在左侧
-        x = rect_global.left() - w - 10
-        if x < screen_geo.left(): x = rect_global.right() + 10
-        y = max(min(rect_global.top(), screen_geo.bottom() - h), screen_geo.top())
+        # 1. 计算 X: 优先放在左边 (rect_global.left() - w)
+        x = rect_global.left() - w + 5
+        if x < screen_geo.left():
+            # 左边没位置了，放右边
+            x = rect_global.right() - 5
+
+        # 2. 计算 Y: 尽量对齐顶部，但不能超出屏幕底端
+        y = rect_global.top() - 10
+        if y + h > screen_geo.bottom():
+            y = screen_geo.bottom() - h - 10
+        if y < screen_geo.top():
+            y = screen_geo.top() + 10
+
         self.move(x, y)
         self.show()
         self.setFocus()

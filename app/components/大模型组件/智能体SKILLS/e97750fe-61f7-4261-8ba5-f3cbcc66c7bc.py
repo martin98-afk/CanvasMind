@@ -42,23 +42,6 @@ class LocalSkillPackageLoader(BaseComponent):
             type=ArgumentType.TEXT,
             description="技能脚本/资源的实际执行根路径"
         ),
-        PortDefinition(
-            name="load_status",
-            label="加载状态",
-            type=ArgumentType.TEXT,
-            description="success/failed"
-        ),
-        PortDefinition(
-            name="error_message",
-            label="错误信息",
-            type=ArgumentType.TEXT
-        ),
-        PortDefinition(
-            name="skills_list",
-            label="技能列表",
-            type=ArgumentType.JSON,
-            description="[{id, name, description, path}, ...] 用于前端展示"
-        ),
     ]
 
     properties = {
@@ -67,12 +50,6 @@ class LocalSkillPackageLoader(BaseComponent):
             default="folder",
             label="Skills 根目录",
             description="选择包含 manifest.json 和 skills/ 子目录的本地文件夹",
-        ),
-        "cache_enabled": PropertyDefinition(
-            type=PropertyType.BOOL,
-            default=True,
-            label="启用解析缓存",
-            description="缓存 SKILL.md 解析结果，文件未修改时不重复解析",
         ),
         "auto_scan": PropertyDefinition(
             type=PropertyType.BOOL,
@@ -148,8 +125,6 @@ class LocalSkillPackageLoader(BaseComponent):
             "workspace": str(root_path),
             "root_path": str(root_path),
         }
-        skills_list = []
-
         for skill_info in manifest.get("skills", []):
             skill_id = skill_info.get("id")
             if not skill_id:
@@ -179,14 +154,6 @@ class LocalSkillPackageLoader(BaseComponent):
                 "last_modified": skill_md.stat().st_mtime,
             }
 
-            skills_list.append({
-                "id": skill_id,
-                "name": meta.get("name", skill_id.replace("-", " ").title()),
-                "description": meta.get("description", skill_info.get("description", "")),
-                "path": skill_path_str,
-                "tags": meta.get("tags", []),
-            })
-
         if skill_docs:
             self.emit_message(
                 method="add_custom_to_global_variable",
@@ -205,10 +172,7 @@ class LocalSkillPackageLoader(BaseComponent):
         return {
             "skill_docs": skill_docs,
             "skill_registry": skill_registry,
-            "workspace_path": str(root_path),
-            "load_status": "success",
-            "error_message": "",
-            "skills_list": skills_list,
+            "workspace_path": str(root_path)
         }
 
     def _parse_manifest(self, manifest_path):
@@ -270,32 +234,14 @@ class LocalSkillPackageLoader(BaseComponent):
         return manifest
 
     def _load_skill_md(self, file_path, params):
-        import hashlib
-
         file_size = file_path.stat().st_size
         if file_size > params.max_file_size:
             self.logger.warning(f"⚠️ 文件过大，截断：{file_path.name} ({file_size / 1024:.1f}KB)")
-
-        if params.cache_enabled:
-            file_hash = hashlib.md5(f"{file_path}:{file_path.stat().st_mtime}".encode()).hexdigest()
-            cache_key = str(file_path)
-            if cache_key in self._cache:
-                cached = self._cache[cache_key]
-                if cached["hash"] == file_hash:
-                    self.logger.debug(f"⚡ 使用缓存：{file_path.name}")
-                    return cached["content"]
 
         try:
             content = file_path.read_text(encoding="utf-8")
             if len(content) > params.max_file_size:
                 content = content[:params.max_file_size] + "\n\n...（内容截断）..."
-            if params.cache_enabled:
-                file_hash = hashlib.md5(f"{file_path}:{file_path.stat().st_mtime}".encode()).hexdigest()
-                self._cache[str(file_path)] = {
-                    "content": content,
-                    "hash": file_hash,
-                    "meta": self._parse_frontmatter(content),
-                }
             return content
         except Exception as e:
             self.logger.error(f"读取 SKILL.md 失败 {file_path}: {e}")
@@ -320,10 +266,7 @@ class LocalSkillPackageLoader(BaseComponent):
         return {
             "skill_docs": {},
             "skill_registry": {},
-            "workspace_path": "",
-            "load_status": "failed",
-            "error_message": message,
-            "skills_list": [],
+            "workspace_path": ""
         }
 
     def teardown(self):

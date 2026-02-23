@@ -2,8 +2,9 @@
 import os
 
 from NodeGraphQt.constants import Z_VAL_NODE_WIDGET
+from PyQt5 import QtWidgets, QtCore
 from Qt import QtWidgets, QtCore
-from qfluentwidgets import LineEdit, TransparentToolButton
+from qfluentwidgets import TransparentToolButton
 
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit
@@ -11,8 +12,7 @@ from app.widgets.dialog_widget.ssh_remote_file_dialog import SSHRemoteFileDialog
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
-# --- 修改后的 FileSelectWidget ---
-class FileSelectWidget(QtWidgets.QWidget):
+class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
     valueChanged = QtCore.Signal(str)
     fixed_height = True
 
@@ -22,34 +22,50 @@ class FileSelectWidget(QtWidgets.QWidget):
         self._path = ""
         self._is_folder_mode = default_ext.lower() == "folder"
 
-        self._file_filter = "All Files (*)"
-        if not self._is_folder_mode and default_ext:
-            ext = default_ext if default_ext.startswith('.') else f".{default_ext}"
-            clean_ext = ext.replace('.', '')
-            self._file_filter = f"{clean_ext.upper()} Files (*{ext});;All Files (*)"
+        # 1. 整体容器样式配置 (深色背景，亮色边框)
+        self.setObjectName("FileSelectWidget")
+        self.setStyleSheet("""
+            #FileSelectWidget {
+                border: 1px solid rgba(255, 255, 255, 40);
+                border-radius: 6px;
+                background-color: rgba(30, 30, 30, 150);
+            }
+            #FileSelectWidget:hover {
+                border: 1px solid rgba(255, 255, 255, 80);
+                background-color: rgba(45, 45, 45, 180);
+            }
+        """)
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(8, 2, 4, 2)  # 增加左边距
         layout.setSpacing(4)
+
+        # 2. 获取全局变量支持
         gv = getattr(parent, 'global_variables', None)
+
+        # 3. 创建输入框并配置白色文字样式
+        # 注意：这里继续使用你的 VariableCompletionLineEdit
         self.path_edit = VariableCompletionLineEdit(
             get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
-            use_qcursor=False, parent=parent
+            use_qcursor=False,
+            parent=parent
         )
         self.path_edit.textChanged.connect(self._on_text_changed)
         self.path_edit.setMinimumWidth(180)
         placeholder = "选择文件夹..." if self._is_folder_mode else "选择文件..."
         self.path_edit.setPlaceholderText(placeholder)
 
+        # 4. 按钮配置
         self.btn_clear = TransparentToolButton(get_icon("清空参数"), self)
         self.btn_clear.setToolTip("清空路径")
-        self.btn_clear.setFixedSize(32, 32)
+        self.btn_clear.setFixedSize(28, 28)
         self.btn_clear.clicked.connect(self._on_clear)
         self.btn_clear.setVisible(False)
 
-        self.btn_browse = TransparentToolButton(get_icon("文件选择"))
-        self.btn_browse.setIconSize(QtCore.QSize(30, 30))
-        self.btn_browse.setFixedSize(32, 32)
+        # 根据模式选择图标
+        self.btn_browse = TransparentToolButton(get_icon("文件选择"), self)
+        self.btn_browse.setIconSize(QtCore.QSize(20, 20))  # 稍微调小一点适配紧凑布局
+        self.btn_browse.setFixedSize(28, 28)
         self.btn_browse.setToolTip(placeholder)
         self.btn_browse.clicked.connect(self._on_browse)
 
@@ -57,32 +73,36 @@ class FileSelectWidget(QtWidgets.QWidget):
         layout.addWidget(self.btn_clear)
         layout.addWidget(self.btn_browse)
 
+        # 设置文件过滤器
+        self._file_filter = "All Files (*)"
+        if not self._is_folder_mode and default_ext:
+            ext = default_ext if default_ext.startswith('.') else f".{default_ext}"
+            clean_ext = ext.replace('.', '')
+            self._file_filter = f"{clean_ext.upper()} Files (*{ext});;All Files (*)"
+
     def _on_browse(self):
-        """核心逻辑修改：判断是本地还是远程"""
-        # 获取 main_window 的环境数据
+        """保持原有逻辑不变"""
         env_data = getattr(self.main_window, "env_data", {})
         is_ssh = env_data.get("type") == "ssh"
 
         if is_ssh:
-            if not self._is_folder_mode:
-                path = os.path.dirname(self._path)
-            else:
-                path = self._path
-            # 使用 PyCharm 级别的远程浏览器
-            dialog = SSHRemoteFileDialog(
-                env_data=env_data,
-                selection_mode="folder" if self._is_folder_mode else "file",
-                file_filter=self._file_filter,
-                parent=self.main_window,
-                initial_path=path
-            )
-            if dialog.exec_() == QtWidgets.QDialog.Accepted:
-                path = dialog.get_selected_result()
-                if path:
-                    self.set_value(path)
-                    self.valueChanged.emit(path)
+            # SSH 模式逻辑
+            path = self._path if self._is_folder_mode else os.path.dirname(self._path)
+            if SSHRemoteFileDialog:
+                dialog = SSHRemoteFileDialog(
+                    env_data=env_data,
+                    selection_mode="folder" if self._is_folder_mode else "file",
+                    file_filter=self._file_filter,
+                    parent=self.main_window,
+                    initial_path=path
+                )
+                if dialog.exec_() == QtWidgets.QDialog.Accepted:
+                    path = dialog.get_selected_result()
+                    if path:
+                        self.set_value(path)
+                        self.valueChanged.emit(path)
         else:
-            # --- 本地模式 (原有逻辑) ---
+            # 本地模式逻辑
             if self._path:
                 start_dir = self._path if os.path.isdir(self._path) else os.path.dirname(self._path)
             else:
@@ -90,7 +110,7 @@ class FileSelectWidget(QtWidgets.QWidget):
 
             if self._is_folder_mode:
                 dir_path = QtWidgets.QFileDialog.getExistingDirectory(
-                    self.main_window, "Select Directory", start_dir,
+                    self.main_window, "选择目录", start_dir,
                     QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
                 )
                 if dir_path:
@@ -98,7 +118,7 @@ class FileSelectWidget(QtWidgets.QWidget):
                     self.valueChanged.emit(dir_path)
             else:
                 file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                    self.main_window, "Select File", start_dir, self._file_filter
+                    self.main_window, "选择文件", start_dir, self._file_filter
                 )
                 if file_path:
                     self.set_value(file_path)
@@ -110,6 +130,7 @@ class FileSelectWidget(QtWidgets.QWidget):
 
     def _on_text_changed(self, text):
         self._path = text
+        self.btn_clear.setVisible(bool(text))
         self.valueChanged.emit(text)
 
     def get_value(self):
@@ -123,7 +144,7 @@ class FileSelectWidget(QtWidgets.QWidget):
         self.btn_clear.setVisible(bool(self._path))
 
     def sizeHint(self):
-        return QtCore.QSize(240, 30)
+        return QtCore.QSize(240, 32)
 
 
 class FileSelectWrapper(CustomNodeBaseWidget):

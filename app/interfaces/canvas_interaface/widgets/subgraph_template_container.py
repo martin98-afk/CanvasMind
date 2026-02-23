@@ -370,7 +370,7 @@ class SubgraphTemplatePanel(QWidget):
             all_tags.update(info["tags"])
         return sorted(all_tags)
 
-    def _show_tag_filter(self):
+    def _show_tag_filter(self, widget=None):
         all_tags = self._get_all_tags()
         if not all_tags:
             MessageManager.info(self.tr("提示"), self.tr("暂无可用标签"), self.parent)
@@ -384,7 +384,7 @@ class SubgraphTemplatePanel(QWidget):
             max_visible=8
         )
         dialog.categories_changed.connect(self._on_tags_selected)
-        dialog.show_at(self.filter_btn.mapToGlobal(QPoint(0, self.filter_btn.height())))
+        dialog.show_at((widget or self.filter_btn).mapToGlobal(QPoint(0, self.filter_btn.height())))
 
     def _on_tags_selected(self, selected_tags: set):
         self._selected_tags = selected_tags
