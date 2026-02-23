@@ -48,6 +48,25 @@ class FilterCapsule(QtWidgets.QFrame):
 
 
 class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
+    # 预定义的深色调调色板（克制、专业、不刺眼）
+    CATEGORY_COLORS = [
+        "#2D4A3E",  # 森林绿
+        "#3E4A5E",  # 钢青蓝
+        "#5E4A3E",  # 粘土褐
+        "#4A3E5E",  # 灰紫
+        "#3E5E5E",  # 深青墨
+        "#5E5E3E",  # 橄榄金
+        "#424242",  # 深灰
+        "#2D5A5A",  # 瓦松蓝
+    ]
+
+    def get_color_for_category(self, category):
+        if not category or category == "未分类":
+            return QtGui.QColor("#424242")
+        # 通过哈希确保同一个类别永远是同一个颜色
+        hash_val = sum(ord(c) for c in category)
+        color_hex = self.CATEGORY_COLORS[hash_val % len(self.CATEGORY_COLORS)]
+        return QtGui.QColor(color_hex)
 
     def paint(self, painter, option, index):
         data = index.data(Qt.UserRole)
@@ -64,50 +83,83 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
         is_selected = option.state & QtWidgets.QStyle.State_Selected
         is_hovered = option.state & QtWidgets.QStyle.State_MouseOver
 
+        # --- 1. 背景绘制 ---
         if is_selected:
             bg_color = QtGui.QColor("#007ACC")
             text_color = QtGui.QColor("#FFFFFF")
-            sub_text_color = QtGui.QColor("#A0CFFF")
         elif is_hovered:
             bg_color = QtGui.QColor(255, 255, 255, 20)
             text_color = QtGui.QColor("#FFFFFF")
-            sub_text_color = QtGui.QColor("#999999")
         else:
             bg_color = QtGui.QColor("transparent")
             text_color = QtGui.QColor("#CCCCCC")
-            sub_text_color = QtGui.QColor("#666666")
 
         painter.setPen(Qt.NoPen)
         painter.setBrush(bg_color)
         rect = option.rect.adjusted(4, 2, -4, -2)
         painter.drawRoundedRect(rect, 8, 8)
 
-        if is_selected:
-            indicator_color = QtGui.QColor("#4EC9B0") if item_type == "instance" else QtGui.QColor(
-                "#CE9178") if item_type == "template" else QtGui.QColor("#007ACC")
+        # --- 2. 左侧指示条 (针对不同模式) ---
+        if is_selected and item_type != "node":
+            indicator_color = QtGui.QColor("#4EC9B0") if item_type == "instance" else QtGui.QColor("#CE9178")
             painter.setBrush(indicator_color)
-            if item_type != "node":
-                painter.drawRoundedRect(rect.left(), rect.top() + 8, 3, rect.height() - 16, 1, 1)
+            painter.drawRoundedRect(rect.left(), rect.top() + 10, 3, rect.height() - 20, 1, 1)
 
+        # --- 3. 绘制标题文字 ---
         font = painter.font()
         font.setPointSize(10)
         font.setBold(is_selected)
         painter.setFont(font)
         painter.setPen(text_color)
-        title_rect = option.rect.adjusted(15, 0, -140, 0)
+        title_rect = option.rect.adjusted(18, 0, -160, 0)
         painter.drawText(title_rect, Qt.AlignVCenter | Qt.AlignLeft, display_text)
 
-        font.setPointSize(8)
-        font.setBold(False)
-        painter.setFont(font)
-        painter.setPen(sub_text_color)
-        cat_rect = option.rect.adjusted(10, 0, -15, 0)
-        painter.drawText(cat_rect, Qt.AlignVCenter | Qt.AlignRight, category)
+        # --- 4. 绘制右侧类别标签 (一类一色) ---
+        if category:
+            cat_color = self.get_color_for_category(category)
+
+            # 动态计算标签宽度
+            font.setPointSize(8)
+            font.setBold(False)
+            painter.setFont(font)
+            metrics = QtGui.QFontMetrics(font)
+            text_w = metrics.width(category)
+            text_h = metrics.height()
+
+            # 标签外框位置 (右对齐)
+            padding_h = 8
+            padding_v = 3
+            tag_w = text_w + padding_h * 2
+            tag_h = text_h + padding_v * 2
+            tag_rect = QtCore.QRect(
+                option.rect.right() - tag_w - 15,
+                option.rect.top() + (option.rect.height() - tag_h) // 2,
+                tag_w,
+                tag_h
+            )
+
+            # 绘制标签背景 (如果是选中状态，颜色调淡一点避免冲突)
+            if is_selected:
+                painter.setBrush(QtGui.QColor(255, 255, 255, 40))  # 选中时用半透明白
+            else:
+                painter.setBrush(cat_color)
+
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(tag_rect, 4, 4)
+
+            # 绘制标签文字
+            if is_selected:
+                painter.setPen(QtGui.QColor("#FFFFFF"))
+            else:
+                # 文字颜色：如果背景太深，用浅灰色
+                painter.setPen(QtGui.QColor("#EEEEEE"))
+
+            painter.drawText(tag_rect, Qt.AlignCenter, category)
 
         painter.restore()
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(0, 42)
+        return QtCore.QSize(0, 44)
 
 
 class CustomGraphMenu(QtWidgets.QWidget):
@@ -221,7 +273,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self.capsule_container.hide()
         elif self._current_mode == MenuMode.TEMPLATE:
             self.search_line.setPlaceholderText("🎨 搜索子图模板...")
-            self.filter_button.setEnabled(False)
+            self.filter_button.setEnabled(True)
             self.mode_button.setIcon(FluentIcon.TILES)
             self.capsule_container.hide()
 
@@ -367,15 +419,20 @@ class CustomGraphMenu(QtWidgets.QWidget):
         for tid_dir in self._template_dir.iterdir():
             if not tid_dir.is_dir(): continue
             meta_file = tid_dir / "meta.json"
-            # 【新增】获取图片路径
             preview_file = tid_dir / "preview.png"
 
             if meta_file.exists():
                 try:
                     with open(meta_file, 'r', encoding='utf-8') as f:
                         meta = orjson.loads(f.read())
+
                     name = meta.get("name", tid_dir.name)
                     tags = meta.get("tags", [])
+
+                    # --- 优化点 1: 格式化标签显示 ---
+                    # 将标签转为 #Tag1 #Tag2 的格式显示在右侧
+                    display_tags = " ".join([f"#{t}" for t in tags]) if tags else "未分类"
+
                     tag_str = " ".join(tags)
                     py_keys = get_pinyin_search_keys(name)
 
@@ -383,8 +440,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
                         "type": "template",
                         "id": meta.get("id", tid_dir.name),
                         "name": name,
-                        "category": "子图模板",
-                        "tags": tags,
+                        "category": display_tags,
+                        "tags": tags,  # 保留原始列表用于过滤
                         "preview_path": str(preview_file) if preview_file.exists() else None,
                         "search_keys": f"{name} {tag_str} {py_keys}".lower()
                     })
@@ -433,6 +490,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         for data in self._cached_data:
             # 模式特定的前置过滤
+            if curr_mode == MenuMode.TEMPLATE:
+                # 如果开启了标签过滤
+                if sel_cats:
+                    item_tags = set(data.get("tags", []))
+                    # 如果当前模板的标签与选中的标签没有交集，则跳过
+                    if not (sel_cats & item_tags):
+                        continue
             if curr_mode == MenuMode.CREATE:
                 if sel_cats and data["category"].split("/")[0] not in sel_cats: continue
                 if target_dir:
@@ -602,20 +666,47 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.show()
         self.search_line.setFocus()
 
-    def set_category_filter(self, categories):
-        self._selected_categories = set(categories)
-        if self._current_mode == MenuMode.CREATE:
-            self.update_cache()
-            self.populate_ui()
-
     def on_return_pressed(self):
         current_item = self.list_widget.currentItem()
         if current_item and not current_item.isHidden():
             self.on_item_confirmed(current_item)
 
     def show_category_filter(self):
-        pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
-        self._left_panel.draggable_tree.category_filter_dialog.show_at(pos)
+        if self._current_mode == MenuMode.CREATE:
+            pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
+            # 这里需要连接信号
+            dialog = self._left_panel.draggable_tree.category_filter_dialog
+            dialog.categories_changed.disconnect() if dialog.categories_changed else None
+            dialog.categories_changed.connect(self.set_category_filter)
+            dialog.show_at(pos)
+
+        elif self._current_mode == MenuMode.TEMPLATE:
+            # 获取所有可用标签
+            all_tags = self._left_panel.template_container._get_all_tags()
+            if not all_tags:
+                return
+
+            from app.widgets.basic_widget.category_filter import CategoryFilterDialog
+
+            # 创建一个临时的过滤对话框
+            dialog = CategoryFilterDialog(
+                categories=all_tags,
+                parent=self,
+                selected_categories=self._selected_categories.copy(),
+                direction="down"
+            )
+
+            # --- 关键：当标签改变时，更新菜单的过滤状态 ---
+            dialog.categories_changed.connect(self.set_category_filter)
+
+            pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
+            dialog.show_at(pos)
+
+    def set_category_filter(self, categories):
+        """更新过滤条件并重刷列表"""
+        self._selected_categories = set(categories)
+        # 刷新缓存（以防外部有更新）并重绘列表
+        self.filter_list(self.search_line.text())
 
     def _get_connection_filter(self):
         """

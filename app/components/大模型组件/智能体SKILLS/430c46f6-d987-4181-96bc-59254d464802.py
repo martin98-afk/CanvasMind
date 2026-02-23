@@ -32,7 +32,6 @@ class SkillRouterComponent(BaseComponent):
         PortDefinition(name="selected_skill_ids", label="选中技能 ID", type=ArgumentType.JSON),
         PortDefinition(name="selected_skills_detail", label="选中技能详情", type=ArgumentType.JSON),
         PortDefinition(name="routing_reason", label="路由原因", type=ArgumentType.TEXT),
-        PortDefinition(name="fallback_to_chat", label="降级纯聊天", type=ArgumentType.BOOL),
     ]
 
     properties = {
@@ -127,8 +126,7 @@ class SkillRouterComponent(BaseComponent):
         return {
             "selected_skill_ids": selected_ids,
             "selected_skills_detail": selected_details,
-            "routing_reason": "; ".join(reasons),
-            "fallback_to_chat": False,
+            "routing_reason": "; ".join(reasons)
         }
 
     def _keyword_match(self, query, skills_list, min_score):
@@ -196,5 +194,4 @@ class SkillRouterComponent(BaseComponent):
             "selected_skill_ids": [],
             "selected_skills_detail": {},
             "routing_reason": reason,
-            "fallback_to_chat": True,
         }
