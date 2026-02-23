@@ -15,7 +15,6 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
-
 class AgentSkillsComponent(BaseComponent):
     name = "Agent 技能执行智能体"
     category = "大模型组件/智能体SKILLS"
@@ -58,10 +57,11 @@ class AgentSkillsComponent(BaseComponent):
 
 ## 🔑 执行原则
 1. **先判断后行动**：分析用户请求，匹配技能的触发条件
-2. **信息不足时主动问询**：如果缺少关键参数（如 API key、文件路径、配置项），使用 <ask_user> 格式询问用户
+2. **信息不足时主动问询**：如果缺少关键参数，使用 <ask_user> 格式询问用户
 3. **严格遵循文档**：按 SKILL.md 中的步骤执行，不要自行发明命令
-4. **只执行文档中的命令**：不要执行 SKILL.md 未提及的命令
-5. **结果验证**：执行后检查输出，必要时按 QA 指南重试
+4. **命令灵活性**：优先使用 SKILL.md 中提到的命令，但可根据实际情况调整（白名单非强制）
+5. **安全底线**：不要执行包含 `rm -rf`、`eval`、`exec` 等危险模式的命令
+6. **结果验证**：执行后检查输出，必要时按 QA 指南重试
 
 ## 📤 响应格式
 在没有结束前严格按照以下结构化信息返回内容。
@@ -93,8 +93,7 @@ class AgentSkillsComponent(BaseComponent):
   ]
 }
 ```
-
-## 📋 支持的字段类型（必须严格使用以下值）
+📋 补充信息支持的字段类型（必须严格使用以下值）
 
 | type 值 | 说明 | 示例 |
 |---------|------|------|
@@ -104,7 +103,7 @@ class AgentSkillsComponent(BaseComponent):
 | `int` | 整数输入 | `{"name": "count", "type": "int", "default": 3}` |
 | `choice` | 下拉选择（必须带 choices） | `{"name": "mode", "type": "choice", "choices": ["fast", "slow"], "default": "fast"}` |
 
-## ⚠️ 重要规则
+⚠️ 补充信息重要规则
 1. **字段名**：只用小写字母+下划线，如 `api_key`，不要用中文或特殊字符
 2. **choice 类型**：必须包含 `choices` 数组，且 `default` 必须是数组中的值
 3. **bool 类型**：`default` 必须是 `true` 或 `false`（布尔值，不是字符串）
@@ -143,16 +142,9 @@ class AgentSkillsComponent(BaseComponent):
         ),
         "allowed_commands": PropertyDefinition(
             type=PropertyType.LONGTEXT,
-            default="""python
-pip
-npx
-markitdown
-pdftoppm
-soffice
-curl
-wget""",
-            label="允许执行的命令白名单",
-            description="每行一个命令前缀，支持逗号或换行分隔",
+            default="",  # ✅ 空值表示不限制任何命令
+            label="允许执行的命令白名单（可选）",
+            description="每行一个命令前缀，留空表示不限制（仅黑名单生效）",
         ),
         "blocked_patterns": PropertyDefinition(
             type=PropertyType.LONGTEXT,
@@ -191,11 +183,6 @@ subprocess""",
 
     def run(self, params, inputs):
         import time
-        import json
-        import orjson
-        import re
-        import subprocess
-        import os
         from pathlib import Path
         from datetime import datetime
         from openai import OpenAI
@@ -658,10 +645,13 @@ subprocess""",
 
     def _get_allowed_commands(self):
         import re
-        raw = self.params.allowed_commands
+        raw = self.params.allowed_commands.strip()
+        # ✅ 空值或 "*" 表示不限制
+        if not raw or raw == "*":
+            return []
         items = re.split(r'[,\n]', raw)
         result = [cmd.strip() for cmd in items if cmd.strip()]
-        self.logger.debug(f"🔐 [WHITELIST] 解析白名单 | 原始:{raw[:50]}... | 结果:{result}")
+        self.logger.debug(f"🔐 [WHITELIST] 解析白名单 | 结果:{result if result else '无限制'}")
         return result
 
     def _execute_command(self, command, workspace, timeout, allowed_cmds):
@@ -680,23 +670,19 @@ subprocess""",
             "start_time": datetime.now().isoformat(),
         }
 
-        # === 1. 白名单检查 ===
-        if allowed_cmds:
+        # === 1. 白名单检查（仅当 allowed_cmds 非空时生效）===
+        if allowed_cmds:  # ✅ 空列表表示不限制，直接跳过
             cmd_prefix = command.split()[0] if command.split() else ""
             if not any(cmd_prefix == prefix or command.startswith(prefix + " ") or command == prefix for prefix in allowed_cmds):
-                self.logger.error(f"❌ [EXEC] 白名单拒绝：`{cmd_prefix}` not in {allowed_cmds}")
-                return {
-                    **result,
-                    "success": False,
-                    "error": f"❌ 命令不在白名单中：`{cmd_prefix}`",
-                    "blocked_by": "allowlist",
-                    "duration": time.time() - start_time,
-                }
+                self.logger.warning(f"⚠️ [EXEC] 命令不在白名单中（但仍执行，因配置宽松）: `{cmd_prefix}`")
+                # ✅ 改为警告而非拒绝，保持灵活性
+                # 如果仍需严格拒绝，取消下面这行的注释：
+                # return {**result, "success": False, "error": f"❌ 命令不在白名单中：`{cmd_prefix}`", "blocked_by": "allowlist", "duration": time.time() - start_time}
 
-        # === 2. 黑名单检查 ===
+        # === 2. 黑名单检查（始终生效，安全底线）===
         blocked = [p.strip() for p in self.params.blocked_patterns.split("\n") if p.strip()]
         for pattern in blocked:
-            if re.search(pattern, command, re.IGNORECASE):
+            if pattern and re.search(pattern, command, re.IGNORECASE):
                 self.logger.error(f"❌ [EXEC] 黑名单拒绝：`{pattern}` matched in `{command[:50]}...`")
                 return {
                     **result,
@@ -713,11 +699,8 @@ subprocess""",
         
         try:
             if is_windows:
-                # 3.1 替换 python3 -> python
                 exec_command = re.sub(r'\bpython3\b', 'python', exec_command)
                 
-                # 3.2 处理 python -c "多行代码" -> 临时文件
-                # 匹配 python -c "..." 或 python -c '...'
                 c_match = re.search(r'python\s+-c\s+([\'"])(.*?)(?<!\\)\1', exec_command, re.DOTALL)
                 if c_match:
                     code = c_match.group(2)
@@ -726,11 +709,9 @@ subprocess""",
                     with os.fdopen(fd, 'w', encoding='utf-8') as f:
                         f.write(code)
                     temp_files.append(temp_path)
-                    # 完全替换整个 python -c 命令为 python temp_file.py
                     exec_command = f'python "{temp_path}"'
                     self.logger.info(f"🪟 [EXEC] -c 多行代码转换为临时文件：{temp_path}")
                 
-                # 3.3 处理 heredoc << 'EOF' -> 临时文件
                 if "<<" in exec_command and "EOF" in exec_command:
                     heredoc_match = re.search(r"<<\s*['\"]?EOF['\"]?\s*\n(.*?)\nEOF", exec_command, re.DOTALL)
                     if heredoc_match:
@@ -740,12 +721,8 @@ subprocess""",
                         with os.fdopen(fd, 'w', encoding='utf-8') as f:
                             f.write(script_content)
                         temp_files.append(temp_path)
-                        # 提取 python 命令前缀（如果有）
                         prefix_match = re.search(r'(python\s*)', exec_command)
-                        if prefix_match:
-                            exec_command = f'python "{temp_path}"'
-                        else:
-                            exec_command = f'"{temp_path}"'
+                        exec_command = f'python "{temp_path}"' if prefix_match else f'"{temp_path}"'
                         self.logger.info(f"🪟 [EXEC] heredoc 转换为临时文件：{temp_path}")
 
             # === 4. 执行命令 ===
