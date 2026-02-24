@@ -333,37 +333,3 @@ class UnifiedPluginManager:
 
         logger.warning(f"Cannot reload plugin {plugin_name}: module info not available")
         return False
-
-    # ==================== 触发器专用辅助 ====================
-
-    def activate_trigger(self, plugin_name: str, canvas_name: str, node, callback: callable, properties: dict) -> bool:
-        """
-        激活触发器插件（创建实例并调用 activate）
-        供外部 TriggerManager 调用
-        """
-        trigger_class = self.get_trigger_plugin(plugin_name)
-        if not trigger_class:
-            logger.error(f"Trigger plugin '{plugin_name}' not found")
-            return False
-
-        try:
-            # 创建实例（每次激活可创建新实例，或缓存复用）
-            instance = trigger_class()
-            instance.manager = self  # 确保 manager 引用
-
-            # 调用激活方法
-            instance.activate(canvas_name, node, callback, properties)
-            logger.debug(f"Activated trigger [{plugin_name}] for node {node}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to activate trigger {plugin_name}: {e}")
-            return False
-
-    def callback(self, node_id: str, callback_data: dict):
-        """
-        触发器回调转发（兼容 BaseTriggerPlugin.callback）
-        实际业务中应由具体 TriggerManager 处理
-        """
-        # 默认实现：日志记录 + 可扩展钩子
-        logger.debug(f"Trigger callback received: node={node_id}, data={callback_data}")
-        # TODO: 可添加事件总线转发等逻辑

@@ -6,9 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
 
 from app.plugins.trigger_plugins.base import BaseTriggerManager, BaseTriggerPlugin
-
 from app.components.base import PropertyType
-
 
 
 class SchedulerManager(BaseTriggerManager):
