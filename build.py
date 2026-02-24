@@ -9,7 +9,7 @@ import spyder
 # 1. 基础路径配置
 base_dir = os.path.dirname(os.path.abspath(__file__))
 env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
-extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil", "prettytable"]
+extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil", "prettytable", "apscheduler", "tzlocal"]
 
 # 3. 构造参数列表
 params = [

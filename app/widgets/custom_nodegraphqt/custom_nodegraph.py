@@ -2302,5 +2302,7 @@ class CustomNodeGraph(NodeGraph):
             NodeGraphQt.NodeObject: node object.
         """
         for node_id, node in self._model.nodes.items():
+            if not hasattr(node, 'persistent_id'):
+                continue
             if node.persistent_id == uuid:
                 return node
