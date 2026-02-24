@@ -1422,7 +1422,7 @@ class BaseComponent(ABC):
         except:
             pass
 
-    def emit_message(self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}):
+    def emit_message(self, method: str, params: Dict[str, Any], extra={}, interactive=False):
         """发送自定义协议消息至 UI 端。
 
         优先尝试 ZMQ 通信，如果未配置 ZMQ 环境（如本地单测），则降级为 stdout 打印。
@@ -1432,6 +1432,9 @@ class BaseComponent(ABC):
             params: 参数负载字典
             level: 消息严重等级
         """
+        if interactive:
+            return self.emit_interactive_message(method, params, extra=extra)
+
         msg = ComponentMessage(
             method=method,
             params=params,
@@ -1449,7 +1452,7 @@ class BaseComponent(ABC):
             pub_sock.send_string(json.dumps(final_msg))
 
     def emit_interactive_message(
-            self, method: str, params: Dict[str, Any], level=MessageLevel.INFO, extra={}) -> Any:
+            self, method: str, params: Dict[str, Any], extra={}) -> Any:
         """
         在组件执行过程中请求人工干预。
 
@@ -1474,7 +1477,7 @@ class BaseComponent(ABC):
             emit_messages.update(params)
 
             # 通过日志流发送信号
-            self.emit_message(method, emit_messages, level=level, extra=extra)
+            self.emit_message(method, emit_messages, extra=extra)
             self.logger.info(f"等待人工干预 [ID: {request_id}]...")
 
             # 3. 优化轮询逻辑

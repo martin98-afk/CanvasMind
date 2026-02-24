@@ -7,11 +7,12 @@ class ClearVariablePlugin(InteractivePlugin):
     plugin_id = "create_next_node"  # 对应 method: "ui.ask"
     plugin_name = "新建下一个节点"
     plugin_desc = "在当前节点后创建指定节点"
-    plugin_template = """self.emit_interactive_message(
+    plugin_template = """self.emit_message(
             method="create_next_node",
             params={
                 "key": "next_node_key"
-            }
+            },
+            interactive=True
         )
     """
 

@@ -1,0 +1,11 @@
+{
+  "id": "com.canvasmind.3ee3dfee-6056-4e3c-98e4-248b51e6ba34",
+  "uuid": "3ee3dfee-6056-4e3c-98e4-248b51e6ba34",
+  "name": "画布设计智能体",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "基于 skill.md 自动构建节点图工作流，支持组件发现、节点创建、端口连接、属性配置",
+  "category": "大模型组件/智能体SKILLS",
+  "updated_at": "2026-02-24 12:49:24",
+  "author": "black"
+}

@@ -364,7 +364,7 @@ class AnchorPointPlugin(InteractivePlugin):
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         mime = "image/jpeg" if format.upper() in ("JPG", "JPEG") else "image/png"
         base64_image = f"data:{mime};base64,{img_str}"
-        result = self.emit_interactive_message(
+        result = self.emit_message(
             method="anchor_selector",
             params={
                 "title": "请选择关键点锚点",
