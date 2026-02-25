@@ -7,7 +7,7 @@ import shutil
 TS_FILE = f"{os.path.dirname(os.path.abspath(__file__))}/resource/i18n/zh_CN.ts"  # 目标翻译文件
 EXCLUDE_DIRS = {
     "venv", ".venv", ".venv2", ".git", "__pycache__", ".idea", ".vscode",
-    "build", "dist", "egg-info", "site-packages"
+    "build", "dist", "egg-info", "site-packages", "components", "component_extensions"
 }
 # 获取脚本所在目录作为项目根目录
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) + "/app"

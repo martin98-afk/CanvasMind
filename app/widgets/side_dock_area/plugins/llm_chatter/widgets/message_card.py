@@ -23,12 +23,7 @@ from qfluentwidgets import (
     CardWidget, CaptionLabel
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
-
-# 可选：如果你的项目有 ContextRegistry，保留；否则注释
-try:
-    from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextRegistry
-except ImportError:
-    ContextRegistry = None
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextRegistry
 
 # ======== Markdown 实例 ========
 _md_instance = None
@@ -67,24 +62,6 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     def replacer(match):
         lang = (match.group(1) or "").replace("language-", "").strip()
         code_content_raw = match.group(2) or ""
-
-        # --- Echarts 支持 ---
-        if lang == 'echarts':
-            chart_id = f"chart_{uuid.uuid4().hex}"
-            try:
-                json_content = code_content_raw.strip()
-            except:
-                json_content = "{}"
-            return f'''
-            <div class="echarts-wrapper" style="width: 100%; height: 300px; margin: 16px 0; border: 1px solid #3A3F47; border-radius: 10px; padding: 4px; background: #1E1E1E;">
-                <div id="{chart_id}" class="echarts-div" style="width: 100%; height: 100%;" data-option="{escape(json_content)}"></div>
-            </div>
-            '''
-
-        # --- Mermaid 支持 ---
-        if lang == 'mermaid':
-            return f'''<div class="mermaid" style="background: transparent; margin: 16px 0; overflow-x: auto;">{code_content_raw}</div>'''
-
         # --- 优化后的代码块逻辑 ---
         try:
             copy_text = code_content_raw.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace(
@@ -280,9 +257,6 @@ class CodeWebViewer(QWebEngineView):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.page().setBackgroundColor(Qt.transparent)
         self.setContextMenuPolicy(Qt.NoContextMenu)
-        # 确保它是作为普通窗口部件渲染
-        # self.setAttribute(Qt.WA_DontCreateNativeAncestors)
-        # self.setAttribute(Qt.WA_NativeWindow)
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMinimumHeight(40)
@@ -320,9 +294,6 @@ class CodeWebViewer(QWebEngineView):
             tag_css.append(f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}')
 
         cdn_libs = """
-        <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
-        <script>mermaid.initialize({ startOnLoad: false, theme: 'dark' });</script>
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         """
 
@@ -431,18 +402,6 @@ class CodeWebViewer(QWebEngineView):
                     const container = document.getElementById('content-placeholder');
                     if (container.innerHTML !== newHtml) {{
                         container.innerHTML = newHtml;
-                        document.querySelectorAll('.echarts-div').forEach(div => {{
-                            if (div.getAttribute('data-processed')) return;
-                            try {{
-                                const option = JSON.parse(decodeURIComponent(div.getAttribute('data-option')));
-                                const chart = echarts.init(div, 'dark', {{renderer: 'canvas', useDirtyRect: false}});
-                                option.backgroundColor = 'transparent';
-                                chart.setOption(option);
-                                new ResizeObserver(() => chart.resize()).observe(div);
-                                div.setAttribute('data-processed', 'true');
-                            }} catch(e) {{}}
-                        }});
-                        mermaid.run({{ nodes: document.querySelectorAll('.mermaid') }});
                         if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise();
                         reportHeight();
                     }}

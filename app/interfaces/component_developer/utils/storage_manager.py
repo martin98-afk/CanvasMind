@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
 import shutil
-import time
 import traceback
 import uuid
 import json
