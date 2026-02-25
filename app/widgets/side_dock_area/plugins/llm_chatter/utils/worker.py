@@ -15,20 +15,32 @@ from openai import (
 
 
 class TopicSummaryTask(QRunnable):
-    """异步生成话题摘要任务"""
+    """异步生成话题摘要任务 - 支持增量摘要和长期记忆判断"""
 
-    def __init__(self, messages: list, llm_config: dict, callback):
+    def __init__(
+        self,
+        messages: list,
+        llm_config: dict,
+        callback,
+        previous_summary: str = None,
+        long_term_memory: str = "",
+    ):
         super().__init__()
         self.messages = messages
         self.llm_config = llm_config
         self.callback = callback
+        self.previous_summary = previous_summary
+        self.long_term_memory = long_term_memory
         self.setAutoDelete(True)
 
     @pyqtSlot()
     def run(self):
         try:
             summary_text = ""
-            for msg in self.messages[-6:]:
+            recent_msgs = (
+                self.messages[-6:] if len(self.messages) > 6 else self.messages
+            )
+            for msg in recent_msgs:
                 content = msg.get("content", "")
                 if isinstance(content, list):
                     texts = [
@@ -38,17 +50,43 @@ class TopicSummaryTask(QRunnable):
                     ]
                     content = "\n".join(texts)
                 role = "用户" if msg.get("role") == "user" else "助手"
-                summary_text += f"{role}：{content[:200]}\n"
+                summary_text += f"{role}：{content[:300]}\n"
 
-            prompt = (
-                "你是一个专业的对话主题分析助手。请仔细阅读以下对话内容，"
-                "生成一个简短精炼的主题摘要（不超过50字）。\n"
-                f"对话内容：\n{summary_text}\n\n"
-                "请直接输出主题摘要，不要任何格式修饰。例如：\n"
-                "「关于画布节点配置的问题讨论」\n"
-                "「代码生成与优化建议」\n"
-                "「组件库使用指导」"
-            )
+            memory_context = ""
+            if self.long_term_memory:
+                memory_context = f"\n\n## 已有长期记忆\n{self.long_term_memory}\n"
+
+            if self.previous_summary:
+                prompt = (
+                    "你是一个专业的对话主题分析助手。请根据以下对话内容和之前的主题摘要，"
+                    "生成一个更新后的主题摘要（不超过50字）。\n"
+                    f"之前的主题摘要：{self.previous_summary}\n\n"
+                    f"最新对话内容：\n{summary_text}\n"
+                    f"{memory_context}\n\n"
+                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    "```json\n"
+                    "{\n"
+                    '  "topic_summary": "更新后的主题摘要",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
+                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    "}\n"
+                    "```"
+                )
+            else:
+                prompt = (
+                    "你是一个专业的对话主题分析助手。请仔细阅读以下对话内容，"
+                    "生成一个简短精炼的主题摘要（不超过50字）。\n"
+                    f"对话内容：\n{summary_text}\n"
+                    f"{memory_context}\n\n"
+                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    "```json\n"
+                    "{\n"
+                    '  "topic_summary": "主题摘要",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
+                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    "}\n"
+                    "```"
+                )
 
             client = OpenAI(
                 api_key=self.llm_config.get("API_KEY", ""),
@@ -58,10 +96,30 @@ class TopicSummaryTask(QRunnable):
                 model=self.llm_config.get("模型名称", "gpt-4o"),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=100,
+                max_tokens=200,
             )
-            raw_summary = resp.choices[0].message.content.strip()
-            self.callback(raw_summary)
+            raw_response = resp.choices[0].message.content.strip()
+
+            import json
+            import re
+
+            json_match = re.search(r"\{[^{}]*\}", raw_response, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group())
+                callback_data = {
+                    "topic_summary": result.get("topic_summary", ""),
+                    "should_update_memory": result.get("should_update_memory", False),
+                    "memory_reason": result.get("memory_reason", ""),
+                }
+                self.callback(callback_data)
+            else:
+                self.callback(
+                    {
+                        "topic_summary": raw_response,
+                        "should_update_memory": False,
+                        "memory_reason": "",
+                    }
+                )
         except Exception as e:
             self.callback(None, error=str(e))
 

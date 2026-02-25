@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "调用阿里云 DashScope Wan 2.6 模型生成图像",
   "category": "API调用/文生图",
-  "updated_at": "2026-02-03 20:40:38",
+  "updated_at": "2026-02-26 01:52:36",
   "author": "black"
 }

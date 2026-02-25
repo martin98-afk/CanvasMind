@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -76,9 +77,13 @@ class OpenAIChatToolWindow(ToolWindow):
     _is_searching = False
     _search_results: List[int] = []
     _current_search_index: int = -1
+    _loaded_skill_doc: str = ""
+    _skill_enabled: bool = True
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
+    skillExecutionRequested = pyqtSignal(str, dict)
+    userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
     _system_prompt = """# 角色
 你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
@@ -117,7 +122,30 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout = QHBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
-        left_layout.addStretch()
+
+        self.title_edit = QLabel("新对话", self)
+        self.title_edit.setStyleSheet("""
+            QLabel {
+                color: #e0e0e0;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 4px 8px;
+                border-radius: 4px;
+                background-color: transparent;
+            }
+            QLabel:hover {
+                background-color: #3d3d3d;
+            }
+        """)
+        self.title_edit.setCursor(Qt.PointingHandCursor)
+        self.title_edit.mouseDoubleClickEvent = self._on_title_double_click
+        left_layout.addWidget(self.title_edit)
+
+        self.menu_btn = TransparentToolButton(FluentIcon.MORE, self)
+        self.menu_btn.setFixedSize(26, 26)
+        self.menu_btn.setToolTip("更多操作")
+        self._create_context_menu()
+        left_layout.addWidget(self.menu_btn)
 
         right_layout = QHBoxLayout()
         model_label = QLabel("模型：", self)
@@ -133,25 +161,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.settings_btn.setToolTip("模型设置")
         self.settings_btn.clicked.connect(self._open_settings_popup)
         right_layout.addWidget(self.settings_btn)
-
-        self.search_input = LineEdit(self)
-        self.search_input.setPlaceholderText("搜索对话...")
-        self.search_input.setFixedWidth(150)
-        self.search_input.textChanged.connect(self._on_search_text_changed)
-        self.search_input.setVisible(False)
-        left_layout.addWidget(self.search_input)
-
-        self.search_btn = TransparentToolButton(FluentIcon.SEARCH, self)
-        self.search_btn.setFixedSize(26, 26)
-        self.search_btn.setToolTip("搜索")
-        self.search_btn.clicked.connect(self._toggle_search_mode)
-        left_layout.addWidget(self.search_btn)
-
-        self.menu_btn = TransparentToolButton(FluentIcon.MORE, self)
-        self.menu_btn.setFixedSize(26, 26)
-        self.menu_btn.setToolTip("更多操作")
-        self._create_context_menu()
-        left_layout.addWidget(self.menu_btn)
 
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
@@ -191,12 +200,21 @@ class OpenAIChatToolWindow(ToolWindow):
         self.new_session_btn.setFixedSize(26, 26)
         self.new_session_btn.setToolTip("新建对话")
         self.new_session_btn.clicked.connect(self._create_new_session)
+
+        self.memory_btn = TransparentToolButton(get_icon("长期记忆"), self)
+        self.memory_btn.setFixedSize(26, 26)
+        self.memory_btn.setToolTip("长期记忆")
+        self.memory_btn.clicked.connect(self._show_soul_memory)
+
         self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setFixedSize(26, 26)
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
+
+        hlayout.addWidget(self.memory_btn)
         hlayout.addWidget(self.history_btn)
         hlayout.addWidget(self.new_session_btn)
+
         layout.addLayout(hlayout)
 
         self.input_area = SendableTextEdit(self)
@@ -315,9 +333,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = None
         self.history_btn.setChecked(False)
         self._clear_chat_area()
-        # 创建欢迎卡片并标记
+        self.title_edit.setText("新对话")
         welcome_card = create_welcome_card(self)
-        welcome_card._is_welcome = True  # ← 关键标记
+        welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
 
@@ -328,6 +346,12 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if not session:
             return
+
+        if self._current_history_index is not None:
+            title = self.history_manager.get_current_title(self._current_history_index)
+            if title:
+                self.title_edit.setText(title)
+
         for msg in session.messages:
             if msg["role"] == "user":
                 self._append_user_message(
@@ -737,26 +761,410 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if not session:
             return
+
+        previous_summary = ""
+        if self._current_history_index is not None:
+            previous_summary = self.history_manager.get_topic_summary(
+                self._current_history_index
+            )
+
+        long_term_memory = self._get_long_term_memory_context()
+
         task = TopicSummaryTask(
             messages=session.messages,
             llm_config=llm_config,
             callback=self._on_topic_summary_generated,
+            previous_summary=previous_summary if previous_summary else None,
+            long_term_memory=long_term_memory,
         )
         self._gen_thread_pool.start(task)
 
-    def _on_topic_summary_generated(
-        self, summary: Optional[str], error_msg: str = None
-    ):
-        if not summary or error_msg:
+    def _on_topic_summary_generated(self, result, error_msg: str = None):
+        if not result or error_msg:
             logger.error(f"[Topic Summary] Failed to generate: {error_msg}")
             return
+
+        if isinstance(result, dict):
+            summary = result.get("topic_summary", "")
+            should_update_memory = result.get("should_update_memory", False)
+            memory_reason = result.get("memory_reason", "")
+        else:
+            summary = result
+            should_update_memory = False
+            memory_reason = ""
+
+        if not summary:
+            return
+
         clean_summary = summary.strip()
         if len(clean_summary) > 60:
             clean_summary = clean_summary[:60] + "..."
+
         if self._current_history_index is not None:
             self.history_manager.update_topic_summary(
                 self._current_history_index, clean_summary
             )
+            self._update_title_display(clean_summary)
+
+            if should_update_memory:
+                self._update_long_term_memory(clean_summary, memory_reason)
+
+    def _update_title_display(self, title: str):
+        """更新标题显示"""
+        self.title_edit.setText(title)
+
+    def _update_long_term_memory(self, topic_summary: str, reason: str = ""):
+        """更新长期记忆文件 soul.md"""
+        try:
+            memory_file = self._get_soul_memory_file()
+            if not memory_file:
+                return
+
+            memory_data = self._load_soul_memory()
+
+            existing_topics = memory_data.get("topics", [])
+            topic_entry = {
+                "topic": topic_summary,
+                "reason": reason,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+
+            topic_exists = any(t.get("topic") == topic_summary for t in existing_topics)
+            if not topic_exists:
+                existing_topics.append(topic_entry)
+                memory_data["topics"] = existing_topics[-20:]
+
+            memory_data["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            memory_data["total_conversations"] = (
+                memory_data.get("total_conversations", 0) + 1
+            )
+
+            with open(memory_file, "w", encoding="utf-8") as f:
+                json.dump(memory_data, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"[Soul Memory] Updated with: {topic_summary}")
+        except Exception as e:
+            logger.error(f"[Soul Memory] Failed to update: {e}")
+
+    def _get_soul_memory_file(self) -> Optional[Path]:
+        try:
+            canvas_name = (
+                getattr(self.homepage, "workflow_name", "default") or "default"
+            )
+            memory_dir = Path("canvas_files") / "workflows" / canvas_name
+            memory_dir.mkdir(parents=True, exist_ok=True)
+            return memory_dir / "soul.md"
+        except Exception:
+            return None
+
+    def _load_soul_memory(self) -> dict:
+        memory_file = self._get_soul_memory_file()
+        if memory_file and memory_file.exists():
+            try:
+                with open(memory_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {
+            "version": "1.0",
+            "user_profile": {
+                "name": "",
+                "preferences": {},
+                "communication_style": "",
+                "expertise_level": "",
+            },
+            "topics": [],
+            "conversation_patterns": [],
+            "key_insights": [],
+            "total_conversations": 0,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_updated": "",
+        }
+
+    def _get_long_term_memory_context(self) -> str:
+        """获取长期记忆上下文"""
+        memory_data = self._load_soul_memory()
+        topics = memory_data.get("topics", [])
+
+        context = "## 长期记忆\n"
+
+        user_profile = memory_data.get("user_profile", {})
+        if user_profile.get("name"):
+            context += f"用户名称: {user_profile['name']}\n"
+        if user_profile.get("communication_style"):
+            context += f"沟通风格: {user_profile['communication_style']}\n"
+        if user_profile.get("expertise_level"):
+            context += f"专业水平: {user_profile['expertise_level']}\n"
+
+        preferences = user_profile.get("preferences", {})
+        if preferences:
+            context += "\n用户偏好:\n"
+            for k, v in preferences.items():
+                context += f"- {k}: {v}\n"
+
+        if topics:
+            recent_topics = topics[-5:]
+            context += "\n讨论过的主题:\n"
+            for topic_entry in recent_topics:
+                if isinstance(topic_entry, dict):
+                    context += f"- {topic_entry.get('topic', '')}\n"
+                else:
+                    context += f"- {topic_entry}\n"
+
+        key_insights = memory_data.get("key_insights", [])
+        if key_insights:
+            context += "\n关键洞察:\n"
+            for insight in key_insights[-3:]:
+                context += f"- {insight}\n"
+
+        if not topics and not preferences and not key_insights:
+            return ""
+
+        context += "\n请根据以上信息提供更个性化的对话体验。\n"
+        return context
+
+    def _clear_long_term_memory(self):
+        from PyQt5.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self,
+            "确认清空",
+            "确定要清空所有长期记忆吗？此操作不可恢复。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            try:
+                memory_file = self._get_soul_memory_file()
+                if memory_file and memory_file.exists():
+                    memory_file.unlink()
+                InfoBar.success("已清空", "长期记忆已清除", parent=self, duration=1500)
+            except Exception as e:
+                logger.error(f"[Soul Memory] Failed to clear: {e}")
+
+    def _show_soul_memory(self):
+        """显示长期记忆内容"""
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+
+        memory_data = self._load_soul_memory()
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("长期记忆 (Soul Memory)")
+        dialog.setMinimumSize(500, 450)
+        layout = QVBoxLayout(dialog)
+
+        text_edit = QTextEdit(dialog)
+        text_edit.setReadOnly(True)
+
+        content = "# 长期记忆 (Soul)\n\n"
+        content += f"版本: {memory_data.get('version', '1.0')}\n"
+        content += f"创建时间: {memory_data.get('created_at', 'N/A')}\n"
+        content += f"最后更新: {memory_data.get('last_updated', 'N/A')}\n"
+        content += f"总会话数: {memory_data.get('total_conversations', 0)}\n\n"
+
+        user_profile = memory_data.get("user_profile", {})
+        if user_profile:
+            content += "## 用户画像\n\n"
+            if user_profile.get("name"):
+                content += f"- 名称: {user_profile['name']}\n"
+            if user_profile.get("communication_style"):
+                content += f"- 沟通风格: {user_profile['communication_style']}\n"
+            if user_profile.get("expertise_level"):
+                content += f"- 专业水平: {user_profile['expertise_level']}\n"
+
+            prefs = user_profile.get("preferences", {})
+            if prefs:
+                content += "\n用户偏好:\n"
+                for k, v in prefs.items():
+                    content += f"- {k}: {v}\n"
+
+        topics = memory_data.get("topics", [])
+        if topics:
+            content += "\n## 讨论过的主题\n\n"
+            for topic_entry in topics[-10:]:
+                if isinstance(topic_entry, dict):
+                    content += f"- {topic_entry.get('topic', '')} ({topic_entry.get('timestamp', '')}\n"
+                else:
+                    content += f"- {topic_entry}\n"
+        else:
+            content += "\n暂无记忆主题\n"
+
+        key_insights = memory_data.get("key_insights", [])
+        if key_insights:
+            content += "\n## 关键洞察\n\n"
+            for insight in key_insights[-5:]:
+                content += f"- {insight}\n"
+
+        text_edit.setPlainText(content)
+        layout.addWidget(text_edit)
+
+        btn_layout = QHBoxLayout()
+        clear_btn = QPushButton("清空记忆", dialog)
+        clear_btn.clicked.connect(
+            lambda: (self._clear_long_term_memory(), dialog.close())
+        )
+        close_btn = QPushButton("关闭", dialog)
+        close_btn.clicked.connect(dialog.close)
+        btn_layout.addWidget(clear_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+
+        dialog.exec_()
+
+    def _on_title_double_click(self, event):
+        """双击标题编辑"""
+        from PyQt5.QtWidgets import QInputDialog, QLineEdit
+
+        current_title = self.title_edit.text()
+        new_title, ok = QInputDialog.getText(
+            self, "编辑标题", "请输入新标题:", QLineEdit.Normal, current_title
+        )
+        if ok and new_title.strip():
+            self._update_title(new_title.strip())
+
+    def _update_title(self, new_title: str):
+        """更新会话标题"""
+        self.title_edit.setText(new_title)
+        if self._current_history_index is not None:
+            self.history_manager.update_session_title(
+                self._current_history_index, new_title
+            )
+
+    def load_skill_document(self, skill_path: str = None) -> str:
+        """加载 skill.md 文档"""
+        if self._loaded_skill_doc:
+            return self._loaded_skill_doc
+
+        search_paths = []
+        if skill_path:
+            search_paths.append(Path(skill_path))
+
+        try:
+            canvas_name = (
+                getattr(self.homepage, "workflow_name", "default") or "default"
+            )
+            workspace_path = (
+                Path("canvas_files") / "workflows" / canvas_name / "workspace"
+            )
+            search_paths.extend(
+                [
+                    workspace_path / "skill.md",
+                    workspace_path / "skills.md",
+                    Path.cwd() / "skill.md",
+                    Path("canvas_files") / "workflows" / canvas_name / "skill.md",
+                ]
+            )
+        except Exception:
+            pass
+
+        for path in search_paths:
+            if path and path.exists():
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        if len(content) > 100:
+                            self._loaded_skill_doc = content
+                            logger.info(f"[Skill] Loaded skill document from {path}")
+                            return content
+                except Exception as e:
+                    logger.warning(f"[Skill] Failed to load {path}: {e}")
+
+        return ""
+
+    def _get_skill_context(self) -> str:
+        """获取技能文档上下文"""
+        if not self._skill_enabled:
+            return ""
+
+        skill_doc = self.load_skill_document()
+        if not skill_doc:
+            return ""
+
+        long_term_memory = self._get_long_term_memory_context()
+
+        context = skill_doc
+        if long_term_memory:
+            context += f"\n\n{long_term_memory}"
+
+        return context
+
+    def execute_skill(self, method: str, params: dict, callback=None):
+        """执行技能方法"""
+        self.skillExecutionRequested.emit(method, params)
+
+        if hasattr(self.homepage, "execute_skill"):
+            try:
+                result = self.homepage.execute_skill(method, params)
+                if callback:
+                    callback(result)
+                return result
+            except Exception as e:
+                logger.error(f"[Skill] Execution failed: {e}")
+                if callback:
+                    callback({"error": str(e)})
+                return {"error": str(e)}
+
+        if callback:
+            callback({"error": "Skill execution not available"})
+        return {"error": "Skill execution not available"}
+
+    def request_user_intervention(self, options: List[dict], callback):
+        """请求用户干预选择"""
+        from PyQt5.QtWidgets import (
+            QDialog,
+            QVBoxLayout,
+            QRadioButton,
+            QPushButton,
+            QButtonGroup,
+        )
+        from PyQt5.QtCore import Qt
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("请选择")
+        dialog.setMinimumWidth(300)
+        layout = QVBoxLayout(dialog)
+
+        label = QLabel("请选择以下选项之一：")
+        layout.addWidget(label)
+
+        group = QButtonGroup(dialog)
+        for i, option in enumerate(options):
+            radio = QRadioButton(option.get("label", f"选项 {i + 1}"))
+            radio.setData(option)
+            group.addButton(radio)
+            layout.addWidget(radio)
+
+        if group.buttons():
+            group.buttons()[0].setChecked(True)
+
+        btn_layout = QHBoxLayout()
+        ok_btn = QPushButton("确定")
+        cancel_btn = QPushButton("取消")
+        btn_layout.addWidget(ok_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        def on_ok():
+            selected = group.checkedButton()
+            if selected:
+                result = selected.data()
+                dialog.accept()
+                if callback:
+                    callback(result)
+
+        ok_btn.clicked.connect(on_ok)
+        cancel_btn.clicked.connect(lambda: dialog.reject())
+
+        dialog.exec_()
+
+    def enable_skills(self, enabled: bool):
+        """启用/禁用技能"""
+        self._skill_enabled = enabled
+
+    def set_skill_document(self, content: str):
+        """设置技能文档内容"""
+        self._loaded_skill_doc = content
 
     def _auto_save_current_session(self):
         """根据当前状态决定保存方式"""
@@ -826,28 +1234,26 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._gen_thread_pool.start(task)
 
-    def _on_title_generated(self, raw_output: str, error_msg: str = None):
+    def _on_title_generated(self, raw_output: str = None, error_msg: str = None):
         """从模型输出中提取 ```title ... ``` 中的标题"""
+        if error_msg:
+            logger.error(f"[Title Gen] Error: {error_msg}")
+            return
         if not raw_output:
             return
 
-        # 正则匹配：支持跨行，非贪婪
         match = re.search(r"```title\s*(.+?)\s*```", raw_output, re.DOTALL)
         if match:
             title = match.group(1).strip()
-            # 进一步清理：去除可能的引号、多余空格
-            title = title.strip("\"'“”‘’ \n\t")
-            # 限制长度（防止模型不听话）
+            title = title.strip("\"''' \n\t")
             if 1 <= len(title) <= 15:
                 if self._current_history_index is not None:
                     self.history_manager.update_session_title(
                         self._current_history_index, title
                     )
-                    if self._in_history_mode:
-                        self._display_history_sessions()
+                self.title_edit.setText(title)
                 return
 
-        # 若提取失败，可选择不更新（保持默认标题）
         logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")
 
     def _get_available_mcp_tools(self) -> List[Dict]:
