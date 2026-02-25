@@ -54,6 +54,8 @@ class LLMContextProvider:
         ]
 
         for node in nodes:
+            if not hasattr(node, 'input_ports'):
+                continue
             name = f"[{node.name()}](jump)"
             # ✅ 新增：原组件名称
             component_name = "/"
