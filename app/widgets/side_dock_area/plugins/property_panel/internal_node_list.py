@@ -6,18 +6,17 @@ from qfluentwidgets import ListWidget
 
 class InternalNodeList(ListWidget):
 
-    STATUS_TEXT_MAP = {
-        "running": "🟡 运行中",
-        "last_success": "🟤 成功过",
-        "success": "🟢 成功",
-        "failed": "🔴 失败",
-        "unrun": "⚪ 未运行",
-        "pending": "🔵 待运行",
-        "disabled": "⚫ 禁用"
-    }
-
     def __init__(self, status_list, node_name_list, parent=None):
         super().__init__(parent)
+        self.STATUS_TEXT_MAP = {
+            "running": self.tr("🟡 运行中"),
+            "last_success": self.tr("🟤 成功过"),
+            "success": self.tr("🟢 成功"),
+            "failed": self.tr("🔴 失败"),
+            "unrun": self.tr("⚪ 未运行"),
+            "pending": self.tr("🔵 待运行"),
+            "disabled": self.tr("⚫ 禁用")
+        }
         self._status_list = list(status_list) if status_list else []
         self._name_list = list(node_name_list) if node_name_list else []
         self._rebuild_items()
@@ -26,10 +25,10 @@ class InternalNodeList(ListWidget):
         """根据当前状态和名称列表重建列表项"""
         self.clear()
         if not self._name_list:
-            self.addItem(QListWidgetItem("暂无内部节点"))
+            self.addItem(QListWidgetItem(self.tr("暂无内部节点")))
         else:
             for status, name in zip(self._status_list, self._name_list):
-                status_text = self.STATUS_TEXT_MAP.get(status, "⚪ 未知")
+                status_text = self.STATUS_TEXT_MAP.get(status, self.tr("⚪ 未知"))
                 item_text = f"{status_text} - {name}"
                 self.addItem(QListWidgetItem(item_text))
 
@@ -56,7 +55,7 @@ class InternalNodeList(ListWidget):
             self._status_list = new_status_list
             self._name_list = new_name_list
             for i in range(len(new_status_list)):
-                status_text = self.STATUS_TEXT_MAP.get(new_status_list[i], "⚪ 未知")
+                status_text = self.STATUS_TEXT_MAP.get(new_status_list[i], self.tr("⚪ 未知"))
                 item_text = f"{status_text} - {new_name_list[i]}"
                 self.item(i).setText(item_text)
 
@@ -69,7 +68,7 @@ class InternalNodeList(ListWidget):
         """更新特定项的状态（不推荐单独使用，建议用 update_content）"""
         if 0 <= index < len(self._status_list):
             self._status_list[index] = new_status
-            status_text = self.STATUS_TEXT_MAP.get(new_status, "⚪ 未知")
+            status_text = self.STATUS_TEXT_MAP.get(new_status, self.tr("⚪ 未知"))
             item_text = f"{status_text} - {self._name_list[index]}"
             if index < self.count():
                 self.item(index).setText(item_text)

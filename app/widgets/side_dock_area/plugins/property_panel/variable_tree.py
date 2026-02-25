@@ -575,17 +575,17 @@ class VariableTreeWidget(QTreeWidget):
         if not item: return
         obj, name = item.data(1, ROLE_RAW_VALUE), item.text(0)
         menu = RoundMenu(parent=self)
-        menu.addAction(Action(FIF.INFO, "查看详情", triggered=lambda: self._show_detail_popup(item, obj)))
-        menu.addAction(Action(FIF.COPY, "复制值", triggered=lambda: QApplication.clipboard().setText(str(obj))))
+        menu.addAction(Action(FIF.INFO, self.tr("查看详情"), triggered=lambda: self._show_detail_popup(item, obj)))
+        menu.addAction(Action(FIF.COPY, self.tr("复制值"), triggered=lambda: QApplication.clipboard().setText(str(obj))))
         if HAS_SPYDER:
             if VariableUtils.is_pyarrow_table(obj) or VariableUtils.is_pyarrow_array(obj):
                 menu.addAction(
-                    Action(get_icon("表格"), "在表格中打开", triggered=lambda: self._open_spyder_editor(obj, name)))
+                    Action(get_icon("表格"), self.tr("在表格中打开"), triggered=lambda: self._open_spyder_editor(obj, name)))
             elif hasattr(obj, 'shape') and hasattr(obj, 'dtype'):
                 menu.addAction(
-                    Action(get_icon("数组"), "查看数组", triggered=lambda: self._open_array_editor(obj, name)))
+                    Action(get_icon("数组"), self.tr("查看数组"), triggered=lambda: self._open_array_editor(obj, name)))
         if isinstance(obj, str) and VariableUtils.cached_is_file(obj):
-            menu.addAction(Action(FIF.FOLDER, "打开所在文件夹", triggered=lambda: self._open_explorer(obj)))
+            menu.addAction(Action(FIF.FOLDER, self.tr("打开所在文件夹"), triggered=lambda: self._open_explorer(obj)))
         menu.exec_(self.viewport().mapToGlobal(pos))
 
     def _show_detail_popup(self, item, obj):

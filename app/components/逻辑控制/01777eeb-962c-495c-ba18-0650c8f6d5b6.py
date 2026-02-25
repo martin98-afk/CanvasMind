@@ -41,7 +41,9 @@ class Component(BaseComponent):
         """
         self.emit_message(
             method="set_node_property",
-            params={"counter": params.counter + 1}
+            params={
+                "current_node": {"counter": params.counter + 1}
+            }
         )
         return {
             "output1": inputs.input1

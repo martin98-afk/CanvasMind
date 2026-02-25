@@ -35,7 +35,6 @@ class SyncCodeToUI(QObject):
         self._code_to_ui_sync_timer.timeout.connect(self._sync_code_to_ui)
 
     def _on_code_text_changed(self):
-        current_text = self.code_editor.get_code()
         # ✅ 触发代码 → UI 同步
         self._code_to_ui_sync_timer.start()
 

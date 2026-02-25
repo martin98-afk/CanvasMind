@@ -34,7 +34,7 @@ class ConfigTableSpace(SimpleCardWidget):
         # 创建 '+' 按钮（浮动在右上角）
         self._add_button = TransparentToolButton(FluentIcon.ADD, self)
         self._add_button.setFixedSize(24, 24)
-        self._add_button.setToolTip("添加配置项")
+        self._add_button.setToolTip(self.tr("添加配置项"))
         self._add_button.clicked.connect(self._add_row)
 
         # 布局
@@ -131,7 +131,7 @@ class ConfigTableSpace(SimpleCardWidget):
         # 删除按钮
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setFixedSize(24, 24)
-        delete_btn.setToolTip("删除")
+        delete_btn.setToolTip(self.tr("删除"))
         delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         delete_btn.clicked.connect(self._on_delete_button_clicked)
         self.table.setCellWidget(row, self._num_content_columns, delete_btn)

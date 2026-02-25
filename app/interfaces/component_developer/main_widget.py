@@ -164,18 +164,10 @@ class ComponentDeveloperPage(QWidget):
             MessageManager.warning("代码为空，无法创建组件", "", self)
             return
         self.code_editor.set_code(code)
-        info = self._extract_component_info_from_code_str(code)
-        self._create_new_component(info)
-        self.code_editor.suspend_sync()
+        self.sync_code_to_ui._sync_code_to_ui()
         try:
-            self.code_editor.replace_text_preserving_view(code.strip())
-            self._current_component_code = code.strip()
-        finally:
-            self.code_editor.resume_sync()
-        try:
-            self._save_component(delete_original_file=False)
-            self.side_dock_area.switch_to("组件属性面板")
-            MessageManager.success(f"已创建并保存组件：{info['name']}", "", self)
+            self.storage_manager._save_component(delete_original_file=False)
+            MessageManager.success("已创建并保存组件！", "", self)
         except Exception as e:
             MessageManager.error(f"保存失败：{str(e)}", "请检查代码语法", self)
 
@@ -210,7 +202,6 @@ class ComponentDeveloperPage(QWidget):
             for node_id, node_data in nodes.items():
                 if node_data.get("name") == node_name:
                     stable_key = node_id2stable_key.get(node_id, "")
-                    full_path = stable_key.split("||")[0] if "||" in stable_key else ""
                     target_node_id = node_id
                     break
             if not target_node_id:

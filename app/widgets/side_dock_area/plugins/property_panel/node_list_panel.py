@@ -157,7 +157,7 @@ class NodeListPanelWidget(QWidget):
 
         # 标题
         header = QHBoxLayout()
-        header.addWidget(BodyLabel(f"子图 {index + 1} ({len(topo_sorted)} 节点)"))
+        header.addWidget(BodyLabel(self.tr("子图 {} ({} 节点)").format(index + 1, len(topo_sorted))))
         header.addStretch()
 
         # 手动切分按钮 (保留原始功能)

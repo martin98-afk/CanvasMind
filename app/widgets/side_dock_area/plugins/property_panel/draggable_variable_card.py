@@ -50,7 +50,7 @@ class DraggableVariableCard(CardWidget):
                           json.dumps(drag_data, ensure_ascii=False).encode('utf-8'))
 
         # 同时设置文本格式，便于调试和兼容
-        mime_data.setText(f"变量操作/获取全局变量")
+        mime_data.setText(self.tr("变量操作/获取全局变量"))
 
         drag.setMimeData(mime_data)
         drag.setPixmap(self.create_drag_preview())

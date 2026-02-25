@@ -191,7 +191,7 @@ class ComponentInfoWindow(ToolWindow):
         main_layout.addWidget(self.scroll_area)
 
     def _create_basic_card(self):
-        card = CollapsibleCard("基本信息")
+        card = CollapsibleCard(self.tr("基本信息"))
         form_widget = QWidget()
         form_layout = QFormLayout(form_widget)
         form_layout.setLabelAlignment(Qt.AlignRight)
@@ -199,22 +199,22 @@ class ComponentInfoWindow(ToolWindow):
         form_layout.setContentsMargins(0, 0, 0, 0)
 
         self._name_edit = LineEdit()
-        self._name_edit.setPlaceholderText("请输入组件名称")
+        self._name_edit.setPlaceholderText(self.tr("请输入组件名称"))
 
         self._category_edit = SearchableEditableComboBox()
         self._category_edit.setMaxVisibleItems(12)
-        self._category_edit.setToolTip("可输入新分类名称")
+        self._category_edit.setToolTip(self.tr("可输入新分类名称"))
         ComponentScanner.register_on_change(self.refresh_category_combobox)
         self.refresh_category_combobox()
 
         self._description_edit = TextEdit()
         self._description_edit.setMaximumHeight(120)
-        self._description_edit.setPlaceholderText("请输入组件描述（支持换行）")
+        self._description_edit.setPlaceholderText(self.tr("请输入组件描述（支持换行）"))
         self._description_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
         self._description_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # 统一字体层级
-        for label_text in ["组件名称:", "组件分类:", "组件描述:"]:
+        for label_text in [self.tr("组件名称:"), self.tr("组件分类:"), self.tr("组件描述:")]:
             label = BodyLabel(label_text)
             setFont(label, 12)
             form_layout.addRow(label, None)
@@ -227,28 +227,28 @@ class ComponentInfoWindow(ToolWindow):
         return card
 
     def _create_dependency_card(self):
-        card = CollapsibleCard("依赖信息")
+        card = CollapsibleCard(self.tr("依赖信息"))
         self._requirements_edit = TextEdit()
-        self._requirements_edit.setPlaceholderText("例如：requests>=2.25.0\nnumpy\n# 支持多行")
+        self._requirements_edit.setPlaceholderText(self.tr("例如：requests>=2.25.0\nnumpy\n# 支持多行"))
         self._requirements_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
         self._requirements_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         card.add_widget(self._requirements_edit)
         return card
 
     def _create_input_card(self):
-        card = CollapsibleCard("输入端口")
+        card = CollapsibleCard(self.tr("输入端口"))
         self._input_port_editor = PortEditorWidget("input")
         card.add_widget(self._input_port_editor)
         return card
 
     def _create_output_card(self):
-        card = CollapsibleCard("输出端口")
+        card = CollapsibleCard(self.tr("输出端口"))
         self._output_port_editor = PortEditorWidget("output")
         card.add_widget(self._output_port_editor)
         return card
 
     def _create_property_card(self):
-        card = CollapsibleCard("属性参数")
+        card = CollapsibleCard(self.tr("属性参数"))
         self._property_editor = PropertyEditorWidget(self)
         card.add_widget(self._property_editor)
         return card

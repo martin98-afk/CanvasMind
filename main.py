@@ -41,24 +41,30 @@ def create_application():
     return app
 
 
-def load_localization(app,  language="en"):
-    translator = QTranslator()
+def load_localization(app, language="en"):
+    # 将 translator 绑定到 app 对象上，防止被垃圾回收
+    app.translator = QTranslator()
+
     language_map = {
         'en': 'en_US',
         'zh': 'zh_CN'
-     }
-    qm_path = os.path.join('resource', 'i18n', f'{language_map[language]}.qm')
+    }
 
+    # 确保文件名匹配（比如 zh_CN.qm）
+    file_name = language_map.get(language, 'en_US')
+    qm_path = os.path.join('resource', 'i18n', f'{file_name}.qm')
 
-    # 3. 加载并安装
     if os.path.exists(qm_path):
-        if translator.load(qm_path):
-            app.installTranslator(translator)
+        # 注意：使用 app.translator
+        if app.translator.load(qm_path):
+            app.installTranslator(app.translator)
             print(f"✅ 成功加载翻译: {qm_path}")
+            return True
         else:
             print(f"❌ 文件存在但加载失败 (格式错误?): {qm_path}")
     else:
         print(f"❌ 找不到翻译文件: {qm_path}")
+    return False
 
 
 # ----------------------------

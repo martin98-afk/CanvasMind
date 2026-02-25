@@ -52,9 +52,9 @@ class GlobalPanelWidget:
         segment_layout = QHBoxLayout(self.parent_panel)
         segment_layout.setContentsMargins(5, 5, 5, 0)
         self.global_segmented = SegmentedWidget(self.parent_panel)
-        self.global_segmented.addItem('env', '环境变量')
-        self.global_segmented.addItem('node', '节点变量')
-        self.global_segmented.addItem('custom', '自定义变量')
+        self.global_segmented.addItem('env', segment_layout.tr('环境变量'))
+        self.global_segmented.addItem('node', segment_layout.tr('节点变量'))
+        self.global_segmented.addItem('custom', segment_layout.tr('自定义变量'))
         self.global_segmented.setCurrentItem('node')
         segment_layout.addWidget(self.global_segmented)
         self.global_stacked = QStackedWidget(self.parent_panel)
@@ -165,7 +165,7 @@ class GlobalPanelWidget:
         count_label = title_layout.itemAt(1).widget()
         new_count_text = f"[参数x{len(new_value)}]"
         if count_label.text() != new_count_text:
-            count_label.setText(new_count_text)
+            count_label.setText(self.tr("[参数x{}]").format(len(new_value)))
 
         # 2. 更新详情区域 (简单起见，这里可以重建详情区，或者遍历更新)
         # 详情区通常是隐藏的，重建开销不大

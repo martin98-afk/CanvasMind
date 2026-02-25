@@ -13,8 +13,8 @@ class ParameterGroupDialog(StepMessageBoxBase):
     def __init__(self, parent=None, group_name="", group_data=None, is_new=True):
         # 定义步骤
         steps = [
-            {"name": "template_selection", "title": "选择模板"},
-            {"name": "parameter_edit", "title": "编辑参数"}
+            {"name": "template_selection", "title": self.tr("选择模板")},
+            {"name": "parameter_edit", "title": self.tr("编辑参数")}
         ]
         super().__init__(parent=parent, steps=steps)
 
@@ -65,7 +65,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
         layout = QVBoxLayout(self.template_selection_page)
         # 搜索框
         self.search_box = SearchLineEdit(self.template_selection_page)
-        self.search_box.setPlaceholderText("搜索模板...")
+        self.search_box.setPlaceholderText(self.tr("搜索模板..."))
         self.search_box.textChanged.connect(self._filter_templates)
         layout.addWidget(self.search_box)
 
@@ -81,7 +81,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
             self.all_template_items.append(item)
 
         # 添加自定义项
-        custom_item = QListWidgetItem("自定义参数组")
+        custom_item = QListWidgetItem(self.tr("自定义参数组"))
         self.template_list.addItem(custom_item)
         self.all_template_items.append(custom_item)
 
@@ -97,15 +97,15 @@ class ParameterGroupDialog(StepMessageBoxBase):
         self.hbox_layout = QHBoxLayout()
         self.hbox_layout.setContentsMargins(0, 0, 30, 0)
         self.name_edit = LineEdit()
-        self.name_edit.setPlaceholderText("请输入参数组名称")
+        self.name_edit.setPlaceholderText(self.tr("请输入参数组名称"))
         if self.group_name:
             self.name_edit.setText(self.group_name)
-        self.hbox_layout.addWidget(BodyLabel("参数组名称：", self.param_edit_page))
+        self.hbox_layout.addWidget(BodyLabel(self.tr("参数组名称："), self.param_edit_page))
         self.hbox_layout.addWidget(self.name_edit, 1)
 
         self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self.param_edit_page)
         self.save_as_template.setChecked(False)
-        self.save_as_template.setToolTip("是否保存为参数模板")
+        self.save_as_template.setToolTip(self.tr("是否保存为参数模板"))
         self.hbox_layout.addStretch()
         self.hbox_layout.addWidget(self.save_as_template)
 
@@ -117,7 +117,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
         layout.addWidget(self.params_list)
 
         # 添加参数按钮
-        self.add_param_btn = PushButton("添加参数", self.param_edit_page)
+        self.add_param_btn = PushButton(self.tr("添加参数"), self.param_edit_page)
         self.add_param_btn.clicked.connect(self.add_parameter_row)
         layout.addWidget(self.add_param_btn)
 
@@ -136,7 +136,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
         if current_index == 0:  # 模板选择步骤
             # 验证是否已选择模板
             if self.selected_template_name is None:
-                InfoBar.warning("未选择模板", "请选择一个模板或选择自定义", parent=self, duration=2000)
+                InfoBar.warning(self.tr("未选择模板"), self.tr("请选择一个模板或选择自定义"), parent=self, duration=2000)
                 return False
             return True
         # 其他步骤的验证可以在这里添加
@@ -147,12 +147,12 @@ class ParameterGroupDialog(StepMessageBoxBase):
         # 验证参数组名称
         name = self.name_edit.text().strip()
         if not name:
-            InfoBar.warning("无效名称", "参数组名称不能为空", parent=self, duration=2000)
+            InfoBar.warning(self.tr("无效名称"), self.tr("参数组名称不能为空"), parent=self, duration=2000)
             return False
         # 验证参数列表不为空
         params = self.get_parameters()
         if not params:
-            InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self, duration=2000)
+            InfoBar.warning(self.tr("无效参数"), self.tr("参数组至少需要一个参数"), parent=self, duration=2000)
             return False
         return True
 
@@ -185,12 +185,12 @@ class ParameterGroupDialog(StepMessageBoxBase):
         item_layout.setContentsMargins(4, 2, 4, 2)
 
         key_edit = LineEdit()
-        key_edit.setPlaceholderText("参数名")
+        key_edit.setPlaceholderText(self.tr("参数名"))
         if key:
             key_edit.setText(key)
 
         value_edit = LineEdit()
-        value_edit.setPlaceholderText("参数值")
+        value_edit.setPlaceholderText(self.tr("参数值"))
         if value:
             value_edit.setText(value)
 
@@ -258,7 +258,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
     # 重写 _on_next_clicked 以处理模板选择后的数据加载
     def _on_next_clicked(self):
         if self.current_step_index() == 0:  # 从模板选择页到参数编辑页
-            if self.selected_template_name == "自定义参数组":
+            if self.selected_template_name == self.tr("自定义参数组"):
                 self._load_parameters_for_edit("", {})
             elif self.selected_template_name in self.templates:
                 self._load_parameters_for_edit(self.selected_template_name, self.templates[self.selected_template_name])
