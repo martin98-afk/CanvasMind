@@ -6,25 +6,57 @@ from pathlib import Path
 from loguru import logger
 from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QApplication, QWidget
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool, QUrl
+from PyQt5.QtGui import QFont, QDesktopServices
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QApplication,
+    QWidget,
+    QFileDialog,
+)
 from qfluentwidgets import (
-    setFont, ComboBox, FluentIcon, SingleDirectionScrollArea, InfoBar, InfoBarPosition, CardWidget, CaptionLabel,
+    setFont,
+    ComboBox,
+    FluentIcon,
+    SingleDirectionScrollArea,
+    InfoBar,
+    InfoBarPosition,
+    CardWidget,
+    CaptionLabel,
     TransparentToolButton,
-    TransparentToggleToolButton
+    TransparentToggleToolButton,
+    LineEdit,
 )
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import SessionManager
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextSelector
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import HistoryManager
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import LLMConfigPopup
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import MessageCard, create_welcome_card
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import SendableTextEdit
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker, TitleGenerationTask
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
+    SessionManager,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
+    ContextSelector,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import (
+    HistoryManager,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
+    LLMConfigPopup,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
+    MessageCard,
+    create_welcome_card,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
+    SendableTextEdit,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
+    OpenAIChatWorker,
+    TitleGenerationTask,
+    TopicSummaryTask,
+)
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -38,9 +70,12 @@ class OpenAIChatToolWindow(ToolWindow):
     history_manager = None
     _in_history_mode = False
     _current_history_index: Optional[int] = None
-    _settings_popup = None  # 懒加载
+    _settings_popup = None
     _is_welcome = False
     _first_show = False
+    _is_searching = False
+    _search_results: List[int] = []
+    _current_search_index: int = -1
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -55,7 +90,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
-        self._gen_thread_pool.setMaxThreadCount(2)  # 限制并发，避免 API 限流
+        self._gen_thread_pool.setMaxThreadCount(2)
         self.homepage = homepage
         self._worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
@@ -67,7 +102,6 @@ class OpenAIChatToolWindow(ToolWindow):
     def showEvent(self, event):
         if not self._first_show:
             self._first_show = True
-            # 可选：首次显示时展开基本信息卡
             QTimer.singleShot(0, lambda: self._create_new_session())
         super().showEvent(event)
 
@@ -76,17 +110,15 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(5)
 
-        # ========== 顶部会话管理栏 ==========
         session_bar_layout = QHBoxLayout()
         session_bar_layout.setContentsMargins(0, 0, 0, 0)
         session_bar_layout.setSpacing(4)
 
-        # 左侧：模型 + 分隔符 + 标题
         left_layout = QHBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
         left_layout.addStretch()
-        # 右侧保持不变
+
         right_layout = QHBoxLayout()
         model_label = QLabel("模型：", self)
         setFont(model_label, 12, QFont.Bold)
@@ -102,16 +134,35 @@ class OpenAIChatToolWindow(ToolWindow):
         self.settings_btn.clicked.connect(self._open_settings_popup)
         right_layout.addWidget(self.settings_btn)
 
+        self.search_input = LineEdit(self)
+        self.search_input.setPlaceholderText("搜索对话...")
+        self.search_input.setFixedWidth(150)
+        self.search_input.textChanged.connect(self._on_search_text_changed)
+        self.search_input.setVisible(False)
+        left_layout.addWidget(self.search_input)
+
+        self.search_btn = TransparentToolButton(FluentIcon.SEARCH, self)
+        self.search_btn.setFixedSize(26, 26)
+        self.search_btn.setToolTip("搜索")
+        self.search_btn.clicked.connect(self._toggle_search_mode)
+        left_layout.addWidget(self.search_btn)
+
+        self.menu_btn = TransparentToolButton(FluentIcon.MORE, self)
+        self.menu_btn.setFixedSize(26, 26)
+        self.menu_btn.setToolTip("更多操作")
+        self._create_context_menu()
+        left_layout.addWidget(self.menu_btn)
+
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
         session_bar_layout.addLayout(right_layout)
         layout.addLayout(session_bar_layout)
 
-        # ========== 聊天内容区域（使用 SingleDirectionScrollArea）==========
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
-        # 透明背景
-        self.chat_scroll_area.setStyleSheet("background-color: transparent; border: none;")
+        self.chat_scroll_area.setStyleSheet(
+            "background-color: transparent; border: none;"
+        )
         self.chat_scroll_area.setWidgetResizable(True)
         self.chat_scroll_area.setViewportMargins(0, 0, 10, 0)
 
@@ -119,18 +170,23 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_layout = QVBoxLayout(self.chat_container)
         self.chat_layout.setContentsMargins(3, 3, 3, 3)
         self.chat_layout.setSpacing(5)
-        self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
+        self.chat_layout.setAlignment(Qt.AlignBottom)
         self.chat_scroll_area.setWidget(self.chat_container)
 
         layout.addWidget(self.chat_scroll_area, 1)
 
-        # ========== 中间状态栏（使用 ContextSelector）==========
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(0)
         self.context_selector = ContextSelector(self)
         hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
+
+        self.typing_label = CaptionLabel("", self)
+        self.typing_label.setStyleSheet("color: #888; font-size: 12px;")
+        self.typing_label.setVisible(False)
+        hlayout.addWidget(self.typing_label)
+
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setFixedSize(26, 26)
         self.new_session_btn.setToolTip("新建对话")
@@ -143,8 +199,7 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.addWidget(self.new_session_btn)
         layout.addLayout(hlayout)
 
-        # ========== 输入区域 ==========
-        self.input_area = SendableTextEdit(self)  # ← 使用自定义 TextEdit
+        self.input_area = SendableTextEdit(self)
         self.input_area.setMaximumHeight(80)
         setFont(self.input_area, 15)
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
@@ -201,10 +256,14 @@ class OpenAIChatToolWindow(ToolWindow):
             setting.set(setting.llm_enable_thinking, new_config["是否思考"])
             setting.save_config()
             self._load_model_configs()
-            InfoBar.success("系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500)
+            InfoBar.success(
+                "系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500
+            )
 
     def _load_model_configs(self):
-        current_text = self.model_combo.currentText() if self.model_combo.count() > 0 else ""
+        current_text = (
+            self.model_combo.currentText() if self.model_combo.count() > 0 else ""
+        )
 
         self._valid_configs.clear()
         self.model_combo.clear()
@@ -225,10 +284,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 加载用户自定义配置
         try:
-            custom_vars = getattr(self.homepage, 'global_variables', None)
-            if custom_vars and hasattr(custom_vars, 'custom'):
+            custom_vars = getattr(self.homepage, "global_variables", None)
+            if custom_vars and hasattr(custom_vars, "custom"):
                 for config_name, var_obj in custom_vars.custom.items():
-                    if hasattr(var_obj, 'value') and isinstance(var_obj.value, dict):
+                    if hasattr(var_obj, "value") and isinstance(var_obj.value, dict):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
                             # 避免自定义配置名与“系统默认配置”冲突
@@ -273,8 +332,8 @@ class OpenAIChatToolWindow(ToolWindow):
             if msg["role"] == "user":
                 self._append_user_message(
                     msg["content"],
-                    timestamp=msg.get("timestamp", datetime.now().strftime('%H:%M')),
-                    tag_params=msg.get("params", {})
+                    timestamp=msg.get("timestamp", datetime.now().strftime("%H:%M")),
+                    tag_params=msg.get("params", {}),
                 )
             elif msg["role"] == "assistant":
                 card = self._append_assistant_message()
@@ -286,9 +345,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
     # 历史对话管理
     def _initialize_history_manager(self):
-        canvas_name = getattr(self.homepage, 'workflow_name', 'default')
+        canvas_name = getattr(self.homepage, "workflow_name", "default")
         if not canvas_name:
-            canvas_name = 'default'
+            canvas_name = "default"
         self.history_manager = HistoryManager(canvas_name)
 
     def _toggle_history_mode(self, enabled: bool):
@@ -315,28 +374,36 @@ class OpenAIChatToolWindow(ToolWindow):
         # 倒序显示（最新在上）
         reversed_history = list(enumerate(history_list[::-1]))  # (display_idx, session)
         for display_idx, session in reversed_history:
-            title = session['title']
-            last_time = session['last_time']
+            title = session["title"]
+            last_time = session["last_time"]
 
             # 计算原始索引：因为 reversed，原始索引 = total - 1 - display_idx
             original_index = len(history_list) - 1 - display_idx
 
-            is_current = (self._current_history_index is not None and
-                          self._current_history_index == original_index)
+            is_current = (
+                self._current_history_index is not None
+                and self._current_history_index == original_index
+            )
 
-            card = self._create_history_card(title, last_time, original_index, is_current=is_current)
+            card = self._create_history_card(
+                title, last_time, original_index, is_current=is_current
+            )
             self.chat_layout.addWidget(card)
 
         self._scroll_to_bottom()
 
-    def _create_history_card(self, title: str, last_time: str, index: int, is_current: bool = False) -> QWidget:
+    def _create_history_card(
+        self, title: str, last_time: str, index: int, is_current: bool = False
+    ) -> QWidget:
         card = CardWidget(self)
 
         # 默认样式
         base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px; background-color: transparent;"
         if is_current:
             # 橙色高亮（可按你偏好调整）
-            card.setStyleSheet("background-color: #ff6f00; border-radius: 6px; padding: 8px; color: white;")
+            card.setStyleSheet(
+                "background-color: #ff6f00; border-radius: 6px; padding: 8px; color: white;"
+            )
         else:
             card.setStyleSheet(base_style)
 
@@ -349,7 +416,9 @@ class OpenAIChatToolWindow(ToolWindow):
         title_label.setWordWrap(True)
         time_label = CaptionLabel(last_time, card)
         if is_current:
-            title_label.setStyleSheet("color: white; font-weight: bold; background-color: transparent;")
+            title_label.setStyleSheet(
+                "color: white; font-weight: bold; background-color: transparent;"
+            )
             time_label.setStyleSheet("color: rgba(255,255,255,0.8);")
         else:
             time_label.setStyleSheet("color: #aaa;")
@@ -388,11 +457,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._display_current_session()
 
-    def _append_user_message(self, content: str, timestamp: str=None, tag_params: dict = None):
+    def _append_user_message(
+        self, content: str, timestamp: str = None, tag_params: dict = None
+    ):
         card = MessageCard(
-            parent=self, role="user",
+            parent=self,
+            role="user",
             timestamp=timestamp,
-            tag_params=tag_params or {key: value for key, value in self.context_selector.context.items()}
+            tag_params=tag_params
+            or {key: value for key, value in self.context_selector.context.items()},
         )
         card.update_content(content)
         card.finish_streaming()
@@ -483,13 +556,18 @@ class OpenAIChatToolWindow(ToolWindow):
         user_input = session.messages[card_index - 1]["content"]
         params = session.messages[card_index - 1]["params"]
         if params:
-            user_input = "\n".join([value[1] for value in params.values()]) + "\n\n" + user_input + "\n\n回复内容:\n"
+            user_input = (
+                "\n".join([value[1] for value in params.values()])
+                + "\n\n"
+                + user_input
+                + "\n\n回复内容:\n"
+            )
         # 删除当前助手消息
         self._delete_message(card)
         # 重新发送
         self._on_send_clicked(user_input)
 
-    def _on_code_action(self, code: str, action: str="copy"):
+    def _on_code_action(self, code: str, action: str = "copy"):
         """统一处理代码块操作：插入、新建、复制等"""
         if action == "insert":
             self.insertResponse.emit(code)  # 如果需要向上转发
@@ -498,20 +576,30 @@ class OpenAIChatToolWindow(ToolWindow):
         elif action == "copy":
             clipboard = QApplication.clipboard()
             clipboard.setText(code)
-            InfoBar.success('已复制', '', duration=1500, parent=self.homepage,
-                            position=InfoBarPosition.TOP_RIGHT)
+            InfoBar.success(
+                "已复制",
+                "",
+                duration=1500,
+                parent=self.homepage,
+                position=InfoBarPosition.TOP_RIGHT,
+            )
 
     def _scroll_to_bottom(self):
-        QTimer.singleShot(10, lambda: self.chat_scroll_area.verticalScrollBar().setValue(
-            self.chat_scroll_area.verticalScrollBar().maximum()
-        ))
+        QTimer.singleShot(
+            10,
+            lambda: self.chat_scroll_area.verticalScrollBar().setValue(
+                self.chat_scroll_area.verticalScrollBar().maximum()
+            ),
+        )
 
     def handle_recommended_question(self, content: str, action: str):
         if action == "ask":
             session = self.session_manager.get_current_session()
             session.add_user_message(
                 content=content,
-                params={key: value for key, value in self.context_selector.context.items()}
+                params={
+                    key: value for key, value in self.context_selector.context.items()
+                },
             )
             self.input_area.clear()
             self._append_user_message(content)
@@ -552,29 +640,36 @@ class OpenAIChatToolWindow(ToolWindow):
         # 2. 处理用户输入
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
-            if not user_text: return
+            if not user_text:
+                return
             session.add_user_message(
                 content=user_text,
-                params={k: v for k, v in self.context_selector.context.items()}
+                params={k: v for k, v in self.context_selector.context.items()},
             )
             self.input_area.clear()
             self._append_user_message(user_text)
 
         # 3. 构造消息列表 (System Prompt)
         messages = []
-        full_system_prompt = (self._system_prompt + "\n" + llm_config.get("系统提示", "").strip()).strip()
+        full_system_prompt = (
+            self._system_prompt + "\n" + llm_config.get("系统提示", "").strip()
+        ).strip()
         messages.append({"role": "system", "content": full_system_prompt})
 
         # 4. 注入历史消息
         for msg in session.messages[:-1]:
             content = msg["content"]
             if isinstance(content, list):  # 简化多模态历史
-                content = "\n".join([item["text"] for item in content if item["type"] == "text"])
+                content = "\n".join(
+                    [item["text"] for item in content if item["type"] == "text"]
+                )
             messages.append({"role": msg["role"], "content": content})
 
         # 5. 处理当前消息的多模态逻辑
         model_name = str(llm_config.get("模型名称", "")).lower()
-        supports_vision = any(x in model_name for x in ["4o", "vision", "vl", "gemini", "claude-3"])
+        supports_vision = any(
+            x in model_name for x in ["4o", "vision", "vl", "gemini", "claude-3"]
+        )
         has_image = any([item[-1] for item in self.context_selector._context_cache])
 
         if supports_vision and has_image:
@@ -599,9 +694,13 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         # 信号连接
-        self._worker.content_received.connect(lambda c: self._on_content_received(c, assistant_card))
+        self._worker.content_received.connect(
+            lambda c: self._on_content_received(c, assistant_card)
+        )
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
-        self._worker.finished_with_content.connect(lambda r: self._on_worker_finished(r, assistant_card))
+        self._worker.finished_with_content.connect(
+            lambda r: self._on_worker_finished(r, assistant_card)
+        )
         self._worker.start()
 
         self._toggle_send_stop(True)
@@ -620,9 +719,44 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             session.add_assistant_message(content=response)
-            # ✅ 自动保存当前会话到历史
             current_title = self._auto_save_current_session()
-            # self._generate_conversation_title(current_title, session.messages)
+            self._generate_conversation_title(current_title, session.messages)
+            self._maybe_generate_topic_summary()
+
+    def _maybe_generate_topic_summary(self):
+        if self._current_history_index is None:
+            return
+        if not self.history_manager.should_generate_summary(
+            self._current_history_index
+        ):
+            return
+        selected_name = self.model_combo.currentText()
+        llm_config = self._valid_configs.get(selected_name)
+        if not llm_config:
+            return
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+        task = TopicSummaryTask(
+            messages=session.messages,
+            llm_config=llm_config,
+            callback=self._on_topic_summary_generated,
+        )
+        self._gen_thread_pool.start(task)
+
+    def _on_topic_summary_generated(
+        self, summary: Optional[str], error_msg: str = None
+    ):
+        if not summary or error_msg:
+            logger.error(f"[Topic Summary] Failed to generate: {error_msg}")
+            return
+        clean_summary = summary.strip()
+        if len(clean_summary) > 60:
+            clean_summary = clean_summary[:60] + "..."
+        if self._current_history_index is not None:
+            self.history_manager.update_topic_summary(
+                self._current_history_index, clean_summary
+            )
 
     def _auto_save_current_session(self):
         """根据当前状态决定保存方式"""
@@ -632,7 +766,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_history_index is not None:
             # 正在续聊某个历史会话 → 更新它
-            self.history_manager.update_session(self._current_history_index, session.messages)
+            self.history_manager.update_session(
+                self._current_history_index, session.messages
+            )
         else:
             # 全新会话 → 新增一条历史记录（首次保存）
             self.history_manager.save_session(session.messages)
@@ -658,13 +794,13 @@ class OpenAIChatToolWindow(ToolWindow):
         self._toggle_send_stop(False)
         self.input_area.toggle_send_button(True)
         InfoBar.warning(
-            title='已中止',
+            title="已中止",
             content="问答请求已被手动中止。",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
             duration=2000,
-            parent=self
+            parent=self,
         )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
@@ -686,7 +822,7 @@ class OpenAIChatToolWindow(ToolWindow):
             current_title=current_title,
             messages_for_summary=messages,
             llm_config=llm_config,
-            callback=self._on_title_generated  # 用于回调
+            callback=self._on_title_generated,  # 用于回调
         )
         self._gen_thread_pool.start(task)
 
@@ -704,7 +840,9 @@ class OpenAIChatToolWindow(ToolWindow):
             # 限制长度（防止模型不听话）
             if 1 <= len(title) <= 15:
                 if self._current_history_index is not None:
-                    self.history_manager.update_session_title(self._current_history_index, title)
+                    self.history_manager.update_session_title(
+                        self._current_history_index, title
+                    )
                     if self._in_history_mode:
                         self._display_history_sessions()
                 return
@@ -715,12 +853,97 @@ class OpenAIChatToolWindow(ToolWindow):
     def _get_available_mcp_tools(self) -> List[Dict]:
         """获取工具定义，如果没有 MCP 服务器则返回空列表"""
         try:
-            # 确保返回的是 OpenAI 标准的 tools 格式: [{"type": "function", "function": {...}}]
             exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
             server = GlobalMcpServer(exports_dir)
-            # 假设该方法返回符合 OpenAI 规范的 list
             tools = server.handle_initialize(None)
             return tools if isinstance(tools, list) else []
         except Exception as e:
             logger.warning(f"获取 MCP 工具失败: {e}")
             return []
+
+    def _toggle_search_mode(self):
+        self._is_searching = not self._is_searching
+        self.search_input.setVisible(self._is_searching)
+        if not self._is_searching:
+            self.search_input.clear()
+            self._search_results.clear()
+            self._current_search_index = -1
+
+    def _on_search_text_changed(self, text: str):
+        if not text:
+            self._search_results.clear()
+            self._current_search_index = -1
+            return
+        self._search_results.clear()
+        pattern = text.lower()
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if isinstance(widget, MessageCard):
+                    content = widget.viewer.get_plain_text().lower()
+                    if pattern in content:
+                        self._search_results.append(i)
+        if self._search_results:
+            self._current_search_index = 0
+            self._highlight_search_result()
+
+    def _highlight_search_result(self):
+        if not self._search_results or self._current_search_index < 0:
+            return
+        idx = self._search_results[self._current_search_index]
+        item = self.chat_layout.itemAt(idx)
+        if item and item.widget():
+            widget = item.widget()
+            self.chat_scroll_area.verticalScrollBar().setValue(widget.y())
+
+    def _create_context_menu(self):
+        self._context_menu_actions = {}
+        self.menu_btn.clicked.connect(self._show_context_menu)
+
+    def _show_context_menu(self):
+        from PyQt5.QtWidgets import QMenu
+
+        menu = QMenu(self)
+        export_action = menu.addAction("导出对话记录")
+        export_action.triggered.connect(self._export_conversation)
+        clear_action = menu.addAction("清空当前对话")
+        clear_action.triggered.connect(self._clear_current_conversation)
+        menu.exec_(self.menu_btn.mapToGlobal(self.menu_btn.rect().bottomRight()))
+
+    def _export_conversation(self):
+        session = self.session_manager.get_current_session()
+        if not session or not session.messages:
+            InfoBar.warning("无法导出", "当前没有对话内容", parent=self)
+            return
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "导出对话",
+            f"对话_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+            "Markdown Files (*.md);;Text Files (*.txt)",
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(f"# 对话记录\n\n")
+                f.write(f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                for msg in session.messages:
+                    role = "用户" if msg.get("role") == "user" else "助手"
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = "\n".join(
+                            [
+                                item.get("text", "")
+                                for item in content
+                                if item.get("type") == "text"
+                            ]
+                        )
+                    f.write(f"## {role}\n\n{content}\n\n")
+            InfoBar.success("导出成功", f"已保存到: {file_path}", parent=self)
+        except Exception as e:
+            InfoBar.error("导出失败", str(e), parent=self)
+
+    def _clear_current_conversation(self):
+        self._create_new_session()
+        InfoBar.success("已清空", "开始新的对话", parent=self, duration=1500)
