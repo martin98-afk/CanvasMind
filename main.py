@@ -100,7 +100,7 @@ if __name__ == "__main__":
     os.environ["PYTHONIOENCODING"] = "utf-8"
     app = create_application()
     app.setQuitOnLastWindowClosed(False)
-    load_localization(app)
+    # load_localization(app)
     # 创建并显示主窗口
     try:
         window = LowCodeWindow()

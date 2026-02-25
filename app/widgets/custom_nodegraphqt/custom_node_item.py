@@ -43,7 +43,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
         self.setZValue(Z_VAL_NODE_WIDGET + 20)
         self.setCursor(QtCore.Qt.SizeFDiagCursor)
         self.setAcceptHoverEvents(True)
-        self.setToolTip(self.tr("拖拽缩放 / 双击恢复自适应"))
+        self.setToolTip("拖拽缩放 / 双击恢复自适应")
         self._hovered = False
         self._prev_pos = None
         self._icon_path = QtGui.QPainterPath()
