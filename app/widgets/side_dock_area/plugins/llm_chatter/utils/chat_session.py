@@ -6,32 +6,83 @@ from PyQt5.QtCore import QObject
 class ChatSession:
     def __init__(self, name: str = None, messages: Optional[List[Dict]] = None):
         self.name = name or f"对话 {datetime.now().strftime('%m-%d %H:%M')}"
-        self.messages: List[Dict[str, str]] = messages.copy() if messages is not None else []
+        self.messages: List[Dict[str, str]] = (
+            messages.copy() if messages is not None else []
+        )
+        self.topic_summary: str = ""
+        self.created_at: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.last_updated: str = self.created_at
+        self.message_count: int = len(self.messages)
 
     def get_context_messages(self) -> List[Dict[str, str]]:
         return self.messages.copy()
 
     def add_system_message(self, content: str):
-        self.messages.append({
-            "role": "system",
-            "content": content,
-            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
+        self.messages.append(
+            {
+                "role": "system",
+                "content": content,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        self._update_timestamp()
 
     def add_assistant_message(self, content: str):
-        self.messages.append({
-            "role": "assistant",
-            "content": content,
-            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
+        self.messages.append(
+            {
+                "role": "assistant",
+                "content": content,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        self._update_timestamp()
 
     def add_user_message(self, content: str, params: dict = None):
-        self.messages.append({
-            "role": "user",
-            "content": content,
-            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "params": params or {}
-        })
+        self.messages.append(
+            {
+                "role": "user",
+                "content": content,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "params": params or {},
+            }
+        )
+        self._update_timestamp()
+
+    def _update_timestamp(self):
+        self.last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.message_count = len(self.messages)
+
+    def set_topic_summary(self, summary: str):
+        self.topic_summary = summary
+
+    def get_recent_messages(self, count: int = 10) -> List[Dict]:
+        return self.messages[-count:] if self.messages else []
+
+    def clear(self):
+        self.messages.clear()
+        self.topic_summary = ""
+        self._update_timestamp()
+
+    def to_dict(self) -> Dict:
+        return {
+            "name": self.name,
+            "messages": self.messages,
+            "topic_summary": self.topic_summary,
+            "created_at": self.created_at,
+            "last_updated": self.last_updated,
+            "message_count": self.message_count,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "ChatSession":
+        session = cls(name=data.get("name"), messages=data.get("messages", []))
+        session.topic_summary = data.get("topic_summary", "")
+        session.created_at = data.get(
+            "created_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        session.last_updated = data.get("last_updated", session.created_at)
+        session.message_count = len(session.messages)
+        return session
 
 
 class SessionManager(QObject):
@@ -60,3 +111,14 @@ class SessionManager(QObject):
 
     def set_session_from_messages(self, messages: List[Dict]):
         self.sessions[self.current_index] = ChatSession(messages=messages.copy())
+
+    def delete_session(self, index: int) -> bool:
+        if 0 <= index < len(self.sessions):
+            self.sessions.pop(index)
+            if self.current_index >= len(self.sessions):
+                self.current_index = len(self.sessions) - 1
+            return True
+        return False
+
+    def get_all_sessions(self) -> List[ChatSession]:
+        return self.sessions.copy()

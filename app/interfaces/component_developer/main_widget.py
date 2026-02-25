@@ -38,6 +38,10 @@ class ComponentDeveloperPage(QWidget):
         self._connect_signals()
 
     @property
+    def side_dock_area(self):
+        return self.ui_manager.side_dock_area
+
+    @property
     def history_table(self):
         return self.ui_manager.history_table
 

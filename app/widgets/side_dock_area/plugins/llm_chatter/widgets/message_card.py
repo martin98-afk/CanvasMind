@@ -6,29 +6,47 @@ import urllib
 import uuid
 from datetime import datetime
 from html import escape
+from typing import List, Dict, Any, Optional
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QWheelEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QSizePolicy
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QPushButton,
+    QButtonGroup,
 )
 from markdown import Markdown
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, TextLexer
 from qfluentwidgets import (
-    FluentIcon, ToolTipFilter, TransparentToolButton,
-    CardWidget, CaptionLabel
+    FluentIcon,
+    ToolTipFilter,
+    TransparentToolButton,
+    CardWidget,
+    CaptionLabel,
 )
-from qfluentwidgets.components.widgets.card_widget import CardSeparator, SimpleCardWidget
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import ContextRegistry
+from qfluentwidgets.components.widgets.card_widget import (
+    CardSeparator,
+    SimpleCardWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
+    ContextRegistry,
+)
 
 # ======== Markdown 实例 ========
 _md_instance = None
 ACTION_COLOR_MAP = {
-    "jump": "#FFA500", "create": "#9370DB", "generate": "#32CD32", "ask": "#FF6347", "view": "#4169E1"
+    "jump": "#FFA500",
+    "create": "#9370DB",
+    "generate": "#32CD32",
+    "ask": "#FF6347",
+    "view": "#4169E1",
 }
 DEFAULT_COLOR = "#888888"
 
@@ -37,9 +55,9 @@ def get_markdown_instance():
     global _md_instance
     if _md_instance is None:
         _md_instance = Markdown(
-            extensions=['fenced_code', 'nl2br', 'tables'],
-            output_format='html5',
-            safe=False
+            extensions=["fenced_code", "nl2br", "tables"],
+            output_format="html5",
+            safe=False,
         )
     return _md_instance
 
@@ -48,12 +66,18 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
     def replacer(match):
         lang_part = match.group(1) or ""
         code_content = match.group(2)
-        if re.search(r'\[[^\[\]]+\]\([^)\s]+\)', code_content) and lang_part not in ("python"):
+        if re.search(r"\[[^\[\]]+\]\([^)\s]+\)", code_content) and lang_part not in (
+            "python"
+        ):
             return code_content
         else:
-            return f'```{lang_part}\n{code_content}```' if lang_part else f'```\n{code_content}```'
+            return (
+                f"```{lang_part}\n{code_content}```"
+                if lang_part
+                else f"```\n{code_content}```"
+            )
 
-    pattern = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
+    pattern = re.compile(r"```(\w*)\n(.*?)```", re.DOTALL)
     return pattern.sub(replacer, md_text)
 
 
@@ -64,12 +88,17 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         code_content_raw = match.group(2) or ""
         # --- 优化后的代码块逻辑 ---
         try:
-            copy_text = code_content_raw.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace(
-                "&#39;", "'").replace("&quot;", '"')
+            copy_text = (
+                code_content_raw.replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&")
+                .replace("&#39;", "'")
+                .replace("&quot;", '"')
+            )
         except:
             copy_text = code_content_raw
 
-        b64_copy = base64.b64encode(copy_text.encode('utf-8')).decode('ascii')
+        b64_copy = base64.b64encode(copy_text.encode("utf-8")).decode("ascii")
 
         lines = copy_text.splitlines() or [""]
         line_count = len(lines)
@@ -78,16 +107,17 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         try:
             lexer = get_lexer_by_name(lang, stripall=False) if lang else TextLexer()
             formatter = HtmlFormatter(
-                style='dracula',
+                style="dracula",
                 linenos=False,
                 noclasses=True,
-                cssclass='code-block',
-                prestyles='margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;'
+                cssclass="code-block",
+                prestyles="margin:0; padding:0; background:transparent; font-family: Consolas, monospace; font-size:13px; color:#D4D4D4;",
             )
             highlighted = highlight(copy_text, lexer, formatter)
             # 提取 <pre> 内部内容
             import re as preg
-            pre_match = preg.search(r'<pre[^>]*>(.*?)</pre>', highlighted, preg.DOTALL)
+
+            pre_match = preg.search(r"<pre[^>]*>(.*?)</pre>", highlighted, preg.DOTALL)
             if pre_match:
                 inner_code_html = pre_match.group(1)
             else:
@@ -99,14 +129,14 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
         line_numbers_text = "\n".join(str(i + 1) for i in range(line_count))
 
         # 构建新的代码容器（行号固定 + 代码可横向滚动）
-        code_block_html = f'''
+        code_block_html = f"""
         <div class="code-container">
             <div class="line-numbers">{escape(line_numbers_text)}</div>
             <div class="code-content">
                 <pre>{inner_code_html}</pre>
             </div>
         </div>
-        '''
+        """
 
         return f'''
         <div style="
@@ -153,15 +183,18 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 
 
 def _sanitize_incomplete_markdown(md_text: str) -> str:
-    if not md_text: return ""
-    if md_text.count('```') % 2 == 1: md_text += '\n```'
-    if md_text.endswith('<'): md_text = md_text[:-1]
+    if not md_text:
+        return ""
+    if md_text.count("```") % 2 == 1:
+        md_text += "\n```"
+    if md_text.endswith("<"):
+        md_text = md_text[:-1]
     return md_text
 
 
 def _render_think_block(content: str, completed: bool = True) -> str:
     status_text = "💡 思考过程" if completed else "🧠 正在思考..."
-    open_attr = ' open' if not completed else ''
+    open_attr = " open" if not completed else ""
     return f'<details{open_attr} class="think-block"><summary>{status_text}</summary><div class="think-content">{content}</div></details>'
 
 
@@ -176,25 +209,26 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
         parts.append(md_text[i:start_idx])
         end_idx = md_text.find("</think>", start_idx + len("<think>"))
         if end_idx != -1:
-            content = md_text[start_idx + len("<think>"):end_idx]
+            content = md_text[start_idx + len("<think>") : end_idx]
             parts.append(_render_think_block(content, completed=True))
             i = end_idx + len("</think>")
         else:
-            content = md_text[start_idx + len("<think>"):]
+            content = md_text[start_idx + len("<think>") :]
             parts.append(_render_think_block(content, completed=False))
             i = len(md_text)
-    return ''.join(parts)
+    return "".join(parts)
 
 
 def _inject_context_links(md_text: str) -> str:
     def replacer(match):
         content, action = match.group(1), match.group(2)
         import urllib.parse
-        encoded_c = urllib.parse.quote(content, safe='')
-        encoded_a = urllib.parse.quote(action, safe='')
+
+        encoded_c = urllib.parse.quote(content, safe="")
+        encoded_a = urllib.parse.quote(action, safe="")
         return f'<span class="context-tag" data-type="{action}" data-content="{encoded_c}" data-action="{encoded_a}">{escape(content)}</span>'
 
-    return re.sub(r'`*\[([^\[\]]+?)\]\(([^)\s]+)\)`*', replacer, md_text)
+    return re.sub(r"`*\[([^\[\]]+?)\]\(([^)\s]+)\)`*", replacer, md_text)
 
 
 # ======== WebViewer ========
@@ -217,13 +251,17 @@ class ConsoleMonitorPage(QWebEnginePage):
             if "context|||" in msg:
                 try:
                     parts = msg.split("|||")
-                    self.contextActionRequested.emit(urllib.parse.unquote(parts[1]), urllib.parse.unquote(parts[2]))
+                    self.contextActionRequested.emit(
+                        urllib.parse.unquote(parts[1]), urllib.parse.unquote(parts[2])
+                    )
                 except:
                     pass
             else:
                 try:
                     p = msg.split(":")
-                    self.codeActionRequested.emit(base64.b64decode(p[2]).decode('utf-8'), p[1])
+                    self.codeActionRequested.emit(
+                        base64.b64decode(p[2]).decode("utf-8"), p[1]
+                    )
                 except:
                     pass
 
@@ -285,13 +323,18 @@ class CodeWebViewer(QWebEngineView):
 
     def _on_js_ready(self):
         self._is_js_ready = True
-        if self._markdown_text: self._schedule_render()
+        if self._markdown_text:
+            self._schedule_render()
 
     def _load_skeleton(self):
         tag_css = []
         for act, col in ACTION_COLOR_MAP.items():
-            tag_css.append(f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}')
-            tag_css.append(f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}')
+            tag_css.append(
+                f'.context-tag[data-type="{act}"] {{ background: {col}15; border-color: {col}60; color: {col}; }}'
+            )
+            tag_css.append(
+                f'.context-tag[data-type="{act}"]:hover {{ background: {col}30; border-color: {col}; }}'
+            )
 
         cdn_libs = """
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -338,7 +381,7 @@ class CodeWebViewer(QWebEngineView):
                 
                 /* 标签 */
                 .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
-                { "".join(tag_css) }
+                {"".join(tag_css)}
                 
                 /* 代码块通用样式 */
                 .code-table {{ width: 100%; border-collapse: collapse; }}
@@ -433,19 +476,22 @@ class CodeWebViewer(QWebEngineView):
         self.setHtml(html, QUrl(""))
 
     def append_chunk(self, text: str):
-        if not text: return
+        if not text:
+            return
         self._markdown_text += text
         self._schedule_render()
 
     def _schedule_render(self):
-        if not self._is_js_ready: return
+        if not self._is_js_ready:
+            return
         if not self._render_timer.isActive():
             self._render_timer.start(self._min_render_interval)
 
     def _perform_update(self):
         try:
             # 增加检查
-            if not self.page(): return
+            if not self.page():
+                return
 
             raw_md = self._markdown_text
             safe_md = _sanitize_incomplete_markdown(raw_md)
@@ -493,9 +539,12 @@ class CodeWebViewer(QWebEngineView):
 
     def deleteLater(self):
         # 显式停止定时器
-        if self._render_timer.isActive(): self._render_timer.stop()
-        if self._resize_timer.isActive(): self._resize_timer.stop()
-        if self.page(): self.page().deleteLater()
+        if self._render_timer.isActive():
+            self._render_timer.stop()
+        if self._resize_timer.isActive():
+            self._resize_timer.stop()
+        if self.page():
+            self.page().deleteLater()
         super().deleteLater()
 
 
@@ -510,12 +559,13 @@ class TagWidget(CardWidget):
         self.setFixedHeight(24)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.setCursor(Qt.PointingHandCursor)
-        l = QHBoxLayout(self);
+        l = QHBoxLayout(self)
         l.setContentsMargins(6, 0, 6, 0)
         l.addWidget(CaptionLabel(text, self))
 
     def mouseDoubleClickEvent(self, e):
-        if e.button() == Qt.LeftButton: self.doubleClicked.emit(self.key)
+        if e.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.key)
         super().mouseDoubleClickEvent(e)
 
 
@@ -524,102 +574,161 @@ class MessageCard(SimpleCardWidget):
     regenerateRequested = pyqtSignal()
     actionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
+    optionSelected = pyqtSignal(dict)
+    interventionRequested = pyqtSignal(dict)
 
-    def __init__(self, role: str, timestamp: str = None, parent=None, tag_params: dict = None, error: bool = False):
+    def __init__(
+        self,
+        role: str,
+        timestamp: str = None,
+        parent=None,
+        tag_params: dict = None,
+        error: bool = False,
+    ):
         super().__init__(parent)
         self.parent = parent
         self.role = role
         self.context_tags = tag_params or {}
-        self.timestamp = timestamp or datetime.now().strftime('%H:%M')
-        self.error = error
+        self.timestamp = timestamp or datetime.now().strftime("%H:%M")
+        self.error = False
+        self._interactive_options: List[dict] = []
         self._setup_ui()
 
     def _setup_ui(self):
-        main = QVBoxLayout(self);
-        main.setContentsMargins(5, 5, 5, 5);
+        main = QVBoxLayout(self)
+        main.setContentsMargins(5, 5, 5, 5)
         main.setSpacing(2)
-        top = QHBoxLayout();
+        top = QHBoxLayout()
         top.setSpacing(6)
         if self.role == "user":
-            av_t, av_c, nm, nm_c, bg, bd = "👤", "#63B3ED", "用户", "#63B3ED", "#2A2A2A", "#4A5568"
+            av_t, av_c, nm, nm_c, bg, bd = (
+                "👤",
+                "#63B3ED",
+                "用户",
+                "#63B3ED",
+                "#2A2A2A",
+                "#4A5568",
+            )
         else:
-            av_t, av_c, nm, nm_c, bg, bd = "🤖", "#FFA500", "画布助手", "#FFA500", "#1E293B", "#334155"
-        if self.error: bd, bg = "#ff4d4d", "#2a1f1f"
+            av_t, av_c, nm, nm_c, bg, bd = (
+                "🤖",
+                "#FFA500",
+                "画布助手",
+                "#FFA500",
+                "#1E293B",
+                "#334155",
+            )
+        if self.error:
+            bd, bg = "#ff4d4d", "#2a1f1f"
 
-        av = QLabel(av_t, self);
+        av = QLabel(av_t, self)
         av.setStyleSheet(f"font-size:20px;color:{av_c};font-weight:bold")
-        av.setFixedSize(28, 28);
+        av.setFixedSize(28, 28)
         av.setAlignment(Qt.AlignCenter)
-        nm_l = QLabel(nm, self);
+        nm_l = QLabel(nm, self)
         nm_l.setStyleSheet(f"font-size:15px;color:{nm_c};font-weight:bold")
-        top.addWidget(av);
+        top.addWidget(av)
         top.addWidget(nm_l)
-        if self.role == "assistant": ts = QLabel(self.timestamp, self); ts.setStyleSheet(
-            "font-size:12px;color:#B0B0B0"); top.addWidget(ts)
+        if self.role == "assistant":
+            ts = QLabel(self.timestamp, self)
+            ts.setStyleSheet("font-size:12px;color:#B0B0B0")
+            top.addWidget(ts)
         top.addStretch()
 
-        btns = QWidget(self);
-        bl = QHBoxLayout(btns);
-        bl.setContentsMargins(0, 0, 0, 0);
+        btns = QWidget(self)
+        bl = QHBoxLayout(btns)
+        bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(4)
         specs = []
         if self.role == "assistant":
-            specs = [(FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.viewer.get_plain_text(), "copy")),
-                     (FluentIcon.SYNC, "重试", self.regenerateRequested.emit)]
+            specs = [
+                (
+                    FluentIcon.COPY,
+                    "复制",
+                    lambda: self.actionRequested.emit(
+                        self.viewer.get_plain_text(), "copy"
+                    ),
+                ),
+                (FluentIcon.SYNC, "重试", self.regenerateRequested.emit),
+            ]
         elif self.role == "user":
-            specs = [(FluentIcon.COPY, "复制", lambda: self.actionRequested.emit(self.viewer.get_plain_text(), "copy")),
-                     (FluentIcon.DELETE, "删除", self.deleteRequested.emit)]
+            specs = [
+                (
+                    FluentIcon.COPY,
+                    "复制",
+                    lambda: self.actionRequested.emit(
+                        self.viewer.get_plain_text(), "copy"
+                    ),
+                ),
+                (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
+            ]
         for ic, tp, cb in specs:
-            b = TransparentToolButton(ic, self);
-            b.setToolTip(tp);
+            b = TransparentToolButton(ic, self)
+            b.setToolTip(tp)
             b.clicked.connect(cb)
-            b.setFixedSize(24, 24);
-            b.installEventFilter(ToolTipFilter(b));
+            b.setFixedSize(24, 24)
+            b.installEventFilter(ToolTipFilter(b))
             bl.addWidget(b)
-        top.addWidget(btns);
-        main.addLayout(top);
+        top.addWidget(btns)
+        main.addLayout(top)
         main.addWidget(CardSeparator(self))
 
         if self.role == "user" and self.context_tags:
-            tg_c = QWidget(self);
-            tl = QHBoxLayout(tg_c);
-            tl.setContentsMargins(0, 0, 0, 0);
+            tg_c = QWidget(self)
+            tl = QHBoxLayout(tg_c)
+            tl.setContentsMargins(0, 0, 0, 0)
             tl.setSpacing(4)
             for k, (n, _, _, _) in self.context_tags.items():
-                t = TagWidget(k, n);
+                t = TagWidget(k, n)
                 t.doubleClicked.connect(lambda k=k, t=t: self._on_link_click(k, t))
                 tl.addWidget(t)
-            tl.addStretch();
-            main.addWidget(tg_c);
+            tl.addStretch()
+            main.addWidget(tg_c)
             main.addWidget(CardSeparator(self))
 
         self.viewer = CodeWebViewer(self)
         self.viewer.codeActionRequested.connect(self.actionRequested.emit)
         self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
         self.viewer.contentHeightChanged.connect(self._update_height)
-        main.addWidget(self.viewer);
+        main.addWidget(self.viewer)
+
+        self.options_widget = QWidget(self)
+        self.options_layout = QVBoxLayout(self.options_widget)
+        self.options_layout.setContentsMargins(0, 8, 0, 0)
+        self.options_layout.setSpacing(8)
+        self.options_widget.setVisible(False)
+        main.addWidget(self.options_widget)
+
         main.addWidget(CardSeparator(self))
-        self.setStyleSheet(f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}")
+        self.setStyleSheet(
+            f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
+        )
 
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:
             try:
                 exe = self.parent.homepage.context_register.get_executor(k)
-                if exe: exe(self.context_tags[k][2], t)
+                if exe:
+                    exe(self.context_tags[k][2], t)
             except:
                 pass
 
     def _update_height(self, h):
         self.viewer.setFixedHeight(max(40, h))
         self.updateGeometry()
-        if self.parentWidget(): QTimer.singleShot(10, self.parentWidget().updateGeometry)
+        if self.parentWidget():
+            QTimer.singleShot(10, self.parentWidget().updateGeometry)
 
     def wheelEvent(self, event: QWheelEvent):
         try:
             scroll_area = self.parent.chat_scroll_area
             if scroll_area:
                 vbar = scroll_area.verticalScrollBar()
-                if vbar and vbar.minimum() != vbar.maximum() and event.angleDelta().y() != 0:
+                if (
+                    vbar
+                    and vbar.minimum() != vbar.maximum()
+                    and event.angleDelta().y() != 0
+                ):
                     vbar.setValue(vbar.value() - event.angleDelta().y() // 2)
                     event.accept()
                     return
@@ -630,11 +739,56 @@ class MessageCard(SimpleCardWidget):
     def update_content(self, txt):
         self.viewer.append_chunk(txt)
 
+    def add_interactive_option(self, option: Dict[str, Any]):
+        """添加交互选项"""
+        self._interactive_options.append(option)
+
+        option_widget = QWidget(self.options_widget)
+        option_layout = QHBoxLayout(option_widget)
+        option_layout.setContentsMargins(0, 0, 0, 0)
+        option_layout.setSpacing(8)
+
+        label = QLabel(f"• {option.get('label', '选项')}", self)
+        label.setStyleSheet("color: #4a9eff; font-size: 13px; cursor: pointer;")
+        label.setCursor(Qt.PointingHandCursor)
+        label.option_data = option
+        label.mousePressEvent = lambda e, opt=option: self._on_option_clicked(opt)
+
+        option_layout.addWidget(label)
+        option_layout.addStretch()
+
+        self.options_layout.addWidget(option_widget)
+        self.options_widget.setVisible(True)
+
+    def add_interactive_options(self, options: List[Dict[str, Any]]):
+        """批量添加交互选项"""
+        if not options:
+            return
+
+        title_label = QLabel("👉 请选择：", self)
+        title_label.setStyleSheet("color: #888; font-size: 12px; margin-top: 8px;")
+        self.options_layout.addWidget(title_label)
+
+        for option in options:
+            self.add_interactive_option(option)
+
+    def _on_option_clicked(self, option: Dict[str, Any]):
+        """选项被点击"""
+        self.optionSelected.emit(option)
+
+    def set_intervention_mode(self, enabled: bool):
+        """设置人工干预模式"""
+        if enabled:
+            self.interventionRequested.emit(
+                {"card_id": id(self), "message": "请求人工干预"}
+            )
+
     def finish_streaming(self):
         self.viewer.finish_streaming()
 
     def closeEvent(self, e):
-        self.viewer.deleteLater(); super().closeEvent(e)
+        self.viewer.deleteLater()
+        super().closeEvent(e)
 
 
 def create_welcome_card(parent=None) -> MessageCard:
