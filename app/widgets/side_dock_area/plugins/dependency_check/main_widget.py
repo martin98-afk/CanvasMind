@@ -46,8 +46,8 @@ class DependencyToolWindow(ToolWindow):
         # --- 顶部标题栏 ---
         header_layout = QHBoxLayout()
         title_v_layout = QVBoxLayout()
-        self.title_label = StrongBodyLabel("流程依赖分析")
-        self.status_label = CaptionLabel("正在初始化...")
+        self.title_label = StrongBodyLabel(self.tr("流程依赖分析"))
+        self.status_label = CaptionLabel(self.tr("正在初始化..."))
         title_v_layout.addWidget(self.title_label)
         title_v_layout.addWidget(self.status_label)
 
@@ -60,10 +60,10 @@ class DependencyToolWindow(ToolWindow):
         header_layout.addStretch()
 
         self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
-        self.refresh_btn.setToolTip("重新扫描环境")
+        self.refresh_btn.setToolTip(self.tr("重新扫描环境"))
         self.refresh_btn.clicked.connect(self.run_check)
 
-        self.install_all_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, "修复", self)
+        self.install_all_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, self.tr("修复"), self)
         self.install_all_btn.setFixedSize(120, 30)
         self.install_all_btn.hide()
         self.install_all_btn.clicked.connect(self.install_all_missing)
@@ -78,7 +78,7 @@ class DependencyToolWindow(ToolWindow):
         self.table.setColumnCount(5)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)  # 允许选中行
         self.table.itemDoubleClicked.connect(self._on_table_double_clicked)  # 绑定双击事件
-        self.table.setHorizontalHeaderLabels(["包名", "需求汇总", "当前版本", "状态", "操作"])
+        self.table.setHorizontalHeaderLabels([self.tr("包名"), self.tr("需求汇总"), self.tr("当前版本"), self.tr("状态"), self.tr("操作")])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
@@ -107,7 +107,7 @@ class DependencyToolWindow(ToolWindow):
         if self.loading_ring.isVisible(): return
         env_data = self.get_current_python_exe()
         if not env_data:
-            self.status_label.setText("未选择环境")
+            self.status_label.setText(self.tr("未选择环境"))
             return
 
         self.loading_ring.show()
@@ -160,32 +160,32 @@ class DependencyToolWindow(ToolWindow):
             current_v_str = self.installed_pkgs.get(name)
             combined_spec_str = ",".join(sorted(list(set(d['spec'] for d in info['node_data'] if d['spec']))))
 
-            status_text, status_color, action_widget = "就绪", Qt.darkGreen, None
+            status_text, status_color, action_widget = self.tr("就绪"), Qt.darkGreen, None
 
             if SpecifierSet and Version:
                 try:
                     c_spec = SpecifierSet(combined_spec_str)
                     if not current_v_str:
-                        status_text, status_color = "缺失", Qt.red
+                        status_text, status_color = self.tr("缺失"), Qt.red
                         fix_list.append(f"{name}{combined_spec_str}")
-                        action_widget = self._make_btn(FluentIcon.DOWNLOAD, "安装", name, combined_spec_str)
+                        action_widget = self._make_btn(FluentIcon.DOWNLOAD, self.tr("安装"), name, combined_spec_str)
                     elif not c_spec.contains(current_v_str, prereleases=True):
-                        status_text, status_color = "不匹配", QColor("#D83B01")
+                        status_text, status_color = self.tr("不匹配"), QColor("#D83B01")
                         fix_list.append(f"{name}{combined_spec_str}")
-                        action_widget = self._make_btn(FluentIcon.SYNC, "修复", name, combined_spec_str)
+                        action_widget = self._make_btn(FluentIcon.SYNC, self.tr("修复"), name, combined_spec_str)
                     else:
                         action_widget = self._make_ok_icon()
                 except:
-                    status_text, status_color = "格式错误", Qt.red
+                    status_text, status_color = self.tr("格式错误"), Qt.red
 
             self.table.setItem(row, 0, QTableWidgetItem(name))
-            self.table.setItem(row, 1, QTableWidgetItem(combined_spec_str or "无限制"))
-            self.table.setItem(row, 2, QTableWidgetItem(current_v_str or "未安装"))
+            self.table.setItem(row, 1, QTableWidgetItem(combined_spec_str or self.tr("无限制")))
+            self.table.setItem(row, 2, QTableWidgetItem(current_v_str or self.tr("未安装")))
             s_item = QTableWidgetItem(status_text)
             s_item.setForeground(status_color)
             self.table.setItem(row, 3, s_item)
             if action_widget: self.table.setCellWidget(row, 4, action_widget)
-            if status_text != "就绪": error_count += 1
+            if status_text != self.tr("就绪"): error_count += 1
 
         self.table.setUpdatesEnabled(True)
         self._update_ui_state(error_count, fix_list)
@@ -205,11 +205,11 @@ class DependencyToolWindow(ToolWindow):
     def _update_ui_state(self, error_count, fix_list):
         self._temp_fix_list = fix_list
         if error_count > 0:
-            self.status_label.setText(f"环境异常: {error_count} 项")
+            self.status_label.setText(self.tr("环境异常: {error_count} 项").format(error_count=error_count))
             self.status_label.setStyleSheet("color: #E81123;")
             self.install_all_btn.setVisible(len(fix_list) > 0)
         else:
-            self.status_label.setText("环境依赖检查通过")
+            self.status_label.setText(self.tr("环境依赖检查通过"))
             self.status_label.setStyleSheet("color: #107C10;")
             self.install_all_btn.hide()
 
@@ -234,7 +234,7 @@ class DependencyToolWindow(ToolWindow):
             log_win.push_log(self.current_run_id, f">>> 开始安装: {' '.join(pkg_specs)}")
 
         self.loading_ring.show()
-        self.status_label.setText("正在执行安装，详情请查看日志窗口...")
+        self.status_label.setText(self.tr("正在执行安装，详情请查看日志窗口..."))
         self.setEnabled(False)
 
         if isinstance(env_data, dict) and env_data.get('type') == 'ssh':
@@ -275,10 +275,10 @@ class DependencyToolWindow(ToolWindow):
         log_win = self._get_log_window()
         if not success:
             if log_win: log_win.on_error(self.current_run_id)
-            self.status_label.setText("远程安装失败")
+            self.status_label.setText(self.tr("远程安装失败"))
         else:
             if log_win: log_win.on_finished(self.current_run_id)
-            self.status_label.setText("安装完成，正在刷新...")
+            self.status_label.setText(self.tr("安装完成，正在刷新..."))
             QTimer.singleShot(1000, self.run_check)
 
     def _on_install_finished(self):
@@ -287,10 +287,10 @@ class DependencyToolWindow(ToolWindow):
         log_win = self._get_log_window()
         if self._process.exitCode() != 0:
             if log_win: log_win.on_error(self.current_run_id)
-            self.status_label.setText("本地安装失败")
+            self.status_label.setText(self.tr("本地安装失败"))
         else:
             if log_win: log_win.on_finished(self.current_run_id)
-            self.status_label.setText("安装完成，正在刷新...")
+            self.status_label.setText(self.tr("安装完成，正在刷新..."))
             QTimer.singleShot(1000, self.run_check)
 
     def install_all_missing(self):

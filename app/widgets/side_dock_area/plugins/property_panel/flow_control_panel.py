@@ -95,7 +95,7 @@ class FlowControlPanelWidget(QWidget):
         status_icon = IconWidget(FluentIcon.PLAY)
         status_icon.setFixedSize(14, 14)
 
-        self.status_title = CaptionLabel("循环节点运行状态")
+        self.status_title = CaptionLabel(self.tr("循环节点运行状态"))
         self.status_title.setStyleSheet("color: #00a2ff; font-weight: bold;")
 
         self.progress_label = StrongBodyLabel("0 / 0")
@@ -122,9 +122,9 @@ class FlowControlPanelWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
-        layout.addWidget(BodyLabel("循环模式:"))
+        layout.addWidget(BodyLabel(self.tr("循环模式:")))
         self.mode_combo = ComboBox(self)
-        self.mode_combo.addItems(['固定次数', '条件循环', 'While循环'])
+        self.mode_combo.addItems([self.tr('固定次数'), self.tr('条件循环'), self.tr('While循环')])
         self.mode_combo.currentTextChanged.connect(self._on_mode_ui_changed)
         layout.addWidget(self.mode_combo)
 
@@ -137,7 +137,7 @@ class FlowControlPanelWidget(QWidget):
         self.container_count = QWidget()
         count_lay = QVBoxLayout(self.container_count)
         count_lay.setContentsMargins(0, 0, 0, 0)
-        count_lay.addWidget(CaptionLabel("固定循环次数设定"))
+        count_lay.addWidget(CaptionLabel(self.tr("固定循环次数设定")))
         self.max_iter_spin = SpinBox(self)
         self.max_iter_spin.setRange(1, 10000)
         self.max_iter_spin.setMinimumWidth(120)
@@ -151,7 +151,7 @@ class FlowControlPanelWidget(QWidget):
         cond_lay.setContentsMargins(0, 0, 0, 0)
 
         expr_head = QHBoxLayout()
-        expr_head.addWidget(CaptionLabel("循环条件(为False时退出循环)"))
+        expr_head.addWidget(CaptionLabel(self.tr("循环条件(为False时退出循环)")))
         expr_head.addStretch()
         self.browse_btn = TransparentToolButton(get_icon("放大"))
         self.browse_btn.setFixedSize(24, 24)
@@ -170,7 +170,7 @@ class FlowControlPanelWidget(QWidget):
         cond_lay.addWidget(self.condition_edit)
 
         cond_lay.addSpacing(5)
-        cond_lay.addWidget(CaptionLabel("最大循环次数 (安全退出)"))
+        cond_lay.addWidget(CaptionLabel(self.tr("最大循环次数 (安全退出)")))
         self.cond_max_spin = SpinBox(self)
         self.cond_max_spin.setRange(1, 10000)
         self.cond_max_spin.valueChanged.connect(lambda v: self._set_node_prop('max_iterations', v))
@@ -212,11 +212,11 @@ class FlowControlPanelWidget(QWidget):
 
         # 标题和数值显示
         head_lay = QHBoxLayout()
-        head_lay.addWidget(BodyLabel("并行设置"))
+        head_lay.addWidget(BodyLabel(self.tr("并行设置")))
         self.parallel_val_label = StrongBodyLabel("1")
         self.parallel_val_label.setStyleSheet("color: #00a2ff;")
         head_lay.addStretch()
-        head_lay.addWidget(CaptionLabel("并发进程数: "))
+        head_lay.addWidget(CaptionLabel(self.tr("并发进程数: ")))
         head_lay.addWidget(self.parallel_val_label)
         layout.addLayout(head_lay)
 
@@ -224,7 +224,7 @@ class FlowControlPanelWidget(QWidget):
         self.parallel_slider = Slider(Qt.Horizontal, self)
         self.parallel_slider.setRange(1, 16)  # 根据需求设置最大并发数
         self.parallel_slider.valueChanged.connect(self._on_parallel_changed)
-        reminder = CaptionLabel("注意：1.总并行数受设置影响; 2.并行模式下节点间的数据竞争需自行处理")
+        reminder = CaptionLabel(self.tr("注意：1.总并行数受设置影响; 2.并行模式下节点间的数据竞争需自行处理"))
         reminder.setWordWrap(True)
         layout.addWidget(reminder)
         layout.addWidget(self.parallel_slider)
@@ -312,7 +312,7 @@ class FlowControlPanelWidget(QWidget):
 
     def _update_loop_config_ui(self, node):
         mode = node.model.get_property("loop_mode")
-        mode_text = {'count': '固定次数', 'condition': '条件循环', 'while': 'While循环'}.get(mode, '固定次数')
+        mode_text = {'count': self.tr('固定次数'), 'condition': self.tr('条件循环'), 'while': self.tr('While循环')}.get(mode, self.tr('固定次数'))
 
         self.mode_combo.blockSignals(True)
         self.mode_combo.setCurrentText(mode_text)
@@ -355,7 +355,7 @@ class FlowControlPanelWidget(QWidget):
         return global_vars.get_vars(extra_keys)
 
     def _on_mode_ui_changed(self, text):
-        mode_map = {'固定次数': 'count', '条件循环': 'condition', 'While循环': 'while'}
+        mode_map = {self.tr('固定次数'): 'count', self.tr('条件循环'): 'condition', self.tr('While循环'): 'while'}
         if self.current_node:
             self.current_node.model.set_property("loop_mode", mode_map.get(text, "count"))
             self.update_properties_trigger()

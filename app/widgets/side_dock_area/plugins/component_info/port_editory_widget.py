@@ -17,10 +17,10 @@ class PortEditorWidget(ConfigTableSpace):
         # 定义表头
         if port_type == "input":
             # 列索引: 0:Name, 1:Label, 2:Type, 3:Sub-Type, 4:Connection, 5:Delete
-            labels = ["端口名称", "端口标签", "端口类型", "类型标识", "连接方式"]
+            labels = [self.tr("端口名称"), self.tr("端口标签"), self.tr("端口类型"), self.tr("类型标识"), self.tr("连接方式")]
         else:
             # 列索引: 0:Name, 1:Label, 2:Type, 3:Sub-Type, 4:Delete
-            labels = ["端口名称", "端口标签", "端口类型", "类型标识"]
+            labels = [self.tr("端口名称"), self.tr("端口标签"), self.tr("端口类型"), self.tr("类型标识")]
 
         super().__init__(column_labels=labels, parent=parent)
         # 1. 注册监听：当 ComponentScanner 发现代码变更导致类型增删时，触发刷新
@@ -174,7 +174,7 @@ class PortEditorWidget(ConfigTableSpace):
         sub_type_combo = SearchableEditableComboBox()
         sub_type_combo.setStyleSheet("border: none; background: transparent; color: white;")
         sub_type_combo.setFixedHeight(28)
-        sub_type_combo.setPlaceholderText("选择或输入类名")
+        sub_type_combo.setPlaceholderText(self.tr("选择或输入类名"))
         sub_type_combo.addItems(ComponentScanner()._cached_subtype_list)
         current_sub_type = row_data.get("sub_type", "")
         sub_type_combo.setText(current_sub_type)
@@ -197,7 +197,7 @@ class PortEditorWidget(ConfigTableSpace):
         # --- 删除按钮 ---
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setFixedSize(24, 24)
-        delete_btn.setToolTip("删除此端口")
+        delete_btn.setToolTip(self.tr("删除此端口"))
         delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         delete_btn.clicked.connect(self._on_delete_button_clicked)  # 连接到重写的删除方法
         self.table.setCellWidget(row, self.table.columnCount() - 1, delete_btn)
@@ -211,7 +211,7 @@ class PortEditorWidget(ConfigTableSpace):
         self._update_row_widget_visibility(row, current_data)
 
     def _fill_row_content(self, row: int):
-        label = f"输入{row + 1}" if self.port_type == "input" else f"输出{row + 1}"
+        label = self.tr("输入{}").format(row + 1) if self.port_type == "input" else self.tr("输出{}").format(row + 1)
         label_item = QTableWidgetItem(label)
         label_item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self.table.setItem(row, 1, label_item)

@@ -26,7 +26,7 @@ class PropertyEditorWidget(ConfigTableSpace):
         self._choice_configs = {}
         self._range_configs = {}
         # 6 列：属性名、标签、类型、默认值、选项、操作（删除由基类处理）
-        labels = ["属性名", "标签", "类型", "默认值", "选项"]
+        labels = [self.tr("属性名"), self.tr("标签"), self.tr("类型"), self.tr("默认值"), self.tr("选项")]
         super().__init__(column_labels=labels, parent=parent)
 
         # 覆盖基类信号
@@ -104,7 +104,7 @@ class PropertyEditorWidget(ConfigTableSpace):
         # 删除按钮（由基类处理，但我们需重新设置，因为基类只放按钮）
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setFixedSize(24, 24)
-        delete_btn.setToolTip("删除此属性")
+        delete_btn.setToolTip(self.tr("删除此属性"))
         delete_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         delete_btn.clicked.connect(self._on_delete_button_clicked)
         self.table.setCellWidget(row, self.table.columnCount() - 1, delete_btn)
@@ -327,22 +327,22 @@ class PropertyEditorWidget(ConfigTableSpace):
     def _update_action_widget(self, row, prop_type, prop_name=None):
         self.table.setCellWidget(row, 4, None)
         if prop_type == PropertyType.CHOICE:
-            btn = PushButton("配置选项")
+            btn = PushButton(self.tr("配置选项"))
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_choice(r))
             self.table.setCellWidget(row, 4, btn)
         elif prop_type == PropertyType.RANGE:
-            btn = PushButton("配置范围")
+            btn = PushButton(self.tr("配置范围"))
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_range(r))
             self.table.setCellWidget(row, 4, btn)
         elif prop_type == PropertyType.LONGTEXT:
-            btn = PushButton("编辑文本")
+            btn = PushButton(self.tr("编辑文本"))
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_long_text(r))
             self.table.setCellWidget(row, 4, btn)
         elif prop_type == PropertyType.DYNAMICFORM:
-            btn = PushButton("编辑表单")
+            btn = PushButton(self.tr("编辑表单"))
             btn.setFixedHeight(28)
             btn.clicked.connect(lambda _, r=row: self._edit_dynamic_form(r))
             self.table.setCellWidget(row, 4, btn)
@@ -368,7 +368,7 @@ class PropertyEditorWidget(ConfigTableSpace):
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
+                InfoBar.warning(self.tr("警告"), self.tr("请先填写属性名"), parent=self.parent, duration=2000)
                 return
             prop_name = name_item.text()
             current_values = self._range_configs.get(prop_name, {'min': 0, 'max': 100, 'step': 1})
@@ -385,17 +385,17 @@ class PropertyEditorWidget(ConfigTableSpace):
                     self._update_default_value_widget(row, PropertyType.RANGE, prop_name,
                                                       self._get_default_value_from_widget(row))
                 self.properties_changed.emit()
-                InfoBar.success("成功", f"已保存范围配置: {prop_name}", parent=self.parent, duration=1500)
+                InfoBar.success(self.tr("成功"), self.tr("已保存范围配置"), parent=self.parent, duration=1500)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+            InfoBar.error(self.tr("错误"), self.tr("编辑失败: {}").format(e), parent=self.parent, duration=3000)
 
     def _edit_choice(self, row):
         try:
             name_item = self.table.item(row, 0)
             if not name_item or not name_item.text().strip():
-                InfoBar.warning("警告", "请先填写属性名", parent=self.parent, duration=2000)
+                InfoBar.warning(self.tr("警告"), self.tr("请先填写属性名"), parent=self.parent, duration=2000)
                 return
             prop_name = name_item.text()
             current_choices = self._choice_configs.get(prop_name, [])
@@ -407,11 +407,11 @@ class PropertyEditorWidget(ConfigTableSpace):
                     self._update_default_value_widget(row, PropertyType.CHOICE, prop_name,
                                                       self._get_default_value_from_widget(row))
                 self.properties_changed.emit()
-                InfoBar.success("成功", f"已保存下拉选项: {prop_name}", parent=self.parent, duration=1500)
+                InfoBar.success(self.tr("成功"), self.tr("已保存下拉选项"), parent=self.parent, duration=1500)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            InfoBar.error("错误", f"编辑失败: {str(e)}", parent=self.parent, duration=3000)
+            InfoBar.error(self.tr("错误"), self.tr("编辑失败: {}").format(e), parent=self.parent, duration=3000)
 
     def _edit_dynamic_form(self, row):
         try:
@@ -520,7 +520,7 @@ class DynamicFormEditorDialog(MessageBoxBase):
         self.schema = schema or {}
         self.editor = PropertyEditorWidget(self)
         self.editor.set_properties(self.schema)
-        self.titleLabel = SubtitleLabel("编辑动态表单结构")
+        self.titleLabel = SubtitleLabel(self.tr("编辑动态表单结构"))
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.editor)
 
@@ -532,22 +532,22 @@ class RangeConfigDialog(MessageBoxBase):
     def __init__(self, min_val=0, max_val=100, step_val=1, parent=None):
         super().__init__(parent)
         self.widget.setMinimumSize(400, 200)
-        self.titleLabel = SubtitleLabel("配置范围参数")
+        self.titleLabel = SubtitleLabel(self.tr("配置范围参数"))
         self.viewLayout.addWidget(self.titleLabel)
         form_layout = QFormLayout()
         self.min_spin = DoubleSpinBox()
         self.min_spin.setRange(-999999, 999999)
         self.min_spin.setValue(min_val)
-        form_layout.addRow("最小值:", self.min_spin)
+        form_layout.addRow(self.tr("最小值:"), self.min_spin)
         self.max_spin = DoubleSpinBox()
         self.max_spin.setRange(-999999, 999999)
         self.max_spin.setValue(max_val)
-        form_layout.addRow("最大值:", self.max_spin)
+        form_layout.addRow(self.tr("最大值:"), self.max_spin)
         self.step_spin = DoubleSpinBox()
         self.step_spin.setRange(0.001, 999999)
         self.step_spin.setValue(step_val)
         self.step_spin.setDecimals(3)
-        form_layout.addRow("步长:", self.step_spin)
+        form_layout.addRow(self.tr("步长:"), self.step_spin)
         self.viewLayout.addLayout(form_layout)
 
     def get_values(self):
@@ -563,11 +563,11 @@ class ChoiceConfigDialog(MessageBoxBase):
         super().__init__(parent)
         self.widget.setMinimumSize(500, 350)
         self.choices = choices or []
-        self.titleLabel = SubtitleLabel("配置下拉选项")
+        self.titleLabel = SubtitleLabel(self.tr("配置下拉选项"))
         self.viewLayout.addWidget(self.titleLabel)
         self.list_widget = TableWidget()
         self.list_widget.setColumnCount(1)
-        self.list_widget.setHorizontalHeaderLabels(["选项"])
+        self.list_widget.setHorizontalHeaderLabels([self.tr("选项")])
         self.list_widget.setRowCount(len(self.choices))
         for i, choice in enumerate(self.choices):
             self.list_widget.setItem(i, 0, QTableWidgetItem(choice))
@@ -576,14 +576,14 @@ class ChoiceConfigDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.list_widget)
         input_layout = QHBoxLayout()
         self.input_line = LineEdit()
-        self.input_line.setPlaceholderText("输入新选项后点击“添加”")
+        self.input_line.setPlaceholderText(self.tr("输入新选项后点击“添加”"))
         self.input_line.returnPressed.connect(self._add_choice)
         input_layout.addWidget(self.input_line)
-        self.add_btn = PushButton("添加")
+        self.add_btn = PushButton(self.tr("添加"))
         self.add_btn.clicked.connect(self._add_choice)
         input_layout.addWidget(self.add_btn)
         self.viewLayout.addLayout(input_layout)
-        self.remove_btn = PushButton("删除选中")
+        self.remove_btn = PushButton(self.tr("删除选中"))
         self.remove_btn.clicked.connect(self._remove_choice)
         self.viewLayout.addWidget(self.remove_btn)
 

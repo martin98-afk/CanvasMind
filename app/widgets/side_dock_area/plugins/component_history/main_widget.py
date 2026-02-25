@@ -28,11 +28,11 @@ class ComponentHistoryToolWindow(ToolWindow):
         history_layout = QVBoxLayout(history_container)
         history_layout.setContentsMargins(0, 0, 0, 0)
 
-        history_label = BodyLabel("组件版本记录:")
+        history_label = BodyLabel(self.tr("组件版本记录:"))
         # 替换原来的 history_table 设置
         self._history_table = TableWidget(self)
         self._history_table.setColumnCount(3)
-        self._history_table.setHorizontalHeaderLabels(["版本", "保存时间", "说明"])
+        self._history_table.setHorizontalHeaderLabels([self.tr("版本"), self.tr("保存时间"), self.tr("说明")])
         self._history_table.verticalHeader().hide()
         # ✅ 允许对“说明”列编辑，其他列只读
         self._history_table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.SelectedClicked)
@@ -48,10 +48,10 @@ class ComponentHistoryToolWindow(ToolWindow):
         usage_container = QWidget(self)
         usage_layout = QVBoxLayout(usage_container)
         usage_layout.setContentsMargins(0, 0, 0, 0)
-        usage_label = BodyLabel("组件使用情况:")
+        usage_label = BodyLabel(self.tr("组件使用情况:"))
         self._usage_table = TableWidget(self)
         self._usage_table.setColumnCount(3)  # 画布、节点、版本策略
-        self._usage_table.setHorizontalHeaderLabels(["画布", "节点名称", "版本策略"])
+        self._usage_table.setHorizontalHeaderLabels([self.tr("画布"), self.tr("节点名称"), self.tr("版本策略")])
         self._usage_table.verticalHeader().hide()
         self._usage_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._usage_table.setSelectionBehavior(QTableWidget.SelectRows)
