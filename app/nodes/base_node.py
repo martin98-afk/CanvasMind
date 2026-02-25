@@ -492,11 +492,7 @@ class BasicNodeWithGlobalProperty(NodeObject):
 
         # 5. UI 控件清理
         if self._inline_widgets:
-            # 停止 view 的绘制更新以加速
-            self.view.setUpdatesEnabled(False)
             self.hide_inline_widgets()
-            self.view.setUpdatesEnabled(True)
-
         # 彻底断开信号
         try:
             self.signals.disconnect()

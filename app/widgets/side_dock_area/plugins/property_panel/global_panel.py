@@ -195,7 +195,7 @@ class GlobalPanelWidget:
         count_label = title_layout.itemAt(1).widget()
         new_count_text = f"[参数x{len(new_value)}]"
         if count_label.text() != new_count_text:
-            count_label.setText(self.tr("[参数x{}]").format(len(new_value)))
+            count_label.setText("[参数x{}]".format(len(new_value)))
 
         # 2. 更新详情区域 (简单起见，这里可以重建详情区，或者遍历更新)
         # 详情区通常是隐藏的，重建开销不大
@@ -637,7 +637,7 @@ class GlobalPanelWidget:
         name_label.setWordWrap(True)
 
         locate_btn = TransparentToolButton(get_icon("location"), header_widget)
-        locate_btn.setToolTip(self.tr("在画布中定位节点"))
+        locate_btn.setToolTip("在画布中定位节点")
         locate_btn.setFixedSize(24, 24)
         locate_btn.clicked.connect(lambda: self.zoom_to_node_by_name(node_name))
 
@@ -1036,7 +1036,7 @@ class GlobalPanelWidget:
         """切换参数组详情的显示/隐藏"""
         is_visible = detail_container.isVisible()
         detail_container.setVisible(not is_visible)
-        toggle_btn.setText(self.tr("收起") if not is_visible else self.tr("展开"))
+        toggle_btn.setText("收起" if not is_visible else "展开")
 
     def _create_env_var_row(self, key: str, value):
         card = DraggableVariableCard(self.parent_panel, "env", key, value)
