@@ -5,11 +5,26 @@ import subprocess
 import sys
 from pathlib import Path
 from PyQt5.QtCore import Qt, QSize, QRect, QRectF
-from PyQt5.QtGui import QFont, QGuiApplication, QPixmap, QPainter, QColor, QPen, QPainterPath
+from PyQt5.QtGui import (
+    QFont,
+    QGuiApplication,
+    QPixmap,
+    QPainter,
+    QColor,
+    QPen,
+    QPainterPath,
+)
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame, QDialog
 from qfluentwidgets import (
-    CardWidget, BodyLabel, PrimaryPushButton,
-    FluentIcon, InfoBar, ImageLabel, TransparentToolButton, themeColor, isDarkTheme
+    CardWidget,
+    BodyLabel,
+    PrimaryPushButton,
+    FluentIcon,
+    InfoBar,
+    ImageLabel,
+    TransparentToolButton,
+    themeColor,
+    isDarkTheme,
 )
 from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
@@ -35,7 +50,9 @@ class ClickableLabel(BodyLabel):
     def _copy_to_clipboard(self):
         clipboard = QGuiApplication.clipboard()
         clipboard.setText(self.copy_content)
-        InfoBar.success("已复制", "内容已复制到剪贴板", parent=self.parent, duration=1500)
+        InfoBar.success(
+            "已复制", "内容已复制到剪贴板", parent=self.parent, duration=1500
+        )
 
     def enterEvent(self, event):
         self.setFont(QFont("Microsoft YaHei", 9, QFont.Bold))
@@ -61,11 +78,13 @@ class PreviewLabel(QLabel):
             f"border: 1px solid {'#333' if isDarkTheme() else '#e0e0e0'};"
         )
         self.setAlignment(Qt.AlignCenter)
-        self.setText("无预览图")  # 默认文本
+        self.setText(self.tr("无预览图"))  # 默认文本
 
     def set_image(self, pixmap: QPixmap):
         self._pixmap = pixmap
-        self.setText("") if pixmap and not pixmap.isNull() else self.setText("无预览图")
+        self.setText("") if pixmap and not pixmap.isNull() else self.setText(
+            self.tr("无预览图")
+        )
         self.update()  # 触发重绘
 
     def paintEvent(self, event):
@@ -85,7 +104,9 @@ class PreviewLabel(QLabel):
         target_rect.adjust(4, 4, -4, -4)
 
         # 计算缩放后的尺寸
-        scaled_size = self._pixmap.size().scaled(target_rect.size().toSize(), Qt.KeepAspectRatio)
+        scaled_size = self._pixmap.size().scaled(
+            target_rect.size().toSize(), Qt.KeepAspectRatio
+        )
 
         # 计算居中位置
         x = target_rect.x() + (target_rect.width() - scaled_size.width()) / 2
@@ -117,9 +138,15 @@ class PreviewLabel(QLabel):
         img_lbl = QLabel()
         img_lbl.setAlignment(Qt.AlignCenter)
         # 大图也保持比例适应
-        scaled_pix = self._pixmap.scaled(QSize(780, 580), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled_pix = self._pixmap.scaled(
+            QSize(780, 580), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         img_lbl.setPixmap(scaled_pix)
-        img_lbl.setStyleSheet("background-color: #1e1e1e;" if isDarkTheme() else "background-color: #f0f0f0;")
+        img_lbl.setStyleSheet(
+            "background-color: #1e1e1e;"
+            if isDarkTheme()
+            else "background-color: #f0f0f0;"
+        )
 
         layout.addWidget(img_lbl)
         dialog.exec()
@@ -161,7 +188,7 @@ class ProjectCard(CardWidget):
         # === 预览图 (使用自定义 PreviewLabel) ===
         self.preview_label = PreviewLabel(self)
         self.preview_label.setCursor(Qt.PointingHandCursor)
-        self.preview_label.setToolTip("双击查看大图")
+        self.preview_label.setToolTip(self.tr("双击查看大图"))
         main_layout.addWidget(self.preview_label)
 
         self._create_or_update_preview()
@@ -275,7 +302,7 @@ class ProjectCard(CardWidget):
         workflow_json = Path(self.project_path) / "model.workflow.json"
         if workflow_json.exists():
             try:
-                with open(workflow_json, 'r', encoding='utf-8') as f:
+                with open(workflow_json, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     # 尝试从 runtime -> environment_exe 获取路径
                     exe_path = data.get("runtime", {}).get("environment_exe")
@@ -323,10 +350,10 @@ class ProjectCard(CardWidget):
         # API 状态
         if is_api_running:
             api_url = SERVICE_MANAGER.get_url(self.project_path)
-            api_status = 'green'
+            api_status = "green"
         else:
             api_url = "API服务：未上线"
-            api_status = 'gray'
+            api_status = "gray"
 
         # MCP 状态：只有 【API运行中】 且 【脚本已导出】 才允许复制
         if is_api_running and mcp_script_exists:
@@ -335,36 +362,52 @@ class ProjectCard(CardWidget):
                 "mcpServers": {
                     f"Canvas_{self.project_name}": {
                         "command": project_python.replace("\\", "/"),
-                        "args": [str((Path(self.project_path) / "mcp_instance.py").absolute()).replace("\\", "/")]
+                        "args": [
+                            str(
+                                (Path(self.project_path) / "mcp_instance.py").absolute()
+                            ).replace("\\", "/")
+                        ],
                     }
                 }
             }
             mcp_content = "MCP配置：点击复制 JSON"
             mcp_copy_data = json.dumps(mcp_config, indent=2, ensure_ascii=False)
-            mcp_status = 'green'
+            mcp_status = "green"
         else:
-            mcp_content = "MCP工具：请先上线服务" if mcp_script_exists else "MCP工具：未导出脚本"
+            mcp_content = (
+                "MCP工具：请先上线服务" if mcp_script_exists else "MCP工具：未导出脚本"
+            )
             mcp_copy_data = ""  # 没上线，点击复制也没内容
-            mcp_status = 'gray'
+            mcp_status = "gray"
 
-        self._update_dot_and_label(self.api_dot, self.api_label, api_status, api_url,
-                                   copy_content=api_url if is_api_running else None)
+        self._update_dot_and_label(
+            self.api_dot,
+            self.api_label,
+            api_status,
+            api_url,
+            copy_content=api_url if is_api_running else None,
+        )
 
-        self._update_dot_and_label(self.mcp_dot, self.mcp_label, mcp_status, mcp_content,
-                                   copy_content=mcp_copy_data)
+        self._update_dot_and_label(
+            self.mcp_dot,
+            self.mcp_label,
+            mcp_status,
+            mcp_content,
+            copy_content=mcp_copy_data,
+        )
 
     def _update_dot_and_label(self, dot, label, status, text, copy_content=None):
         # 颜色定义
         color_map = {
-            'green': '#4caf50',
-            'gray': '#d0d0d0' if not isDarkTheme() else '#666666'
+            "green": "#4caf50",
+            "gray": "#d0d0d0" if not isDarkTheme() else "#666666",
         }
 
         # 更新圆点颜色
         dot.setStyleSheet(f"""
             min-width: 8px; min-height: 8px; max-width: 8px; max-height: 8px;
             border-radius: 4px; 
-            background-color: {color_map.get(status, 'gray')};
+            background-color: {color_map.get(status, "gray")};
         """)
 
         # 更新文字
@@ -374,8 +417,10 @@ class ProjectCard(CardWidget):
         label.copy_content = copy_content or ""
 
         # 更新颜色样式
-        if status == 'green':
-            label.setStyleSheet("color: #4caf50; font-weight: bold; text-decoration: underline;")
+        if status == "green":
+            label.setStyleSheet(
+                "color: #4caf50; font-weight: bold; text-decoration: underline;"
+            )
             label.setToolTip("点击直接复制 MCP JSON 配置")
         else:
             color = "#666666" if not isDarkTheme() else "#aaaaaa"
@@ -402,9 +447,13 @@ class ProjectCard(CardWidget):
     def mousePressEvent(self, event):
         clicked_widget = self.childAt(event.pos())
         buttons = {
-            self.run_btn, self.service_btn,
-            self.edit_btn, self.view_log_btn, self.delete_btn,
-            self.api_label, self.mcp_label
+            self.run_btn,
+            self.service_btn,
+            self.edit_btn,
+            self.view_log_btn,
+            self.delete_btn,
+            self.api_label,
+            self.mcp_label,
         }
         is_button_clicked = False
         if clicked_widget:
@@ -422,17 +471,17 @@ class ProjectCard(CardWidget):
             pass
 
         if not is_button_clicked:
-            if self.home and hasattr(self.home, 'on_card_clicked'):
+            if self.home and hasattr(self.home, "on_card_clicked"):
                 self.home.on_card_clicked(self)
         else:
             super().mousePressEvent(event)
 
     def _open_project_folder(self):
         try:
-            if os.name == 'nt':
+            if os.name == "nt":
                 os.startfile(self.project_path)
             else:
-                subprocess.call(['xdg-open', self.project_path])
+                subprocess.call(["xdg-open", self.project_path])
         except Exception as e:
             if self.home:
                 InfoBar.error("打开失败", str(e), parent=self.home)

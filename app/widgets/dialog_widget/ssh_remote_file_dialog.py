@@ -6,10 +6,27 @@ from pathlib import Path
 
 import paramiko
 from Qt import QtWidgets, QtCore, QtGui
-from Qt.QtWidgets import QHeaderView, QTableWidgetItem, QMenu, QAction, QFileDialog, QMessageBox, QProgressDialog
+from Qt.QtWidgets import (
+    QHeaderView,
+    QTableWidgetItem,
+    QMenu,
+    QAction,
+    QFileDialog,
+    QMessageBox,
+    QProgressDialog,
+)
 from qfluentwidgets import (
-    LineEdit, FluentIcon, ToolButton, TableWidget, BodyLabel, PrimaryPushButton,
-    PushButton, ListWidget, InfoBar, InfoBarPosition, StateToolTip
+    LineEdit,
+    FluentIcon,
+    ToolButton,
+    TableWidget,
+    BodyLabel,
+    PrimaryPushButton,
+    PushButton,
+    ListWidget,
+    InfoBar,
+    InfoBarPosition,
+    StateToolTip,
 )
 
 from app.utils.utils import get_icon
@@ -29,11 +46,11 @@ class SSFTSession:
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self.ssh.connect(
-                hostname=self.env_data.get('host'),
-                port=int(self.env_data.get('port', 22)),
-                username=self.env_data.get('user'),
-                password=self.env_data.get('pwd'),
-                timeout=10
+                hostname=self.env_data.get("host"),
+                port=int(self.env_data.get("port", 22)),
+                username=self.env_data.get("user"),
+                password=self.env_data.get("pwd"),
+                timeout=10,
             )
             self.sftp = self.ssh.open_sftp()
             self.connected = True
@@ -48,30 +65,36 @@ class SSFTSession:
 
         # 标准化路径（确保为 POSIX 格式）
         path = posixpath.normpath(path)
-        if not path.startswith('/'):
-            path = '/' + path
+        if not path.startswith("/"):
+            path = "/" + path
 
         results = []
         try:
             for entry in self.sftp.listdir_attr(path):
                 # 跳过特殊目录
-                if entry.filename in ('.', '..'):
+                if entry.filename in (".", ".."):
                     continue
 
                 is_dir = stat.S_ISDIR(entry.st_mode)
-                results.append({
-                    "name": entry.filename,
-                    "is_dir": is_dir,
-                    "size": entry.st_size if not is_dir else 0,
-                    "mtime": datetime.fromtimestamp(entry.st_mtime).strftime('%Y-%m-%d %H:%M'),
-                    "path": posixpath.join(path, entry.filename)
-                })
+                results.append(
+                    {
+                        "name": entry.filename,
+                        "is_dir": is_dir,
+                        "size": entry.st_size if not is_dir else 0,
+                        "mtime": datetime.fromtimestamp(entry.st_mtime).strftime(
+                            "%Y-%m-%d %H:%M"
+                        ),
+                        "path": posixpath.join(path, entry.filename),
+                    }
+                )
             # 排序：文件夹在前，按名称排序（. 开头的文件排最后）
-            results.sort(key=lambda x: (
-                not x['is_dir'],
-                x['name'].startswith('.'),
-                x['name'].lower()
-            ))
+            results.sort(
+                key=lambda x: (
+                    not x["is_dir"],
+                    x["name"].startswith("."),
+                    x["name"].lower(),
+                )
+            )
             return results
         except FileNotFoundError:
             raise FileNotFoundError(f"目录不存在: {path}")
@@ -101,7 +124,7 @@ class SSFTSession:
         try:
             # 先删除目录内所有内容
             for entry in self.sftp.listdir_attr(path):
-                if entry.filename in ('.', '..'):
+                if entry.filename in (".", ".."):
                     continue
                 full_path = posixpath.join(path, entry.filename)
                 if stat.S_ISDIR(entry.st_mode):
@@ -153,6 +176,7 @@ class SSFTSession:
 
 class PathBreadcrumbWidget(QtWidgets.QWidget):
     """面包屑路径导航控件 - MobaXterm 风格"""
+
     pathClicked = QtCore.Signal(str)
 
     def __init__(self, parent=None):
@@ -170,29 +194,29 @@ class PathBreadcrumbWidget(QtWidgets.QWidget):
                 child.widget().deleteLater()
 
         self.path_segments = []
-        segments = [p for p in path.split('/') if p]
-        current_path = '/'
+        segments = [p for p in path.split("/") if p]
+        current_path = "/"
 
         # 添加根目录
-        self._add_segment('/', '/', is_first=True)
+        self._add_segment("/", "/", is_first=True)
 
         # 添加各级目录
         for i, seg in enumerate(segments):
             current_path = posixpath.join(current_path, seg)
-            is_last = (i == len(segments) - 1)
+            is_last = i == len(segments) - 1
             self._add_segment(seg, current_path, is_last=is_last)
 
     def _add_segment(self, text, path, is_first=False, is_last=False):
         if not is_first:
             # 添加分隔符
-            sep = QtWidgets.QLabel('>')
+            sep = QtWidgets.QLabel(">")
             sep.setStyleSheet("color: #666; font-size: 10px;")
             self.layout.addWidget(sep)
 
         btn = QtWidgets.QPushButton(text)
         btn.setFlat(True)
         btn.setCursor(QtCore.Qt.PointingHandCursor)
-        btn.setProperty('path', path)
+        btn.setProperty("path", path)
 
         if is_last:
             btn.setStyleSheet("""
@@ -224,7 +248,14 @@ class PathBreadcrumbWidget(QtWidgets.QWidget):
 
 
 class SSHRemoteFileDialog(QtWidgets.QDialog):
-    def __init__(self, env_data, selection_mode="file", file_filter="*", parent=None, initial_path=None):
+    def __init__(
+        self,
+        env_data,
+        selection_mode="file",
+        file_filter="*",
+        parent=None,
+        initial_path=None,
+    ):
         """
         selection_mode:
             - "file": 只能选择文件
@@ -236,7 +267,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         self.env_data = env_data
         self.selection_mode = selection_mode
         self.session = SSFTSession(env_data)
-        self.current_path = (initial_path or env_data.get('workdir', '/')).rstrip('/') or '/'
+        self.current_path = (initial_path or env_data.get("workdir", "/")).rstrip(
+            "/"
+        ) or "/"
         self.last_selected_path = None
         self.state_tooltip = None
 
@@ -302,10 +335,16 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             QListWidget::item { padding: 8px 12px; border-radius: 4px; margin: 2px 4px; }
             QListWidget::item:selected { background-color: #3a5a7a; }
         """)
-        self._add_shortcut("工作目录", os.path.dirname(self.env_data.get('path', '/').rstrip('/') or '/'), FluentIcon.HOME)
+        self._add_shortcut(
+            "工作目录",
+            os.path.dirname(self.env_data.get("path", "/").rstrip("/") or "/"),
+            FluentIcon.HOME,
+        )
         self._add_shortcut("根目录", "/", FluentIcon.FOLDER)
         self._add_shortcut("用户目录", f"/home/", FluentIcon.PEOPLE)
-        self.side_bar.itemClicked.connect(lambda it: self._load_path(it.data(QtCore.Qt.UserRole)))
+        self.side_bar.itemClicked.connect(
+            lambda it: self._load_path(it.data(QtCore.Qt.UserRole))
+        )
         main_layout.addWidget(self.side_bar)
 
         # ===== 右侧主区域 =====
@@ -351,7 +390,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         self.table.setHorizontalHeaderLabels(["名称", "大小", "修改日期", "权限"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)  # 支持多选
+        self.table.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )  # 支持多选
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
@@ -390,7 +431,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         self.status_label.setStyleSheet("color: #888; font-size: 12px;")
 
         self.selection_label = BodyLabel("未选择")
-        self.selection_label.setStyleSheet("color: #4ec9b0; font-size: 12px; font-weight: bold;")
+        self.selection_label.setStyleSheet(
+            "color: #4ec9b0; font-size: 12px; font-weight: bold;"
+        )
 
         # 按钮区域
         btn_widget = QtWidgets.QWidget()
@@ -429,10 +472,10 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
     def _add_shortcut(self, name, path, icon):
         item = QtWidgets.QListWidgetItem(icon.icon(), name)
-        item.setData(QtCore.Qt.UserRole, path.rstrip('/') or '/')
+        item.setData(QtCore.Qt.UserRole, path.rstrip("/") or "/")
         item.setSizeHint(QtCore.QSize(160, 32))
         self.side_bar.addItem(item)
-        if path.rstrip('/') == self.current_path.rstrip('/'):
+        if path.rstrip("/") == self.current_path.rstrip("/"):
             self.side_bar.setCurrentItem(item)
 
     def _init_connection(self):
@@ -448,14 +491,14 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=5000,
-                parent=self
+                parent=self,
             )
             QtCore.QTimer.singleShot(0, self.reject)
 
     def _load_path(self, path):
         """异步加载目录内容"""
-        if not path or not path.startswith('/'):
-            path = '/'
+        if not path or not path.startswith("/"):
+            path = "/"
 
         path = posixpath.normpath(path)
         self._show_loading(True, f"加载 {path} ...")
@@ -485,17 +528,17 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 self.table.insertRow(row)
 
                 # 图标和名称
-                icon = FluentIcon.FOLDER if f['is_dir'] else FluentIcon.DOCUMENT
-                name_item = QTableWidgetItem(icon.icon(), f['name'])
+                icon = FluentIcon.FOLDER if f["is_dir"] else FluentIcon.DOCUMENT
+                name_item = QTableWidgetItem(icon.icon(), f["name"])
                 name_item.setData(QtCore.Qt.UserRole, f)
-                name_item.setToolTip(f['path'])
+                name_item.setToolTip(f["path"])
 
                 # 大小
-                if f['is_dir']:
+                if f["is_dir"]:
                     size_item = QTableWidgetItem("📁")
                     size_item.setTextAlignment(QtCore.Qt.AlignCenter)
                 else:
-                    size = f['size']
+                    size = f["size"]
                     if size < 1024:
                         size_str = f"{size} B"
                     elif size < 1024 * 1024:
@@ -503,13 +546,17 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                     else:
                         size_str = f"{size / 1024 / 1024:.1f} MB"
                     size_item = QTableWidgetItem(size_str)
-                    size_item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                    size_item.setTextAlignment(
+                        QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
+                    )
 
                 # 修改日期
-                date_item = QTableWidgetItem(f['mtime'])
+                date_item = QTableWidgetItem(f["mtime"])
 
                 # 权限（简化显示）
-                perm_item = QTableWidgetItem("drwxr-xr-x" if f['is_dir'] else "-rw-r--r--")
+                perm_item = QTableWidgetItem(
+                    "drwxr-xr-x" if f["is_dir"] else "-rw-r--r--"
+                )
                 perm_item.setFont(QtGui.QFont("Courier New", 9))
                 perm_item.setForeground(QtGui.QColor("#6a9955"))
 
@@ -520,14 +567,16 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
             # 更新状态
             item_count = len(files)
-            dir_count = sum(1 for f in files if f['is_dir'])
+            dir_count = sum(1 for f in files if f["is_dir"])
             file_count = item_count - dir_count
-            self.status_label.setText(f"📁 {dir_count} 个文件夹, 📄 {file_count} 个文件")
+            self.status_label.setText(
+                f"📁 {dir_count} 个文件夹, 📄 {file_count} 个文件"
+            )
 
             # 保持侧边栏选中状态
             for i in range(self.side_bar.count()):
                 item = self.side_bar.item(i)
-                if item.data(QtCore.Qt.UserRole).rstrip('/') == path.rstrip('/'):
+                if item.data(QtCore.Qt.UserRole).rstrip("/") == path.rstrip("/"):
                     self.side_bar.setCurrentItem(item)
                     break
 
@@ -542,7 +591,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         if show:
             if self.state_tooltip is None:
                 self.state_tooltip = StateToolTip(message, "", self)
-                self.state_tooltip.move(self.width() - self.state_tooltip.width() - 30, 30)
+                self.state_tooltip.move(
+                    self.width() - self.state_tooltip.width() - 30, 30
+                )
             self.state_tooltip.setTitle(message)
             self.state_tooltip.show()
         elif self.state_tooltip:
@@ -554,7 +605,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         path = self.path_edit.text().strip()
         if path:
             # 支持相对路径
-            if not path.startswith('/'):
+            if not path.startswith("/"):
                 path = posixpath.join(self.current_path, path)
             self._load_path(path)
 
@@ -582,11 +633,11 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
     def _go_up(self):
         """返回上级目录"""
-        if self.current_path == '/':
+        if self.current_path == "/":
             return
-        parent = posixpath.dirname(self.current_path.rstrip('/'))
-        if not parent or parent == '.':
-            parent = '/'
+        parent = posixpath.dirname(self.current_path.rstrip("/"))
+        if not parent or parent == ".":
+            parent = "/"
         self._load_path(parent)
 
     def _on_item_clicked(self, item):
@@ -608,24 +659,24 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
         # 单选逻辑
         if self.selection_mode == "any":
-            self.last_selected_path = data['path']
-            self.selection_label.setText(data['path'])
+            self.last_selected_path = data["path"]
+            self.selection_label.setText(data["path"])
 
         elif self.selection_mode == "folder":
-            if data['is_dir']:
-                self.last_selected_path = data['path']
-                self.selection_label.setText(data['path'])
+            if data["is_dir"]:
+                self.last_selected_path = data["path"]
+                self.selection_label.setText(data["path"])
             else:
                 self.last_selected_path = self.current_path
                 self.selection_label.setText(f"📁 {self.current_path} (文件夹模式)")
 
         elif self.selection_mode == "file":
-            if not data['is_dir']:
-                self.last_selected_path = data['path']
-                self.selection_label.setText(data['path'])
+            if not data["is_dir"]:
+                self.last_selected_path = data["path"]
+                self.selection_label.setText(data["path"])
             else:
                 self.last_selected_path = None
-                self.selection_label.setText("⚠ 请选择文件")
+        self.selection_label.setText(self.tr("⚠ 请选择文件"))
 
     def _on_item_double_clicked(self, item):
         """双击处理 - 进入目录或选择文件"""
@@ -635,12 +686,12 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         if not data:
             return
 
-        if data['is_dir']:
-            self._load_path(data['path'])
+        if data["is_dir"]:
+            self._load_path(data["path"])
         else:
             # 文件双击：在 file/any 模式下直接确认
             if self.selection_mode in ["file", "any"]:
-                self.last_selected_path = data['path']
+                self.last_selected_path = data["path"]
                 self.accept()
 
     def _show_context_menu(self, position):
@@ -671,7 +722,11 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         # 获取点击位置的item
         item = self.table.itemAt(position)
         selected_items = self.table.selectedItems()
-        rows = set(item.row() for item in selected_items if item) if selected_items else set()
+        rows = (
+            set(item.row() for item in selected_items if item)
+            if selected_items
+            else set()
+        )
 
         # 空白区域点击
         if item is None:
@@ -680,7 +735,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         elif len(rows) <= 1:
             data = self.table.item(item.row(), 0).data(QtCore.Qt.UserRole)
             if data:
-                self._build_item_menu(menu, data, is_dir=data['is_dir'])
+                self._build_item_menu(menu, data, is_dir=data["is_dir"])
         # 多选
         else:
             self._build_multi_selection_menu(menu, rows)
@@ -712,7 +767,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         # 打开/进入
         if is_dir:
             open_action = QAction(FluentIcon.FOLDER.icon(), "打开", self)
-            open_action.triggered.connect(lambda: self._load_path(data['path']))
+            open_action.triggered.connect(lambda: self._load_path(data["path"]))
             menu.addAction(open_action)
         else:
             open_action = QAction(FluentIcon.DOCUMENT.icon(), "打开", self)
@@ -721,26 +776,30 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             menu.addSeparator()
 
             download = QAction(FluentIcon.DOWNLOAD.icon(), "下载...", self)
-            download.triggered.connect(lambda: self._download_file(data['path']))
+            download.triggered.connect(lambda: self._download_file(data["path"]))
             menu.addAction(download)
 
         menu.addSeparator()
 
         # 重命名
         rename = QAction(FluentIcon.EDIT.icon(), "重命名...", self)
-        rename.triggered.connect(lambda: self._rename_item(data['path'], data['name'], is_dir))
+        rename.triggered.connect(
+            lambda: self._rename_item(data["path"], data["name"], is_dir)
+        )
         menu.addAction(rename)
 
         # 复制路径
         copy_path = QAction(FluentIcon.COPY.icon(), "复制路径", self)
-        copy_path.triggered.connect(lambda: self._copy_path(data['path']))
+        copy_path.triggered.connect(lambda: self._copy_path(data["path"]))
         menu.addAction(copy_path)
 
         menu.addSeparator()
 
         # 删除
         delete = QAction(FluentIcon.DELETE.icon(), "删除", self)
-        delete.triggered.connect(lambda: self._delete_item(data['path'], data['name'], is_dir))
+        delete.triggered.connect(
+            lambda: self._delete_item(data["path"], data["name"], is_dir)
+        )
         delete.setIconVisibleInMenu(True)
         menu.addAction(delete)
 
@@ -760,8 +819,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
     def _create_new_folder(self):
         """创建新文件夹"""
         folder_name, ok = QtWidgets.QInputDialog.getText(
-            self, "新建文件夹", "文件夹名称:",
-            QtWidgets.QLineEdit.Normal, "新建文件夹"
+            self, "新建文件夹", "文件夹名称:", QtWidgets.QLineEdit.Normal, "新建文件夹"
         )
         if ok and folder_name.strip():
             try:
@@ -775,7 +833,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                     isClosable=True,
                     position=InfoBarPosition.TOP_RIGHT,
                     duration=2000,
-                    parent=self
+                    parent=self,
                 )
             except Exception as e:
                 QMessageBox.warning(self, "错误", f"创建文件夹失败:\n{str(e)}")
@@ -783,8 +841,10 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
     def _upload_files(self):
         """上传文件"""
         files, _ = QFileDialog.getOpenFileNames(
-            self, "选择要上传的文件", "",
-            "所有文件 (*);;文本文件 (*.txt);;Python 文件 (*.py);;图像文件 (*.png *.jpg *.jpeg)"
+            self,
+            "选择要上传的文件",
+            "",
+            "所有文件 (*);;文本文件 (*.txt);;Python 文件 (*.py);;图像文件 (*.png *.jpg *.jpeg)",
         )
         if files:
             self._perform_upload(files, self.current_path)
@@ -792,25 +852,27 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
     def _upload_folder(self):
         """上传文件夹（递归）"""
         folder = QFileDialog.getExistingDirectory(
-            self, "选择要上传的文件夹", "",
-            QFileDialog.ShowDirsOnly
+            self, "选择要上传的文件夹", "", QFileDialog.ShowDirsOnly
         )
         if folder:
             # 获取文件夹内所有文件
             files_to_upload = []
             base_path = Path(folder)
-            for file_path in base_path.rglob('*'):
+            for file_path in base_path.rglob("*"):
                 if file_path.is_file():
                     files_to_upload.append(str(file_path))
 
             if files_to_upload:
                 reply = QMessageBox.question(
-                    self, "确认上传",
+                    self,
+                    "确认上传",
                     f"将上传 {len(files_to_upload)} 个文件到远程目录:\n{self.current_path}\n\n是否继续?",
-                    QMessageBox.Yes | QMessageBox.No
+                    QMessageBox.Yes | QMessageBox.No,
                 )
                 if reply == QMessageBox.Yes:
-                    self._perform_upload(files_to_upload, self.current_path, base_local_path=folder)
+                    self._perform_upload(
+                        files_to_upload, self.current_path, base_local_path=folder
+                    )
 
     def _perform_upload(self, local_paths, remote_dir, base_local_path=None):
         """执行上传操作 - 带进度条"""
@@ -827,7 +889,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             nonlocal transferred
             transferred += transferred_bytes
             progress.setValue(transferred)
-            progress.setLabelText(f"已上传: {transferred / 1024 / 1024:.1f} MB / {total_size / 1024 / 1024:.1f} MB")
+            progress.setLabelText(
+                f"已上传: {transferred / 1024 / 1024:.1f} MB / {total_size / 1024 / 1024:.1f} MB"
+            )
             QtCore.QCoreApplication.processEvents()
             if progress.wasCanceled():
                 raise Exception("用户取消了上传")
@@ -838,7 +902,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 if base_local_path:
                     # 保持目录结构
                     rel_path = os.path.relpath(local_path, base_local_path)
-                    remote_path = posixpath.join(remote_dir, rel_path.replace('\\', '/'))
+                    remote_path = posixpath.join(
+                        remote_dir, rel_path.replace("\\", "/")
+                    )
                     # 确保远程目录存在
                     remote_parent = posixpath.dirname(remote_path)
                     if remote_parent != remote_dir:
@@ -846,8 +912,8 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                             self.session.sftp.stat(remote_parent)
                         except:
                             # 递归创建目录
-                            parts = remote_parent.strip('/').split('/')
-                            current = ''
+                            parts = remote_parent.strip("/").split("/")
+                            current = ""
                             for part in parts:
                                 current = posixpath.join(current, part)
                                 try:
@@ -855,7 +921,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                                 except:
                                     self.session.sftp.mkdir(current)
                 else:
-                    remote_path = posixpath.join(remote_dir, os.path.basename(local_path))
+                    remote_path = posixpath.join(
+                        remote_dir, os.path.basename(local_path)
+                    )
 
                 # 执行上传
                 self.session.upload_file(local_path, remote_path, progress_callback)
@@ -869,7 +937,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
-                parent=self
+                parent=self,
             )
         except Exception as e:
             progress.close()
@@ -900,7 +968,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
         def progress_callback(transferred, total):
             progress.setValue(transferred)
-            progress.setLabelText(f"已下载: {transferred / 1024 / 1024:.1f} MB / {total / 1024 / 1024:.1f} MB")
+            progress.setLabelText(
+                f"已下载: {transferred / 1024 / 1024:.1f} MB / {total / 1024 / 1024:.1f} MB"
+            )
             QtCore.QCoreApplication.processEvents()
             if progress.wasCanceled():
                 raise Exception("用户取消了下载")
@@ -915,7 +985,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
                 duration=3000,
-                parent=self
+                parent=self,
             )
         except Exception as e:
             progress.close()
@@ -932,8 +1002,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
     def _rename_item(self, path, current_name, is_dir):
         """重命名文件/文件夹"""
         new_name, ok = QtWidgets.QInputDialog.getText(
-            self, "重命名", "新名称:",
-            QtWidgets.QLineEdit.Normal, current_name
+            self, "重命名", "新名称:", QtWidgets.QLineEdit.Normal, current_name
         )
         if ok and new_name.strip() and new_name.strip() != current_name:
             try:
@@ -948,7 +1017,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                     isClosable=True,
                     position=InfoBarPosition.TOP_RIGHT,
                     duration=2000,
-                    parent=self
+                    parent=self,
                 )
             except Exception as e:
                 QMessageBox.warning(self, "错误", f"重命名失败:\n{str(e)}")
@@ -960,9 +1029,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             msg += "\n\n⚠ 此操作将递归删除文件夹内所有内容!"
 
         reply = QMessageBox.warning(
-            self, "确认删除", msg,
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            self, "确认删除", msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if reply == QMessageBox.Yes:
             try:
@@ -978,7 +1045,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                     isClosable=True,
                     position=InfoBarPosition.TOP_RIGHT,
                     duration=2000,
-                    parent=self
+                    parent=self,
                 )
             except Exception as e:
                 QMessageBox.warning(self, "错误", f"删除失败:\n{str(e)}")
@@ -994,7 +1061,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
             duration=1500,
-            parent=self
+            parent=self,
         )
 
     def get_selected_result(self):
@@ -1016,7 +1083,9 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
     def dropEvent(self, event):
         urls = event.mimeData().urls()
-        local_files = [url.toLocalFile() for url in urls if os.path.exists(url.toLocalFile())]
+        local_files = [
+            url.toLocalFile() for url in urls if os.path.exists(url.toLocalFile())
+        ]
         if local_files:
             self._perform_upload(local_files, self.current_path)
         event.acceptProposedAction()

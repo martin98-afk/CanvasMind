@@ -7,7 +7,13 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QProgressDialog, QHBoxLayout
-from qfluentwidgets import InfoBar, InfoBarPosition, InfoBarIcon, PrimaryPushButton, MessageBox
+from qfluentwidgets import (
+    InfoBar,
+    InfoBarPosition,
+    InfoBarIcon,
+    PrimaryPushButton,
+    MessageBox,
+)
 
 from app.utils.config import Settings
 from app.utils.threading_utils import AsyncUpdateChecker, DownloadThread
@@ -36,13 +42,15 @@ class UpdateChecker(QWidget):
         """检查更新入口"""
         self.async_checker = AsyncUpdateChecker(self)
         self.async_checker.finished.connect(self._on_check_finished)
-        self.async_checker.error.connect(lambda msg: self.create_errorbar("检查更新失败", msg))
+        self.async_checker.error.connect(
+            lambda msg: self.create_errorbar("检查更新失败", msg)
+        )
         self.async_checker.start()
 
     def _on_check_finished(self, latest_release):
         """异步请求完成回调"""
         if latest_release:
-            latest_version = latest_release.get("tag_name", "").lstrip('v')
+            latest_version = latest_release.get("tag_name", "").lstrip("v")
             if self._compare_versions(latest_version, self.current_version) > 0:
                 self._show_update_infobar(latest_release)
             else:
@@ -63,7 +71,7 @@ class UpdateChecker(QWidget):
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
             duration=-1,
-            parent=self.parent or self
+            parent=self.parent or self,
         )
 
         # 创建按钮容器（水平布局）
@@ -80,13 +88,17 @@ class UpdateChecker(QWidget):
         # 立即更新按钮（主操作）
         update_button = PrimaryPushButton("立即更新")
         update_button.setFixedWidth(80)
-        update_button.clicked.connect(lambda: self._on_update_confirmed(latest_release, info_bar))
+        update_button.clicked.connect(
+            lambda: self._on_update_confirmed(latest_release, info_bar)
+        )
 
         # 查看详情按钮（次要操作）
         view_button = PushButton("查看详情")
         view_button.setFixedWidth(80)
         if html_url:
-            view_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(html_url)))
+            view_button.clicked.connect(
+                lambda: QDesktopServices.openUrl(QUrl(html_url))
+            )
         else:
             view_button.setEnabled(False)  # 无有效URL时禁用按钮
 
@@ -124,12 +136,16 @@ class UpdateChecker(QWidget):
         self.installer_path = os.path.join(tempfile.gettempdir(), exe_name)
 
         # 显示下载进度对话框（由于即将重启安装，此处使用模态对话框是标准做法）
-        self.progress_dialog = QProgressDialog("正在下载新版本...", "取消", 0, 100, self.parent or self)
+        self.progress_dialog = QProgressDialog(
+            "正在下载新版本...", "取消", 0, 100, self.parent or self
+        )
         self.progress_dialog.setWindowTitle("软件更新")
         self.progress_dialog.setWindowModality(Qt.WindowModal)
         self.progress_dialog.canceled.connect(self._cancel_download)
 
-        self.download_thread = DownloadThread(update_url, self.installer_path, self.token)
+        self.download_thread = DownloadThread(
+            update_url, self.installer_path, self.token
+        )
         self.download_thread.progress_signal.connect(self.progress_dialog.setValue)
         self.download_thread.finished_signal.connect(self._handle_download_finished)
         self.download_thread.error_signal.connect(self._handle_download_error)
@@ -144,8 +160,8 @@ class UpdateChecker(QWidget):
         title = "下载完成"
         content = "安装包已准备就绪，是否立即关闭程序并升级？"
         msg_box = MessageBox(title, content, self.parent or self)
-        msg_box.yesButton.setText("现在安装")
-        msg_box.cancelButton.setText("稍后手动安装")
+        msg_box.yesButton.setText(self.tr("现在安装"))
+        msg_box.cancelButton.setText(self.tr("稍后手动安装"))
 
         if msg_box.exec():
             self._run_installer()
@@ -159,7 +175,8 @@ class UpdateChecker(QWidget):
             subprocess.Popen(
                 [self.installer_path, "/SILENT", "/SP-"],
                 shell=True,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                | subprocess.DETACHED_PROCESS,
             )
 
             # 立即关闭主程序
@@ -179,7 +196,13 @@ class UpdateChecker(QWidget):
         self.create_errorbar("下载失败", error_msg)
 
     def create_errorbar(self, title, content):
-        InfoBar.error(title, content, position=InfoBarPosition.TOP_RIGHT, duration=5000, parent=self.parent or self)
+        InfoBar.error(
+            title,
+            content,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=5000,
+            parent=self.parent or self,
+        )
 
     def _compare_versions(self, v1, v2):
         """
@@ -191,10 +214,10 @@ class UpdateChecker(QWidget):
         def split_version(v):
             # 提取前面的数字部分和后面的后缀部分
             # 如 "0.3.5-beta" -> ([0, 3, 5], "-beta")
-            match = re.match(r'^v?([\d.]+)(.*)', v.strip().lower())
+            match = re.match(r"^v?([\d.]+)(.*)", v.strip().lower())
             if not match:
                 return [], ""
-            nums = [int(x) for x in match.group(1).split('.') if x]
+            nums = [int(x) for x in match.group(1).split(".") if x]
             suffix = match.group(2)
             return nums, suffix
 

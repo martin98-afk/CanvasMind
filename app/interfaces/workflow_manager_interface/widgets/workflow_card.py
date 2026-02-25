@@ -5,15 +5,21 @@ from typing import Optional, Dict, Any
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget
-from qfluentwidgets import CardWidget, BodyLabel, FluentIcon, TransparentToolButton, ImageLabel, PushButton, \
-    SimpleCardWidget
+from qfluentwidgets import (
+    CardWidget,
+    BodyLabel,
+    FluentIcon,
+    TransparentToolButton,
+    ImageLabel,
+    PushButton,
+    SimpleCardWidget,
+)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.utils.utils import get_icon
 
 
 class ActionCard(SimpleCardWidget):
-
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.home = parent
@@ -26,7 +32,7 @@ class ActionCard(SimpleCardWidget):
         layout.setContentsMargins(20, 30, 20, 30)
         layout.setSpacing(20)
 
-        title = BodyLabel("创建画布")
+        title = BodyLabel(self.tr("创建画布"))
         title.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
@@ -37,19 +43,25 @@ class ActionCard(SimpleCardWidget):
         btn_layout.setSpacing(20)
 
         # 新建按钮
-        create_btn = PushButton(text="新建画布", icon=FluentIcon.ADD, parent=self)
+        create_btn = PushButton(
+            text=self.tr("新建画布"), icon=FluentIcon.ADD, parent=self
+        )
         create_btn.clicked.connect(lambda: self.home.new_canvas())
         create_btn.setIconSize(QSize(22, 22))
         create_btn.setFont(QFont("Microsoft YaHei", 14))
 
         # 可选：更多按钮（如模板等）
-        template_btn = PushButton(text="从模板创建", icon=get_icon("从模板创建"), parent=self)
+        template_btn = PushButton(
+            text=self.tr("从模板创建"), icon=get_icon("从模板创建"), parent=self
+        )
         template_btn.clicked.connect(lambda: self.home.new_canvas(from_template=True))
         template_btn.setIconSize(QSize(22, 22))
         template_btn.setFont(QFont("Microsoft YaHei", 14))
 
         # 导入按钮
-        import_btn = PushButton(text="导入画布", icon=get_icon("导入文件"), parent=self)
+        import_btn = PushButton(
+            text=self.tr("导入画布"), icon=get_icon("导入文件"), parent=self
+        )
         import_btn.clicked.connect(lambda: self.home.import_canvas())
         import_btn.setIconSize(QSize(22, 22))
         import_btn.setFont(QFont("Microsoft YaHei", 14))
@@ -59,12 +71,13 @@ class ActionCard(SimpleCardWidget):
         btn_layout.addWidget(import_btn)
         layout.addWidget(btn_container, 1)
 
+
 class WorkflowCard(CardWidget):
     def __init__(
         self,
         file_path: Path = None,
         parent: Optional[QWidget] = None,
-        file_info: Optional[Dict[str, Any]] = None
+        file_info: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(parent)
         self.home = parent
@@ -121,13 +134,17 @@ class WorkflowCard(CardWidget):
         meta_grid.setHorizontalSpacing(8)
 
         if self._file_info:
-            create_time = self._file_info.get('ctime', '未知')
-            change_time = self._file_info.get('mtime', '未知')
+            create_time = self._file_info.get("ctime", "未知")
+            change_time = self._file_info.get("mtime", "未知")
         else:
             try:
                 stat = self.file_path.stat()
-                create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M")
-                change_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                create_time = datetime.fromtimestamp(stat.st_ctime).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
+                change_time = datetime.fromtimestamp(stat.st_mtime).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
             except Exception:
                 create_time = change_time = "未知"
 
@@ -154,17 +171,17 @@ class WorkflowCard(CardWidget):
         # 按钮区域（仅保留编辑、复制、删除）
         copy_btn = TransparentToolButton(FluentIcon.COPY, self)
         copy_btn.setIconSize(QSize(20, 20))
-        copy_btn.setToolTip("复制画布")
+        copy_btn.setToolTip(self.tr("复制画布"))
         copy_btn.clicked.connect(self._on_copy_clicked)
 
         edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
         edit_btn.setIconSize(QSize(20, 20))
-        edit_btn.setToolTip("重命名")
+        edit_btn.setToolTip(self.tr("重命名"))
         edit_btn.clicked.connect(self._on_edit_clicked)
 
         delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         delete_btn.setIconSize(QSize(20, 20))
-        delete_btn.setToolTip("删除画布")
+        delete_btn.setToolTip(self.tr("删除画布"))
         delete_btn.clicked.connect(self._on_delete_clicked)
 
         btn_layout = QHBoxLayout()
@@ -184,7 +201,9 @@ class WorkflowCard(CardWidget):
                 return
 
             # 保持宽高比，居中裁剪（或用 Qt.KeepAspectRatio）
-            scaled_pixmap = pixmap.scaled(330, 220, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            scaled_pixmap = pixmap.scaled(
+                330, 220, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
+            )
 
             # 如果你想强制填满（可能变形），用：
             # scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
@@ -196,7 +215,7 @@ class WorkflowCard(CardWidget):
 
     def _create_placeholder(self):
         """创建“无预览图”占位"""
-        self.image_label.setText("无预览图")
+        self.image_label.setText(self.tr("无预览图"))
         self.image_label.setStyleSheet("""
             color: #999;
             background-color: #fafafa;
@@ -223,20 +242,20 @@ class WorkflowCard(CardWidget):
         super().mousePressEvent(event)
 
     def _on_open_clicked(self):
-        if hasattr(self.home, 'open_canvas'):
+        if hasattr(self.home, "open_canvas"):
             self.home.open_canvas(self.file_path)
 
     def _on_copy_clicked(self):
-        if hasattr(self.home, 'duplicate_workflow'):
+        if hasattr(self.home, "duplicate_workflow"):
             self.home.duplicate_workflow(self.file_path)
 
     def _on_delete_clicked(self):
-        if hasattr(self.home, 'delete_workflow'):
+        if hasattr(self.home, "delete_workflow"):
             self.home.delete_workflow(self.file_path)
 
     def _on_edit_clicked(self):
         """编辑画布名称"""
-        if hasattr(self.home, 'edit_workflow'):
+        if hasattr(self.home, "edit_workflow"):
             self.home.edit_workflow(self.file_path)
 
     def closeEvent(self, event):
@@ -260,18 +279,22 @@ class WorkflowCard(CardWidget):
 
         # 使用保存的标签引用直接更新文本
         if file_info:
-            create_time = file_info.get('ctime', '未知')
-            change_time = file_info.get('mtime', '未知')
+            create_time = file_info.get("ctime", "未知")
+            change_time = file_info.get("mtime", "未知")
         else:
             try:
                 stat = self.file_path.stat()
-                create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M")
-                change_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                create_time = datetime.fromtimestamp(stat.st_ctime).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
+                change_time = datetime.fromtimestamp(stat.st_mtime).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
             except Exception:
                 create_time = change_time = "未知"
 
         # 直接更新时间标签
-        if hasattr(self, 'create_time_label') and self.create_time_label:
+        if hasattr(self, "create_time_label") and self.create_time_label:
             self.create_time_label.setText(create_time)
-        if hasattr(self, 'modify_time_label') and self.modify_time_label:
+        if hasattr(self, "modify_time_label") and self.modify_time_label:
             self.modify_time_label.setText(change_time)

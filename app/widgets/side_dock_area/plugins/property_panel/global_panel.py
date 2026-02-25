@@ -4,18 +4,43 @@ import re
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QStackedWidget, QApplication
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QStackedWidget,
+    QApplication,
+)
 from loguru import logger
-from qfluentwidgets import SimpleCardWidget, SegmentedWidget, \
-    FluentIcon, InfoBar, InfoBarPosition, TransparentToolButton, RoundMenu, Action, TransparentPushButton, \
-    TransparentDropDownToolButton, BodyLabel, StrongBodyLabel, CaptionLabel, ToolButton
+from qfluentwidgets import (
+    SimpleCardWidget,
+    SegmentedWidget,
+    FluentIcon,
+    InfoBar,
+    InfoBarPosition,
+    TransparentToolButton,
+    RoundMenu,
+    Action,
+    TransparentPushButton,
+    TransparentDropDownToolButton,
+    BodyLabel,
+    StrongBodyLabel,
+    CaptionLabel,
+    ToolButton,
+)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.custom_messagebox import CustomTwoInputDialog
-from app.widgets.side_dock_area.plugins.property_panel.draggable_variable_card import DraggableVariableCard
-from app.widgets.side_dock_area.plugins.property_panel.parameter_group import ParameterGroupDialog
-from app.widgets.side_dock_area.plugins.property_panel.variable_tree import VariableTreeWidget
+from app.widgets.side_dock_area.plugins.property_panel.draggable_variable_card import (
+    DraggableVariableCard,
+)
+from app.widgets.side_dock_area.plugins.property_panel.parameter_group import (
+    ParameterGroupDialog,
+)
+from app.widgets.side_dock_area.plugins.property_panel.variable_tree import (
+    VariableTreeWidget,
+)
 
 
 class GlobalPanelWidget:
@@ -38,7 +63,7 @@ class GlobalPanelWidget:
         self.env_page = None
         self.node_page = None
         self.custom_page = None
-        self._current_global_tab = 'custom'
+        self._current_global_tab = "custom"
         # --- 新增：存储布局引用 ---
         self.custom_vars_layout = None
         self.node_vars_layout = None
@@ -52,10 +77,10 @@ class GlobalPanelWidget:
         segment_layout = QHBoxLayout(self.parent_panel)
         segment_layout.setContentsMargins(5, 5, 5, 0)
         self.global_segmented = SegmentedWidget(self.parent_panel)
-        self.global_segmented.addItem('env', segment_layout.tr('环境变量'))
-        self.global_segmented.addItem('node', segment_layout.tr('节点变量'))
-        self.global_segmented.addItem('custom', segment_layout.tr('自定义变量'))
-        self.global_segmented.setCurrentItem('node')
+        self.global_segmented.addItem("env", segment_layout.tr("环境变量"))
+        self.global_segmented.addItem("node", segment_layout.tr("节点变量"))
+        self.global_segmented.addItem("custom", segment_layout.tr("自定义变量"))
+        self.global_segmented.setCurrentItem("node")
         segment_layout.addWidget(self.global_segmented)
         self.global_stacked = QStackedWidget(self.parent_panel)
 
@@ -95,7 +120,7 @@ class GlobalPanelWidget:
         """
         内部处理逻辑，根据 var_type, var_name, action 更新UI。
         """
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         if not global_vars:
             return
 
@@ -110,7 +135,8 @@ class GlobalPanelWidget:
                 if var_name in self._custom_var_cards:
                     card = self._custom_var_cards[var_name]
                     new_val_obj = global_vars.custom.get(var_name)
-                    if not new_val_obj: return  # 异常保护
+                    if not new_val_obj:
+                        return  # 异常保护
 
                     new_value = new_val_obj.value
 
@@ -148,8 +174,12 @@ class GlobalPanelWidget:
             value_label = layout.itemAt(1).widget()
             if isinstance(value_label, BodyLabel):
                 try:
-                    preview = json.dumps(new_value, ensure_ascii=False, default=str)[:40] + "..." \
-                        if isinstance(new_value, (dict, list)) else str(new_value)[:40]
+                    preview = (
+                        json.dumps(new_value, ensure_ascii=False, default=str)[:40]
+                        + "..."
+                        if isinstance(new_value, (dict, list))
+                        else str(new_value)[:40]
+                    )
                 except:
                     preview = "<无法预览>"
 
@@ -175,12 +205,14 @@ class GlobalPanelWidget:
         # 清空详情
         while detail_layout.count():
             item = detail_layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
+            if item.widget():
+                item.widget().deleteLater()
             if item.layout():
                 # 递归清理layout比较麻烦，这里详情结构简单，都是 HBox
                 while item.layout().count():
                     sub = item.layout().takeAt(0)
-                    if sub.widget(): sub.widget().deleteLater()
+                    if sub.widget():
+                        sub.widget().deleteLater()
                 item.layout().deleteLater()
 
         # 重新填充
@@ -198,9 +230,9 @@ class GlobalPanelWidget:
             detail_layout.addLayout(param_row)
 
     def _on_global_tab_changed(self, key):
-        if key == 'env':
+        if key == "env":
             index = 0
-        elif key == 'node':
+        elif key == "node":
             index = 1
         else:
             index = 2
@@ -212,14 +244,22 @@ class GlobalPanelWidget:
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        title = TransparentPushButton(text="自定义变量 (custom)", icon=get_icon("自定义变量"), parent=self.parent_panel)
+        title = TransparentPushButton(
+            text="自定义变量 (custom)",
+            icon=get_icon("自定义变量"),
+            parent=self.parent_panel,
+        )
         layout.addWidget(title)
 
         # 创建一个水平布局来放置两个按钮
         btn_layout = QHBoxLayout()
-        add_custom_btn = TransparentPushButton(text="新增KV变量", parent=self.parent_panel, icon=FluentIcon.ADD)
+        add_custom_btn = TransparentPushButton(
+            text="新增KV变量", parent=self.parent_panel, icon=FluentIcon.ADD
+        )
         add_custom_btn.clicked.connect(self.add_new_custom_variable)
-        add_group_btn = TransparentPushButton(text="新增参数组", parent=self.parent_panel, icon=FluentIcon.ADD)
+        add_group_btn = TransparentPushButton(
+            text="新增参数组", parent=self.parent_panel, icon=FluentIcon.ADD
+        )
         add_group_btn.clicked.connect(self.add_new_parameter_group)
         btn_layout.addWidget(add_custom_btn)
         btn_layout.addWidget(add_group_btn)
@@ -260,8 +300,11 @@ class GlobalPanelWidget:
 
         # 标题
         title_layout = QHBoxLayout()
-        title = TransparentPushButton(text="节点变量 (node_vars)", icon=get_icon("节点变量"),
-                                      parent=self.parent_panel)
+        title = TransparentPushButton(
+            text="节点变量 (node_vars)",
+            icon=get_icon("节点变量"),
+            parent=self.parent_panel,
+        )
         title_layout.addWidget(title, 1)
 
         expand_all_btn = TransparentToolButton(get_icon("expand_all"))
@@ -293,9 +336,13 @@ class GlobalPanelWidget:
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        title = TransparentPushButton(text="环境变量 (env)", icon=get_icon("环境变量"), parent=self.parent_panel)
+        title = TransparentPushButton(
+            text="环境变量 (env)", icon=get_icon("环境变量"), parent=self.parent_panel
+        )
         layout.addWidget(title)
-        add_env_btn = TransparentPushButton(text="新增环境变量", parent=self.parent_panel, icon=FluentIcon.ADD)
+        add_env_btn = TransparentPushButton(
+            text="新增环境变量", parent=self.parent_panel, icon=FluentIcon.ADD
+        )
         add_env_btn.clicked.connect(self.add_new_env_variable)
         layout.addWidget(add_env_btn)
         self.env_vars_container = QWidget()
@@ -312,7 +359,7 @@ class GlobalPanelWidget:
     # 全局变量 UI 构建（增量更新）
     # ========================
     def _refresh_custom_vars_page(self):
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         if not global_vars:
             return
 
@@ -320,15 +367,28 @@ class GlobalPanelWidget:
         existing_custom = set(self._custom_var_cards.keys())
 
         # 分类当前变量
-        current_params = {name: global_vars.custom[name].value for name, obj in global_vars.custom.items() if
-                          isinstance(obj.value, dict)}
-        current_kvs = {name: global_vars.custom[name].value for name, obj in global_vars.custom.items() if
-                       not isinstance(obj.value, dict)}
+        current_params = {
+            name: global_vars.custom[name].value
+            for name, obj in global_vars.custom.items()
+            if isinstance(obj.value, dict)
+        }
+        current_kvs = {
+            name: global_vars.custom[name].value
+            for name, obj in global_vars.custom.items()
+            if not isinstance(obj.value, dict)
+        }
 
         # --- 处理参数组 (Params) ---
         current_param_names = set(current_params.keys())
-        existing_param_names = {name for name in existing_custom if name in self._custom_var_cards and isinstance(
-            global_vars.custom.get(name, type('obj', (), {'value': None})()).value, dict)}
+        existing_param_names = {
+            name
+            for name in existing_custom
+            if name in self._custom_var_cards
+            and isinstance(
+                global_vars.custom.get(name, type("obj", (), {"value": None})()).value,
+                dict,
+            )
+        }
         # Note: 上面这行 existing_param_names 的判断逻辑依赖于 global_vars.custom 的实时性
 
         # 添加新参数组
@@ -345,8 +405,15 @@ class GlobalPanelWidget:
 
         # --- 处理KV变量 (KVs) ---
         current_kv_names = set(current_kvs.keys())
-        existing_kv_names = {name for name in existing_custom if name in self._custom_var_cards and not isinstance(
-            global_vars.custom.get(name, type('obj', (), {'value': None})()).value, dict)}
+        existing_kv_names = {
+            name
+            for name in existing_custom
+            if name in self._custom_var_cards
+            and not isinstance(
+                global_vars.custom.get(name, type("obj", (), {"value": None})()).value,
+                dict,
+            )
+        }
 
         # 添加新KV变量
         for name in current_kv_names - existing_kv_names:
@@ -367,7 +434,7 @@ class GlobalPanelWidget:
 
     def _refresh_node_vars_page(self):
         """优化后的节点变量刷新逻辑：增量更新 + 布局修复"""
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         if not global_vars:
             return
 
@@ -383,7 +450,7 @@ class GlobalPanelWidget:
                 del last_item
 
                 # 2. 获取当前数据状态
-        current_node_vars = getattr(global_vars, 'node_vars', {})
+        current_node_vars = getattr(global_vars, "node_vars", {})
         current_node_groups = {}
         for var_name, var_obj in current_node_vars.items():
             node_name = var_name.split("__")[0]
@@ -465,19 +532,21 @@ class GlobalPanelWidget:
     def _sync_node_group_content(self, card, group_items):
         """同步单个节点卡片内的变量行"""
         # card.row_cache 结构: { full_var_name: {'widget': row_widget, 'data_id': id(val), 'policy': str} }
-        if not hasattr(card, 'row_cache'):
+        if not hasattr(card, "row_cache"):
             card.row_cache = {}
 
         target_vars = {item[0]: item[1] for item in group_items}
         existing_vars = set(card.row_cache.keys())
         current_vars = set(target_vars.keys())
 
-        layout = card.content_layout  # 需要在 _create_node_group_card_enhanced 中暴露这个属性
+        layout = (
+            card.content_layout
+        )  # 需要在 _create_node_group_card_enhanced 中暴露这个属性
 
         # 1. 删除多余的行
         for var_name in existing_vars - current_vars:
             cache_item = card.row_cache.pop(var_name)
-            cache_item['widget'].deleteLater()
+            cache_item["widget"].deleteLater()
 
         # 2. 新增或更新行
         # 为了保持顺序，最好是清空 layout 重新 add？不，这样闪烁。
@@ -494,30 +563,30 @@ class GlobalPanelWidget:
                 row_widget = self._create_compact_port_row(var_name, var_obj)
                 layout.addWidget(row_widget)
                 card.row_cache[var_name] = {
-                    'widget': row_widget,
-                    'data_id': val_id,
-                    'policy': policy
+                    "widget": row_widget,
+                    "data_id": val_id,
+                    "policy": policy,
                 }
             else:
                 # 更新检查
                 cache = card.row_cache[var_name]
-                row_widget = cache['widget']
+                row_widget = cache["widget"]
 
                 # 检查策略是否变化 (更新 UI)
-                if cache['policy'] != policy:
+                if cache["policy"] != policy:
                     # 找到下拉框控件并更新
                     btn = row_widget.findChild(TransparentDropDownToolButton)
                     if btn:
                         btn.setIcon(get_icon(policy))
                         btn.setProperty("policy", policy)
-                    cache['policy'] = policy
+                    cache["policy"] = policy
 
                 # 检查数据是否变化 (更新 Tree)
                 # 注意：如果是 None 变 None，id 是一样的。
                 # 如果是可变对象(dict/list)内容变了但 id 没变（原地修改），这里可能检测不到。
                 # 但在数据流图中，通常输出是新生成的对象。如果需要深度检测，代价太大。
                 # 折中方案：比对 id，以及如果是基础类型比对值。
-                should_update_data = (cache['data_id'] != val_id)
+                should_update_data = cache["data_id"] != val_id
 
                 if should_update_data:
                     # 找到 Tree 组件
@@ -538,9 +607,9 @@ class GlobalPanelWidget:
                             row_widget.deleteLater()
                             new_row = self._create_compact_port_row(var_name, var_obj)
                             layout.addWidget(new_row)
-                            card.row_cache[var_name]['widget'] = new_row
+                            card.row_cache[var_name]["widget"] = new_row
 
-                    cache['data_id'] = val_id
+                    cache["data_id"] = val_id
 
     def _create_node_group_card_enhanced(self, node_name: str, node_var_items: list):
         """增强版节点组卡片：支持折叠、定位、计数"""
@@ -558,7 +627,9 @@ class GlobalPanelWidget:
 
         # 节点图标和名称
         node = self.locate_node_by_name(node_name)
-        node_icon = TransparentToolButton((node and node.icon()) or FluentIcon.TILES, header_widget)
+        node_icon = TransparentToolButton(
+            (node and node.icon()) or FluentIcon.TILES, header_widget
+        )
         node_icon.setFixedSize(24, 24)
 
         display_name = node_name.replace("_", " ")
@@ -566,7 +637,7 @@ class GlobalPanelWidget:
         name_label.setWordWrap(True)
 
         locate_btn = TransparentToolButton(get_icon("location"), header_widget)
-        locate_btn.setToolTip("在画布中定位节点")
+        locate_btn.setToolTip(self.tr("在画布中定位节点"))
         locate_btn.setFixedSize(24, 24)
         locate_btn.clicked.connect(lambda: self.zoom_to_node_by_name(node_name))
 
@@ -596,9 +667,9 @@ class GlobalPanelWidget:
 
             # [新增] 初始填充缓存
             card.row_cache[var_name] = {
-                'widget': port_row,
-                'data_id': id(node_var_obj.value),
-                'policy': node_var_obj.update_policy
+                "widget": port_row,
+                "data_id": id(node_var_obj.value),
+                "policy": node_var_obj.update_policy,
             }
 
         outer_layout.addWidget(content_container)
@@ -606,7 +677,9 @@ class GlobalPanelWidget:
         # --- 修改部分：定义显式的展开/折叠方法 ---
         def set_expanded(expanded: bool):
             content_container.setVisible(expanded)
-            toggle_btn.setIcon(FluentIcon.CHEVRON_DOWN_MED if expanded else FluentIcon.CHEVRON_RIGHT)
+            toggle_btn.setIcon(
+                FluentIcon.CHEVRON_DOWN_MED if expanded else FluentIcon.CHEVRON_RIGHT
+            )
 
         # 将方法挂载到 card 对象上，方便外部调用
         card.set_expanded = set_expanded
@@ -615,7 +688,9 @@ class GlobalPanelWidget:
             is_visible = content_container.isVisible()
             set_expanded(not is_visible)
 
-        header_widget.mousePressEvent = lambda e: toggle() if e.button() == Qt.LeftButton else None
+        header_widget.mousePressEvent = (
+            lambda e: toggle() if e.button() == Qt.LeftButton else None
+        )
         toggle_btn.clicked.connect(toggle)
 
         return card
@@ -623,10 +698,7 @@ class GlobalPanelWidget:
     def _create_compact_port_row(self, full_var_name: str, node_var_obj):
         """更紧凑的端口行，而不是嵌套卡片"""
         row_widget = DraggableVariableCard(
-            self.parent_panel,
-            "node_vars",
-            full_var_name,
-            node_var_obj.value
+            self.parent_panel, "node_vars", full_var_name, node_var_obj.value
         )
         row_widget.setObjectName("portRow")
         row_widget.setStyleSheet("""
@@ -649,34 +721,51 @@ class GlobalPanelWidget:
         port_name = full_var_name.split("__")[-1]
 
         port_icon = CaptionLabel("端口")
-        port_icon.setStyleSheet("background: #0078d4; color: white; padding: 1px 4px; border-radius: 2px;")
+        port_icon.setStyleSheet(
+            "background: #0078d4; color: white; padding: 1px 4px; border-radius: 2px;"
+        )
 
         port_label = BodyLabel(port_name)
         port_label.setWordWrap(True)
         # 策略图标预览
-        strategy_combo = TransparentDropDownToolButton(icon=get_icon(node_var_obj.update_policy),
-                                                       parent=self.parent_panel)
+        strategy_combo = TransparentDropDownToolButton(
+            icon=get_icon(node_var_obj.update_policy), parent=self.parent_panel
+        )
         strategy_combo.setFixedSize(52, 24)
         strategy_combo.setProperty("policy", node_var_obj.update_policy)
         strategy_combo.setProperty("node_var_name", full_var_name)
         menu = RoundMenu(parent=strategy_combo)
         menu.addAction(
-            Action(get_icon("固定"), '固定',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("固定", btn))
+            Action(
+                get_icon("固定"),
+                "固定",
+                triggered=lambda checked=False,
+                btn=strategy_combo: self.change_node_var_strategy("固定", btn),
+            )
         )
         menu.addAction(
-            Action(get_icon("更新"), '更新',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("更新", btn))
+            Action(
+                get_icon("更新"),
+                "更新",
+                triggered=lambda checked=False,
+                btn=strategy_combo: self.change_node_var_strategy("更新", btn),
+            )
         )
         menu.addAction(
-            Action(get_icon("追加"), '追加',
-                   triggered=lambda checked=False, btn=strategy_combo: self.change_node_var_strategy("追加", btn))
+            Action(
+                get_icon("追加"),
+                "追加",
+                triggered=lambda checked=False,
+                btn=strategy_combo: self.change_node_var_strategy("追加", btn),
+            )
         )
         strategy_combo.setMenu(menu)
 
         del_btn = TransparentToolButton(FluentIcon.CLOSE)
         del_btn.setFixedSize(20, 20)
-        del_btn.clicked.connect(lambda: self.delete_variable('node_vars', full_var_name))
+        del_btn.clicked.connect(
+            lambda: self.delete_variable("node_vars", full_var_name)
+        )
 
         title_layout.addWidget(port_icon)
         title_layout.addWidget(port_label, 1)
@@ -699,26 +788,42 @@ class GlobalPanelWidget:
         # 右键菜单保持不变
         row_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         row_widget.customContextMenuRequested.connect(
-            lambda pos: self._show_port_context_menu(pos, row_widget, full_var_name))
+            lambda pos: self._show_port_context_menu(pos, row_widget, full_var_name)
+        )
 
         return row_widget
 
     def _set_all_nodes_expanded(self, expanded: bool):
         """批量设置所有节点卡片的展开状态"""
         for card in self._node_var_cards.values():
-            if hasattr(card, 'set_expanded'):
+            if hasattr(card, "set_expanded"):
                 card.set_expanded(expanded)
 
     def _show_port_context_menu(self, pos, widget, name):
         """提取出的右键菜单逻辑"""
         menu = RoundMenu(parent=self.parent_panel)
-        menu.addActions([
-            Action(FluentIcon.COPY, "复制表达式", triggered=lambda: self.copy_as_expression("node_vars", name)),
-            Action(FluentIcon.DELETE, "清空数据",
-                   triggered=lambda: self._handle_global_variable_change("node_vars", name, "clear")),
-            Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
-                   triggered=lambda: self.track_variable_usages("node_vars", name))
-        ])
+        menu.addActions(
+            [
+                Action(
+                    FluentIcon.COPY,
+                    "复制表达式",
+                    triggered=lambda: self.copy_as_expression("node_vars", name),
+                ),
+                Action(
+                    FluentIcon.DELETE,
+                    "清空数据",
+                    triggered=lambda: self._handle_global_variable_change(
+                        "node_vars", name, "clear"
+                    ),
+                ),
+                Action(
+                    get_icon("追踪"),
+                    "追踪变量",
+                    parent=self.parent_panel,
+                    triggered=lambda: self.track_variable_usages("node_vars", name),
+                ),
+            ]
+        )
         menu.exec_(widget.mapToGlobal(pos))
 
     def zoom_to_node_by_name(self, node_name):
@@ -728,12 +833,14 @@ class GlobalPanelWidget:
 
     def _refresh_env_page(self):
         # 去除最后strech
-        self.env_vars_layout.removeItem(self.env_vars_layout.itemAt(self.env_vars_layout.count() - 1))
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if not global_vars or not hasattr(global_vars, 'env'):
+        self.env_vars_layout.removeItem(
+            self.env_vars_layout.itemAt(self.env_vars_layout.count() - 1)
+        )
+        global_vars = getattr(self.main_window, "global_variables", None)
+        if not global_vars or not hasattr(global_vars, "env"):
             return
         all_env_vars = global_vars.env.get_all_env_vars()
-        current_env = {k: v for k, v in all_env_vars.items() if k != 'start_time'}
+        current_env = {k: v for k, v in all_env_vars.items() if k != "start_time"}
         existing_env = set(self._env_var_cards.keys())
         for key in current_env.keys() - existing_env:
             card = self._create_env_var_row(key, current_env[key])
@@ -749,8 +856,12 @@ class GlobalPanelWidget:
                 value_label = card.layout().itemAt(1).widget()
                 if isinstance(value_label, BodyLabel):
                     try:
-                        preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
-                            if isinstance(value, (dict, list)) else str(value)[:40]
+                        preview = (
+                            json.dumps(value, ensure_ascii=False, default=str)[:40]
+                            + "..."
+                            if isinstance(value, (dict, list))
+                            else str(value)[:40]
+                        )
                     except:
                         preview = "<无法预览>"
                     value_label.setText(preview)
@@ -771,8 +882,11 @@ class GlobalPanelWidget:
         layout.setSpacing(4)
         name_label = BodyLabel(f"{name}:")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
-                if isinstance(value, (dict, list)) else str(value)[:40]
+            preview = (
+                json.dumps(value, ensure_ascii=False, default=str)[:40] + "..."
+                if isinstance(value, (dict, list))
+                else str(value)[:40]
+            )
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
@@ -781,7 +895,7 @@ class GlobalPanelWidget:
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
         del_btn.setIconSize(QSize(12, 12))
         del_btn.setFixedSize(16, 16)
-        del_btn.clicked.connect(lambda _, n=name: self.delete_variable('custom', n))
+        del_btn.clicked.connect(lambda _, n=name: self.delete_variable("custom", n))
         layout.addWidget(name_label)
         layout.addWidget(value_label, 1)
         layout.addStretch()
@@ -794,18 +908,24 @@ class GlobalPanelWidget:
             menu.addActions(
                 [
                     Action(
-                        FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
-                        triggered=lambda: self.copy_as_expression("custom", name)
+                        FluentIcon.COPY,
+                        "复制为表达式",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.copy_as_expression("custom", name),
                     ),
                     Action(
-                        FluentIcon.EDIT, "编辑变量", parent=self.parent_panel,
-                        triggered=lambda: self.edit_custom_variable(name, current_val)
+                        FluentIcon.EDIT,
+                        "编辑变量",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.edit_custom_variable(name, current_val),
                     ),
                     # 追踪变量
                     Action(
-                        get_icon("追踪"), "追踪变量", parent=self.parent_panel,
-                        triggered=lambda: self.track_variable_usages("custom", name)
-                    )
+                        get_icon("追踪"),
+                        "追踪变量",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.track_variable_usages("custom", name),
+                    ),
                 ]
             )
             menu.exec_(card.mapToGlobal(pos))
@@ -842,7 +962,7 @@ class GlobalPanelWidget:
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
         del_btn.setIconSize(QSize(12, 12))
         del_btn.setFixedSize(16, 16)
-        del_btn.clicked.connect(lambda _, n=name: self.delete_variable('custom', n))
+        del_btn.clicked.connect(lambda _, n=name: self.delete_variable("custom", n))
         title_layout.addWidget(del_btn)
         layout.addLayout(title_layout)
 
@@ -874,7 +994,9 @@ class GlobalPanelWidget:
 
         # 添加展开/折叠按钮
         toggle_btn = TransparentPushButton(text="展开", parent=self.parent_panel)
-        toggle_btn.clicked.connect(lambda: self._toggle_parameter_group_detail(detail_container, toggle_btn))
+        toggle_btn.clicked.connect(
+            lambda: self._toggle_parameter_group_detail(detail_container, toggle_btn)
+        )
         layout.addWidget(toggle_btn)
 
         def show_context_menu(pos):
@@ -884,16 +1006,24 @@ class GlobalPanelWidget:
             menu.addActions(
                 [
                     Action(
-                        FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
-                        triggered=lambda: self.copy_as_expression("custom", name)
+                        FluentIcon.COPY,
+                        "复制为表达式",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.copy_as_expression("custom", name),
                     ),
                     Action(
-                        FluentIcon.EDIT, "编辑参数组", parent=self.parent_panel,
-                        triggered=lambda: self.edit_parameter_group(name, current_val)
+                        FluentIcon.EDIT,
+                        "编辑参数组",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.edit_parameter_group(name, current_val),
                     ),
                     # 追踪变量
-                    Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
-                           triggered=lambda: self.track_variable_usages("custom", key))
+                    Action(
+                        get_icon("追踪"),
+                        "追踪变量",
+                        parent=self.parent_panel,
+                        triggered=lambda: self.track_variable_usages("custom", key),
+                    ),
                 ]
             )
             menu.exec_(card.mapToGlobal(pos))
@@ -906,7 +1036,7 @@ class GlobalPanelWidget:
         """切换参数组详情的显示/隐藏"""
         is_visible = detail_container.isVisible()
         detail_container.setVisible(not is_visible)
-        toggle_btn.setText("收起" if not is_visible else "展开")
+        toggle_btn.setText(self.tr("收起") if not is_visible else self.tr("展开"))
 
     def _create_env_var_row(self, key: str, value):
         card = DraggableVariableCard(self.parent_panel, "env", key, value)
@@ -920,8 +1050,11 @@ class GlobalPanelWidget:
         layout.setSpacing(4)
         name_label = BodyLabel(f"{key} : ")
         try:
-            preview = json.dumps(value, ensure_ascii=False, default=str)[:40] + "..." \
-                if isinstance(value, (dict, list)) else str(value)[:40]
+            preview = (
+                json.dumps(value, ensure_ascii=False, default=str)[:40] + "..."
+                if isinstance(value, (dict, list))
+                else str(value)[:40]
+            )
         except:
             preview = "<无法预览>"
         value_label = BodyLabel(preview)
@@ -939,14 +1072,30 @@ class GlobalPanelWidget:
         def show_context_menu(pos):
             current_val = self.main_window.global_variables.get(f"env.{key}")
             menu = RoundMenu(parent=self.parent_panel)
-            menu.addAction(Action(FluentIcon.COPY, "复制为表达式", parent=self.parent_panel,
-                                  triggered=lambda: self.copy_as_expression("env", key)))
-            menu.addAction(Action(FluentIcon.EDIT, "编辑变量", parent=self.parent_panel,
-                                  triggered=lambda: self.edit_env_variable(key, current_val)))
+            menu.addAction(
+                Action(
+                    FluentIcon.COPY,
+                    "复制为表达式",
+                    parent=self.parent_panel,
+                    triggered=lambda: self.copy_as_expression("env", key),
+                )
+            )
+            menu.addAction(
+                Action(
+                    FluentIcon.EDIT,
+                    "编辑变量",
+                    parent=self.parent_panel,
+                    triggered=lambda: self.edit_env_variable(key, current_val),
+                )
+            )
             # 追踪变量
             menu.addAction(
-                Action(get_icon("追踪"), "追踪变量", parent=self.parent_panel,
-                       triggered=lambda: self.track_variable_usages("env", key))
+                Action(
+                    get_icon("追踪"),
+                    "追踪变量",
+                    parent=self.parent_panel,
+                    triggered=lambda: self.track_variable_usages("env", key),
+                )
             )
             menu.exec_(card.mapToGlobal(pos))
 
@@ -958,13 +1107,21 @@ class GlobalPanelWidget:
     # 全局变量操作
     # ========================
     def delete_variable(self, var_type: str, var_name: str):
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         if not global_vars:
             return
         try:
-            if var_type == 'custom' and hasattr(global_vars, 'custom') and var_name in global_vars.custom:
+            if (
+                var_type == "custom"
+                and hasattr(global_vars, "custom")
+                and var_name in global_vars.custom
+            ):
                 del global_vars.custom[var_name]
-            elif var_type == 'node_vars' and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
+            elif (
+                var_type == "node_vars"
+                and hasattr(global_vars, "node_vars")
+                and var_name in global_vars.node_vars
+            ):
                 global_vars.node_vars.pop(var_name, None)
                 node = self.locate_node_by_name(var_name.split("__")[0])
                 if node:
@@ -973,18 +1130,29 @@ class GlobalPanelWidget:
                     if hasattr(node, "_sync_outputs_ports"):
                         QtCore.QTimer.singleShot(0, node._sync_outputs_ports)
             self._handle_global_variable_change(var_type, var_name, "delete")
-            InfoBar.success("已删除", f"变量 '{var_name}' 已移除", parent=self.main_window, duration=1500)
+            InfoBar.success(
+                "已删除",
+                f"变量 '{var_name}' 已移除",
+                parent=self.main_window,
+                duration=1500,
+            )
         except Exception as e:
             InfoBar.error("删除失败", str(e), parent=self.main_window)
 
-    def change_node_var_strategy(self, text: str, button: TransparentDropDownToolButton):
+    def change_node_var_strategy(
+        self, text: str, button: TransparentDropDownToolButton
+    ):
         button.setIcon(get_icon(text))
-        var_name = button.property('node_var_name')
+        var_name = button.property("node_var_name")
         if not var_name:
             return
         button.setProperty("policy", text)
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if global_vars and hasattr(global_vars, 'node_vars') and var_name in global_vars.node_vars:
+        global_vars = getattr(self.main_window, "global_variables", None)
+        if (
+            global_vars
+            and hasattr(global_vars, "node_vars")
+            and var_name in global_vars.node_vars
+        ):
             global_vars.node_vars[var_name].update_policy = text
 
     def add_new_custom_variable(self):
@@ -993,7 +1161,7 @@ class GlobalPanelWidget:
             title2="变量值",
             placeholder1="变量名（如 threshold）",
             placeholder2="变量值（如 0.5）",
-            parent=self.main_window
+            parent=self.main_window,
         )
         if dialog.exec():
             name, value_str = dialog.get_text()
@@ -1001,15 +1169,15 @@ class GlobalPanelWidget:
                 InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
                 return
             try:
-                if value_str.lower() in ('true', 'false'):
-                    value = value_str.lower() == 'true'
-                elif '.' in value_str:
+                if value_str.lower() in ("true", "false"):
+                    value = value_str.lower() == "true"
+                elif "." in value_str:
                     value = float(value_str)
                 else:
                     value = int(value_str)
             except ValueError:
                 value = value_str
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if global_vars:
                 global_vars.set(name, value)
                 self._handle_global_variable_change("custom", name, "add")
@@ -1025,17 +1193,23 @@ class GlobalPanelWidget:
             parameters = dialog.get_parameters()
 
             if not new_name:
-                InfoBar.warning("无效名称", "参数组名称不能为空", parent=self.main_window)
+                InfoBar.warning(
+                    "无效名称", "参数组名称不能为空", parent=self.main_window
+                )
                 return
 
             if not parameters:
-                InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self.main_window)
+                InfoBar.warning(
+                    "无效参数", "参数组至少需要一个参数", parent=self.main_window
+                )
                 return
 
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if global_vars:
                 if new_name in global_vars.custom:
-                    InfoBar.warning("已存在", f"参数组 {new_name} 已存在", parent=self.main_window)
+                    InfoBar.warning(
+                        "已存在", f"参数组 {new_name} 已存在", parent=self.main_window
+                    )
                     return
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
@@ -1047,30 +1221,32 @@ class GlobalPanelWidget:
             title2="环境变量值",
             placeholder1="变量名（如 API_KEY）",
             placeholder2="变量值",
-            parent=self.main_window
+            parent=self.main_window,
         )
         if dialog.exec():
             name, value = dialog.get_text()
             if not name:
                 InfoBar.warning("无效名称", "变量名不能为空", parent=self.main_window)
                 return
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if global_vars:
                 global_vars.env.set_env_var(name, value)
                 self._handle_global_variable_change("env", name, "add")
                 InfoBar.success("已添加", f"环境变量 {name}", parent=self.main_window)
 
     def delete_env_variable(self, key: str):
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         if not global_vars:
             return
         global_vars.env.delete_env_var(key)
         self._refresh_env_page()
         self._handle_global_variable_change("env", key, "delete")
-        InfoBar.success("已删除", f"环境变量 {key}", parent=self.main_window, duration=1500)
+        InfoBar.success(
+            "已删除", f"环境变量 {key}", parent=self.main_window, duration=1500
+        )
 
     def copy_as_expression(self, prefix: str, var_name: str):
-        var_name = re.sub(r'\s+', '_', var_name)
+        var_name = re.sub(r"\s+", "_", var_name)
         expr = f"${prefix}.{var_name}$"
         clipboard = QApplication.clipboard()
         clipboard.setText(expr)
@@ -1079,7 +1255,7 @@ class GlobalPanelWidget:
             content=f"表达式已复制：{expr}",
             parent=self.main_window,
             position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=1500
+            duration=1500,
         )
 
     def edit_custom_variable(self, var_name: str, current_value):
@@ -1090,7 +1266,7 @@ class GlobalPanelWidget:
             placeholder2="变量值（如 0.5）",
             text1=var_name,
             text2=str(current_value),
-            parent=self.main_window
+            parent=self.main_window,
         )
         if dialog.exec():
             new_name, new_value_str = dialog.get_text()
@@ -1100,15 +1276,15 @@ class GlobalPanelWidget:
             if new_name == var_name and new_value_str == str(current_value):
                 return
             try:
-                if new_value_str.lower() in ('true', 'false'):
-                    new_value = new_value_str.lower() == 'true'
-                elif '.' in new_value_str:
+                if new_value_str.lower() in ("true", "false"):
+                    new_value = new_value_str.lower() == "true"
+                elif "." in new_value_str:
                     new_value = float(new_value_str)
                 else:
                     new_value = int(new_value_str)
             except ValueError:
                 new_value = new_value_str
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if not global_vars:
                 return
             if new_name != var_name and var_name in global_vars.custom:
@@ -1134,7 +1310,7 @@ class GlobalPanelWidget:
             parent=self.main_window,
             group_name=var_name,
             group_data=current_value,
-            is_new=False
+            is_new=False,
         )
 
         if dialog.exec():
@@ -1142,20 +1318,29 @@ class GlobalPanelWidget:
             parameters = dialog.get_parameters()
 
             if not new_name:
-                InfoBar.warning("无效名称", "参数组名称不能为空", parent=self.main_window)
+                InfoBar.warning(
+                    "无效名称", "参数组名称不能为空", parent=self.main_window
+                )
                 return
 
             if not parameters:
-                InfoBar.warning("无效参数", "参数组至少需要一个参数", parent=self.main_window)
+                InfoBar.warning(
+                    "无效参数", "参数组至少需要一个参数", parent=self.main_window
+                )
                 return
 
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if global_vars:
                 # 如果名称改变，先删除旧的
                 if var_name != new_name:
-                    if hasattr(global_vars, 'custom') and var_name in global_vars.custom:
+                    if (
+                        hasattr(global_vars, "custom")
+                        and var_name in global_vars.custom
+                    ):
                         del global_vars.custom[var_name]
-                        self._handle_global_variable_change("custom", var_name, "delete")
+                        self._handle_global_variable_change(
+                            "custom", var_name, "delete"
+                        )
 
                 # 设置新的参数组
                 global_vars.set(new_name, parameters)
@@ -1174,7 +1359,7 @@ class GlobalPanelWidget:
             placeholder2="变量值",
             text1=key,
             text2=str(current_value) if current_value is not None else "",
-            parent=self.main_window
+            parent=self.main_window,
         )
         if dialog.exec():
             new_key, new_value = dialog.get_text()
@@ -1183,7 +1368,7 @@ class GlobalPanelWidget:
                 return
             if new_key == key and new_value == current_value:
                 return
-            global_vars = getattr(self.main_window, 'global_variables', None)
+            global_vars = getattr(self.main_window, "global_variables", None)
             if not global_vars:
                 return
             if new_key != key:
@@ -1193,7 +1378,11 @@ class GlobalPanelWidget:
             try:
                 global_vars.env.set_env_var(new_key, new_value)
             except Exception as e:
-                InfoBar.error("设置环境变量失败", f"错误信息：{e.__str__()}", parent=self.main_window)
+                InfoBar.error(
+                    "设置环境变量失败",
+                    f"错误信息：{e.__str__()}",
+                    parent=self.main_window,
+                )
                 return
             self._refresh_env_page()
             InfoBar.success("已更新", f"环境变量 {new_key}", parent=self.main_window)
@@ -1205,18 +1394,24 @@ class GlobalPanelWidget:
         # 如果 base 本身就在组里，直接返回
         if found_node:
             return found_node
-        parts = node_name.split('_')
+        parts = node_name.split("_")
         n = len(parts)
 
         # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
-        for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
-            candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+        for i in range(
+            n - 1, 0, -1
+        ):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+            candidate = (
+                " ".join(parts[: n - i]) + "_" + "_".join(parts[n - i :])
+                if n - i > 0
+                else "_".join(parts)
+            )
             found_node = node_graph.get_node_by_name(candidate)
             if found_node:
                 return found_node
 
         # 如果上面都失败，尝试直接用空格替换所有下划线
-        fallback = ' '.join(parts)
+        fallback = " ".join(parts)
         found_node = node_graph.get_node_by_name(fallback)
         if found_node:
             return found_node
@@ -1226,16 +1421,16 @@ class GlobalPanelWidget:
             title="未找到节点",
             content=f"无法定位到节点 '{node_name}'。",
             parent=self.main_window,
-            position=InfoBarPosition.BOTTOM_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT,
         )
         self.main_window.global_variables.delete_output(node_name=node_name)
 
     def add_output_to_global_var(self, main_window, node, port_name: str):
         """将输出添加到全局变量"""
         value = node._output_values.get(port_name)
-        safe_node_name = re.sub(r'\s+', '_', node.name())
-        safe_port_name = re.sub(r'\s+', '_', port_name)
-        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+        safe_node_name = re.sub(r"\s+", "_", node.name())
+        safe_port_name = re.sub(r"\s+", "_", port_name)
+        safe_port_name = re.sub(r"\.+", "_", safe_port_name)
         var_name = f"{safe_node_name}__{safe_port_name}"
         main_window.global_variables.set_output(
             node_name=safe_node_name, output_name=safe_port_name, output_value=value
@@ -1249,15 +1444,15 @@ class GlobalPanelWidget:
             title="成功",
             content=f"已添加全局变量：{var_name}",
             parent=main_window,
-            position=InfoBarPosition.BOTTOM_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT,
         )
 
-    def delete_output_from_global_var(self, main_window, node, port_name: str=None):
+    def delete_output_from_global_var(self, main_window, node, port_name: str = None):
         """从全局变量中删除输出"""
-        safe_node_name = re.sub(r'\s+', '_', node.name())
+        safe_node_name = re.sub(r"\s+", "_", node.name())
         if port_name is not None:
-            safe_port_name = re.sub(r'\s+', '_', port_name)
-            safe_port_name = re.sub(r'\.+', '_', safe_port_name)
+            safe_port_name = re.sub(r"\s+", "_", port_name)
+            safe_port_name = re.sub(r"\.+", "_", safe_port_name)
         else:
             safe_port_name = None
         main_window.global_variables.delete_output(
@@ -1267,20 +1462,24 @@ class GlobalPanelWidget:
             QtCore.QTimer.singleShot(100, node.refresh_node_outports)
         if hasattr(node, "_sync_outputs_ports"):
             QtCore.QTimer.singleShot(100, node._sync_outputs_ports)
-        self._handle_global_variable_change("node_vars", f"{safe_node_name}__{safe_port_name}", "delete")
+        self._handle_global_variable_change(
+            "node_vars", f"{safe_node_name}__{safe_port_name}", "delete"
+        )
         InfoBar.success(
             title="成功",
             content=f"已删除全局变量：{safe_node_name}__{safe_port_name}",
             parent=main_window,
-            position=InfoBarPosition.BOTTOM_RIGHT
+            position=InfoBarPosition.BOTTOM_RIGHT,
         )
 
     def is_output_in_global_var(self, main_window, node, port_name: str):
         """判断输出是否在全局变量中"""
-        safe_node_name = re.sub(r'\s+', '_', node.name())
-        safe_port_name = re.sub(r'\s+', '_', port_name)
-        safe_port_name = re.sub(r'\.+', '_', safe_port_name)
-        return main_window.global_variables.is_output_in_node_vars(safe_node_name, safe_port_name)
+        safe_node_name = re.sub(r"\s+", "_", node.name())
+        safe_port_name = re.sub(r"\s+", "_", port_name)
+        safe_port_name = re.sub(r"\.+", "_", safe_port_name)
+        return main_window.global_variables.is_output_in_node_vars(
+            safe_node_name, safe_port_name
+        )
 
     def track_variable_usages(self, prefix: str, var_name: str):
         """追踪所有使用该变量的节点"""
@@ -1301,7 +1500,11 @@ class GlobalPanelWidget:
                         break  # 一个节点找到一个匹配即可
 
         if not nodes_found:
-            InfoBar.info("引用追踪", f"未找到使用变量 {target_expr} 的节点", parent=self.main_window)
+            InfoBar.info(
+                "引用追踪",
+                f"未找到使用变量 {target_expr} 的节点",
+                parent=self.main_window,
+            )
             return
 
         # 交互优化：如果有多个引用，可以弹出一个列表，或者直接全部选中并缩放
@@ -1312,4 +1515,8 @@ class GlobalPanelWidget:
             # 假设你的 StatusNode 有 highlight 方法，或者直接用选择状态
             node.set_selected(True)
 
-        InfoBar.success("引用追踪", f"找到 {len(nodes_found)} 处引用并已在画布中选中", parent=self.main_window)
+        InfoBar.success(
+            "引用追踪",
+            f"找到 {len(nodes_found)} 处引用并已在画布中选中",
+            parent=self.main_window,
+        )

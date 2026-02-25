@@ -2,18 +2,34 @@
 import os
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel)
-from qfluentwidgets import (CardWidget, PrimaryPushButton, FluentIcon, ToolButton,
-                            CheckBox, BodyLabel, ImageLabel)
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel
+from qfluentwidgets import (
+    CardWidget,
+    PrimaryPushButton,
+    FluentIcon,
+    ToolButton,
+    CheckBox,
+    BodyLabel,
+    ImageLabel,
+)
 
 
 class CanvasCard(CardWidget):
-    """ 新增：画布专用卡片 (显示图片) """
+    """新增：画布专用卡片 (显示图片)"""
+
     action_signal = pyqtSignal(dict, str)
     delete_signal = pyqtSignal(dict)
     check_changed = pyqtSignal()
 
-    def __init__(self, data: dict, mode: str, is_linked: bool, is_admin: bool, status_code: str, parent=None):
+    def __init__(
+        self,
+        data: dict,
+        mode: str,
+        is_linked: bool,
+        is_admin: bool,
+        status_code: str,
+        parent=None,
+    ):
         super().__init__(parent)
         self.data = data
         self.mode = mode
@@ -33,14 +49,18 @@ class CanvasCard(CardWidget):
             "match": "已同步" if mode == "local" else "已下载",
             "diff": "有差异",
             "new": "云端新增",
-            "unsynced": "未备份"
+            "unsynced": "未备份",
         }
         status_color = {
-            "match": "#52c41a", "diff": "#faad14", "new": "#1890ff", "unsynced": "#8c8c8c"
+            "match": "#52c41a",
+            "diff": "#faad14",
+            "new": "#1890ff",
+            "unsynced": "#8c8c8c",
         }
         self.badge = QLabel(status_text.get(status_code, ""))
         self.badge.setStyleSheet(
-            f"background:{status_color.get(status_code)}; color:white; padding:2px 5px; border-radius:4px; font-size:10px;")
+            f"background:{status_color.get(status_code)}; color:white; padding:2px 5px; border-radius:4px; font-size:10px;"
+        )
 
         top.addWidget(self.check_box)
         top.addStretch()
@@ -57,7 +77,7 @@ class CanvasCard(CardWidget):
             self.img.setImage(img_path)
         else:
             self.img.setStyleSheet("background: #f0f0f0; color: #999;")
-            self.img.setText("无预览图")
+            self.img.setText(self.tr("无预览图"))
             self.img.setAlignment(Qt.AlignCenter)
         v_lay.addWidget(self.img)
 
@@ -78,10 +98,14 @@ class CanvasCard(CardWidget):
 
         # 根据状态设置按钮文字
         if mode == "market":  # 云端库
-            self.act_btn.setText("更新" if status_code == "diff" else "下载")
-            self.act_btn.setIcon(FluentIcon.UPDATE if status_code == "diff" else FluentIcon.DOWNLOAD)
+            self.act_btn.setText(
+                self.tr("更新") if status_code == "diff" else self.tr("下载")
+            )
+            self.act_btn.setIcon(
+                FluentIcon.UPDATE if status_code == "diff" else FluentIcon.DOWNLOAD
+            )
         else:  # 本地站
-            self.act_btn.setText("推送" if is_linked else "上传")
+            self.act_btn.setText(self.tr("推送") if is_linked else self.tr("上传"))
             self.act_btn.setIcon(FluentIcon.UP if is_linked else FluentIcon.CLOUD)
 
         self.del_btn = ToolButton(FluentIcon.DELETE)

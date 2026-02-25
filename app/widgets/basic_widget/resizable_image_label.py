@@ -30,7 +30,7 @@ class ResizableImageLabel(QLabel):
 
     def _update_pixmap(self):
         if self._original_pixmap.isNull():
-            self.setText("⚠️ 无预览图")
+            self.setText(self.tr("⚠️ 无预览图"))
             self.setStyleSheet("color: #888; font-size: 12px;")
             return
 
@@ -38,7 +38,9 @@ class ResizableImageLabel(QLabel):
         if available_width <= 1:
             return
 
-        scaled = self._original_pixmap.scaledToWidth(available_width, Qt.SmoothTransformation)
+        scaled = self._original_pixmap.scaledToWidth(
+            available_width, Qt.SmoothTransformation
+        )
         if scaled.height() > self._max_height:
             scaled = scaled.scaledToHeight(self._max_height, Qt.SmoothTransformation)
 

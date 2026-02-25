@@ -4,12 +4,32 @@ from typing import Any, Dict
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import (QScrollArea, QFormLayout, QWidget, QDialog,
-                             QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame, QFileDialog)
-from qfluentwidgets import (MessageBoxBase, SubtitleLabel, BodyLabel, ComboBox,
-                            DoubleSpinBox, SpinBox, LineEdit, TextEdit,
-                            SwitchButton, TransparentToolButton, CaptionLabel,
-                            StrongBodyLabel, SmoothScrollArea)
+from PyQt5.QtWidgets import (
+    QScrollArea,
+    QFormLayout,
+    QWidget,
+    QDialog,
+    QSizePolicy,
+    QHBoxLayout,
+    QVBoxLayout,
+    QFrame,
+    QFileDialog,
+)
+from qfluentwidgets import (
+    MessageBoxBase,
+    SubtitleLabel,
+    BodyLabel,
+    ComboBox,
+    DoubleSpinBox,
+    SpinBox,
+    LineEdit,
+    TextEdit,
+    SwitchButton,
+    TransparentToolButton,
+    CaptionLabel,
+    StrongBodyLabel,
+    SmoothScrollArea,
+)
 
 from app.plugins.node_plugins.base import InteractivePlugin
 from app.utils.utils import get_icon
@@ -26,6 +46,7 @@ except ImportError:
 # ==============================================================================
 class FileSelectWidget(QFrame):
     """优化后的文件选择控件：增加边框反馈和更好的布局"""
+
     valueChanged = pyqtSignal(str)
 
     def __init__(self, parent=None, default_ext="", is_remote=False):
@@ -55,14 +76,18 @@ class FileSelectWidget(QFrame):
 
         # 输入框：移除边框以嵌入容器
         self.path_edit = LineEdit(self)
-        self.path_edit.setPlaceholderText("选择文件夹..." if self._is_folder_mode else "选择文件...")
-        self.path_edit.setStyleSheet("LineEdit { border: none; background: transparent; color: white}")
+        self.path_edit.setPlaceholderText(
+            self.tr("选择文件夹...") if self._is_folder_mode else self.tr("选择文件...")
+        )
+        self.path_edit.setStyleSheet(
+            "LineEdit { border: none; background: transparent; color: white}"
+        )
         self.path_edit.textChanged.connect(self._on_text_changed)
 
         # 清空按钮
         self.btn_clear = TransparentToolButton(get_icon("清空参数"), self)
         self.btn_clear.setFixedSize(28, 28)
-        self.btn_clear.setToolTip("清空")
+        self.btn_clear.setToolTip(self.tr("清空"))
         self.btn_clear.clicked.connect(lambda: self.set_value(""))
         self.btn_clear.setVisible(False)
 
@@ -86,15 +111,19 @@ class FileSelectWidget(QFrame):
             dialog = SSHRemoteFileDialog(
                 env_data=env_data,
                 selection_mode="folder" if self._is_folder_mode else "file",
-                parent=main_win
+                parent=main_win,
             )
             if dialog.exec_() == QDialog.Accepted:
                 self.set_value(dialog.get_selected_result())
         else:
             if self._is_folder_mode:
-                path = QFileDialog.getExistingDirectory(self, "选择目录", self._path or os.getcwd())
+                path = QFileDialog.getExistingDirectory(
+                    self, "选择目录", self._path or os.getcwd()
+                )
             else:
-                path, _ = QFileDialog.getOpenFileName(self, "选择文件", self._path or os.getcwd())
+                path, _ = QFileDialog.getOpenFileName(
+                    self, "选择文件", self._path or os.getcwd()
+                )
             if path:
                 self.set_value(path)
 
@@ -120,7 +149,9 @@ class InterventionDialog(MessageBoxBase):
     优化点：使用了 StrongBodyLabel，增加了 HelpText 支持，优化了滚动区域，支持必填项标记
     """
 
-    def __init__(self, title: str, message: str, schema: dict, main_window=None, parent=None):
+    def __init__(
+        self, title: str, message: str, schema: dict, main_window=None, parent=None
+    ):
         super().__init__(parent)
         self.schema = schema
         self.main_window = main_window or parent
@@ -202,7 +233,8 @@ class InterventionDialog(MessageBoxBase):
         elif t == "choice":
             w = ComboBox()
             w.addItems(info.get("choices", []))
-            if default: w.setCurrentText(str(default))
+            if default:
+                w.setCurrentText(str(default))
             w.setMinimumWidth(200)
             return w
 
@@ -222,7 +254,8 @@ class InterventionDialog(MessageBoxBase):
         elif t == "int" or t == "float":
             w = SpinBox() if t == "int" else DoubleSpinBox()
             w.setRange(info.get("min", -999999), info.get("max", 999999))
-            if t == "float": w.setDecimals(info.get("decimals", 2))
+            if t == "float":
+                w.setDecimals(info.get("decimals", 2))
             w.setValue(default if default is not None else 0)
             w.setMinimumWidth(150)
             return w
@@ -261,6 +294,7 @@ class InterventionDialog(MessageBoxBase):
             res[fid] = val
         return res
 
+
 # ==============================================================================
 # 3. 插件定义
 # ==============================================================================
@@ -293,13 +327,11 @@ class AskPlugin(InteractivePlugin):
         schema = params.get("schema", {})
 
         # 获取主窗口引用 (关键：FileSelectWidget 需要它来访问 env_data)
-        parent_window = getattr(node, 'parent_window', None)
+        parent_window = getattr(node, "parent_window", None)
 
         # 创建对话框 - 同时传递 parent 和 main_window
         dialog = InterventionDialog(
-            title, message, schema,
-            main_window=parent_window,
-            parent=parent_window
+            title, message, schema, main_window=parent_window, parent=parent_window
         )
 
         # 自定义按钮文本

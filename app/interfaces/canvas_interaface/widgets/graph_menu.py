@@ -32,7 +32,9 @@ class FilterCapsule(QtWidgets.QFrame):
         layout.setContentsMargins(8, 0, 4, 0)
         layout.setSpacing(4)
         self.label = QtWidgets.QLabel(text)
-        self.label.setStyleSheet("color: white; font-size: 11px; font-weight: bold; border: none;")
+        self.label.setStyleSheet(
+            "color: white; font-size: 11px; font-weight: bold; border: none;"
+        )
         self.close_btn = QtWidgets.QPushButton("×")
         self.close_btn.setFixedSize(16, 16)
         self.close_btn.setCursor(Qt.PointingHandCursor)
@@ -44,7 +46,8 @@ class FilterCapsule(QtWidgets.QFrame):
         layout.addWidget(self.label)
         layout.addWidget(self.close_btn)
         self.setStyleSheet(
-            f"#FilterCapsule {{ background-color: {color}; border-radius: 13px; border: 1px solid rgba(255, 255, 255, 0.1); }}")
+            f"#FilterCapsule {{ background-color: {color}; border-radius: 13px; border: 1px solid rgba(255, 255, 255, 0.1); }}"
+        )
 
 
 class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -101,9 +104,15 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
 
         # --- 2. 左侧指示条 (针对不同模式) ---
         if is_selected and item_type != "node":
-            indicator_color = QtGui.QColor("#4EC9B0") if item_type == "instance" else QtGui.QColor("#CE9178")
+            indicator_color = (
+                QtGui.QColor("#4EC9B0")
+                if item_type == "instance"
+                else QtGui.QColor("#CE9178")
+            )
             painter.setBrush(indicator_color)
-            painter.drawRoundedRect(rect.left(), rect.top() + 10, 3, rect.height() - 20, 1, 1)
+            painter.drawRoundedRect(
+                rect.left(), rect.top() + 10, 3, rect.height() - 20, 1, 1
+            )
 
         # --- 3. 绘制标题文字 ---
         font = painter.font()
@@ -135,7 +144,7 @@ class NodeItemDelegate(QtWidgets.QStyledItemDelegate):
                 option.rect.right() - tag_w - 15,
                 option.rect.top() + (option.rect.height() - tag_h) // 2,
                 tag_w,
-                tag_h
+                tag_h,
             )
 
             # 绘制标签背景 (如果是选中状态，颜色调淡一点避免冲突)
@@ -185,7 +194,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._locked_req_type = None
         self._locked_req_sub_type = None  # 【新增】锁定子类型
 
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setWindowFlags(
+            Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -194,7 +205,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.container = QtWidgets.QFrame()
         self.container.setObjectName("SearchContainer")
         self.container.setStyleSheet(
-            "#SearchContainer { background: #252526; border: 1px solid #454545; border-radius: 12px; }")
+            "#SearchContainer { background: #252526; border: 1px solid #454545; border-radius: 12px; }"
+        )
 
         self.shadow = QtWidgets.QGraphicsDropShadowEffect(self)
         self.shadow.setBlurRadius(25)
@@ -215,7 +227,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.mode_button = TransparentToolButton(get_icon("节点库"), self)
         self.mode_button.setFixedSize(35, 35)
         self.mode_button.clicked.connect(self.toggle_mode)
-        self.mode_button.setToolTip("切换模式 (Tab)")
+        self.mode_button.setToolTip(self.tr("切换模式 (Tab)"))
 
         self.filter_button = TransparentToolButton(FluentIcon.FILTER, self)
         self.filter_button.setFixedSize(35, 35)
@@ -227,7 +239,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.capsule_layout.setSpacing(4)
 
         self.search_line = QtWidgets.QLineEdit()
-        self.search_line.setPlaceholderText("🔍 搜索库节点...")
+        self.search_line.setPlaceholderText(self.tr("🔍 搜索库节点..."))
         self.search_line.setStyleSheet("""
             QLineEdit { background: #323233; color: #FFFFFF; border: 1px solid #3C3C3C; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
             QLineEdit:focus { border: 1px solid #007ACC; background: #3c3c3c; }
@@ -241,7 +253,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.setItemDelegate(NodeItemDelegate())
         self.list_widget.setMouseTracking(True)
-        self.list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
+        self.list_widget.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
         self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         StyleSheet.QLIST.apply(self.list_widget)
 
@@ -262,17 +276,17 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._current_mode = (self._current_mode + 1) % 3
 
         if self._current_mode == MenuMode.CREATE:
-            self.search_line.setPlaceholderText("🔍 搜索库节点...")
+            self.search_line.setPlaceholderText(self.tr("🔍 搜索库节点..."))
             self.filter_button.setEnabled(True)
             self.mode_button.setIcon(get_icon("节点库"))
             self._update_filter_capsule()
         elif self._current_mode == MenuMode.NAVIGATE:
-            self.search_line.setPlaceholderText("📍 定位当前图中节点...")
+            self.search_line.setPlaceholderText(self.tr("📍 定位当前图中节点..."))
             self.filter_button.setEnabled(False)
             self.mode_button.setIcon(get_icon("location"))
             self.capsule_container.hide()
         elif self._current_mode == MenuMode.TEMPLATE:
-            self.search_line.setPlaceholderText("🎨 搜索子图模板...")
+            self.search_line.setPlaceholderText(self.tr("🎨 搜索子图模板..."))
             self.filter_button.setEnabled(True)
             self.mode_button.setIcon(FluentIcon.TILES)
             self.capsule_container.hide()
@@ -286,7 +300,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
         # 清空旧的胶囊
         while self.capsule_layout.count():
             item = self.capsule_layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
+            if item.widget():
+                item.widget().deleteLater()
 
         # 如果没有处于连线模式，或者是完全忽略过滤的状态，则隐藏容器
         if self._current_mode != MenuMode.CREATE or self._ignore_connection_filter:
@@ -323,7 +338,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
         # 这样 on_item_confirmed 里依然会尝试通过 _locked_req_type 进行连线
 
         self._update_filter_capsule()  # 刷新胶囊显示（去掉子类型胶囊）
-        self.filter_list(self.search_line.text())  # 刷新列表（显示更多主类型匹配的节点）
+        self.filter_list(
+            self.search_line.text()
+        )  # 刷新列表（显示更多主类型匹配的节点）
 
     def _clear_all_filters(self):
         """原 _clear_extra_filter：清除所有过滤，放弃自动连线"""
@@ -350,15 +367,17 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._cached_data = []
         for node in self._graph.all_nodes():
             name = node.name()
-            node_type = "/".join(getattr(node, 'FULL_PATH', "Node").split("/")[:-1])
+            node_type = "/".join(getattr(node, "FULL_PATH", "Node").split("/")[:-1])
             py_keys = get_pinyin_search_keys(name)
-            self._cached_data.append({
-                "type": "instance",
-                "node_ptr": node,
-                "name": name,
-                "category": node_type,
-                "search_keys": f"{name} {node_type} {py_keys}".lower()
-            })
+            self._cached_data.append(
+                {
+                    "type": "instance",
+                    "node_ptr": node,
+                    "name": name,
+                    "category": node_type,
+                    "search_keys": f"{name} {node_type} {py_keys}".lower(),
+                }
+            )
 
     def _update_create_cache(self):
         self._cached_data = []
@@ -375,7 +394,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 if node_id:
                     node_type = node_type_map.get(node_id)
                     node_class = node_factory_nodes.get(node_type)
-                    if not node_class: continue
+                    if not node_class:
+                        continue
 
                     node_uuid = node_class.__name__.split("StatusDynamicNode_")[1]
                     comp = scanner.get_component_by_uuid(node_uuid)
@@ -391,21 +411,27 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     node_name = item.text(0).replace("★ ", "")
                     py_keys = get_pinyin_search_keys(node_name)
 
-                    self._cached_data.append({
-                        "type": "node",
-                        "id": node_type,
-                        "name": node_name,
-                        "category": cat_full_str,
-                        "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower(),
-                        "in_port_count": len(node_inputs),
-                        "out_port_count": len(node_outputs),
-                        "input_ports_raw": node_inputs,
-                        "output_ports_raw": node_outputs,
-                        "in_port_types": [port_type for _, _, _, port_type, _ in node_inputs],
-                        "out_port_types": [port_type for _, _, port_type, _ in node_outputs],
-                        "in_port_sub_types": comp.get_input_sub_types(),
-                        "out_port_sub_types": comp.get_output_sub_types()
-                    })
+                    self._cached_data.append(
+                        {
+                            "type": "node",
+                            "id": node_type,
+                            "name": node_name,
+                            "category": cat_full_str,
+                            "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower(),
+                            "in_port_count": len(node_inputs),
+                            "out_port_count": len(node_outputs),
+                            "input_ports_raw": node_inputs,
+                            "output_ports_raw": node_outputs,
+                            "in_port_types": [
+                                port_type for _, _, _, port_type, _ in node_inputs
+                            ],
+                            "out_port_types": [
+                                port_type for _, _, port_type, _ in node_outputs
+                            ],
+                            "in_port_sub_types": comp.get_input_sub_types(),
+                            "out_port_sub_types": comp.get_output_sub_types(),
+                        }
+                    )
                 else:
                     collect_nodes(item)
 
@@ -417,13 +443,14 @@ class CustomGraphMenu(QtWidgets.QWidget):
             return
 
         for tid_dir in self._template_dir.iterdir():
-            if not tid_dir.is_dir(): continue
+            if not tid_dir.is_dir():
+                continue
             meta_file = tid_dir / "meta.json"
             preview_file = tid_dir / "preview.png"
 
             if meta_file.exists():
                 try:
-                    with open(meta_file, 'r', encoding='utf-8') as f:
+                    with open(meta_file, "r", encoding="utf-8") as f:
                         meta = orjson.loads(f.read())
 
                     name = meta.get("name", tid_dir.name)
@@ -431,20 +458,26 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
                     # --- 优化点 1: 格式化标签显示 ---
                     # 将标签转为 #Tag1 #Tag2 的格式显示在右侧
-                    display_tags = " ".join([f"#{t}" for t in tags]) if tags else "未分类"
+                    display_tags = (
+                        " ".join([f"#{t}" for t in tags]) if tags else "未分类"
+                    )
 
                     tag_str = " ".join(tags)
                     py_keys = get_pinyin_search_keys(name)
 
-                    self._cached_data.append({
-                        "type": "template",
-                        "id": meta.get("id", tid_dir.name),
-                        "name": name,
-                        "category": display_tags,
-                        "tags": tags,  # 保留原始列表用于过滤
-                        "preview_path": str(preview_file) if preview_file.exists() else None,
-                        "search_keys": f"{name} {tag_str} {py_keys}".lower()
-                    })
+                    self._cached_data.append(
+                        {
+                            "type": "template",
+                            "id": meta.get("id", tid_dir.name),
+                            "name": name,
+                            "category": display_tags,
+                            "tags": tags,  # 保留原始列表用于过滤
+                            "preview_path": str(preview_file)
+                            if preview_file.exists()
+                            else None,
+                            "search_keys": f"{name} {tag_str} {py_keys}".lower(),
+                        }
+                    )
                 except Exception:
                     continue
 
@@ -474,7 +507,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self.list_widget.addItem(item)
 
         if self.list_widget.count() > 0:
-            first_real_index = max(0, self.list_widget.count() - len(items_to_show)) if is_upward else 0
+            first_real_index = (
+                max(0, self.list_widget.count() - len(items_to_show))
+                if is_upward
+                else 0
+            )
             self.list_widget.setCurrentRow(first_real_index)
 
     def filter_list(self, text):
@@ -498,28 +535,46 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     if not (sel_cats & item_tags):
                         continue
             if curr_mode == MenuMode.CREATE:
-                if sel_cats and data["category"].split("/")[0] not in sel_cats: continue
+                if sel_cats and data["category"].split("/")[0] not in sel_cats:
+                    continue
                 if target_dir:
-                    if target_dir == 'in':
+                    if target_dir == "in":
                         # 如果需要连到输入端
-                        if data["in_port_count"] == 0: continue
+                        if data["in_port_count"] == 0:
+                            continue
 
                         # 1. 检查主类型
-                        if req_type and req_type not in data["in_port_types"] and req_type not in ignore_types: continue
+                        if (
+                            req_type
+                            and req_type not in data["in_port_types"]
+                            and req_type not in ignore_types
+                        ):
+                            continue
 
                         # 2. 【新增】检查子类型
-                        if req_sub_type and req_sub_type not in data.get("in_port_sub_types", []): continue
+                        if req_sub_type and req_sub_type not in data.get(
+                            "in_port_sub_types", []
+                        ):
+                            continue
 
                     else:
                         # 如果需要连到输出端
-                        if data["out_port_count"] == 0: continue
+                        if data["out_port_count"] == 0:
+                            continue
 
                         # 1. 检查主类型
-                        if req_type and req_type not in data[
-                            "out_port_types"] and req_type not in ignore_types: continue
+                        if (
+                            req_type
+                            and req_type not in data["out_port_types"]
+                            and req_type not in ignore_types
+                        ):
+                            continue
 
                         # 2. 【新增】检查子类型
-                        if req_sub_type and req_sub_type not in data.get("out_port_sub_types", []): continue
+                        if req_sub_type and req_sub_type not in data.get(
+                            "out_port_sub_types", []
+                        ):
+                            continue
 
             # 搜索文本过滤
             if search_text in data["search_keys"]:
@@ -533,26 +588,40 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
     def on_item_confirmed(self, item):
         data = item.data(Qt.UserRole)
-        if not data or data.get("_is_placeholder"): return
+        if not data or data.get("_is_placeholder"):
+            return
 
         viewer = self._graph.viewer()
-        scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
+        scene_viewer = (
+            viewer.get_scene_viewer() if hasattr(viewer, "get_scene_viewer") else viewer
+        )
         scene_pos = scene_viewer.mapToScene(self._spawn_pos)
 
         if self._current_mode == MenuMode.CREATE:
             self._graph.begin_undo("Create Node")
-            new_node = self._graph.create_node(data["id"], pos=[scene_pos.x(), scene_pos.y()])
+            new_node = self._graph.create_node(
+                data["id"], pos=[scene_pos.x(), scene_pos.y()]
+            )
 
-            if self.source_port_item and hasattr(self.source_port_item, 'original_node'):
+            if self.source_port_item and hasattr(
+                self.source_port_item, "original_node"
+            ):
                 source_node = self.source_port_item.original_node
                 req_type = self._locked_req_type
                 req_sub_type = self._locked_req_sub_type  # 获取需要的子类型
 
                 if not self._ignore_connection_filter:
-                    if self.source_port_item.port_type == 'out':
+                    if self.source_port_item.port_type == "out":
                         # 已有节点(出) -> 新节点(入)
                         source_ports = source_node.output_ports()
-                        source_port = next((p for p in source_ports if p.name() == self.source_port_item.name), None)
+                        source_port = next(
+                            (
+                                p
+                                for p in source_ports
+                                if p.name() == self.source_port_item.name
+                            ),
+                            None,
+                        )
 
                         if source_port:
                             # 逻辑：如果有子类型，优先找匹配子类型的第一个端口；否则按主类型找；否则找第0个
@@ -561,11 +630,15 @@ class CustomGraphMenu(QtWidgets.QWidget):
                             # 【新增】子类型优先匹配
                             if req_sub_type:
                                 try:
-                                    target_idx = data["in_port_sub_types"].index(req_sub_type)
+                                    target_idx = data["in_port_sub_types"].index(
+                                        req_sub_type
+                                    )
                                 except (ValueError, KeyError, IndexError):
                                     # 如果找不到子类型匹配，回退到主类型匹配
                                     try:
-                                        target_idx = data["in_port_types"].index(req_type)
+                                        target_idx = data["in_port_types"].index(
+                                            req_type
+                                        )
                                     except (ValueError, KeyError):
                                         target_idx = 0
                             else:
@@ -575,32 +648,46 @@ class CustomGraphMenu(QtWidgets.QWidget):
                                 except (ValueError, KeyError):
                                     target_idx = 0
 
-                            QTimer.singleShot(0, lambda: new_node.set_input(target_idx, source_port))
+                            QTimer.singleShot(
+                                0, lambda: new_node.set_input(target_idx, source_port)
+                            )
 
                     else:
                         # 新节点(出) -> 已有节点(入)
                         input_ports = source_node.input_ports()
                         try:
-                            port_index = [p.name() for p in input_ports].index(self.source_port_item.name)
+                            port_index = [p.name() for p in input_ports].index(
+                                self.source_port_item.name
+                            )
 
                             target_out_idx = 0
                             # 子类型优先匹配
                             if req_sub_type:
                                 try:
-                                    target_out_idx = data["out_port_sub_types"].index(req_sub_type)
+                                    target_out_idx = data["out_port_sub_types"].index(
+                                        req_sub_type
+                                    )
                                 except (ValueError, KeyError, IndexError):
                                     try:
-                                        target_out_idx = data["out_port_types"].index(req_type)
+                                        target_out_idx = data["out_port_types"].index(
+                                            req_type
+                                        )
                                     except (ValueError, KeyError):
                                         target_out_idx = 0
                             else:
                                 try:
-                                    target_out_idx = data["out_port_types"].index(req_type)
+                                    target_out_idx = data["out_port_types"].index(
+                                        req_type
+                                    )
                                 except (ValueError, KeyError):
                                     target_out_idx = 0
 
-                            QTimer.singleShot(0, lambda: source_node.set_input(port_index,
-                                                                               new_node.output_ports()[target_out_idx]))
+                            QTimer.singleShot(
+                                0,
+                                lambda: source_node.set_input(
+                                    port_index, new_node.output_ports()[target_out_idx]
+                                ),
+                            )
                         except ValueError:
                             pass
 
@@ -610,7 +697,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self._graph.end_undo()
 
         elif self._current_mode == MenuMode.TEMPLATE:
-            self.parent.ui_manager.nav_panel.template_container.apply_template(data["id"], scene_pos)
+            self.parent.ui_manager.nav_panel.template_container.apply_template(
+                data["id"], scene_pos
+            )
 
         else:  # NAVIGATE 模式
             node = data.get("node_ptr")
@@ -624,7 +713,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
     def show_at_cursor(self, pos):
         self._ignore_connection_filter = False
         # 【修改】这里同时获取子类型
-        self._locked_target_dir, self._locked_req_type, self._locked_req_sub_type = self._get_connection_filter()
+        self._locked_target_dir, self._locked_req_type, self._locked_req_sub_type = (
+            self._get_connection_filter()
+        )
 
         if self._locked_target_dir:
             self._current_mode = MenuMode.CREATE
@@ -644,11 +735,15 @@ class CustomGraphMenu(QtWidgets.QWidget):
             self._is_upward_mode = True
             target_y = pos.y() - menu_height - 10
 
-        target_x = max(screen_rect.left(), min(target_x, screen_rect.right() - menu_width))
+        target_x = max(
+            screen_rect.left(), min(target_x, screen_rect.right() - menu_width)
+        )
 
         self.populate_ui()
         viewer = self._graph.viewer()
-        scene_viewer = viewer.get_scene_viewer() if hasattr(viewer, 'get_scene_viewer') else viewer
+        scene_viewer = (
+            viewer.get_scene_viewer() if hasattr(viewer, "get_scene_viewer") else viewer
+        )
         self._spawn_pos = scene_viewer.mapFromGlobal(pos)
         self.search_line.setText("")
         self.filter_list("")
@@ -693,7 +788,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 categories=all_tags,
                 parent=self,
                 selected_categories=self._selected_categories.copy(),
-                direction="down"
+                direction="down",
             )
 
             # --- 关键：当标签改变时，更新菜单的过滤状态 ---
@@ -714,18 +809,21 @@ class CustomGraphMenu(QtWidgets.QWidget):
         返回: (连接方向: 'in'/'out', 主类型, 子类型)
         """
         viewer = self._graph.viewer()
-        self.source_port_item = getattr(viewer, '_temp_connection_source', None)
-        if not self.source_port_item or not hasattr(self.source_port_item, 'original_node'):
+        self.source_port_item = getattr(viewer, "_temp_connection_source", None)
+        if not self.source_port_item or not hasattr(
+            self.source_port_item, "original_node"
+        ):
             return None, None, None  # 【修改】返回三个None
 
         source_node = self.source_port_item.original_node
-        if not hasattr(source_node, 'uuid'): return None, None, None
+        if not hasattr(source_node, "uuid"):
+            return None, None, None
         node_uuid = source_node.uuid
         port_name = self.source_port_item.name
         scanner = ComponentScanner()
         comp = scanner.get_component_by_uuid(node_uuid)
 
-        if self.source_port_item.port_type == 'out':
+        if self.source_port_item.port_type == "out":
             node_outputs = comp.get_outputs()
             # 【新增】获取子类型列表
             node_sub_types = comp.get_output_sub_types()
@@ -734,7 +832,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 if pname == port_name:
                     # 安全获取子类型
                     sub_type = node_sub_types[i] if i < len(node_sub_types) else None
-                    return 'in', port_type, sub_type
+                    return "in", port_type, sub_type
         else:
             node_inputs = comp.get_inputs()
             # 【新增】获取子类型列表
@@ -743,7 +841,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             for i, (pname, _, _, port_type, _) in enumerate(node_inputs):
                 if pname == port_name:
                     sub_type = node_sub_types[i] if i < len(node_sub_types) else None
-                    return 'out', port_type, sub_type
+                    return "out", port_type, sub_type
 
         return None, None, None
 
@@ -859,37 +957,34 @@ class CustomGraphMenu(QtWidgets.QWidget):
         preview_pos = QPoint(int(preview_x), int(preview_y))
 
         PreviewManager.get_instance().show_preview(
-            preview_data,
-            preview_pos,
-            self,
-            delay=delay
+            preview_data, preview_pos, self, delay=delay
         )
 
     def _build_preview_data(self, data):
         """构建预览所需数据（区分节点和模板）"""
         try:
             # 1. 如果是模板类型
-            if data.get('type') == 'template':
+            if data.get("type") == "template":
                 # 如果没有图片路径，返回 None，这样就不会弹出预览窗
-                if not data.get('preview_path'):
+                if not data.get("preview_path"):
                     return None
 
                 # 返回符合 ImagePreviewCard 要求的数据结构
                 return {
-                    'name': data.get('name'),
-                    'image_path': data.get('preview_path')
+                    "name": data.get("name"),
+                    "image_path": data.get("preview_path"),
                 }
 
             # 2. 如果是节点类型 (CREATE 模式)
-            elif data.get('type') == 'node':
+            elif data.get("type") == "node":
                 return {
-                    'name': data['name'],
-                    'category': data['category'],
-                    'description': self._get_node_description(data['id']),
-                    'inputs': data["input_ports_raw"],
-                    'outputs': data["output_ports_raw"],
-                    'input_sub_types': data.get('in_port_sub_types', []),
-                    'output_sub_types': data.get('out_port_sub_types', [])
+                    "name": data["name"],
+                    "category": data["category"],
+                    "description": self._get_node_description(data["id"]),
+                    "inputs": data["input_ports_raw"],
+                    "outputs": data["output_ports_raw"],
+                    "input_sub_types": data.get("in_port_sub_types", []),
+                    "output_sub_types": data.get("out_port_sub_types", []),
                 }
 
             return None
@@ -907,7 +1002,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
             node_uuid = node_class.__name__.split("StatusDynamicNode_")[1]
             comp = scanner.get_component_by_uuid(node_uuid)
-            return getattr(comp, 'description', 'No description available.')[:200]
+            return getattr(comp, "description", "No description available.")[:200]
         except Exception:
             return "No description available."
 

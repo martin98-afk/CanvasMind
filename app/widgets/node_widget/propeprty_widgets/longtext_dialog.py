@@ -4,7 +4,10 @@ from Qt import QtWidgets, QtCore
 from qfluentwidgets import FluentIcon, TransparentToolButton
 from qfluentwidgets import MessageBoxBase, SubtitleLabel
 
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit, VariableCompletionLineEdit
+from app.widgets.basic_widget.variable_complete_widget import (
+    VariableCompletionTextEdit,
+    VariableCompletionLineEdit,
+)
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 
@@ -12,16 +15,24 @@ from app.widgets.node_widget.base import CustomNodeBaseWidget
 # 改造后的对话框
 # -----------------------
 class LongTextEditorDialog(MessageBoxBase):
-    def __init__(self, content: str = "", parent=None, main_window=None, extra_keys=[], get_port_func=lambda: []):
+    def __init__(
+        self,
+        content: str = "",
+        parent=None,
+        main_window=None,
+        extra_keys=[],
+        get_port_func=lambda: [],
+    ):
         super().__init__(parent)
         self.main_window = main_window
-        self.titleLabel = SubtitleLabel("编辑长文本")
+        self.titleLabel = SubtitleLabel(self.tr("编辑长文本"))
         if not self.main_window:
             return []
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         self.text_edit = VariableCompletionTextEdit(
-            get_variable_list_func=lambda keys=extra_keys, func=get_port_func: global_vars.get_vars(keys + func()),
-            parent=self
+            get_variable_list_func=lambda keys=extra_keys,
+            func=get_port_func: global_vars.get_vars(keys + func()),
+            parent=self,
         )
         self.text_edit.setPlainText(content)
         self.text_edit.setMinimumSize(700, 500)
@@ -29,8 +40,8 @@ class LongTextEditorDialog(MessageBoxBase):
         self.viewLayout.addWidget(self.titleLabel)
         self.viewLayout.addWidget(self.text_edit)
 
-        self.yesButton.setText("保存")
-        self.cancelButton.setText("取消")
+        self.yesButton.setText(self.tr("保存"))
+        self.cancelButton.setText(self.tr("取消"))
 
     def get_content(self) -> str:
         return self.text_edit.toPlainText()
@@ -38,6 +49,7 @@ class LongTextEditorDialog(MessageBoxBase):
 
 class LongTextWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持背景和边框
     """节点内显示：摘要 + 编辑按钮 (深色主题优化版)"""
+
     valueChanged = QtCore.Signal(str)
     fixed_height = True
 
@@ -66,11 +78,15 @@ class LongTextWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持背景和边�
         layout.setSpacing(4)
 
         # 2. 摘要显示框 (使用 VariableCompletionLineEdit)
-        global_vars = getattr(self.main_window, 'global_variables', None)
+        global_vars = getattr(self.main_window, "global_variables", None)
         self.summary_label = VariableCompletionLineEdit(
-            get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(func()) if global_vars else [],
+            get_variable_list_func=lambda func=get_port_func: global_vars.get_vars(
+                func()
+            )
+            if global_vars
+            else [],
             use_qcursor=False,
-            parent=self
+            parent=self,
         )
         self.summary_label.setText(self._get_summary())
         self.summary_label.setReadOnly(True)
@@ -88,7 +104,7 @@ class LongTextWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持背景和边�
 
     def _get_summary(self):
         # 优化摘要显示：去除换行符，限制长度
-        text = (self._text or "").replace('\n', ' ').replace('\r', ' ')
+        text = (self._text or "").replace("\n", " ").replace("\r", " ")
         if len(text) > 30:
             return text[:30] + "..."
         return text if text else "点击右侧按钮输入内容..."
@@ -99,7 +115,7 @@ class LongTextWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持背景和边�
             self._text,
             self.main_window,
             self.main_window,
-            get_port_func=self.get_port_func
+            get_port_func=self.get_port_func,
         )
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             new_text = dialog.text_edit.toPlainText()
@@ -126,12 +142,16 @@ class LongTextWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持背景和边�
 
 
 class LongTextWidgetWrapper(CustomNodeBaseWidget):
-    def __init__(self, parent=None, name="", label="", default="", window=None, z_value=1):
+    def __init__(
+        self, parent=None, name="", label="", default="", window=None, z_value=1
+    ):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
-        widget = LongTextWidget(default_text=default, parent=window, get_port_func=self.get_port_func)
+        widget = LongTextWidget(
+            default_text=default, parent=window, get_port_func=self.get_port_func
+        )
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)
 
