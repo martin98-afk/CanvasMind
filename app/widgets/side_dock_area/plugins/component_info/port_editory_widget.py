@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtWidgets import QSizePolicy, QTableWidgetItem
 from qfluentwidgets import ComboBox, TransparentToolButton, FluentIcon
 
@@ -15,12 +16,22 @@ class PortEditorWidget(ConfigTableSpace):
         self.port_description = {}
 
         # 定义表头
+        context = "PortEditorWidget"
         if port_type == "input":
-            # 列索引: 0:Name, 1:Label, 2:Type, 3:Sub-Type, 4:Connection, 5:Delete
-            labels = [self.tr("端口名称"), self.tr("端口标签"), self.tr("端口类型"), self.tr("类型标识"), self.tr("连接方式")]
+            labels = [
+                QCoreApplication.translate(context, "端口名称"),
+                QCoreApplication.translate(context, "端口标签"),
+                QCoreApplication.translate(context, "端口类型"),
+                QCoreApplication.translate(context, "类型标识"),
+                QCoreApplication.translate(context, "连接方式")
+            ]
         else:
-            # 列索引: 0:Name, 1:Label, 2:Type, 3:Sub-Type, 4:Delete
-            labels = [self.tr("端口名称"), self.tr("端口标签"), self.tr("端口类型"), self.tr("类型标识")]
+            labels = [
+                QCoreApplication.translate(context, "端口名称"),
+                QCoreApplication.translate(context, "端口标签"),
+                QCoreApplication.translate(context, "端口类型"),
+                QCoreApplication.translate(context, "类型标识")
+            ]
 
         super().__init__(column_labels=labels, parent=parent)
         # 1. 注册监听：当 ComponentScanner 发现代码变更导致类型增删时，触发刷新

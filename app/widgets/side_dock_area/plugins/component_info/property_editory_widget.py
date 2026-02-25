@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QHBoxLayout, QTableWidgetItem, QHeaderView,
@@ -26,7 +27,14 @@ class PropertyEditorWidget(ConfigTableSpace):
         self._choice_configs = {}
         self._range_configs = {}
         # 6 列：属性名、标签、类型、默认值、选项、操作（删除由基类处理）
-        labels = [self.tr("属性名"), self.tr("标签"), self.tr("类型"), self.tr("默认值"), self.tr("选项")]
+        context = "PropertyEditorWidget"
+        labels = [
+            QCoreApplication.translate(context, "属性名"),
+            QCoreApplication.translate(context, "标签"),
+            QCoreApplication.translate(context, "类型"),
+            QCoreApplication.translate(context, "默认值"),
+            QCoreApplication.translate(context, "选项")
+        ]
         super().__init__(column_labels=labels, parent=parent)
 
         # 覆盖基类信号
