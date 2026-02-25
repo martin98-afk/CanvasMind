@@ -3,9 +3,18 @@ import sys
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QWidget, QHeaderView, QTableWidgetItem, QSizePolicy
+    QVBoxLayout,
+    QWidget,
+    QHeaderView,
+    QTableWidgetItem,
+    QSizePolicy,
 )
-from qfluentwidgets import TableWidget, TransparentToolButton, FluentIcon, SimpleCardWidget
+from qfluentwidgets import (
+    TableWidget,
+    TransparentToolButton,
+    FluentIcon,
+    SimpleCardWidget,
+)
 
 
 class ConfigTableSpace(SimpleCardWidget):
@@ -26,7 +35,9 @@ class ConfigTableSpace(SimpleCardWidget):
         self.table.verticalHeader().hide()
         self.table.verticalHeader().setDefaultSectionSize(32)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(total_columns - 1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(
+            total_columns - 1, QHeaderView.ResizeToContents
+        )
         self.table.itemChanged.connect(lambda item: self.dataChanged.emit())
         self.table.horizontalScrollBar().valueChanged.connect(
             lambda: QTimer.singleShot(0, self._update_add_button_position)
@@ -77,7 +88,9 @@ class ConfigTableSpace(SimpleCardWidget):
         final_y = pos_in_self.y() - btn_y
 
         # 防止超出右边界
-        max_x = pos_in_self.x() + self.table.viewport().width() - self._add_button.width()
+        max_x = (
+            pos_in_self.x() + self.table.viewport().width() - self._add_button.width()
+        )
         final_x = min(final_x, max_x)
 
         self._add_button.move(int(final_x), int(final_y))
@@ -228,7 +241,7 @@ class TestWindow(QMainWindow):
 
         # 3. 修改第一行的“键”为 "name"
         self.config_table.table.item(0, 0).setText("name")
-        self.config_table.table.item(0, 1).setText("姓名")
+        self.config_table.table.item(0, 1).setText(self.tr("姓名"))
         self.config_table.table.item(0, 2).setText("text")
 
         # 4. 导出数据
@@ -242,7 +255,13 @@ class TestWindow(QMainWindow):
         # 5. 使用 set_data 覆盖
         new_data = [
             {"键": "age", "标签": "年龄", "类型": "range", "默认值": "25", "选项": ""},
-            {"键": "role", "标签": "角色", "类型": "choice", "默认值": "admin", "选项": "admin,user"},
+            {
+                "键": "role",
+                "标签": "角色",
+                "类型": "choice",
+                "默认值": "admin",
+                "选项": "admin,user",
+            },
         ]
         self.config_table.set_data(new_data)
         assert self.config_table.table.rowCount() == 2, "set_data 后应为 2 行"

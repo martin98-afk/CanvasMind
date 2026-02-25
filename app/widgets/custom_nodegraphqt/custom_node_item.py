@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-from NodeGraphQt.constants import (
-    NodeEnum, PortTypeEnum,
-    Z_VAL_NODE_WIDGET
-)
+from NodeGraphQt.constants import NodeEnum, PortTypeEnum, Z_VAL_NODE_WIDGET
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_base import NodeItem
 from NodeGraphQt.qgraphics.node_text_item import NodeTextItem
@@ -11,7 +8,10 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 from app.utils.config import Settings
 from app.widgets.custom_nodegraphqt.custom_port_item import GlowPortItem
-from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
+from app.widgets.custom_nodegraphqt.node_action_buttons import (
+    NodeActionButton,
+    BaseCanvasToolbar,
+)
 
 # ==============================================================================
 # 高级感配色常量 (ComfyUI Style)
@@ -61,11 +61,16 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
 
         # 如果父节点处于手动缩放模式，手柄高亮显示
         is_manual = False
-        if hasattr(self.parentItem(), '_user_width'):
-            is_manual = self.parentItem()._user_width > 0 or self.parentItem()._user_height > 0
+        if hasattr(self.parentItem(), "_user_width"):
+            is_manual = (
+                self.parentItem()._user_width > 0 or self.parentItem()._user_height > 0
+            )
 
-        color = QtGui.QColor(255, 180, 0, 255 if self._hovered else 180) if is_manual else \
-            QtGui.QColor(255, 255, 255, 200 if self._hovered else 80)
+        color = (
+            QtGui.QColor(255, 180, 0, 255 if self._hovered else 180)
+            if is_manual
+            else QtGui.QColor(255, 255, 255, 200 if self._hovered else 80)
+        )
 
         pen = QtGui.QPen(color, 2.0)
         pen.setCapStyle(QtCore.Qt.RoundCap)
@@ -88,7 +93,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
             self._prev_pos = event.scenePos()
             # 通知父节点进入缩放模式
             node = self.parentItem()
-            if hasattr(node, '_is_resizing'):
+            if hasattr(node, "_is_resizing"):
                 node._is_resizing = True
             event.accept()
         else:
@@ -98,7 +103,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
         if event.button() == QtCore.Qt.LeftButton:
             # 通知父节点退出缩放模式
             node = self.parentItem()
-            if hasattr(node, '_is_resizing'):
+            if hasattr(node, "_is_resizing"):
                 node._is_resizing = False
         super(NodeResizeHandle, self).mouseReleaseEvent(event)
 
@@ -111,7 +116,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
             delta = pos - self._prev_pos
             self._prev_pos = pos
             node = self.parentItem()
-            if hasattr(node, 'resize_node_by_user'):
+            if hasattr(node, "resize_node_by_user"):
                 node.resize_node_by_user(delta.x(), delta.y())
             event.accept()
         else:
@@ -121,7 +126,7 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
         """双击手柄恢复自动大小"""
         if event.button() == QtCore.Qt.LeftButton:
             node = self.parentItem()
-            if hasattr(node, 'reset_to_auto_size'):
+            if hasattr(node, "reset_to_auto_size"):
                 node.reset_to_auto_size()
             event.accept()
         else:
@@ -138,7 +143,7 @@ class CustomDisabledItem(QtWidgets.QGraphicsItem):
         self.text = text
 
     def _get_body_rect(self):
-        if hasattr(self.parentItem(), 'get_node_body_rect'):
+        if hasattr(self.parentItem(), "get_node_body_rect"):
             return self.parentItem().get_node_body_rect()
         return self.parentItem().boundingRect()
 
@@ -173,7 +178,9 @@ class CustomDisabledItem(QtWidgets.QGraphicsItem):
 class NodeFloatingToolbar(BaseCanvasToolbar):
     def __init__(self, parent=None):
         # 节点上的 Toolbar 应该随节点缩放，所以 ignore_transform=False
-        super(NodeFloatingToolbar, self).__init__(viewer=None, parent=parent, ignore_transform=False)
+        super(NodeFloatingToolbar, self).__init__(
+            viewer=None, parent=parent, ignore_transform=False
+        )
         self.setZValue(Z_VAL_NODE_WIDGET + 15)
 
 
@@ -185,7 +192,7 @@ class CustomNodeItem(NodeItem):
     _is_resizing = False  # 初始化缩放状态锁
     _rename_signal_block = False
 
-    def __init__(self, name='', parent=None):
+    def __init__(self, name="", parent=None):
         super(CustomNodeItem, self).__init__(name, parent)
         self.setAcceptHoverEvents(True)
         self.custom_signals = CustomNodeSignals()
@@ -198,7 +205,8 @@ class CustomNodeItem(NodeItem):
         self.exec_mode_signal = self.custom_signals.exec_mode_toggle
         self.size_changed = self.custom_signals.size_changed
 
-        if hasattr(self, '_x_item'): self._x_item.setParentItem(None)
+        if hasattr(self, "_x_item"):
+            self._x_item.setParentItem(None)
         self._x_item = CustomDisabledItem(self, "DISABLED")
         self._x_item.setZValue(Z_VAL_NODE_WIDGET + 20)
 
@@ -221,9 +229,11 @@ class CustomNodeItem(NodeItem):
     def _init_base_components(self):
         pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
         if not pixmap.isNull():
-            pixmap = pixmap.scaled(35, 35, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            pixmap = pixmap.scaled(
+                35, 35, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+            )
             self._icon_item.setPixmap(pixmap)
-        self._properties['icon'] = self.ICON_NODE_BASE
+        self._properties["icon"] = self.ICON_NODE_BASE
         self._icon_item.setZValue(self.zValue() + 1)
         font_type = Settings.get_instance().canvas_font_type.value
         self._text_item = NodeTextItem(self.name, self)
@@ -245,27 +255,35 @@ class CustomNodeItem(NodeItem):
 
         # 往 Toolbar 里加按钮 (原逻辑一个不少)
         self._center_btn = self._floating_toolbar.add_button(
-            "zoom", "聚焦", "#3498db", "#2980b9", False)
+            "zoom", "聚焦", "#3498db", "#2980b9", False
+        )
         self._center_btn.clicked_func = self.center_signal.emit
 
         self._run_btn = self._floating_toolbar.add_button(
-            "run", "执行", "#27ae60", "#2ecc71", False)
+            "run", "执行", "#27ae60", "#2ecc71", False
+        )
         self._run_btn.clicked_func = self.run_signal.emit
 
         self._mute_btn = self._floating_toolbar.add_button(
-            "debug", "调试", "#f39c12", "#f1c40f", False)
+            "debug", "调试", "#f39c12", "#f1c40f", False
+        )
         self._mute_btn.clicked_func = self.debug_signal.emit
 
         self._floating_toolbar.add_separator()
 
         self._close_btn = self._floating_toolbar.add_button(
-            "close", "删除", "#c0392b", "#e74c3c", False)
+            "close", "删除", "#c0392b", "#e74c3c", False
+        )
         self._close_btn.clicked_func = self.delete_signal.emit
 
         # 这两个依然留在 Header 左右两侧
-        self._collapse_btn = NodeActionButton(self, "collapse", "折叠控件", "transparent", "rgba(255,255,255,40)", True)
+        self._collapse_btn = NodeActionButton(
+            self, "collapse", "折叠控件", "transparent", "rgba(255,255,255,40)", True
+        )
         self._collapse_btn.clicked_func = self.toggle_collapse
-        self._exec_mode_btn = NodeActionButton(self, "exec_subprocess", "执行模式", "#9b59b6", "#8e44ad", True)
+        self._exec_mode_btn = NodeActionButton(
+            self, "exec_subprocess", "执行模式", "#9b59b6", "#8e44ad", True
+        )
         self._exec_mode_btn.clicked_func = self._toggle_exec_mode
 
         self._floating_toolbar.setVisible(False)
@@ -274,7 +292,9 @@ class CustomNodeItem(NodeItem):
         if mode:
             self.current_mode = mode
         else:
-            self.current_mode = "ipython" if self.current_mode == "subprocess" else "subprocess"
+            self.current_mode = (
+                "ipython" if self.current_mode == "subprocess" else "subprocess"
+            )
         if self.current_mode == "subprocess":
             self._exec_mode_btn.icon_type = "exec_subprocess"
             self._exec_mode_btn.color = QtGui.QColor("#9b59b6")
@@ -283,7 +303,8 @@ class CustomNodeItem(NodeItem):
             self._exec_mode_btn.icon_type = "exec_ipython"
             self._exec_mode_btn.color = QtGui.QColor("#3498db")
             self._exec_mode_btn.hover_color = QtGui.QColor("#2980b9")
-        if mode is None: self.exec_mode_signal.emit(self.current_mode)
+        if mode is None:
+            self.exec_mode_signal.emit(self.current_mode)
         self.update()
 
     def get_node_body_rect(self):
@@ -296,10 +317,19 @@ class CustomNodeItem(NodeItem):
     def shape(self):
         path = QtGui.QPainterPath()
         path.addRoundedRect(self.get_node_body_rect(), 12, 12)
-        path.addEllipse(self._collapse_btn.boundingRect().translated(self._collapse_btn.pos()))
-        path.addEllipse(self._exec_mode_btn.boundingRect().translated(self._exec_mode_btn.pos()))
+        path.addEllipse(
+            self._collapse_btn.boundingRect().translated(self._collapse_btn.pos())
+        )
+        path.addEllipse(
+            self._exec_mode_btn.boundingRect().translated(self._exec_mode_btn.pos())
+        )
         if self._close_btn.isVisible():
-            for btn in [self._center_btn, self._run_btn, self._mute_btn, self._close_btn]:
+            for btn in [
+                self._center_btn,
+                self._run_btn,
+                self._mute_btn,
+                self._close_btn,
+            ]:
                 path.addEllipse(btn.boundingRect().translated(btn.pos()))
         return path
 
@@ -308,7 +338,9 @@ class CustomNodeItem(NodeItem):
         for w in self._widgets.values():
             w.widget().setVisible(widgets_visible)
         ports_visible = not self._proxy_mode
-        for text in list(self._input_items.values()) + list(self._output_items.values()):
+        for text in list(self._input_items.values()) + list(
+            self._output_items.values()
+        ):
             text.setVisible(ports_visible)
         self._text_item.setVisible(not self._proxy_mode)
         self._icon_item.setVisible(not self._proxy_mode)
@@ -334,7 +366,8 @@ class CustomNodeItem(NodeItem):
         self.update()
 
     def _sync_size_from_model(self, width, height):
-        if self._size_initialized: return
+        if self._size_initialized:
+            return
         if width is not None and height is not None:
             if float(width) > 0 and float(height) > 0:
                 min_w, min_h = self._calc_size_horizontal(ignore_user_size=True)
@@ -343,8 +376,8 @@ class CustomNodeItem(NodeItem):
                 else:
                     self._user_width = float(width)
                     self._user_height = float(height)
-                    self._properties['width'] = self._user_width
-                    self._properties['height'] = self._user_height
+                    self._properties["width"] = self._user_width
+                    self._properties["height"] = self._user_height
                 self._size_initialized = True
                 self._draw_node_horizontal()
 
@@ -352,11 +385,11 @@ class CustomNodeItem(NodeItem):
         """恢复自动调节大小模式"""
         self._user_width = 0.0
         self._user_height = 0.0
-        self._properties['width'] = 0.0
-        self._properties['height'] = 0.0
-        if hasattr(self, '_node') and self._node:
-            self._node.model.set_property('width', 0.0)
-            self._node.model.set_property('height', 0.0)
+        self._properties["width"] = 0.0
+        self._properties["height"] = 0.0
+        if hasattr(self, "_node") and self._node:
+            self._node.model.set_property("width", 0.0)
+            self._node.model.set_property("height", 0.0)
         self.size_changed.emit(0.0, 0.0)
         self._draw_node_horizontal()
         self.update()
@@ -366,8 +399,10 @@ class CustomNodeItem(NodeItem):
         min_w, min_h = self._calc_size_horizontal(ignore_user_size=True)
 
         # 2. 如果之前是自适应模式，从当前实际尺寸开始计算
-        if self._user_width <= 0: self._user_width = self._width
-        if self._user_height <= 0: self._user_height = self._height
+        if self._user_width <= 0:
+            self._user_width = self._width
+        if self._user_height <= 0:
+            self._user_height = self._height
 
         self._user_width += dx
         self._user_height += dy
@@ -380,12 +415,12 @@ class CustomNodeItem(NodeItem):
             self._user_height = 0.0
 
         # 4. 更新属性
-        self._properties['width'] = self._user_width
-        self._properties['height'] = self._user_height
+        self._properties["width"] = self._user_width
+        self._properties["height"] = self._user_height
 
-        if hasattr(self, '_node') and self._node:
-            self._node.model.set_property('width', self._user_width)
-            self._node.model.set_property('height', self._user_height)
+        if hasattr(self, "_node") and self._node:
+            self._node.model.set_property("width", self._user_width)
+            self._node.model.set_property("height", self._user_height)
 
         self._draw_node_horizontal()
         self.update()
@@ -413,16 +448,19 @@ class CustomNodeItem(NodeItem):
         只有在“能看见我”的视口中，寻找最大的物理宽度。
         """
         scene = self.scene()
-        if not scene: return
+        if not scene:
+            return
         all_views = scene.views()
-        if not all_views: return
+        if not all_views:
+            return
 
         node_scene_rect = self.sceneBoundingRect()
         max_physical_width = 0
         is_observed_by_any_view = False
 
         for view in all_views:
-            if not view.isVisible(): continue
+            if not view.isVisible():
+                continue
 
             # --- 关键：获取该视口的场景视野矩形 ---
             # viewport().rect() 是屏幕像素区域，mapToScene 将其转为画布上的坐标区域
@@ -463,12 +501,18 @@ class CustomNodeItem(NodeItem):
     def _calc_size_horizontal(self, ignore_user_size=False):
         # 1. 计算内容所需尺寸 (Ports)
         p_input_h = (len(self._input_items) * 22.0) + 10.0 if self._input_items else 0.0
-        p_output_h = (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
+        p_output_h = (
+            (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
+        )
         port_height = max(p_input_h, p_output_h)
         self._port_height = max(port_height, 10.0)
 
-        in_txt_w = max([t.boundingRect().width() for t in self._input_items.values()] + [0])
-        out_txt_w = max([t.boundingRect().width() for t in self._output_items.values()] + [0])
+        in_txt_w = max(
+            [t.boundingRect().width() for t in self._input_items.values()] + [0]
+        )
+        out_txt_w = max(
+            [t.boundingRect().width() for t in self._output_items.values()] + [0]
+        )
         p_width = in_txt_w + out_txt_w + 50.0
 
         # --- 关键修正：区分 Proxy 模式和普通隐藏 ---
@@ -486,7 +530,8 @@ class CustomNodeItem(NodeItem):
                 sz = real.sizeHint() if real else widget.boundingRect().size()
                 w_width = max(w_width, sz.width())
                 widget_height += sz.height() + 8.0
-            if widget_height > 0: widget_height += 10.0
+            if widget_height > 0:
+                widget_height += 10.0
             self._widget_height = widget_height
             self._widget_width = w_width
         # 2. 确定最小宽高边界
@@ -499,11 +544,28 @@ class CustomNodeItem(NodeItem):
             min_width = self._user_width if self._user_width > 0 else 200
             min_height = self._user_height if self._user_height > 0 else 120
         elif self._proxy_mode and not self._is_collapsed:
-            min_width = self._user_width if self._user_width > 0 else max(self._text_item.boundingRect().width() + 120,
-                                                                          p_width, self._widget_width + 20, 200)
-            min_height = self._user_height if self._user_height > 0 else header_height + self._port_height + self._widget_height
+            min_width = (
+                self._user_width
+                if self._user_width > 0
+                else max(
+                    self._text_item.boundingRect().width() + 120,
+                    p_width,
+                    self._widget_width + 20,
+                    200,
+                )
+            )
+            min_height = (
+                self._user_height
+                if self._user_height > 0
+                else header_height + self._port_height + self._widget_height
+            )
         else:
-            min_width = max(self._text_item.boundingRect().width() + 120, p_width, self._widget_width + 20, 200)
+            min_width = max(
+                self._text_item.boundingRect().width() + 120,
+                p_width,
+                self._widget_width + 20,
+                200,
+            )
             min_height = header_height + self._port_height + widget_height
 
         # 3. 最终尺寸决策
@@ -516,8 +578,12 @@ class CustomNodeItem(NodeItem):
             return min_width, min_height
 
         # 正常/手动模式
-        final_w = max(min_width, self._user_width) if self._user_width > 0 else min_width
-        final_h = max(min_height, self._user_height) if self._user_height > 0 else min_height
+        final_w = (
+            max(min_width, self._user_width) if self._user_width > 0 else min_width
+        )
+        final_h = (
+            max(min_height, self._user_height) if self._user_height > 0 else min_height
+        )
 
         return final_w, final_h
 
@@ -546,9 +612,13 @@ class CustomNodeItem(NodeItem):
             start_x = rect.center().x() - total_content_w / 2
 
             self._icon_item.setPos(start_x, rect.top() + (header_h - 18) / 2)
-            self._text_item.setPos(start_x + icon_w + spacing, rect.top() + (header_h - th) / 2)
+            self._text_item.setPos(
+                start_x + icon_w + spacing, rect.top() + (header_h - th) / 2
+            )
             self._collapse_btn.setPos(rect.left() + 6, rect.top() + (header_h - 28) / 2)
-            self._exec_mode_btn.setPos(rect.right() - 34, rect.top() + (header_h - 28) / 2)
+            self._exec_mode_btn.setPos(
+                rect.right() - 34, rect.top() + (header_h - 28) / 2
+            )
 
             if not self._is_collapsed:
                 widget_start_y = rect.top() + header_h + self._port_height + 5.0
@@ -561,38 +631,56 @@ class CustomNodeItem(NodeItem):
         self._floating_toolbar.setPos(rect.right() - tb_w + 20, rect.top() - 50)
 
     def _align_widgets_stacked(self, start_y, node_width, node_height):
-        if not self._widgets: return
+        if not self._widgets:
+            return
         padding_x, spacing_y, bottom_padding = 10.0, 8.0, 10.0
         available_height_total = node_height - start_y - bottom_padding
         total_fixed_height = 0
         expandable_widgets = []
 
         for widget in self._widgets.values():
-            if not widget.isVisible(): continue
+            if not widget.isVisible():
+                continue
             real = widget.widget()
             if real:
                 h = real.sizeHint().height()
-                actual_widget = real.get_node_widget() if hasattr(real, 'get_node_widget') else None
+                actual_widget = (
+                    real.get_node_widget() if hasattr(real, "get_node_widget") else None
+                )
                 if actual_widget:
                     policy = actual_widget.sizePolicy().verticalPolicy()
-                    if policy in [QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding]:
+                    if policy in [
+                        QtWidgets.QSizePolicy.Expanding,
+                        QtWidgets.QSizePolicy.MinimumExpanding,
+                    ]:
                         expandable_widgets.append((widget, real))
                 total_fixed_height += h + spacing_y
             else:
                 total_fixed_height += widget.boundingRect().height() + spacing_y
 
-        extra_per_widget = max(0, available_height_total - total_fixed_height) / len(
-            expandable_widgets) if expandable_widgets else 0
+        extra_per_widget = (
+            max(0, available_height_total - total_fixed_height)
+            / len(expandable_widgets)
+            if expandable_widgets
+            else 0
+        )
         current_y = start_y
         for widget in self._widgets.values():
-            if not widget.isVisible(): continue
+            if not widget.isVisible():
+                continue
             real_widget = widget.widget()
-            h = (real_widget.sizeHint().height() if real_widget else widget.boundingRect().height())
+            h = (
+                real_widget.sizeHint().height()
+                if real_widget
+                else widget.boundingRect().height()
+            )
 
-            if real_widget and hasattr(real_widget, 'get_node_widget'):
+            if real_widget and hasattr(real_widget, "get_node_widget"):
                 actual_widget = real_widget.get_node_widget()
-                if actual_widget and actual_widget.sizePolicy().verticalPolicy() in [QtWidgets.QSizePolicy.Expanding,
-                                                                                     QtWidgets.QSizePolicy.MinimumExpanding]:
+                if actual_widget and actual_widget.sizePolicy().verticalPolicy() in [
+                    QtWidgets.QSizePolicy.Expanding,
+                    QtWidgets.QSizePolicy.MinimumExpanding,
+                ]:
                     h += extra_per_widget
 
             widget.setPos(self.boundingRect().x() + 5 + padding_x, current_y)
@@ -615,7 +703,9 @@ class CustomNodeItem(NodeItem):
             glow_color.setAlpha(50)
             for i in range(1, 4):
                 painter.setPen(QtGui.QPen(glow_color, i * 2))
-                painter.drawRoundedRect(rect.adjusted(-i, -i, i, i), radius + i, radius + i)
+                painter.drawRoundedRect(
+                    rect.adjusted(-i, -i, i, i), radius + i, radius + i
+                )
 
         bg_gradient = QtGui.QLinearGradient(rect.topLeft(), rect.bottomLeft())
         bg_gradient.setColorAt(0, QtGui.QColor(*COLOR_BG_GRAD_TOP))
@@ -627,7 +717,9 @@ class CustomNodeItem(NodeItem):
         header_h = max(self._text_item.boundingRect().height() + 10, 34.0)
         header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_h)
         base_color = QtGui.QColor(*self.color)
-        head_grad = QtGui.QLinearGradient(header_rect.topLeft(), header_rect.bottomLeft())
+        head_grad = QtGui.QLinearGradient(
+            header_rect.topLeft(), header_rect.bottomLeft()
+        )
         head_grad.setColorAt(0, base_color.lighter(110))
         head_grad.setColorAt(1, base_color)
         painter.setBrush(head_grad)
@@ -635,29 +727,47 @@ class CustomNodeItem(NodeItem):
         path = QtGui.QPainterPath()
         path.moveTo(header_rect.bottomLeft())
         path.lineTo(header_rect.left(), header_rect.top() + radius)
-        path.arcTo(header_rect.left(), header_rect.top(), radius * 2, radius * 2, 180, -90)
+        path.arcTo(
+            header_rect.left(), header_rect.top(), radius * 2, radius * 2, 180, -90
+        )
         path.lineTo(header_rect.right() - radius, header_rect.top())
-        path.arcTo(header_rect.right() - radius * 2, header_rect.top(), radius * 2, radius * 2, 90, -90)
+        path.arcTo(
+            header_rect.right() - radius * 2,
+            header_rect.top(),
+            radius * 2,
+            radius * 2,
+            90,
+            -90,
+        )
         path.lineTo(header_rect.bottomRight())
         path.closeSubpath()
         painter.drawPath(path)
 
         painter.setBrush(QtCore.Qt.NoBrush)
-        border_color = QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value) if self.selected else QtGui.QColor(
-            *COLOR_BORDER_NORMAL)
+        border_color = (
+            QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value)
+            if self.selected
+            else QtGui.QColor(*COLOR_BORDER_NORMAL)
+        )
         painter.setPen(QtGui.QPen(border_color, 2.5 if self.selected else 1.2))
         painter.drawRoundedRect(rect, radius, radius)
         painter.restore()
 
     def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.MiddleButton: event.ignore(); return
+        if event.button() == QtCore.Qt.MiddleButton:
+            event.ignore()
+            return
         if event.button() == QtCore.Qt.RightButton:
-            if self.scene(): self.scene().clearSelection(); self.setSelected(True); event.accept()
+            if self.scene():
+                self.scene().clearSelection()
+                self.setSelected(True)
+                event.accept()
         super(CustomNodeItem, self).mousePressEvent(event)
 
     @AbstractNodeItem.name.setter
-    def name(self, name=''):
-        if self.name == name: return
+    def name(self, name=""):
+        if self.name == name:
+            return
         if not self._rename_signal_block:
             self.rename_signal.emit(self.name, name)
         AbstractNodeItem.name.fset(self, name)
@@ -680,7 +790,9 @@ class CustomNodeItem(NodeItem):
                 items = self.scene().items(event.scenePos())
                 if self._text_item in items:
                     self._text_item.set_editable(True)
-                    self._rename_signal_block = False   # 只有双击手动编辑时触发信号传递，创建节点时跳过
+                    self._rename_signal_block = (
+                        False  # 只有双击手动编辑时触发信号传递，创建节点时跳过
+                    )
                     self._text_item.setFocus()
                     event.ignore()
                     return
@@ -692,16 +804,20 @@ class CustomNodeItem(NodeItem):
 
     def _set_text_color(self, color=None):
         muted = QtGui.QColor(225, 225, 225)
-        for text in list(self._input_items.values()) + list(self._output_items.values()):
+        for text in list(self._input_items.values()) + list(
+            self._output_items.values()
+        ):
             text.setDefaultTextColor(muted)
         self._text_item.setDefaultTextColor(QtCore.Qt.white)
         self._proxy_text_item.setDefaultTextColor(QtGui.QColor(255, 255, 255, 180))
 
     def set_proxy_mode(self, mode):
-        if mode is self._proxy_mode: return
+        if mode is self._proxy_mode:
+            return
         self._proxy_mode = mode
         self._update_elements_visibility()
-        if hasattr(self, '_x_item'): self._x_item.proxy_mode = mode
+        if hasattr(self, "_x_item"):
+            self._x_item.proxy_mode = mode
         self._draw_node_horizontal()
         self.update()
 
@@ -711,7 +827,9 @@ class CustomNodeItem(NodeItem):
         target_width = max(10, rect.width() - (margin * 2))
         self._proxy_text_item.setTextWidth(target_width)
         tr = self._proxy_text_item.boundingRect()
-        self._proxy_text_item.setPos(rect.left() + margin, rect.center().y() - (tr.height() / 2))
+        self._proxy_text_item.setPos(
+            rect.left() + margin, rect.center().y() - (tr.height() / 2)
+        )
 
     def _draw_node_vertical(self):
         self._draw_node_horizontal()
@@ -745,14 +863,20 @@ class CustomNodeItem(NodeItem):
 
         # 获取刚添加的这个 ProxyWidget
         # widget 是封装后的 NodeWidget，它的 .widget() 返回 QGraphicsProxyWidget
-        if hasattr(widget, 'widget'):
+        if hasattr(widget, "widget"):
             proxy_widget = widget.widget()
             # 立即同步当前的可见性逻辑
             visible = not self._is_collapsed and not self._proxy_mode
             proxy_widget.setVisible(visible)
 
-    def add_input(self, name='input', multi_port=False, display_name=True,
-                  locked=False, painter_func=None):
+    def add_input(
+        self,
+        name="input",
+        multi_port=False,
+        display_name=True,
+        locked=False,
+        painter_func=None,
+    ):
         """
         Adds a port qgraphics item into the node with the "port_type" set as
         IN_PORT.
@@ -778,8 +902,14 @@ class CustomNodeItem(NodeItem):
         port.locked = locked
         return self._add_port(port)
 
-    def add_output(self, name='output', multi_port=False, display_name=True,
-                   locked=False, painter_func=None):
+    def add_output(
+        self,
+        name="output",
+        multi_port=False,
+        display_name=True,
+        locked=False,
+        painter_func=None,
+    ):
         """
         Adds a port qgraphics item into the node with the "port_type" set as
         OUT_PORT.

@@ -5,11 +5,27 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from PyQt5.QtCore import Qt, QObject, pyqtSignal, QThreadPool, QRunnable
-from PyQt5.QtWidgets import QSplitter, QFrame, QVBoxLayout, QDialog, QScrollArea, QWidget, QMessageBox
+from PyQt5.QtWidgets import (
+    QSplitter,
+    QFrame,
+    QVBoxLayout,
+    QDialog,
+    QScrollArea,
+    QWidget,
+    QMessageBox,
+)
 from qfluentwidgets import (
-    LineEdit, SpinBox, DoubleSpinBox, CheckBox,
-    PrimaryPushButton, BodyLabel, StrongBodyLabel,
-    CardWidget, VBoxLayout, TextEdit, setFont
+    LineEdit,
+    SpinBox,
+    DoubleSpinBox,
+    CheckBox,
+    PrimaryPushButton,
+    BodyLabel,
+    StrongBodyLabel,
+    CardWidget,
+    VBoxLayout,
+    TextEdit,
+    setFont,
 )
 import requests
 
@@ -25,11 +41,7 @@ class RequestWorker(QRunnable):
 
     def run(self):
         try:
-            response = requests.post(
-                self.url,
-                json=self.payload,
-                timeout=self.timeout
-            )
+            response = requests.post(self.url, json=self.payload, timeout=self.timeout)
             response.raise_for_status()
             result = response.json()
             self.signals.success.emit(result)
@@ -38,7 +50,9 @@ class RequestWorker(QRunnable):
         except requests.exceptions.ConnectionError:
             self.signals.error.emit("无法连接到服务，请确认服务是否运行。")
         except requests.exceptions.HTTPError as e:
-            self.signals.error.emit(f"HTTP 错误: {e.response.status_code} - {e.response.reason}")
+            self.signals.error.emit(
+                f"HTTP 错误: {e.response.status_code} - {e.response.reason}"
+            )
         except ValueError:  # 包括 JSONDecodeError
             self.signals.error.emit("服务返回了无效的 JSON 格式。")
         except Exception as e:
@@ -66,7 +80,7 @@ class ServiceRequestDialog(QDialog):
     def _load_spec(self):
         spec_path = os.path.join(self.project_path, "project_spec.json")
         try:
-            with open(spec_path, 'r', encoding='utf-8') as f:
+            with open(spec_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             QMessageBox.critical(self, "加载错误", f"无法加载项目配置：\n{str(e)}")
@@ -94,7 +108,9 @@ class ServiceRequestDialog(QDialog):
 
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll_area.setStyleSheet(
+            "QScrollArea { border: none; background: transparent; }"
+        )
         scroll_content = QWidget()
         scroll_layout = VBoxLayout(scroll_content)
         scroll_layout.setSpacing(12)
@@ -102,7 +118,7 @@ class ServiceRequestDialog(QDialog):
 
         inputs = self.spec.get("inputs", {})
         if not inputs:
-            empty_label = BodyLabel("无输入参数")
+            empty_label = BodyLabel(self.tr("无输入参数"))
             empty_label.setAlignment(Qt.AlignCenter)
             scroll_layout.addWidget(empty_label)
         else:
@@ -115,7 +131,7 @@ class ServiceRequestDialog(QDialog):
         scroll_area.setWidget(scroll_content)
         left_layout.addWidget(scroll_area)
 
-        self.send_btn = PrimaryPushButton("发送请求")
+        self.send_btn = PrimaryPushButton(self.tr("发送请求"))
         self.send_btn.setFixedHeight(36)
         self.send_btn.clicked.connect(self._send_request)
         left_layout.addWidget(self.send_btn)
@@ -133,7 +149,7 @@ class ServiceRequestDialog(QDialog):
 
         self.result_text = TextEdit()
         self.result_text.setReadOnly(True)
-        self.result_text.setPlaceholderText("发送请求后，结果将显示在这里...")
+        self.result_text.setPlaceholderText(self.tr("发送请求后，结果将显示在这里..."))
         self.result_text.setStyleSheet("""
             QTextEdit {
                 background-color: #1e1e1e;
@@ -209,7 +225,7 @@ class ServiceRequestDialog(QDialog):
                 text = widget.text().strip()
                 if not text:
                     value = ""
-                elif text.startswith(('{', '[')):
+                elif text.startswith(("{", "[")):
                     try:
                         value = json.loads(text)
                     except json.JSONDecodeError:
@@ -220,8 +236,8 @@ class ServiceRequestDialog(QDialog):
 
         # 2. 禁用按钮，显示加载状态
         self.send_btn.setEnabled(False)
-        self.send_btn.setText("请求中...")
-        self.result_text.setPlaceholderText("正在发送请求，请稍候...")
+        self.send_btn.setText(self.tr("请求中..."))
+        self.result_text.setPlaceholderText(self.tr("正在发送请求，请稍候..."))
 
         # 3. 启动异步任务
         worker = RequestWorker(self.service_url, payload, timeout=30)  # 缩短超时更合理
@@ -243,4 +259,4 @@ class ServiceRequestDialog(QDialog):
 
     def _restore_button(self):
         self.send_btn.setEnabled(True)
-        self.send_btn.setText("发送请求")
+        self.send_btn.setText(self.tr("发送请求"))

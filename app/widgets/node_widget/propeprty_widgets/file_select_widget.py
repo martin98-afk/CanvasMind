@@ -41,14 +41,16 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
         layout.setSpacing(4)
 
         # 2. 获取全局变量支持
-        gv = getattr(parent, 'global_variables', None)
+        gv = getattr(parent, "global_variables", None)
 
         # 3. 创建输入框并配置白色文字样式
         # 注意：这里继续使用你的 VariableCompletionLineEdit
         self.path_edit = VariableCompletionLineEdit(
-            get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
+            get_variable_list_func=lambda func=get_port_func: gv.get_vars(func())
+            if gv
+            else [],
             use_qcursor=False,
-            parent=parent
+            parent=parent,
         )
         self.path_edit.textChanged.connect(self._on_text_changed)
         self.path_edit.setMinimumWidth(180)
@@ -57,7 +59,7 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
 
         # 4. 按钮配置
         self.btn_clear = TransparentToolButton(get_icon("清空参数"), self)
-        self.btn_clear.setToolTip("清空路径")
+        self.btn_clear.setToolTip(self.tr("清空路径"))
         self.btn_clear.setFixedSize(28, 28)
         self.btn_clear.clicked.connect(self._on_clear)
         self.btn_clear.setVisible(False)
@@ -66,7 +68,7 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
         self.btn_browse = TransparentToolButton(get_icon("文件选择"), self)
         self.btn_browse.setIconSize(QtCore.QSize(20, 20))  # 稍微调小一点适配紧凑布局
         self.btn_browse.setFixedSize(28, 28)
-        self.btn_browse.setToolTip(placeholder)
+        self.btn_browse.setToolTip(self.tr(placeholder))
         self.btn_browse.clicked.connect(self._on_browse)
 
         layout.addWidget(self.path_edit)
@@ -76,8 +78,8 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
         # 设置文件过滤器
         self._file_filter = "All Files (*)"
         if not self._is_folder_mode and default_ext:
-            ext = default_ext if default_ext.startswith('.') else f".{default_ext}"
-            clean_ext = ext.replace('.', '')
+            ext = default_ext if default_ext.startswith(".") else f".{default_ext}"
+            clean_ext = ext.replace(".", "")
             self._file_filter = f"{clean_ext.upper()} Files (*{ext});;All Files (*)"
 
     def _on_browse(self):
@@ -94,7 +96,7 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
                     selection_mode="folder" if self._is_folder_mode else "file",
                     file_filter=self._file_filter,
                     parent=self.main_window,
-                    initial_path=path
+                    initial_path=path,
                 )
                 if dialog.exec_() == QtWidgets.QDialog.Accepted:
                     path = dialog.get_selected_result()
@@ -104,14 +106,21 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
         else:
             # 本地模式逻辑
             if self._path:
-                start_dir = self._path if os.path.isdir(self._path) else os.path.dirname(self._path)
+                start_dir = (
+                    self._path
+                    if os.path.isdir(self._path)
+                    else os.path.dirname(self._path)
+                )
             else:
                 start_dir = os.getcwd()
 
             if self._is_folder_mode:
                 dir_path = QtWidgets.QFileDialog.getExistingDirectory(
-                    self.main_window, "选择目录", start_dir,
-                    QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
+                    self.main_window,
+                    "选择目录",
+                    start_dir,
+                    QtWidgets.QFileDialog.ShowDirsOnly
+                    | QtWidgets.QFileDialog.DontResolveSymlinks,
                 )
                 if dir_path:
                     self.set_value(dir_path)
@@ -150,16 +159,16 @@ class FileSelectWidget(QtWidgets.QFrame):  # 改为 QFrame 以支持边框样式
 class FileSelectWrapper(CustomNodeBaseWidget):
     """保持不变"""
 
-    def __init__(self, parent=None, name="", label="", default="", window=None, z_value=1):
+    def __init__(
+        self, parent=None, name="", label="", default="", window=None, z_value=1
+    ):
         super().__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.set_name(name)
         self.set_label(f"{label}({name})")
 
         widget = FileSelectWidget(
-            parent=window,
-            default_ext=default,
-            get_port_func=self.get_port_func
+            parent=window, default_ext=default, get_port_func=self.get_port_func
         )
         self.set_custom_widget(widget)
         widget.valueChanged.connect(self.on_value_changed)

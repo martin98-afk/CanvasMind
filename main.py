@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
+from pathlib import Path
+
+from app.utils.utils import resource_path
+
+
 def enable_dpi_scale():
     """启用 DPI 缩放支持"""
     # enable dpi scale
-    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
@@ -35,8 +42,8 @@ def create_application():
     app.setStyleSheet(app.styleSheet() + tooltip_style)
 
     # Required for correct icon on GNOME/Wayland:
-    if hasattr(app, 'setDesktopFileName'):
-        app.setDesktopFileName('CanvasMind')
+    if hasattr(app, "setDesktopFileName"):
+        app.setDesktopFileName("CanvasMind")
 
     return app
 
@@ -45,18 +52,15 @@ def load_localization(app, language="en"):
     # 将 translator 绑定到 app 对象上，防止被垃圾回收
     app.translator = QTranslator()
 
-    language_map = {
-        'en': 'en_US',
-        'zh': 'zh_CN'
-    }
+    language_map = {"en": "en_US", "zh": "zh_CN"}
 
     # 确保文件名匹配（比如 zh_CN.qm）
-    file_name = language_map.get(language, 'en_US')
-    qm_path = os.path.join('resource', 'i18n', f'{file_name}.qm')
+    file_name = language_map.get(language, "en_US")
+    qm_path = Path(resource_path("resource")) / "i18n" / f"{file_name}.qm"
 
-    if os.path.exists(qm_path):
+    if qm_path.exists():
         # 注意：使用 app.translator
-        if app.translator.load(qm_path):
+        if app.translator.load(str(qm_path)):
             app.installTranslator(app.translator)
             print(f"✅ 成功加载翻译: {qm_path}")
             return True
@@ -70,12 +74,13 @@ def load_localization(app, language="en"):
 # ----------------------------
 # 启动应
 # ----------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     import sys
     import NodeGraphQt
     import qtconsole.client
     import warnings
+
     warnings.filterwarnings("ignore")
 
     from PyQt5.QtCore import Qt, QLocale
@@ -86,11 +91,13 @@ if __name__ == '__main__':
 
     from app.utils import icons_rc
     from app.widgets.custom_nodegraphqt.nodegraphqt_patcher import patch_nodegraphqt
+
     patch_nodegraphqt()
 
     from app.main_window import LowCodeWindow
+
     sys.path.append(".")
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    os.environ["PYTHONIOENCODING"] = "utf-8"
     app = create_application()
     app.setQuitOnLastWindowClosed(False)
     # load_localization(app)
@@ -101,6 +108,7 @@ if __name__ == '__main__':
         print("✅ 启动成功！")
     except Exception as e:
         import traceback
+
         with open("error.log", "w") as f:
             f.write(traceback.format_exc())
         print(f"❌ 启动失败: {e}")
