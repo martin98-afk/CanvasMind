@@ -64,39 +64,54 @@ class TopicSummaryTask(QRunnable):
 
             memory_context = ""
             if self.long_term_memory:
-                memory_context = f"\n\n## 已有长期记忆\n{self.long_term_memory}\n"
+                memory_context = f"\n\n## 用户偏好和长期记忆\n{self.long_term_memory}\n"
 
             if self.previous_summary:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。请根据以下对话内容和之前的主题摘要，"
-                    "生成一个更新后的主题摘要（不超过50字）。\n"
-                    "注意：以下对话内容已过滤掉思考过程，请只根据实际对话内容进行总结。\n"
+                    "你是一个专业的对话主题分析助手，专门负责从对话中提取用户的偏好、特定需求和用户导向型内容。\n"
+                    "你的任务是根据以下对话内容，判断是否需要更新用户的长期记忆。\n\n"
+                    "【重要】长期记忆应该记录：\n"
+                    "1. 用户的偏好（如：喜欢简洁的回复、喜欢详细解释、使用中文等）\n"
+                    "2. 用户的特定需求（如：需要代码示例、需要学术风格、需要创意写作等）\n"
+                    "3. 用户导向型内容（如：用户的工作领域、使用的技术栈、关注的问题等）\n"
+                    "4. 重要的事实和信息（如：用户的项目名称、使用的框架等）\n\n"
+                    "【不应当记录的】：\n"
+                    "- 普通的闲聊内容\n"
+                    "- 临时性的问题\n"
+                    "- 通用技术知识\n\n"
                     f"之前的主题摘要：{self.previous_summary}\n\n"
                     f"最新对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "更新后的主题摘要（关注用户意图和核心讨论话题）",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
-                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    '  "topic_summary": "简短主题摘要（不超过50字）",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
+                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
                     "}\n"
                     "```"
                 )
             else:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。请仔细阅读以下对话内容，"
-                    "生成一个简短精炼的主题摘要（不超过50字）。\n"
-                    "注意：以下对话内容已过滤掉思考过程，请只根据实际对话内容进行总结。\n"
-                    "关注用户的问题、需求或讨论的核心话题。\n"
+                    "你是一个专业的对话主题分析助手，专门负责从对话中提取用户的偏好、特定需求和用户导向型内容。\n"
+                    "你的任务是根据以下对话内容，判断是否需要更新用户的长期记忆。\n\n"
+                    "【重要】长期记忆应该记录：\n"
+                    "1. 用户的偏好（如：喜欢简洁的回复、喜欢详细解释、使用中文等）\n"
+                    "2. 用户的特定需求（如：需要代码示例、需要学术风格、需要创意写作等）\n"
+                    "3. 用户导向型内容（如：用户的工作领域、使用的技术栈、关注的问题等）\n"
+                    "4. 重要的事实和信息（如：用户的项目名称、使用的框架等）\n\n"
+                    "【不应当记录的】：\n"
+                    "- 普通的闲聊内容\n"
+                    "- 临时性的问题\n"
+                    "- 通用技术知识\n\n"
                     f"对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "主题摘要（关注用户意图和核心讨论话题）",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
-                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    '  "topic_summary": "简短主题摘要（不超过50字）",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
+                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
                     "}\n"
                     "```"
                 )
@@ -122,7 +137,7 @@ class TopicSummaryTask(QRunnable):
                 callback_data = {
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),
-                    "memory_reason": result.get("memory_reason", ""),
+                    "memory_content": result.get("memory_content", ""),
                 }
                 self.callback(callback_data)
             else:
@@ -130,7 +145,7 @@ class TopicSummaryTask(QRunnable):
                     {
                         "topic_summary": raw_response,
                         "should_update_memory": False,
-                        "memory_reason": "",
+                        "memory_content": "",
                     }
                 )
         except Exception as e:

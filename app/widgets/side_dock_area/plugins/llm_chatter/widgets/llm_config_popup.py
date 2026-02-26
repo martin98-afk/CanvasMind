@@ -105,17 +105,29 @@ class LLMConfigPopup(QWidget):
             self._widgets["选择模型"] = (model_label, model_combo)
 
         # 强制字段
-        required_fields = {
-            "模型名称": ("model_name", "line"),
-            "API_URL": ("api_url", "line"),
-        }
-        for label_text, (key, ui_type) in required_fields.items():
-            value = config.get(label_text, "")
-            widget = self._create_widget(key, ui_type, value)
-            label = BodyLabel(f"{label_text}：", self)
-            self.layout.addWidget(label)
-            self.layout.addWidget(widget)
-            self._widgets[label_text] = (label, widget)
+        # 模型和API URL字段
+        if provider_key in PROVIDER_MODELS:
+            # 预置供应商：已有可编辑下拉框，这里只需要API_URL
+            url_label = BodyLabel("API_URL：", self)
+            self.layout.addWidget(url_label)
+            url_widget = self._create_widget(
+                "api_url", "line", config.get("API_URL", "")
+            )
+            self.layout.addWidget(url_widget)
+            self._widgets["API_URL"] = (url_label, url_widget)
+        else:
+            # 非预置供应商：显示模型名称和API_URL输入框
+            required_fields = {
+                "模型名称": ("model_name", "line"),
+                "API_URL": ("api_url", "line"),
+            }
+            for label_text, (key, ui_type) in required_fields.items():
+                value = config.get(label_text, "")
+                widget = self._create_widget(key, ui_type, value)
+                label = BodyLabel(f"{label_text}：", self)
+                self.layout.addWidget(label)
+                self.layout.addWidget(widget)
+                self._widgets[label_text] = (label, widget)
 
         # 获取地址（如果是预置供应商）
         if provider_key in FREE_PROVIDERS:

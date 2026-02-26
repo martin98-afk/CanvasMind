@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "将文本标签和歌词编码为音频生成条件，支持歌词强度调节",
   "category": "comfyui节点/Ace-Step",
-  "updated_at": "2026-02-26 01:33:40",
+  "updated_at": "2026-02-26 19:15:22",
   "author": "black"
 }
