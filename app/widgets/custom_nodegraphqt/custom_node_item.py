@@ -186,7 +186,6 @@ class NodeFloatingToolbar(BaseCanvasToolbar):
 
 class CustomNodeItem(NodeItem):
     current_mode = "subprocess"
-    ICON_NODE_BASE = ":/icons/同心圆.svg"
     _node = None
     _is_collapsed = False
     _is_resizing = False  # 初始化缩放状态锁
@@ -227,14 +226,6 @@ class CustomNodeItem(NodeItem):
         self._widget_width = 0.0
 
     def _init_base_components(self):
-        pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-        if not pixmap.isNull():
-            pixmap = pixmap.scaled(
-                35, 35, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
-            )
-            self._icon_item.setPixmap(pixmap)
-        self._properties["icon"] = self.ICON_NODE_BASE
-        self._icon_item.setZValue(self.zValue() + 1)
         font_type = Settings.get_instance().canvas_font_type.value
         self._text_item = NodeTextItem(self.name, self)
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))

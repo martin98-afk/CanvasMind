@@ -4,7 +4,7 @@ import weakref
 
 from NodeGraphQt.constants import (
     PipeLayoutEnum, PortTypeEnum, PipeEnum,
-    Z_VAL_PIPE, Z_VAL_PORT
+    Z_VAL_PIPE, Z_VAL_PORT, Z_VAL_NODE_WIDGET
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from PyQt5 import QtGui, QtCore, sip
@@ -248,7 +248,7 @@ class CustomPipeItem(PipeItem):
     def activate(self):
         self._active = True
         self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("activate"), style=self.style)
-        self.setZValue(Z_VAL_PORT-0.5)
+        self.setZValue(Z_VAL_PORT + 2)
         self.start_flow()
 
     def highlight(self):
@@ -256,7 +256,7 @@ class CustomPipeItem(PipeItem):
         if not self._running:
             self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=self._get_state_width("highlight"), style=self.style)
         self.update()
-        self.setZValue(Z_VAL_PORT-0.5)
+        self.setZValue(Z_VAL_PORT + 2)
         self.start_flow()
 
     def hoverEnterEvent(self, event):
@@ -328,6 +328,7 @@ class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
         super(CustomLivePipeItem, self).__init__()
 
     def draw_path(self, start_port, end_port=None, cursor_pos=None, color=None):
+        self.setZValue(1000)
         if cursor_pos is None:
             return
         self._start_port = start_port

@@ -65,13 +65,10 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
             self.set_property("version", "latest")
             comp_class = ComponentScanner().get_component_by_uuid(self.uuid)
-            if hasattr(comp_class, "icon"):
-                self.set_icon(ComponentScanner().get_component_by_uuid(self.uuid).icon)
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             self._generate_parms_widget()
-            comp_cls = ComponentScanner().get_component_by_uuid(self.uuid)
-            port_infos = comp_cls.get_inputs()
-            port_sub_types = comp_cls.get_input_sub_types()
+            port_infos = comp_class.get_inputs()
+            port_sub_types = comp_class.get_input_sub_types()
             for (port_name, label, connection, port_type, description), sub_type in zip(port_infos, port_sub_types):
                 if port_type == ArgumentType.OBJECT:
                     self.object_io = True
@@ -98,7 +95,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             for icon_path in (extension_path / "assets/component_icon").glob("*"):
                 if icon_path.is_file() and icon_path.suffix in [".png", ".jpg", ".jpeg", ".gif", ".svg", "ico"]:
                     self.set_icon(str(icon_path))
-                    break
+                    return
 
         @property
         def description(self):
