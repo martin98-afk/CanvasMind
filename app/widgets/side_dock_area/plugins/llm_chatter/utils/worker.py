@@ -33,6 +33,13 @@ class TopicSummaryTask(QRunnable):
         self.long_term_memory = long_term_memory
         self.setAutoDelete(True)
 
+    def _extract_content_without_think(self, content: str) -> str:
+        import re
+
+        think_pattern = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
+        content = think_pattern.sub("", content)
+        return content.strip()
+
     @pyqtSlot()
     def run(self):
         try:
@@ -49,8 +56,11 @@ class TopicSummaryTask(QRunnable):
                         if item.get("type") == "text"
                     ]
                     content = "\n".join(texts)
+
+                content = self._extract_content_without_think(content)
+
                 role = "用户" if msg.get("role") == "user" else "助手"
-                summary_text += f"{role}：{content[:300]}\n"
+                summary_text += f"{role}：{content[:500]}\n"
 
             memory_context = ""
             if self.long_term_memory:
@@ -60,13 +70,14 @@ class TopicSummaryTask(QRunnable):
                 prompt = (
                     "你是一个专业的对话主题分析助手。请根据以下对话内容和之前的主题摘要，"
                     "生成一个更新后的主题摘要（不超过50字）。\n"
+                    "注意：以下对话内容已过滤掉思考过程，请只根据实际对话内容进行总结。\n"
                     f"之前的主题摘要：{self.previous_summary}\n\n"
                     f"最新对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "更新后的主题摘要",\n'
+                    '  "topic_summary": "更新后的主题摘要（关注用户意图和核心讨论话题）",\n'
                     '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
                     '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
                     "}\n"
@@ -76,12 +87,14 @@ class TopicSummaryTask(QRunnable):
                 prompt = (
                     "你是一个专业的对话主题分析助手。请仔细阅读以下对话内容，"
                     "生成一个简短精炼的主题摘要（不超过50字）。\n"
+                    "注意：以下对话内容已过滤掉思考过程，请只根据实际对话内容进行总结。\n"
+                    "关注用户的问题、需求或讨论的核心话题。\n"
                     f"对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "主题摘要",\n'
+                    '  "topic_summary": "主题摘要（关注用户意图和核心讨论话题）",\n'
                     '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
                     '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
                     "}\n"
@@ -96,7 +109,7 @@ class TopicSummaryTask(QRunnable):
                 model=self.llm_config.get("模型名称", "gpt-4o"),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=200,
+                max_tokens=1000,
             )
             raw_response = resp.choices[0].message.content.strip()
 

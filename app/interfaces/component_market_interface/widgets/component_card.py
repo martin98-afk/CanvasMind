@@ -43,7 +43,12 @@ class ComponentCard(CardWidget):
 
         # 第一行：标题 + 复选框
         header = QHBoxLayout()
-        name_val = self.data.get("组件名称") or self.data.get("name") or "P"
+        name_val = (
+            self.data.get("组件名称")
+            or self.data.get("name")
+            or self.data.get("canvas_name")
+            or "P"
+        )
         display_name = str(name_val)
 
         icon_lbl = QLabel(display_name[0].upper())
@@ -118,7 +123,7 @@ class ComponentCard(CardWidget):
         desc.setAlignment(Qt.AlignTop)
         layout.addWidget(desc)
 
-        # 第三行：作者与时间 (修复作者显示)
+        # 第三行：作者与时间
         meta = QHBoxLayout()
         creator = (
             self.data.get("创建人")
@@ -126,10 +131,24 @@ class ComponentCard(CardWidget):
             or self.data.get("author")
             or "未知"
         )
-        m_time = str(
-            self.data.get("最后修改时间") or self.data.get("updated_at") or "---"
+        cloud_time = (
+            self.data.get("cloud_updated_at") or self.data.get("updated_at") or ""
         )
-        meta_lbl = QLabel(f"by {creator} • {m_time}")
+        local_time = (
+            self.data.get("local_updated_at") or self.data.get("最后修改时间") or ""
+        )
+
+        if cloud_time and local_time and cloud_time != local_time:
+            meta_lbl = QLabel(
+                f"by {creator} • 云端:{cloud_time[:10]} 本地:{local_time[:10]}"
+            )
+        elif cloud_time:
+            meta_lbl = QLabel(f"by {creator} • 云端:{cloud_time[:10]}")
+        elif local_time:
+            meta_lbl = QLabel(f"by {creator} • 本地:{local_time[:10]}")
+        else:
+            meta_lbl = QLabel(f"by {creator} • ---")
+
         meta_lbl.setStyleSheet("color: #8b949e; font-size: 11px;")
         meta.addWidget(meta_lbl)
         meta.addStretch()

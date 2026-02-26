@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-import re
 import json
+import re
 from datetime import datetime
 from pathlib import Path
-
-from loguru import logger
 from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool, QUrl
-from PyQt5.QtGui import QFont, QDesktopServices
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -17,6 +15,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QFileDialog,
 )
+from loguru import logger
 from qfluentwidgets import (
     setFont,
     ComboBox,
@@ -28,7 +27,6 @@ from qfluentwidgets import (
     CaptionLabel,
     TransparentToolButton,
     TransparentToggleToolButton,
-    LineEdit,
 )
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
@@ -37,11 +35,19 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
-    ContextSelector,
-)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import (
     HistoryManager,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
+    OpenAIChatWorker,
+    TitleGenerationTask,
+    TopicSummaryTask,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
+    SendableTextEdit,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
+    ContextSelector,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
@@ -49,14 +55,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup imp
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
-    SendableTextEdit,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
-    OpenAIChatWorker,
-    TitleGenerationTask,
-    TopicSummaryTask,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -573,12 +571,14 @@ class OpenAIChatToolWindow(ToolWindow):
             if self.chat_layout.itemAt(i).widget() is card:
                 card_index = i
                 break
-        if card_index <= 0:
+
+        # 验证索引有效性
+        if card_index <= 0 or card_index >= len(session.messages):
             return
 
         # 重构当时的用户输入
         user_input = session.messages[card_index - 1]["content"]
-        params = session.messages[card_index - 1]["params"]
+        params = session.messages[card_index - 1].get("params")
         if params:
             user_input = (
                 "\n".join([value[1] for value in params.values()])
@@ -1118,7 +1118,6 @@ class OpenAIChatToolWindow(ToolWindow):
             QPushButton,
             QButtonGroup,
         )
-        from PyQt5.QtCore import Qt
 
         dialog = QDialog(self)
         dialog.setWindowTitle("请选择")
