@@ -88,12 +88,18 @@ class OpenAIChatToolWindow(ToolWindow):
     userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
     _system_prompt = """# 角色
-你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
+你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地落地执行用户的需求。
 
-## 追问推荐规范
-- 操作类型:推荐追问,当你认为下一步用户会问哪些问题时,严格按照以下格式引用:
-[问题描述](ask)
-- 规范：放到回复最后，如果用户问题不清晰可以尝试重新描述问题。\n\n"""
+职责与行为准则
+- 以清晰、专业的语言输出，必要时附带可执行的步骤（命令、代码、API 调用等）。
+- 遇到不清晰的需求时，主动提出澄清问题或给出可操作的分步方案。
+- 始终优先使用长期记忆和历史对话上下文来提升回答相关性。
+- 如需扩展能力，优先通过内部技能/工具执行，而非直接输出未验证的信息。
+
+## 追问与行动规范
+- 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
+- [问题描述](ask)
+- 如需执行，请在拟议行动后附上你将执行的第一步（如调用技能、运行命令等）以便用户确认。"""
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
@@ -991,51 +997,41 @@ class OpenAIChatToolWindow(ToolWindow):
         }
 
     def _get_long_term_memory_context(self) -> str:
-        """获取长期记忆上下文"""
+        """获取长期记忆上下文，始终返回可用的内存段，若无记忆也返回占位文本引导记忆积累。"""
         memory_data = self._load_soul_memory()
         topics = memory_data.get("topics", [])
-
         user_memories = memory_data.get("user_memories", [])
 
-        context = "## 用户偏好记忆\n"
-
-        if user_memories:
-            for mem in user_memories:
-                if isinstance(mem, dict):
-                    content = mem.get("content", "")
-                else:
-                    content = str(mem)
-                if content:
-                    context += f"- {content}\n"
-        else:
-            user_profile = memory_data.get("user_profile", {})
-            if user_profile.get("name"):
-                context += f"用户名称: {user_profile['name']}\n"
-            if user_profile.get("communication_style"):
-                context += f"沟通风格: {user_profile['communication_style']}\n"
-            if user_profile.get("expertise_level"):
-                context += f"专业水平: {user_profile['expertise_level']}\n"
-
-            preferences = user_profile.get("preferences", {})
-            if preferences:
-                context += "\n用户偏好:\n"
-                for k, v in preferences.items():
-                    context += f"- {k}: {v}\n"
+        lines = []
+        lines.append("## 长期记忆摘要")
 
         if topics:
             recent_topics = topics[-3:]
-            context += "\n最近讨论主题:\n"
-            for topic_entry in recent_topics:
-                if isinstance(topic_entry, dict):
-                    context += f"- {topic_entry.get('topic', '')}\n"
+            lines.append(
+                "最近讨论主题: "
+                + ", ".join(
+                    [
+                        t.get("topic", "") if isinstance(t, dict) else str(t)
+                        for t in recent_topics
+                    ]
+                )
+            )
+        if user_memories:
+            mem_lines = []
+            for m in user_memories[-5:]:
+                if isinstance(m, dict):
+                    mem_lines.append(m.get("content", ""))
                 else:
-                    context += f"- {topic_entry}\n"
+                    mem_lines.append(str(m))
+            mem_lines = [s for s in mem_lines if s]
+            if mem_lines:
+                lines.append("用户记忆片段: " + " | ".join(mem_lines))
 
-        if not user_memories and not topics:
-            return ""
+        if not topics and not user_memories:
+            lines.append("暂无长期记忆，系统将逐步积累用户偏好与会话要点。")
 
-        context += "\n请根据以上用户偏好和需求提供更个性化的对话体验。\n"
-        return context
+        lines.append("请根据以上信息在未来对话中保持一致性与个性化。")
+        return "\n".join(lines)
 
     def _clear_long_term_memory(self):
         from PyQt5.QtWidgets import QMessageBox
@@ -1285,6 +1281,78 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         self._update_assistant_message(assistant_card, content_piece)
+        # 1) 处理插件调用（技能执行）若检测到 plugin_call 指令
+        self._process_plugin_calls(content_piece, assistant_card)
+        # 2) 处理简单的工具调用（如 shell 命令）
+        self._process_tool_calls(content_piece, assistant_card)
+
+    def _process_plugin_calls(self, content_piece: str, assistant_card: MessageCard):
+        """Detect and execute plugin_call blocks in assistant content."""
+        try:
+            pattern = re.compile(r"```plugin_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            if not match:
+                return
+            payload_str = match.group(1).strip()
+            payload = json.loads(payload_str)
+            method = payload.get("method")
+            params = payload.get("params", {}) or {}
+            if method:
+                self.execute_skill(
+                    method,
+                    params,
+                    callback=lambda res: self._on_skill_result(res, assistant_card),
+                )
+        except Exception as e:
+            logger.error(f"[PluginCall] Failed to process: {e}")
+
+    def _on_skill_result(self, result, assistant_card: MessageCard):
+        content = ""
+        if isinstance(result, dict) and "error" in result:
+            content = f"[Skill Error] {result.get('error')}"
+        else:
+            content = f"[Skill Result] {result}"
+        new_card = self._append_assistant_message()
+        new_card.update_content(str(content))
+        new_card.finish_streaming()
+        self._scroll_to_bottom()
+
+    def _process_tool_calls(self, content_piece: str, assistant_card: MessageCard):
+        """Detect and execute simple tool calls (e.g., shell commands) emitted by the model."""
+        try:
+            pattern = re.compile(r"```tool_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            if not match:
+                return
+            payload_str = match.group(1).strip()
+            payload = json.loads(payload_str)
+            tool_type = payload.get("type")
+            if tool_type == "shell":
+                cmd = payload.get("cmd", "")
+                if not cmd:
+                    return
+                import subprocess
+
+                try:
+                    res = subprocess.run(
+                        cmd, shell=True, capture_output=True, text=True, timeout=60
+                    )
+                    output = res.stdout.strip()
+                    error_out = res.stderr.strip()
+                    combined = "\n".join([output, error_out]).strip()
+                    tool_card = self._append_assistant_message()
+                    tool_card.update_content(
+                        "Shell command result:\n" + (combined or "")
+                    )
+                    tool_card.finish_streaming()
+                    self._scroll_to_bottom()
+                except Exception as e:
+                    err_card = self._append_assistant_message()
+                    err_card.update_content(f"[Shell execution error] {e}")
+                    err_card.finish_streaming()
+                    self._scroll_to_bottom()
+        except Exception as e:
+            logger.error(f"[ToolCall] Failed to process: {e}")
 
     # 对话标题总结
     def _generate_conversation_title(self, current_title: str, messages: List[Dict]):

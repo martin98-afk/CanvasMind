@@ -334,7 +334,6 @@ class OpenAIChatWorker(QThread):
             if "o1-preview" in model or "o1-mini" in model:
                 req_kwargs.pop("stream", None)
                 self.stream = False
-
             response = client.chat.completions.create(**req_kwargs)
 
             # --- 流式处理逻辑 (提取 content 和 reasoning_content) ...

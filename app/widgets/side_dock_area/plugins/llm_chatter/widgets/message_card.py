@@ -56,8 +56,7 @@ def get_markdown_instance():
     if _md_instance is None:
         _md_instance = Markdown(
             extensions=["fenced_code", "nl2br", "tables"],
-            output_format="html5",
-            safe=False,
+            output_format="html",
         )
     return _md_instance
 
@@ -185,6 +184,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
 def _sanitize_incomplete_markdown(md_text: str) -> str:
     if not md_text:
         return ""
+    md_text = md_text.replace("\r\n", "\n").replace("\r", "\n")
     if md_text.count("```") % 2 == 1:
         md_text += "\n```"
     if md_text.endswith("<"):
@@ -324,7 +324,8 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            self._schedule_render()
+            if not self._render_timer.isActive():
+                self._render_timer.start(self._min_render_interval)
 
     def _load_skeleton(self):
         tag_css = []
@@ -371,6 +372,42 @@ class CodeWebViewer(QWebEngineView):
                 
                 /* 优化：紧凑的段落间距 */
                 p {{ margin: 6px 0; }}
+
+                /* 标题样式 */
+                h1, h2, h3, h4, h5, h6 {{ 
+                    margin: 12px 0 8px 0; 
+                    font-weight: 600; 
+                    color: #fff;
+                    line-height: 1.3;
+                }}
+                h1 {{ font-size: 1.5em; border-bottom: 1px solid #3A3F47; padding-bottom: 6px; }}
+                h2 {{ font-size: 1.3em; border-bottom: 1px solid #3A3F47; padding-bottom: 4px; }}
+                h3 {{ font-size: 1.15em; }}
+                h4 {{ font-size: 1em; }}
+
+                /* 粗体和斜体 */
+                strong, b {{ color: #fff; font-weight: 600; }}
+                em, i {{ color: #b0b0b0; font-style: italic; }}
+
+                /* 链接 */
+                a {{ color: #4a9eff; text-decoration: none; }}
+                a:hover {{ text-decoration: underline; }}
+
+                /* 引用块 */
+                blockquote {{ 
+                    margin: 8px 0; 
+                    padding: 8px 16px; 
+                    border-left: 3px solid #4a9eff; 
+                    background: #252526; 
+                    color: #b0b0b0;
+                }}
+
+                /* 分割线 */
+                hr {{ 
+                    border: none; 
+                    border-top: 1px solid #3A3F47; 
+                    margin: 12px 0; 
+                }}
 
                 /* Markdown 表格 */
                 table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
@@ -479,7 +516,9 @@ class CodeWebViewer(QWebEngineView):
         if not text:
             return
         self._markdown_text += text
-        self._schedule_render()
+        if self._is_js_ready:
+            if not self._render_timer.isActive():
+                self._render_timer.start(self._min_render_interval)
 
     def _schedule_render(self):
         if not self._is_js_ready:
