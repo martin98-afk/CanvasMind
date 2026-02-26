@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-import re
 import json
+import re
 from datetime import datetime
 from pathlib import Path
-
-from loguru import logger
 from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool, QUrl
-from PyQt5.QtGui import QFont, QDesktopServices
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -17,6 +15,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QFileDialog,
 )
+from loguru import logger
 from qfluentwidgets import (
     setFont,
     ComboBox,
@@ -28,7 +27,6 @@ from qfluentwidgets import (
     CaptionLabel,
     TransparentToolButton,
     TransparentToggleToolButton,
-    LineEdit,
 )
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
@@ -37,26 +35,30 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
-    ContextSelector,
-)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import (
     HistoryManager,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
-    LLMConfigPopup,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
-    MessageCard,
-    create_welcome_card,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
-    SendableTextEdit,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
     OpenAIChatWorker,
     TitleGenerationTask,
     TopicSummaryTask,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
+    SendableTextEdit,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
+    ContextSelector,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
+    LLMConfigPopup,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import FREE_PROVIDERS
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
+    MessageCard,
+    create_welcome_card,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
+    MemoryManagerDialog,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -254,18 +256,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_config_applied(self, new_config: dict):
         current_name = self.model_combo.currentText()
-        if current_name != "系统默认配置":
-            # 更新现有配置
-            self.homepage.global_variables.custom[current_name].value = new_config
-            self.homepage._on_global_variables_changed("custom", current_name, "update")
-            self._load_model_configs()
-            idx = self.model_combo.findText(current_name)
-            if idx >= 0:
-                self.model_combo.setCurrentIndex(idx)
-            InfoBar.success("已更新", "配置已保存并应用。", parent=self, duration=1500)
-        else:
+
+        # 检查是否是系统预置的免费供应商
+        is_free_provider = current_name in FREE_PROVIDERS
+
+        if current_name == "系统默认配置":
             setting = Settings.get_instance()
-            # 更新 cfg 默认配置并持久化
             setting.set(setting.llm_model, new_config["模型名称"])
             setting.set(setting.llm_api_key, new_config["API_KEY"])
             setting.set(setting.llm_api_base, new_config["API_URL"])
@@ -277,6 +273,48 @@ class OpenAIChatToolWindow(ToolWindow):
             InfoBar.success(
                 "系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500
             )
+        elif is_free_provider:
+            # 系统预置的免费供应商配置，保存到本地
+            self._valid_configs[current_name] = new_config
+            setting = Settings.get_instance()
+            saved_providers = setting.llm_saved_providers.value or {}
+            saved_providers[current_name] = new_config
+            setting.set(setting.llm_saved_providers, saved_providers, save=True)
+            InfoBar.success("已保存", "配置已保存到本地。", parent=self, duration=1500)
+        else:
+            # 用户自定义配置，保存到 global_variables
+            if (
+                hasattr(self.homepage, "global_variables")
+                and self.homepage.global_variables
+            ):
+                custom_vars = self.homepage.global_variables.custom
+                if current_name in custom_vars:
+                    custom_vars[current_name].value = new_config
+                    self.homepage._on_global_variables_changed(
+                        "custom", current_name, "update"
+                    )
+                else:
+                    # 新增自定义配置
+                    from app.components.base import CustomVariable
+
+                    custom_vars[current_name] = CustomVariable(value=new_config)
+                    self.homepage._on_global_variables_changed(
+                        "custom", current_name, "add"
+                    )
+                self._load_model_configs()
+                idx = self.model_combo.findText(current_name)
+                if idx >= 0:
+                    self.model_combo.setCurrentIndex(idx)
+                InfoBar.success(
+                    "已保存", "配置已保存到自定义配置。", parent=self, duration=1500
+                )
+            else:
+                InfoBar.warning(
+                    "无法保存",
+                    "当前页面不支持保存自定义配置。",
+                    parent=self,
+                    duration=1500,
+                )
 
     def _load_model_configs(self):
         current_text = (
@@ -308,13 +346,30 @@ class OpenAIChatToolWindow(ToolWindow):
                     if hasattr(var_obj, "value") and isinstance(var_obj.value, dict):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
-                            # 避免自定义配置名与“系统默认配置”冲突
+                            # 避免自定义配置名与"系统默认配置"冲突
                             if config_name != "系统默认配置":
                                 self._valid_configs[config_name] = val
                                 all_model_names.append(config_name)
         except Exception as e:
             # 建议至少打印错误
             logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
+
+        # 添加免费模型供应商配置
+        setting = Settings.get_instance()
+        saved_providers = setting.llm_saved_providers.value or {}
+
+        for provider_name, provider_config in FREE_PROVIDERS.items():
+            if provider_name not in self._valid_configs:
+                # 检查是否有已保存的配置
+                if provider_name in saved_providers:
+                    config = saved_providers[provider_name].copy()
+                else:
+                    config = provider_config.copy()
+                    config.pop("备注", None)
+                    config.pop("认证方式", None)
+                    config.pop("获取地址", None)
+                self._valid_configs[provider_name] = config
+                all_model_names.append(provider_name)
 
         # ✅ 关键：一次性添加所有模型名
         self.model_combo.addItems(all_model_names)
@@ -573,12 +628,14 @@ class OpenAIChatToolWindow(ToolWindow):
             if self.chat_layout.itemAt(i).widget() is card:
                 card_index = i
                 break
-        if card_index <= 0:
+
+        # 验证索引有效性
+        if card_index <= 0 or card_index >= len(session.messages):
             return
 
         # 重构当时的用户输入
         user_input = session.messages[card_index - 1]["content"]
-        params = session.messages[card_index - 1]["params"]
+        params = session.messages[card_index - 1].get("params")
         if params:
             user_input = (
                 "\n".join([value[1] for value in params.values()])
@@ -678,6 +735,12 @@ class OpenAIChatToolWindow(ToolWindow):
         full_system_prompt = (
             self._system_prompt + "\n" + llm_config.get("系统提示", "").strip()
         ).strip()
+
+        # 注入长期记忆到系统提示
+        long_term_memory = self._get_long_term_memory_context()
+        if long_term_memory:
+            full_system_prompt += f"\n\n{long_term_memory}"
+
         messages.append({"role": "system", "content": full_system_prompt})
 
         # 4. 注入历史消息
@@ -787,11 +850,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if isinstance(result, dict):
             summary = result.get("topic_summary", "")
             should_update_memory = result.get("should_update_memory", False)
-            memory_reason = result.get("memory_reason", "")
+            memory_content = result.get("memory_content", "")
         else:
             summary = result
             should_update_memory = False
-            memory_reason = ""
+            memory_content = ""
 
         if not summary:
             return
@@ -806,8 +869,8 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             self._update_title_display(clean_summary)
 
-            if should_update_memory:
-                self._update_long_term_memory(clean_summary, memory_reason)
+            if should_update_memory and memory_content:
+                self._add_user_memory(memory_content)
 
     def _update_title_display(self, title: str):
         """更新标题显示"""
@@ -846,6 +909,48 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.error(f"[Soul Memory] Failed to update: {e}")
 
+    def _add_user_memory(self, memory_content: str):
+        """添加用户偏好记忆"""
+        if not memory_content:
+            return
+        try:
+            memory_file = self._get_soul_memory_file()
+            if not memory_file:
+                return
+
+            memory_data = self._load_soul_memory()
+            user_memories = memory_data.get("user_memories", [])
+
+            memory_exists = False
+            for mem in user_memories:
+                if isinstance(mem, dict):
+                    if mem.get("content", "") == memory_content:
+                        memory_exists = True
+                        break
+                elif mem == memory_content:
+                    memory_exists = True
+                    break
+
+            if not memory_exists:
+                user_memories.append(
+                    {
+                        "content": memory_content,
+                        "enabled": True,
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
+                memory_data["user_memories"] = user_memories[-20:]
+                memory_data["last_updated"] = datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+
+                with open(memory_file, "w", encoding="utf-8") as f:
+                    json.dump(memory_data, f, ensure_ascii=False, indent=2)
+
+                logger.info(f"[Soul Memory] Added user memory: {memory_content}")
+        except Exception as e:
+            logger.error(f"[Soul Memory] Failed to add user memory: {e}")
+
     def _get_soul_memory_file(self) -> Optional[Path]:
         try:
             canvas_name = (
@@ -862,7 +967,10 @@ class OpenAIChatToolWindow(ToolWindow):
         if memory_file and memory_file.exists():
             try:
                 with open(memory_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if "user_memories" not in data:
+                        data["user_memories"] = []
+                    return data
             except Exception:
                 pass
         return {
@@ -876,6 +984,7 @@ class OpenAIChatToolWindow(ToolWindow):
             "topics": [],
             "conversation_patterns": [],
             "key_insights": [],
+            "user_memories": [],
             "total_conversations": 0,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "last_updated": "",
@@ -886,41 +995,46 @@ class OpenAIChatToolWindow(ToolWindow):
         memory_data = self._load_soul_memory()
         topics = memory_data.get("topics", [])
 
-        context = "## 长期记忆\n"
+        user_memories = memory_data.get("user_memories", [])
 
-        user_profile = memory_data.get("user_profile", {})
-        if user_profile.get("name"):
-            context += f"用户名称: {user_profile['name']}\n"
-        if user_profile.get("communication_style"):
-            context += f"沟通风格: {user_profile['communication_style']}\n"
-        if user_profile.get("expertise_level"):
-            context += f"专业水平: {user_profile['expertise_level']}\n"
+        context = "## 用户偏好记忆\n"
 
-        preferences = user_profile.get("preferences", {})
-        if preferences:
-            context += "\n用户偏好:\n"
-            for k, v in preferences.items():
-                context += f"- {k}: {v}\n"
+        if user_memories:
+            for mem in user_memories:
+                if isinstance(mem, dict):
+                    content = mem.get("content", "")
+                else:
+                    content = str(mem)
+                if content:
+                    context += f"- {content}\n"
+        else:
+            user_profile = memory_data.get("user_profile", {})
+            if user_profile.get("name"):
+                context += f"用户名称: {user_profile['name']}\n"
+            if user_profile.get("communication_style"):
+                context += f"沟通风格: {user_profile['communication_style']}\n"
+            if user_profile.get("expertise_level"):
+                context += f"专业水平: {user_profile['expertise_level']}\n"
+
+            preferences = user_profile.get("preferences", {})
+            if preferences:
+                context += "\n用户偏好:\n"
+                for k, v in preferences.items():
+                    context += f"- {k}: {v}\n"
 
         if topics:
-            recent_topics = topics[-5:]
-            context += "\n讨论过的主题:\n"
+            recent_topics = topics[-3:]
+            context += "\n最近讨论主题:\n"
             for topic_entry in recent_topics:
                 if isinstance(topic_entry, dict):
                     context += f"- {topic_entry.get('topic', '')}\n"
                 else:
                     context += f"- {topic_entry}\n"
 
-        key_insights = memory_data.get("key_insights", [])
-        if key_insights:
-            context += "\n关键洞察:\n"
-            for insight in key_insights[-3:]:
-                context += f"- {insight}\n"
-
-        if not topics and not preferences and not key_insights:
+        if not user_memories and not topics:
             return ""
 
-        context += "\n请根据以上信息提供更个性化的对话体验。\n"
+        context += "\n请根据以上用户偏好和需求提供更个性化的对话体验。\n"
         return context
 
     def _clear_long_term_memory(self):
@@ -943,74 +1057,33 @@ class OpenAIChatToolWindow(ToolWindow):
                 logger.error(f"[Soul Memory] Failed to clear: {e}")
 
     def _show_soul_memory(self):
-        """显示长期记忆内容"""
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
-
+        """显示长期记忆管理界面"""
         memory_data = self._load_soul_memory()
+        user_memories = memory_data.get("user_memories", [])
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("长期记忆 (Soul Memory)")
-        dialog.setMinimumSize(500, 450)
-        layout = QVBoxLayout(dialog)
-
-        text_edit = QTextEdit(dialog)
-        text_edit.setReadOnly(True)
-
-        content = "# 长期记忆 (Soul)\n\n"
-        content += f"版本: {memory_data.get('version', '1.0')}\n"
-        content += f"创建时间: {memory_data.get('created_at', 'N/A')}\n"
-        content += f"最后更新: {memory_data.get('last_updated', 'N/A')}\n"
-        content += f"总会话数: {memory_data.get('total_conversations', 0)}\n\n"
-
-        user_profile = memory_data.get("user_profile", {})
-        if user_profile:
-            content += "## 用户画像\n\n"
-            if user_profile.get("name"):
-                content += f"- 名称: {user_profile['name']}\n"
-            if user_profile.get("communication_style"):
-                content += f"- 沟通风格: {user_profile['communication_style']}\n"
-            if user_profile.get("expertise_level"):
-                content += f"- 专业水平: {user_profile['expertise_level']}\n"
-
-            prefs = user_profile.get("preferences", {})
-            if prefs:
-                content += "\n用户偏好:\n"
-                for k, v in prefs.items():
-                    content += f"- {k}: {v}\n"
-
-        topics = memory_data.get("topics", [])
-        if topics:
-            content += "\n## 讨论过的主题\n\n"
-            for topic_entry in topics[-10:]:
-                if isinstance(topic_entry, dict):
-                    content += f"- {topic_entry.get('topic', '')} ({topic_entry.get('timestamp', '')}\n"
-                else:
-                    content += f"- {topic_entry}\n"
-        else:
-            content += "\n暂无记忆主题\n"
-
-        key_insights = memory_data.get("key_insights", [])
-        if key_insights:
-            content += "\n## 关键洞察\n\n"
-            for insight in key_insights[-5:]:
-                content += f"- {insight}\n"
-
-        text_edit.setPlainText(content)
-        layout.addWidget(text_edit)
-
-        btn_layout = QHBoxLayout()
-        clear_btn = QPushButton("清空记忆", dialog)
-        clear_btn.clicked.connect(
-            lambda: (self._clear_long_term_memory(), dialog.close())
-        )
-        close_btn = QPushButton("关闭", dialog)
-        close_btn.clicked.connect(dialog.close)
-        btn_layout.addWidget(clear_btn)
-        btn_layout.addStretch()
-        btn_layout.addWidget(close_btn)
-        layout.addLayout(btn_layout)
-
+        dialog = MemoryManagerDialog(user_memories, self)
+        dialog.memoryUpdated.connect(self._on_memory_updated)
         dialog.exec_()
+
+    def _on_memory_updated(self, memories: list):
+        """保存更新后的记忆"""
+        try:
+            memory_file = self._get_soul_memory_file()
+            if not memory_file:
+                return
+
+            memory_data = self._load_soul_memory()
+            memory_data["user_memories"] = memories
+            memory_data["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            with open(memory_file, "w", encoding="utf-8") as f:
+                json.dump(memory_data, f, ensure_ascii=False, indent=2)
+
+            InfoBar.success("已保存", "长期记忆已更新", parent=self, duration=1500)
+            logger.info(f"[Soul Memory] Updated user memories: {len(memories)} items")
+        except Exception as e:
+            logger.error(f"[Soul Memory] Failed to save: {e}")
+            InfoBar.error("保存失败", str(e), parent=self, duration=1500)
 
     def _on_title_double_click(self, event):
         """双击标题编辑"""
@@ -1118,7 +1191,6 @@ class OpenAIChatToolWindow(ToolWindow):
             QPushButton,
             QButtonGroup,
         )
-        from PyQt5.QtCore import Qt
 
         dialog = QDialog(self)
         dialog.setWindowTitle("请选择")

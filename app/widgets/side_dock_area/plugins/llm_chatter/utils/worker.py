@@ -33,6 +33,13 @@ class TopicSummaryTask(QRunnable):
         self.long_term_memory = long_term_memory
         self.setAutoDelete(True)
 
+    def _extract_content_without_think(self, content: str) -> str:
+        import re
+
+        think_pattern = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
+        content = think_pattern.sub("", content)
+        return content.strip()
+
     @pyqtSlot()
     def run(self):
         try:
@@ -49,41 +56,62 @@ class TopicSummaryTask(QRunnable):
                         if item.get("type") == "text"
                     ]
                     content = "\n".join(texts)
+
+                content = self._extract_content_without_think(content)
+
                 role = "用户" if msg.get("role") == "user" else "助手"
-                summary_text += f"{role}：{content[:300]}\n"
+                summary_text += f"{role}：{content[:500]}\n"
 
             memory_context = ""
             if self.long_term_memory:
-                memory_context = f"\n\n## 已有长期记忆\n{self.long_term_memory}\n"
+                memory_context = f"\n\n## 用户偏好和长期记忆\n{self.long_term_memory}\n"
 
             if self.previous_summary:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。请根据以下对话内容和之前的主题摘要，"
-                    "生成一个更新后的主题摘要（不超过50字）。\n"
+                    "你是一个专业的对话主题分析助手，专门负责从对话中提取用户的偏好、特定需求和用户导向型内容。\n"
+                    "你的任务是根据以下对话内容，判断是否需要更新用户的长期记忆。\n\n"
+                    "【重要】长期记忆应该记录：\n"
+                    "1. 用户的偏好（如：喜欢简洁的回复、喜欢详细解释、使用中文等）\n"
+                    "2. 用户的特定需求（如：需要代码示例、需要学术风格、需要创意写作等）\n"
+                    "3. 用户导向型内容（如：用户的工作领域、使用的技术栈、关注的问题等）\n"
+                    "4. 重要的事实和信息（如：用户的项目名称、使用的框架等）\n\n"
+                    "【不应当记录的】：\n"
+                    "- 普通的闲聊内容\n"
+                    "- 临时性的问题\n"
+                    "- 通用技术知识\n\n"
                     f"之前的主题摘要：{self.previous_summary}\n\n"
                     f"最新对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "更新后的主题摘要",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
-                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    '  "topic_summary": "简短主题摘要（不超过50字）",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
+                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
                     "}\n"
                     "```"
                 )
             else:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。请仔细阅读以下对话内容，"
-                    "生成一个简短精炼的主题摘要（不超过50字）。\n"
+                    "你是一个专业的对话主题分析助手，专门负责从对话中提取用户的偏好、特定需求和用户导向型内容。\n"
+                    "你的任务是根据以下对话内容，判断是否需要更新用户的长期记忆。\n\n"
+                    "【重要】长期记忆应该记录：\n"
+                    "1. 用户的偏好（如：喜欢简洁的回复、喜欢详细解释、使用中文等）\n"
+                    "2. 用户的特定需求（如：需要代码示例、需要学术风格、需要创意写作等）\n"
+                    "3. 用户导向型内容（如：用户的工作领域、使用的技术栈、关注的问题等）\n"
+                    "4. 重要的事实和信息（如：用户的项目名称、使用的框架等）\n\n"
+                    "【不应当记录的】：\n"
+                    "- 普通的闲聊内容\n"
+                    "- 临时性的问题\n"
+                    "- 通用技术知识\n\n"
                     f"对话内容：\n{summary_text}\n"
                     f"{memory_context}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "主题摘要",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到长期记忆\n'
-                    '  "memory_reason": "如果should_update_memory为true，说明原因"\n'
+                    '  "topic_summary": "简短主题摘要（不超过50字）",\n'
+                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
+                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
                     "}\n"
                     "```"
                 )
@@ -96,7 +124,7 @@ class TopicSummaryTask(QRunnable):
                 model=self.llm_config.get("模型名称", "gpt-4o"),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=200,
+                max_tokens=1000,
             )
             raw_response = resp.choices[0].message.content.strip()
 
@@ -109,7 +137,7 @@ class TopicSummaryTask(QRunnable):
                 callback_data = {
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),
-                    "memory_reason": result.get("memory_reason", ""),
+                    "memory_content": result.get("memory_content", ""),
                 }
                 self.callback(callback_data)
             else:
@@ -117,7 +145,7 @@ class TopicSummaryTask(QRunnable):
                     {
                         "topic_summary": raw_response,
                         "should_update_memory": False,
-                        "memory_reason": "",
+                        "memory_content": "",
                     }
                 )
         except Exception as e:
@@ -275,8 +303,32 @@ class OpenAIChatWorker(QThread):
 
             if extra_body:
                 req_kwargs["extra_body"] = extra_body
+
+            # 处理不同的认证方式
+            auth_type = self.llm_config.get("认证方式", "bearer")
+
+            if auth_type == "bce":
+                # 百度BCE认证方式
+                import base64
+
+                auth_str = f"{api_key}:{api_key}"
+                b64_auth = base64.b64encode(auth_str.encode()).decode()
+                req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
+            elif auth_type == "none":
+                # 无认证（如Ollama本地）
+                pass
+            else:
+                # 默认bearer认证，确保有api_key
+                if not api_key:
+                    self.error_occurred.emit("[配置错误] 请填写API Key")
+                    return
+
             # 5. 执行请求
-            client = OpenAI(api_key=api_key, base_url=base_url, timeout=120.0)
+            client = OpenAI(
+                api_key=api_key if api_key and auth_type != "none" else "dummy",
+                base_url=base_url,
+                timeout=120.0,
+            )
 
             # --- 最后的“暴力”修正：处理不支持流式的模型 ---
             if "o1-preview" in model or "o1-mini" in model:

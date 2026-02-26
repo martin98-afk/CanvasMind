@@ -7,8 +7,17 @@ from enum import Enum
 from uuid import uuid4
 
 from loguru import logger
-from qfluentwidgets import ConfigSerializer, ConfigItem, QConfig, OptionsValidator, BoolValidator, RangeValidator, \
-    OptionsConfigItem, ConfigValidator, RangeConfigItem
+from qfluentwidgets import (
+    ConfigSerializer,
+    ConfigItem,
+    QConfig,
+    OptionsValidator,
+    BoolValidator,
+    RangeValidator,
+    OptionsConfigItem,
+    ConfigValidator,
+    RangeConfigItem,
+)
 
 from app.widgets.card_widget.list_setting_card import ListValidator
 
@@ -20,7 +29,6 @@ class PatchPlatform(Enum):
 
 
 class ListDictValidator(ConfigValidator):
-
     def correct(self, value):
         if isinstance(value, list):
             return value
@@ -63,7 +71,7 @@ class Settings(QConfig):
         pass
 
     def set(self, item, value, save=False, copy=True):
-        """ set the value of config item
+        """set the value of config item
 
         Parameters
         ----------
@@ -102,7 +110,7 @@ class Settings(QConfig):
             self._cfg.themeColorChanged.emit(value)
 
     def save(self):
-        """ save config """
+        """save config"""
         # 确保目录存在
         self.file.parent.mkdir(parents=True, exist_ok=True)
         # 写入文件
@@ -116,7 +124,12 @@ class Settings(QConfig):
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())
 
     # 版本管理设置
-    patch_platform = ConfigItem("Patch", "Platform", "github", OptionsValidator([p.value for p in PatchPlatform]))
+    patch_platform = ConfigItem(
+        "Patch",
+        "Platform",
+        "github",
+        OptionsValidator([p.value for p in PatchPlatform]),
+    )
 
     # GitHub 配置
     github_repo = ConfigItem("Patch", "GitHub/Repo", "martin98-afk/CanvasMind")
@@ -124,76 +137,104 @@ class Settings(QConfig):
 
     # ========== 画布路径 ==========
     workflow_paths = ConfigItem(
-        "Workflow",
-        "Paths", ["./canvas_files/workflows"],
-        ListValidator()
+        "Workflow", "Paths", ["./canvas_files/workflows"], ListValidator()
     )
     # ========== 项目路径 ==========
     project_paths = ConfigItem(
-        "Project",
-        "Paths", ["./canvas_files/projects"],
-        ListValidator()
+        "Project", "Paths", ["./canvas_files/projects"], ListValidator()
     )
 
     # ========== 画布运行设置 ==========
-    node_run_timeout_toggle = ConfigItem("CanvasRun", "RunTimeoutToggle", False, BoolValidator())
-    node_run_timeout = RangeConfigItem("CanvasRun", "RunTimeout", 300, RangeValidator(120, 3000))
+    node_run_timeout_toggle = ConfigItem(
+        "CanvasRun", "RunTimeoutToggle", False, BoolValidator()
+    )
+    node_run_timeout = RangeConfigItem(
+        "CanvasRun", "RunTimeout", 300, RangeValidator(120, 3000)
+    )
     run_parallel = ConfigItem("CanvasRun", "RunParallel", True, BoolValidator())
-    run_parallel_max_workers = RangeConfigItem("CanvasRun", "RunParallelMaxWorkers", 2, RangeValidator(1, 10))
-    communication_method = OptionsConfigItem("CanvasRun", "CommunicationMethod", "ZMQ通信",
-                                         OptionsValidator(["ZMQ通信", "日志通信"]))
+    run_parallel_max_workers = RangeConfigItem(
+        "CanvasRun", "RunParallelMaxWorkers", 2, RangeValidator(1, 10)
+    )
+    communication_method = OptionsConfigItem(
+        "CanvasRun",
+        "CommunicationMethod",
+        "ZMQ通信",
+        OptionsValidator(["ZMQ通信", "日志通信"]),
+    )
     # ========== 画布自动保存设置 ==========
     canvas_auto_save = ConfigItem("CanvasIO", "AutoSave", True, BoolValidator())
-    canvas_auto_save_interval = RangeConfigItem("CanvasIO", "AutoSaveInterval", 60, RangeValidator(15, 300))
+    canvas_auto_save_interval = RangeConfigItem(
+        "CanvasIO", "AutoSaveInterval", 60, RangeValidator(15, 300)
+    )
 
     # ========== 画布显示设置 ==========
-    node_animation = ConfigItem("CanvasDisplay", "NodeAnimation", False, BoolValidator())
-    canvas_resize_memory = ConfigItem("CanvasDisplay", "ResizeMemory", True, BoolValidator())
-    canvas_auto_collapse = ConfigItem("CanvasDisplay", "AutoCollapse", False, BoolValidator())
-    canvas_grid_mode = OptionsConfigItem("CanvasDisplay", "ShowGrid", "线网格",
-                                         OptionsValidator(["线网格", "点网格", "无网格"]))
-    canvas_pipe_width = RangeConfigItem("CanvasDisplay", "PipeWidth", 4, RangeValidator(1, 10))
-    node_proxy_size = RangeConfigItem("CanvasDisplay", "NodeProxySize", 120, RangeValidator(70, 300))
-    canvas_grid_size = ConfigItem("CanvasDisplay", "GridSize", 20, RangeValidator(10, 30))
-    canvas_pipelayout = OptionsConfigItem("CanvasDisplay", "PipeLayout", "折线",
-                                          OptionsValidator(["直线", "曲线", "折线"]))
+    node_animation = ConfigItem(
+        "CanvasDisplay", "NodeAnimation", False, BoolValidator()
+    )
+    canvas_resize_memory = ConfigItem(
+        "CanvasDisplay", "ResizeMemory", True, BoolValidator()
+    )
+    canvas_auto_collapse = ConfigItem(
+        "CanvasDisplay", "AutoCollapse", False, BoolValidator()
+    )
+    canvas_grid_mode = OptionsConfigItem(
+        "CanvasDisplay",
+        "ShowGrid",
+        "线网格",
+        OptionsValidator(["线网格", "点网格", "无网格"]),
+    )
+    canvas_pipe_width = RangeConfigItem(
+        "CanvasDisplay", "PipeWidth", 4, RangeValidator(1, 10)
+    )
+    node_proxy_size = RangeConfigItem(
+        "CanvasDisplay", "NodeProxySize", 120, RangeValidator(70, 300)
+    )
+    canvas_grid_size = ConfigItem(
+        "CanvasDisplay", "GridSize", 20, RangeValidator(10, 30)
+    )
+    canvas_pipelayout = OptionsConfigItem(
+        "CanvasDisplay",
+        "PipeLayout",
+        "折线",
+        OptionsValidator(["直线", "曲线", "折线"]),
+    )
     canvas_font_type = OptionsConfigItem(
         "CanvasDisplay",
         "FontType",
         "Segoe UI",  # 默认值
-        OptionsValidator([
-            # --- 无衬线字体 (Modern/Clean) ---
-            "Segoe UI",  # Windows 现代 UI 标准
-            "Inter",  # 现代 UI 设计师首选，极简且清晰
-            "Roboto",  # 谷歌风格，安卓标准字体
-            "Arial",  # 最通用的网页无衬线字体
-            "Helvetica",  # 经典排版字体 (Mac 系统核心)
-            "Montserrat",  # 几何感强，适合做标题
-
-            # --- 等宽字体 (Tech/Code/Cyberpunk) ---
-            "Consolas",  # 经典代码字体，易读性极高
-            "Fira Code",  # 带有编程连字的现代代码字体
-            "JetBrains Mono",  # 极具工业美感的等宽字体
-            "Courier New",  # 复古打字机风格
-
-            # --- 衬线字体 (Elegant/Classic) ---
-            "Georgia",  # 屏幕显示效果最好的衬线体，优雅稳重
-            "Times New Roman",  # 传统、正式、学院风
-            "Playfair Display",  # 高端、杂志质感的艺术大标题
-
-            # --- 艺术与特殊风格 ---
-            "Impact",  # 极其粗犷，适合做表情包或强调标题
-            "Comic Sans MS",  # 轻松、手写、非正式风格
-            "Copperplate",  # 带有古典雕刻感的全大写字体
-
-            # --- 中文优化 (CJK Support) ---
-            "Microsoft YaHei",  # 微软雅黑，Windows 中文首选
-            "PingFang SC",  # 苹果苹方，Mac 中文首选
-            "Noto Sans SC",  # 思源黑体，最通用的开源中文
-            "KaiTi",  # 楷体，具有中国书法韵味
-        ])
+        OptionsValidator(
+            [
+                # --- 无衬线字体 (Modern/Clean) ---
+                "Segoe UI",  # Windows 现代 UI 标准
+                "Inter",  # 现代 UI 设计师首选，极简且清晰
+                "Roboto",  # 谷歌风格，安卓标准字体
+                "Arial",  # 最通用的网页无衬线字体
+                "Helvetica",  # 经典排版字体 (Mac 系统核心)
+                "Montserrat",  # 几何感强，适合做标题
+                # --- 等宽字体 (Tech/Code/Cyberpunk) ---
+                "Consolas",  # 经典代码字体，易读性极高
+                "Fira Code",  # 带有编程连字的现代代码字体
+                "JetBrains Mono",  # 极具工业美感的等宽字体
+                "Courier New",  # 复古打字机风格
+                # --- 衬线字体 (Elegant/Classic) ---
+                "Georgia",  # 屏幕显示效果最好的衬线体，优雅稳重
+                "Times New Roman",  # 传统、正式、学院风
+                "Playfair Display",  # 高端、杂志质感的艺术大标题
+                # --- 艺术与特殊风格 ---
+                "Impact",  # 极其粗犷，适合做表情包或强调标题
+                "Comic Sans MS",  # 轻松、手写、非正式风格
+                "Copperplate",  # 带有古典雕刻感的全大写字体
+                # --- 中文优化 (CJK Support) ---
+                "Microsoft YaHei",  # 微软雅黑，Windows 中文首选
+                "PingFang SC",  # 苹果苹方，Mac 中文首选
+                "Noto Sans SC",  # 思源黑体，最通用的开源中文
+                "KaiTi",  # 楷体，具有中国书法韵味
+            ]
+        ),
     )
-    canvas_direction = OptionsConfigItem("CanvasDisplay", "Direction", "水平", OptionsValidator(["水平", "垂直"]))
+    canvas_direction = OptionsConfigItem(
+        "CanvasDisplay", "Direction", "水平", OptionsValidator(["水平", "垂直"])
+    )
 
     # ========== 画布快捷组件 ==========
 
@@ -202,29 +243,45 @@ class Settings(QConfig):
         "Canvas",
         "QuickComponents",
         [],  # 默认值
-        serializer=QuickComponentsSerializer()
+        serializer=QuickComponentsSerializer(),
     )
 
     # ========== 运行环境管理配置 ==========
     python_versions = ConfigItem(
         "Package",
-        "PythonVersions", ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
-        ListValidator()
+        "PythonVersions",
+        ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ListValidator(),
     )
     miniconda_version = ConfigItem("Package", "MinicondaVersion", "23.11.0")
     mirrors = ConfigItem(
-        "Package", "Mirrors", ["https://pypi.tuna.tsinghua.edu.cn/simple"], ListValidator()
+        "Package",
+        "Mirrors",
+        ["https://pypi.tuna.tsinghua.edu.cn/simple"],
+        ListValidator(),
     )
     # 默认要安装的包列表
     default_packages = ConfigItem(
         "Package",
         "DefaultPackages",
         [
-            "pyzmq", "loguru", "pydantic", "pandas", "Pillow", "fastapi",
-            "uvicorn", "python-lsp-server[all]", "asteval", "wcwidth",
-            "pyarrow", "ipykernel", "matplotlib", "pyecharts", "mcp"
+            "pyzmq",
+            "loguru",
+            "pydantic",
+            "pandas",
+            "Pillow",
+            "fastapi",
+            "uvicorn",
+            "python-lsp-server[all]",
+            "asteval",
+            "wcwidth",
+            "pyarrow",
+            "ipykernel",
+            "matplotlib",
+            "pyecharts",
+            "mcp",
         ],
-        ListValidator()
+        ListValidator(),
     )
     current_env_selected = ConfigItem("Package", "EnvSelected", "")
 
@@ -235,10 +292,20 @@ class Settings(QConfig):
     llm_max_tokens = ConfigItem("LLM", "MaxTokens", 2048, RangeValidator(1024, 40960))
     llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))
     llm_enable_thinking = ConfigItem("LLM", "EnableThinking", True, BoolValidator())
+    # 保存的免费/自定义服务商配置
+    llm_saved_providers = ConfigItem("LLM", "SavedProviders", {})
 
     # ========== 云组件库API ==========
-    STEIN_URL = ConfigItem("CloudAPI", "Stein", "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1")
-    SHEETY_URL = ConfigItem("CloudAPI", "Sheety", "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1")
+    STEIN_URL = ConfigItem(
+        "CloudAPI",
+        "Stein",
+        "https://api.steinhq.com/v1/storages/69606496affba40a6237b4c2/sheet1",
+    )
+    SHEETY_URL = ConfigItem(
+        "CloudAPI",
+        "Sheety",
+        "https://api.sheety.co/fe7b5d36457f54901b6078c05196e0a0/云组件库/sheet1",
+    )
     GITEE_REPO = ConfigItem("Patch", "Gitee/Repo", "canvas-mind-components")
     GITEE_TOKEN = ConfigItem("Patch", "Gitee/Token", "a5dcb6e2e7776143b7a7e7685a1f33a3")
     GITEE_OWNER = ConfigItem("Patch", "Gitee/Owner", "dingmama123141")
