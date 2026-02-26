@@ -288,8 +288,32 @@ class OpenAIChatWorker(QThread):
 
             if extra_body:
                 req_kwargs["extra_body"] = extra_body
+
+            # 处理不同的认证方式
+            auth_type = self.llm_config.get("认证方式", "bearer")
+
+            if auth_type == "bce":
+                # 百度BCE认证方式
+                import base64
+
+                auth_str = f"{api_key}:{api_key}"
+                b64_auth = base64.b64encode(auth_str.encode()).decode()
+                req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
+            elif auth_type == "none":
+                # 无认证（如Ollama本地）
+                pass
+            else:
+                # 默认bearer认证，确保有api_key
+                if not api_key:
+                    self.error_occurred.emit("[配置错误] 请填写API Key")
+                    return
+
             # 5. 执行请求
-            client = OpenAI(api_key=api_key, base_url=base_url, timeout=120.0)
+            client = OpenAI(
+                api_key=api_key if api_key and auth_type != "none" else "dummy",
+                base_url=base_url,
+                timeout=120.0,
+            )
 
             # --- 最后的“暴力”修正：处理不支持流式的模型 ---
             if "o1-preview" in model or "o1-mini" in model:

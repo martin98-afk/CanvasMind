@@ -1,16 +1,15 @@
-
-
 PARAM_UI_MAP = {
-        "API_KEY": "password",
-        "温度": "slider",
-        "是否思考": "checkbox",
-        "temp": "slider",
-        "最大Token": "slider",
-        "max_new_tokens": "spinbox",
-        "top_p": "slider",
-        "frequency_penalty": "slider",
-        "presence_penalty": "slider",
-    }
+    "API_KEY": "password",
+    "温度": "slider",
+    "是否思考": "checkbox",
+    "temp": "slider",
+    "最大Token": "slider",
+    "max_new_tokens": "spinbox",
+    "top_p": "slider",
+    "frequency_penalty": "slider",
+    "presence_penalty": "slider",
+    "选择模型": "model_selector",
+}
 
 
 PARAM_RANGE_MAP = {
@@ -24,3 +23,106 @@ PARAM_RANGE_MAP = {
 }
 
 
+PROVIDER_MODELS = {
+    "SiliconFlow (有免费额度)": [
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-14B-Instruct",
+        "Qwen/Qwen2.5-72B-Instruct",
+        "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        "THUDM/glm4-9b-chat",
+        "meta-llama/Meta-Llama-3.1-70B-Instruct",
+        "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "deepseek-ai/DeepSeek-V2-Chat",
+        "Qwen/Qwen2-72B-Instruct",
+    ],
+    "智谱AI (免费模型)": [
+        "glm-4-flash",
+        "glm-4-flashx",
+        "glm-4-plus",
+        "glm-4",
+        "glm-3-turbo",
+    ],
+    "DeepSeek": [
+        "deepseek-chat",
+        "deepseek-coder",
+    ],
+    "Groq (免费额度)": [
+        "llama-3.1-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama-3-70b-8192",
+        "llama-3-8b-8192",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+    ],
+    "百度千帆": [
+        "ernie-3.5-8k",
+        "ernie-3.5-4k",
+        "ernie-speed-8k",
+        "ernie-speed-128k",
+    ],
+    "Ollama (本地)": [
+        "llama3",
+        "llama3.1",
+        "qwen2.5",
+        "qwen2.5-coder",
+        "mistral",
+        "phi3",
+    ],
+}
+
+FREE_PROVIDERS = {
+    "SiliconFlow (有免费额度)": {
+        "API_URL": "https://api.siliconflow.cn/v1",
+        "API_KEY": "",
+        "模型名称": "Qwen/Qwen2.5-7B-Instruct",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://cloud.siliconflow.cn/account/ak",
+    },
+    "智谱AI (免费模型)": {
+        "API_URL": "https://open.bigmodel.cn/api/paas/v4",
+        "API_KEY": "",
+        "模型名称": "glm-4-flash",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://open.bigmodel.cn/usercenter/apikeys",
+    },
+    "DeepSeek": {
+        "API_URL": "https://api.deepseek.com",
+        "API_KEY": "",
+        "模型名称": "deepseek-chat",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://platform.deepseek.com/usage",
+    },
+    "Groq (免费额度)": {
+        "API_URL": "https://api.groq.com/openai/v1",
+        "API_KEY": "",
+        "模型名称": "llama-3.1-70b-versatile",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://console.groq.com/keys",
+    },
+    "百度千帆": {
+        "API_URL": "https://qianfan.baidubce.com/v2",
+        "API_KEY": "",
+        "模型名称": "ernie-3.5-8k",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bce",
+        "获取地址": "https://console.bce.baidu.com/qianfan/ais/console/apikey",
+    },
+    "Ollama (本地)": {
+        "API_URL": "http://localhost:11434/v1",
+        "API_KEY": "not-needed",
+        "模型名称": "llama3",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "none",
+        "获取地址": "https://ollama.com",
+    },
+}

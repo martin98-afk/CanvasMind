@@ -1,15 +1,31 @@
 # -*- coding: utf-8 -*-
+import webbrowser
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
-    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication
-)
+from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication
+from PyQt5.QtGui import QCursor, QFont
 from qfluentwidgets import (
-    BodyLabel, LineEdit, Slider, SpinBox, PrimaryPushButton,
-    PushButton, SwitchButton, PasswordLineEdit
+    BodyLabel,
+    LineEdit,
+    Slider,
+    SpinBox,
+    PrimaryPushButton,
+    PushButton,
+    SwitchButton,
+    PasswordLineEdit,
+    ComboBox,
+    HyperlinkButton,
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
-from app.widgets.side_dock_area.plugins.llm_chatter.constants import PARAM_UI_MAP, PARAM_RANGE_MAP
+from app.widgets.basic_widget.searchable_editable_combobox import (
+    SearchableEditableComboBox,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+    PARAM_UI_MAP,
+    PARAM_RANGE_MAP,
+    PROVIDER_MODELS,
+    FREE_PROVIDERS,
+)
 
 
 class LLMConfigPopup(QWidget):
@@ -17,7 +33,9 @@ class LLMConfigPopup(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setWindowFlags(
+            Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.config = {}
         self.parent_widget = parent
@@ -59,6 +77,7 @@ class LLMConfigPopup(QWidget):
 
     def set_config(self, title: str, config: dict):
         self.config = config.copy()
+        self.current_provider = title
 
         # 清空整个 layout（包括标题和按钮，全部重建）
         self._clear_layout(self.layout)
@@ -69,6 +88,22 @@ class LLMConfigPopup(QWidget):
         title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
         self.layout.addWidget(title_label, 0, Qt.AlignHCenter)
         self.layout.addWidget(CardSeparator(self))
+
+        # 检查是否是预置供应商
+        provider_key = title
+        if provider_key in PROVIDER_MODELS:
+            # 预置供应商：显示可编辑的搜索下拉框
+            model_label = BodyLabel("选择模型：", self)
+            self.layout.addWidget(model_label)
+
+            model_combo = SearchableEditableComboBox(self)
+            model_combo.addItems(PROVIDER_MODELS[provider_key])
+            current_model = config.get("模型名称", "")
+            if current_model:
+                model_combo.setText(current_model)
+            self.layout.addWidget(model_combo)
+            self._widgets["选择模型"] = (model_label, model_combo)
+
         # 强制字段
         required_fields = {
             "模型名称": ("model_name", "line"),
@@ -82,9 +117,23 @@ class LLMConfigPopup(QWidget):
             self.layout.addWidget(widget)
             self._widgets[label_text] = (label, widget)
 
+        # 获取地址（如果是预置供应商）
+        if provider_key in FREE_PROVIDERS:
+            api_url = FREE_PROVIDERS[provider_key].get("获取地址", "")
+            if api_url:
+                url_label = BodyLabel("获取API Key：", self)
+                self.layout.addWidget(url_label)
+
+                link_btn = HyperlinkButton(api_url, "点击获取API Key →", self)
+                link_btn.setCursor(QCursor(Qt.PointingHandCursor))
+                link_btn.clicked.connect(lambda: webbrowser.open(api_url))
+                self.layout.addWidget(link_btn)
+                self._widgets["获取地址"] = (url_label, link_btn)
+
         # 动态字段
+        skip_keys = ["模型名称", "API_URL", "认证方式", "获取地址"]
         for key, value in config.items():
-            if key in ["模型名称", "API_URL"]:
+            if key in skip_keys:
                 continue
             ui_type = self._infer_ui_type(key, value)
             widget = self._create_widget(key, ui_type, value)
@@ -137,7 +186,9 @@ class LLMConfigPopup(QWidget):
             return widget
         elif ui_type == "slider":
             # 获取范围配置
-            range_info = PARAM_RANGE_MAP.get(key, {"min": 0.0, "max": 1.0, "step": 0.01, "type": "float"})
+            range_info = PARAM_RANGE_MAP.get(
+                key, {"min": 0.0, "max": 1.0, "step": 0.01, "type": "float"}
+            )
             min_val = range_info["min"]
             max_val = range_info["max"]
             step = range_info["step"]
@@ -163,7 +214,9 @@ class LLMConfigPopup(QWidget):
 
             # 显示当前逻辑值
             display_value = current if is_float else int(current)
-            label = BodyLabel(f"{display_value:.2f}" if is_float else str(int(display_value)), self)
+            label = BodyLabel(
+                f"{display_value:.2f}" if is_float else str(int(display_value)), self
+            )
             label.setFixedWidth(50)
             label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
@@ -188,8 +241,8 @@ class LLMConfigPopup(QWidget):
             return container
         elif ui_type == "checkbox":
             widget = SwitchButton(self)
-            widget._onText = widget.tr('开启')
-            widget._offText = widget.tr('关闭')
+            widget._onText = widget.tr("开启")
+            widget._offText = widget.tr("关闭")
             # 支持传入 bool 或字符串 "true"/"True"/"1"
             checked = False
             if isinstance(value, bool):
@@ -221,21 +274,36 @@ class LLMConfigPopup(QWidget):
     def get_config(self) -> dict:
         result = {}
         for key, (label, widget) in self._widgets.items():
+            # 处理"选择模型"映射到"模型名称"
+            actual_key = "模型名称" if key == "选择模型" else key
+
             if isinstance(widget, LineEdit):
-                result[key] = widget.text().strip()
-            elif hasattr(widget, 'slider'):  # slider + label 容器
-                logical_value = widget.slider.value() / widget.scale
-                range_info = getattr(widget, 'range_info', {})
-                if range_info.get("type") == "int":
-                    result[key] = int(round(logical_value))
+                result[actual_key] = widget.text().strip()
+            elif isinstance(widget, ComboBox):
+                result[actual_key] = widget.currentText()
+            elif hasattr(
+                widget, "text"
+            ):  # EditableComboBox 或 SearchableEditableComboBox
+                text = widget.text().strip()
+                if text:
+                    result[actual_key] = text
                 else:
-                    result[key] = float(logical_value)
+                    result[actual_key] = (
+                        widget.currentText() if hasattr(widget, "currentText") else ""
+                    )
+            elif hasattr(widget, "slider"):  # slider + label 容器
+                logical_value = widget.slider.value() / widget.scale
+                range_info = getattr(widget, "range_info", {})
+                if range_info.get("type") == "int":
+                    result[actual_key] = int(round(logical_value))
+                else:
+                    result[actual_key] = float(logical_value)
             elif isinstance(widget, SpinBox):
-                result[key] = widget.value()
-            elif hasattr(widget, 'isChecked'):  # CheckBox or QCheckBox
-                result[key] = widget.isChecked()
+                result[actual_key] = widget.value()
+            elif hasattr(widget, "isChecked"):  # CheckBox or QCheckBox
+                result[actual_key] = widget.isChecked()
             else:
-                result[key] = ""
+                result[actual_key] = ""
         return result
 
     def _on_apply(self):

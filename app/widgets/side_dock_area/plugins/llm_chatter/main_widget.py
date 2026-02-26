@@ -52,6 +52,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector imp
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import FREE_PROVIDERS
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
@@ -252,18 +253,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_config_applied(self, new_config: dict):
         current_name = self.model_combo.currentText()
-        if current_name != "系统默认配置":
-            # 更新现有配置
-            self.homepage.global_variables.custom[current_name].value = new_config
-            self.homepage._on_global_variables_changed("custom", current_name, "update")
-            self._load_model_configs()
-            idx = self.model_combo.findText(current_name)
-            if idx >= 0:
-                self.model_combo.setCurrentIndex(idx)
-            InfoBar.success("已更新", "配置已保存并应用。", parent=self, duration=1500)
-        else:
+
+        # 检查是否是系统预置的免费供应商
+        is_free_provider = current_name in FREE_PROVIDERS
+
+        if current_name == "系统默认配置":
             setting = Settings.get_instance()
-            # 更新 cfg 默认配置并持久化
             setting.set(setting.llm_model, new_config["模型名称"])
             setting.set(setting.llm_api_key, new_config["API_KEY"])
             setting.set(setting.llm_api_base, new_config["API_URL"])
@@ -275,6 +270,48 @@ class OpenAIChatToolWindow(ToolWindow):
             InfoBar.success(
                 "系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500
             )
+        elif is_free_provider:
+            # 系统预置的免费供应商配置，保存到本地
+            self._valid_configs[current_name] = new_config
+            setting = Settings.get_instance()
+            saved_providers = setting.llm_saved_providers.value or {}
+            saved_providers[current_name] = new_config
+            setting.set(setting.llm_saved_providers, saved_providers, save=True)
+            InfoBar.success("已保存", "配置已保存到本地。", parent=self, duration=1500)
+        else:
+            # 用户自定义配置，保存到 global_variables
+            if (
+                hasattr(self.homepage, "global_variables")
+                and self.homepage.global_variables
+            ):
+                custom_vars = self.homepage.global_variables.custom
+                if current_name in custom_vars:
+                    custom_vars[current_name].value = new_config
+                    self.homepage._on_global_variables_changed(
+                        "custom", current_name, "update"
+                    )
+                else:
+                    # 新增自定义配置
+                    from app.components.base import CustomVariable
+
+                    custom_vars[current_name] = CustomVariable(value=new_config)
+                    self.homepage._on_global_variables_changed(
+                        "custom", current_name, "add"
+                    )
+                self._load_model_configs()
+                idx = self.model_combo.findText(current_name)
+                if idx >= 0:
+                    self.model_combo.setCurrentIndex(idx)
+                InfoBar.success(
+                    "已保存", "配置已保存到自定义配置。", parent=self, duration=1500
+                )
+            else:
+                InfoBar.warning(
+                    "无法保存",
+                    "当前页面不支持保存自定义配置。",
+                    parent=self,
+                    duration=1500,
+                )
 
     def _load_model_configs(self):
         current_text = (
@@ -306,13 +343,30 @@ class OpenAIChatToolWindow(ToolWindow):
                     if hasattr(var_obj, "value") and isinstance(var_obj.value, dict):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
-                            # 避免自定义配置名与“系统默认配置”冲突
+                            # 避免自定义配置名与"系统默认配置"冲突
                             if config_name != "系统默认配置":
                                 self._valid_configs[config_name] = val
                                 all_model_names.append(config_name)
         except Exception as e:
             # 建议至少打印错误
             logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
+
+        # 添加免费模型供应商配置
+        setting = Settings.get_instance()
+        saved_providers = setting.llm_saved_providers.value or {}
+
+        for provider_name, provider_config in FREE_PROVIDERS.items():
+            if provider_name not in self._valid_configs:
+                # 检查是否有已保存的配置
+                if provider_name in saved_providers:
+                    config = saved_providers[provider_name].copy()
+                else:
+                    config = provider_config.copy()
+                    config.pop("备注", None)
+                    config.pop("认证方式", None)
+                    config.pop("获取地址", None)
+                self._valid_configs[provider_name] = config
+                all_model_names.append(provider_name)
 
         # ✅ 关键：一次性添加所有模型名
         self.model_combo.addItems(all_model_names)
