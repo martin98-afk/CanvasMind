@@ -87,6 +87,8 @@ class OpenAIChatToolWindow(ToolWindow):
     skillExecutionRequested = pyqtSignal(str, dict)
     userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
+    # Signals for execution results coming from the execution engine
+    executionResultProduced = pyqtSignal(str)
     _system_prompt = """# 角色
 你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地落地执行用户的需求。
 
@@ -795,6 +797,8 @@ class OpenAIChatToolWindow(ToolWindow):
             lambda r: self._on_worker_finished(r, assistant_card)
         )
         self._worker.start()
+        # 保存 llm_config 以便后续执行阶段使用
+        self._last_llm_config = llm_config
 
         self._toggle_send_stop(True)
 
@@ -814,7 +818,18 @@ class OpenAIChatToolWindow(ToolWindow):
             session.add_assistant_message(content=response)
             current_title = self._auto_save_current_session()
             self._generate_conversation_title(current_title, session.messages)
-            self._maybe_generate_topic_summary()
+        self._maybe_generate_topic_summary()
+        # Start the execution plan (ClaudeDecode-style) in background
+        try:
+            long_term_memory = self._get_long_term_memory_context()
+            self._execution_agent.plan_and_execute(
+                messages=session.messages,
+                llm_config=self._last_llm_config or {},
+                long_term_memory=long_term_memory,
+                callback=self._execution_result_callback,
+            )
+        except Exception as e:
+            logger.error(f"[Execution] planning/execution failed: {e}")
 
     def _maybe_generate_topic_summary(self):
         if self._current_history_index is None:
@@ -1285,6 +1300,25 @@ class OpenAIChatToolWindow(ToolWindow):
         self._process_plugin_calls(content_piece, assistant_card)
         # 2) 处理简单的工具调用（如 shell 命令）
         self._process_tool_calls(content_piece, assistant_card)
+
+    def _on_execution_result(self, content: str):
+        if content is None:
+            return
+        card = self._append_assistant_message()
+        card.update_content(str(content))
+        card.finish_streaming()
+        self._scroll_to_bottom()
+
+    def _execution_result_callback(self, content: str):
+        if content is None:
+            return
+        self.executionResultProduced.emit(str(content))
+
+    def _execution_result_callback(self, content: str):
+        """Callback forwarded from the execution engine to display results."""
+        if content is None:
+            return
+        self.executionResultProduced.emit(str(content))
 
     def _process_plugin_calls(self, content_piece: str, assistant_card: MessageCard):
         """Detect and execute plugin_call blocks in assistant content."""
