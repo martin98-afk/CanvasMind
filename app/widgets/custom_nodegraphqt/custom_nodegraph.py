@@ -781,7 +781,6 @@ class CustomNodeViewer(NodeViewer):
                     backdrop = itm
                     continue
                 nodes.append(itm)
-
         if nodes:
             self.MMB_state = False
 
