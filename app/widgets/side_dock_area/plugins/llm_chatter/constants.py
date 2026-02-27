@@ -47,12 +47,12 @@ PROVIDER_MODELS = {
         "deepseek-coder",
     ],
     "Groq (免费额度)": [
-        "llama-3.1-70b-versatile",
-        "llama-3.1-8b-instant",
-        "llama-3-70b-8192",
-        "llama-3-8b-8192",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3-32b",
+        "groq/compound",
+        "llama-3.3-70b-versatile",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "moonshotai/kimi-k2-instruct-0905",
     ],
     "百度千帆": [
         "ernie-3.5-8k",
@@ -68,6 +68,12 @@ PROVIDER_MODELS = {
         "mistral",
         "phi3",
     ],
+    "阿里云 (DashScope)": [
+        "qwen3-max",
+        "qwen-plus",
+        "qwen-max",
+        "qwen-max-longcontext",
+    ],
 }
 
 FREE_PROVIDERS = {
@@ -79,6 +85,15 @@ FREE_PROVIDERS = {
         "最大Token": 4096,
         "认证方式": "bearer",
         "获取地址": "https://cloud.siliconflow.cn/account/ak",
+    },
+    "阿里云 (DashScope)": {
+        "API_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "API_KEY": "",
+        "模型名称": "qwen-plus",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://dashscope.console.aliyun.com/manage/credential",
     },
     "智谱AI (免费模型)": {
         "API_URL": "https://open.bigmodel.cn/api/paas/v4",
@@ -125,4 +140,14 @@ FREE_PROVIDERS = {
         "认证方式": "none",
         "获取地址": "https://ollama.com",
     },
+}
+
+PROVIDER_ICONS = {
+    "SiliconFlow (有免费额度)": "siliconflow",
+    "阿里云 (DashScope)": "qwen",
+    "智谱AI (免费模型)": "智谱",
+    "DeepSeek": "deepseek",
+    "Groq (免费额度)": "groq",
+    "百度千帆": "baidu",
+    "Ollama (本地)": "Ollama",
 }

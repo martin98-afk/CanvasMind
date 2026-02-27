@@ -133,6 +133,58 @@ class NodeResizeHandle(QtWidgets.QGraphicsItem):
             super(NodeResizeHandle, self).mouseDoubleClickEvent(event)
 
 
+class NodeIconItem(QtWidgets.QGraphicsPixmapItem):
+    """自定义图标项：鼠标事件穿透给父节点"""
+
+    def __init__(self, pixmap=None, parent=None):
+        super(NodeIconItem, self).__init__(pixmap, parent)
+        self.setTransformationMode(QtCore.Qt.SmoothTransformation)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, False)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsFocusable, False)
+
+    def mousePressEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.mousePressEvent(event)
+        else:
+            super(NodeIconItem, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.mouseReleaseEvent(event)
+        else:
+            super(NodeIconItem, self).mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.mouseDoubleClickEvent(event)
+        else:
+            super(NodeIconItem, self).mouseDoubleClickEvent(event)
+
+    def mouseMoveEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.mouseMoveEvent(event)
+        else:
+            super(NodeIconItem, self).mouseMoveEvent(event)
+
+    def hoverEnterEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.hoverEnterEvent(event)
+        else:
+            super(NodeIconItem, self).hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        parent = self.parentItem()
+        if parent:
+            parent.hoverLeaveEvent(event)
+        else:
+            super(NodeIconItem, self).hoverLeaveEvent(event)
+
+
 class CustomDisabledItem(QtWidgets.QGraphicsItem):
     def __init__(self, parent=None, text=None):
         super(CustomDisabledItem, self).__init__(parent)
@@ -186,7 +238,6 @@ class NodeFloatingToolbar(BaseCanvasToolbar):
 
 class CustomNodeItem(NodeItem):
     current_mode = "subprocess"
-    ICON_NODE_BASE = ":/icons/同心圆.svg"
     _node = None
     _is_collapsed = False
     _is_resizing = False  # 初始化缩放状态锁
@@ -227,14 +278,6 @@ class CustomNodeItem(NodeItem):
         self._widget_width = 0.0
 
     def _init_base_components(self):
-        pixmap = QtGui.QPixmap(self.ICON_NODE_BASE)
-        if not pixmap.isNull():
-            pixmap = pixmap.scaled(
-                35, 35, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
-            )
-            self._icon_item.setPixmap(pixmap)
-        self._properties["icon"] = self.ICON_NODE_BASE
-        self._icon_item.setZValue(self.zValue() + 1)
         font_type = Settings.get_instance().canvas_font_type.value
         self._text_item = NodeTextItem(self.name, self)
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
@@ -248,6 +291,15 @@ class CustomNodeItem(NodeItem):
         option.setAlignment(QtCore.Qt.AlignCenter)
         document.setDefaultTextOption(option)
         self._proxy_text_item.setVisible(False)
+
+        # 替换为自定义的 icon item，鼠标事件会穿透给父节点
+        if hasattr(self, "_icon_item") and self._icon_item:
+            old_icon = self._icon_item
+            pixmap = old_icon.pixmap() if old_icon else None
+            if pixmap and not pixmap.isNull():
+                self._icon_item = NodeIconItem(pixmap, self)
+                self._icon_item.setZValue(self.zValue() - 1)
+                old_icon.setParentItem(None)
 
     def _init_custom_buttons(self):
         # 创建 Toolbar 容器
@@ -316,21 +368,12 @@ class CustomNodeItem(NodeItem):
 
     def shape(self):
         path = QtGui.QPainterPath()
+        # 只需要包含节点的主体区域
         path.addRoundedRect(self.get_node_body_rect(), 12, 12)
-        path.addEllipse(
-            self._collapse_btn.boundingRect().translated(self._collapse_btn.pos())
-        )
-        path.addEllipse(
-            self._exec_mode_btn.boundingRect().translated(self._exec_mode_btn.pos())
-        )
-        if self._close_btn.isVisible():
-            for btn in [
-                self._center_btn,
-                self._run_btn,
-                self._mute_btn,
-                self._close_btn,
-            ]:
-                path.addEllipse(btn.boundingRect().translated(btn.pos()))
+
+        # 如果 Floating Toolbar 显示在节点外部（上方），
+        # 且你希望点击 Toolbar 也能选中节点，才需要添加 Toolbar 区域。
+        # 但通常建议 Toolbar 独立处理，不加入节点的 shape。
         return path
 
     def _update_elements_visibility(self):

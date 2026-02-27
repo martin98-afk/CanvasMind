@@ -565,7 +565,6 @@ class CanvasPage(QWidget):
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
-
         # 1. 快速退出：无选中
         if not selected_nodes:
             self.nav_view.clear_recommendations()

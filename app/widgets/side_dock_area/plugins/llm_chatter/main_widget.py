@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -52,7 +52,10 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector imp
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.constants import FREE_PROVIDERS
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+    FREE_PROVIDERS,
+    PROVIDER_ICONS,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
@@ -81,19 +84,28 @@ class OpenAIChatToolWindow(ToolWindow):
     _current_search_index: int = -1
     _loaded_skill_doc: str = ""
     _skill_enabled: bool = True
+    _is_shell_mode: bool = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
     skillExecutionRequested = pyqtSignal(str, dict)
     userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
+    # Signals for execution results coming from the execution engine
+    executionResultProduced = pyqtSignal(str)
     _system_prompt = """# 角色
-你是低代码画布助手，主要工作：辅助分析画布内容、解答节点问题、帮忙推荐节点、设计画布流程；
+你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地落地执行用户的需求。
 
-## 追问推荐规范
-- 操作类型:推荐追问,当你认为下一步用户会问哪些问题时,严格按照以下格式引用:
-[问题描述](ask)
-- 规范：放到回复最后，如果用户问题不清晰可以尝试重新描述问题。\n\n"""
+职责与行为准则
+- 以清晰、专业的语言输出，必要时附带可执行的步骤（命令、代码、API 调用等）。
+- 遇到不清晰的需求时，主动提出澄清问题或给出可操作的分步方案。
+- 始终优先使用长期记忆和历史对话上下文来提升回答相关性。
+- 如需扩展能力，优先通过内部技能/工具执行，而非直接输出未验证的信息。
+
+## 追问与行动规范
+- 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
+- [问题描述](ask)
+- 如需执行，请在拟议行动后附上你将执行的第一步（如调用技能、运行命令等）以便用户确认。"""
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
@@ -205,7 +217,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self.memory_btn = TransparentToolButton(get_icon("长期记忆"), self)
         self.memory_btn.setFixedSize(26, 26)
-        self.memory_btn.setToolTip("长期记忆")
+        self.memory_btn.setToolTip("长期记忆管理")
         self.memory_btn.clicked.connect(self._show_soul_memory)
 
         self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
@@ -213,6 +225,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
 
+        self.shell_btn = TransparentToggleToolButton(get_icon("shell"), self)
+        self.shell_btn.setFixedSize(26, 26)
+        self.shell_btn.setToolTip("Shell执行模式")
+        self.shell_btn.toggled.connect(self._toggle_shell_mode)
+
+        hlayout.addWidget(self.shell_btn)
         hlayout.addWidget(self.memory_btn)
         hlayout.addWidget(self.history_btn)
         hlayout.addWidget(self.new_session_btn)
@@ -372,7 +390,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 all_model_names.append(provider_name)
 
         # ✅ 关键：一次性添加所有模型名
-        self.model_combo.addItems(all_model_names)
+        self._setup_combo_with_icons(all_model_names)
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
         # 恢复之前选中的项
@@ -382,6 +400,17 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.setCurrentIndex(idx)
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
+
+    def _setup_combo_with_icons(self, model_names: List[str]):
+        """为模型选择器添加图标，供应商显示图标，普通配置不显示"""
+        self.model_combo.clear()
+        for name in model_names:
+            if name in PROVIDER_ICONS:
+                icon_name = PROVIDER_ICONS.get(name, "API")
+                icon = get_icon(icon_name)
+                self.model_combo.addItem(icon=icon, text=name)
+            else:
+                self.model_combo.addItem(name)
 
     def _create_new_session(self):
         session = self.session_manager.create_new_session()
@@ -438,6 +467,46 @@ class OpenAIChatToolWindow(ToolWindow):
             self._in_history_mode = False
             self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
             self._display_current_session()
+
+    def _toggle_shell_mode(self, enabled: bool):
+        self._is_shell_mode = enabled
+        if enabled:
+            self.input_area.setPlaceholderText("输入Shell命令，按Enter执行")
+            self.title_edit.setText("Shell执行")
+        else:
+            self.input_area.setPlaceholderText("enter 发送信息, shift+enter 换行")
+            self.title_edit.setText("新对话")
+
+    def _execute_shell_command(self, cmd: str):
+        """执行Shell命令并显示结果"""
+        import subprocess
+        import platform
+
+        self._append_user_message(cmd, timestamp=datetime.now().strftime("%H:%M"))
+
+        try:
+            system = platform.system()
+            if system == "Windows":
+                res = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=120
+                )
+            else:
+                res = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=120
+                )
+            output = res.stdout.strip() if res.stdout else ""
+            error_out = res.stderr.strip() if res.stderr else ""
+            combined = "\n".join(filter(None, [output, error_out]))
+            result_text = combined if combined else "(命令执行完成，无输出)"
+        except subprocess.TimeoutExpired:
+            result_text = "[错误] 命令执行超时"
+        except Exception as e:
+            result_text = f"[错误] {str(e)}"
+
+        card = self._append_assistant_message()
+        card.update_content(f"```\n{result_text}\n```")
+        card.finish_streaming()
+        self._scroll_to_bottom()
 
     def _display_history_sessions(self):
         self._clear_chat_area()
@@ -707,6 +776,16 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        # Shell模式：直接执行命令
+        if self._is_shell_mode:
+            if not user_text:
+                user_text = self.input_area.toPlainText().strip()
+            if not user_text:
+                return
+            self.input_area.clear()
+            self._execute_shell_command(user_text)
+            return
+
         self.input_area.toggle_send_button(False)
 
         # 1. 获取当前会话和配置
@@ -789,6 +868,8 @@ class OpenAIChatToolWindow(ToolWindow):
             lambda r: self._on_worker_finished(r, assistant_card)
         )
         self._worker.start()
+        # 保存 llm_config 以便后续执行阶段使用
+        self._last_llm_config = llm_config
 
         self._toggle_send_stop(True)
 
@@ -808,7 +889,18 @@ class OpenAIChatToolWindow(ToolWindow):
             session.add_assistant_message(content=response)
             current_title = self._auto_save_current_session()
             self._generate_conversation_title(current_title, session.messages)
-            self._maybe_generate_topic_summary()
+        self._maybe_generate_topic_summary()
+        # Start the execution plan (ClaudeDecode-style) in background
+        try:
+            long_term_memory = self._get_long_term_memory_context()
+            self._execution_agent.plan_and_execute(
+                messages=session.messages,
+                llm_config=self._last_llm_config or {},
+                long_term_memory=long_term_memory,
+                callback=self._execution_result_callback,
+            )
+        except Exception as e:
+            logger.error(f"[Execution] planning/execution failed: {e}")
 
     def _maybe_generate_topic_summary(self):
         if self._current_history_index is None:
@@ -991,51 +1083,41 @@ class OpenAIChatToolWindow(ToolWindow):
         }
 
     def _get_long_term_memory_context(self) -> str:
-        """获取长期记忆上下文"""
+        """获取长期记忆上下文，始终返回可用的内存段，若无记忆也返回占位文本引导记忆积累。"""
         memory_data = self._load_soul_memory()
         topics = memory_data.get("topics", [])
-
         user_memories = memory_data.get("user_memories", [])
 
-        context = "## 用户偏好记忆\n"
-
-        if user_memories:
-            for mem in user_memories:
-                if isinstance(mem, dict):
-                    content = mem.get("content", "")
-                else:
-                    content = str(mem)
-                if content:
-                    context += f"- {content}\n"
-        else:
-            user_profile = memory_data.get("user_profile", {})
-            if user_profile.get("name"):
-                context += f"用户名称: {user_profile['name']}\n"
-            if user_profile.get("communication_style"):
-                context += f"沟通风格: {user_profile['communication_style']}\n"
-            if user_profile.get("expertise_level"):
-                context += f"专业水平: {user_profile['expertise_level']}\n"
-
-            preferences = user_profile.get("preferences", {})
-            if preferences:
-                context += "\n用户偏好:\n"
-                for k, v in preferences.items():
-                    context += f"- {k}: {v}\n"
+        lines = []
+        lines.append("## 长期记忆摘要")
 
         if topics:
             recent_topics = topics[-3:]
-            context += "\n最近讨论主题:\n"
-            for topic_entry in recent_topics:
-                if isinstance(topic_entry, dict):
-                    context += f"- {topic_entry.get('topic', '')}\n"
+            lines.append(
+                "最近讨论主题: "
+                + ", ".join(
+                    [
+                        t.get("topic", "") if isinstance(t, dict) else str(t)
+                        for t in recent_topics
+                    ]
+                )
+            )
+        if user_memories:
+            mem_lines = []
+            for m in user_memories[-5:]:
+                if isinstance(m, dict):
+                    mem_lines.append(m.get("content", ""))
                 else:
-                    context += f"- {topic_entry}\n"
+                    mem_lines.append(str(m))
+            mem_lines = [s for s in mem_lines if s]
+            if mem_lines:
+                lines.append("用户记忆片段: " + " | ".join(mem_lines))
 
-        if not user_memories and not topics:
-            return ""
+        if not topics and not user_memories:
+            lines.append("暂无长期记忆，系统将逐步积累用户偏好与会话要点。")
 
-        context += "\n请根据以上用户偏好和需求提供更个性化的对话体验。\n"
-        return context
+        lines.append("请根据以上信息在未来对话中保持一致性与个性化。")
+        return "\n".join(lines)
 
     def _clear_long_term_memory(self):
         from PyQt5.QtWidgets import QMessageBox
@@ -1285,6 +1367,97 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
         self._update_assistant_message(assistant_card, content_piece)
+        # 1) 处理插件调用（技能执行）若检测到 plugin_call 指令
+        self._process_plugin_calls(content_piece, assistant_card)
+        # 2) 处理简单的工具调用（如 shell 命令）
+        self._process_tool_calls(content_piece, assistant_card)
+
+    def _on_execution_result(self, content: str):
+        if content is None:
+            return
+        card = self._append_assistant_message()
+        card.update_content(str(content))
+        card.finish_streaming()
+        self._scroll_to_bottom()
+
+    def _execution_result_callback(self, content: str):
+        if content is None:
+            return
+        self.executionResultProduced.emit(str(content))
+
+    def _execution_result_callback(self, content: str):
+        """Callback forwarded from the execution engine to display results."""
+        if content is None:
+            return
+        self.executionResultProduced.emit(str(content))
+
+    def _process_plugin_calls(self, content_piece: str, assistant_card: MessageCard):
+        """Detect and execute plugin_call blocks in assistant content."""
+        try:
+            pattern = re.compile(r"```plugin_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            if not match:
+                return
+            payload_str = match.group(1).strip()
+            payload = json.loads(payload_str)
+            method = payload.get("method")
+            params = payload.get("params", {}) or {}
+            if method:
+                self.execute_skill(
+                    method,
+                    params,
+                    callback=lambda res: self._on_skill_result(res, assistant_card),
+                )
+        except Exception as e:
+            logger.error(f"[PluginCall] Failed to process: {e}")
+
+    def _on_skill_result(self, result, assistant_card: MessageCard):
+        content = ""
+        if isinstance(result, dict) and "error" in result:
+            content = f"[Skill Error] {result.get('error')}"
+        else:
+            content = f"[Skill Result] {result}"
+        new_card = self._append_assistant_message()
+        new_card.update_content(str(content))
+        new_card.finish_streaming()
+        self._scroll_to_bottom()
+
+    def _process_tool_calls(self, content_piece: str, assistant_card: MessageCard):
+        """Detect and execute simple tool calls (e.g., shell commands) emitted by the model."""
+        try:
+            pattern = re.compile(r"```tool_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            if not match:
+                return
+            payload_str = match.group(1).strip()
+            payload = json.loads(payload_str)
+            tool_type = payload.get("type")
+            if tool_type == "shell":
+                cmd = payload.get("cmd", "")
+                if not cmd:
+                    return
+                import subprocess
+
+                try:
+                    res = subprocess.run(
+                        cmd, shell=True, capture_output=True, text=True, timeout=60
+                    )
+                    output = res.stdout.strip()
+                    error_out = res.stderr.strip()
+                    combined = "\n".join([output, error_out]).strip()
+                    tool_card = self._append_assistant_message()
+                    tool_card.update_content(
+                        "Shell command result:\n" + (combined or "")
+                    )
+                    tool_card.finish_streaming()
+                    self._scroll_to_bottom()
+                except Exception as e:
+                    err_card = self._append_assistant_message()
+                    err_card.update_content(f"[Shell execution error] {e}")
+                    err_card.finish_streaming()
+                    self._scroll_to_bottom()
+        except Exception as e:
+            logger.error(f"[ToolCall] Failed to process: {e}")
 
     # 对话标题总结
     def _generate_conversation_title(self, current_title: str, messages: List[Dict]):

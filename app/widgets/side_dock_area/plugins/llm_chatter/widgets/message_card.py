@@ -67,7 +67,7 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
         lang_part = match.group(1) or ""
         code_content = match.group(2)
         if re.search(r"\[[^\[\]]+\]\([^)\s]+\)", code_content) and lang_part not in (
-            "python"
+                "python"
         ):
             return code_content
         else:
@@ -209,11 +209,11 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
         parts.append(md_text[i:start_idx])
         end_idx = md_text.find("</think>", start_idx + len("<think>"))
         if end_idx != -1:
-            content = md_text[start_idx + len("<think>") : end_idx]
+            content = md_text[start_idx + len("<think>"): end_idx]
             parts.append(_render_think_block(content, completed=True))
             i = end_idx + len("</think>")
         else:
-            content = md_text[start_idx + len("<think>") :]
+            content = md_text[start_idx + len("<think>"):]
             parts.append(_render_think_block(content, completed=False))
             i = len(md_text)
     return "".join(parts)
@@ -368,7 +368,7 @@ class CodeWebViewer(QWebEngineView):
                 /* 优化：移除首尾元素的边距，彻底消除多余空白 */
                 #content-placeholder > :first-child {{ margin-top: 0 !important; }}
                 #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
-                
+
                 /* 优化：紧凑的段落间距 */
                 p {{ margin: 6px 0; }}
 
@@ -378,11 +378,11 @@ class CodeWebViewer(QWebEngineView):
                 table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
                 table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
                 table:not(.code-table) tr:hover {{ background: #3A3F47; }}
-                
+
                 /* 标签 */
                 .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
                 {"".join(tag_css)}
-                
+
                 /* 代码块通用样式 */
                 .code-table {{ width: 100%; border-collapse: collapse; }}
                 .code-table td {{ padding: 0; vertical-align: top; }}
@@ -429,9 +429,9 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 /* 关键：修复缩进丢失 */
                 .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
-                
+
                 .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
-                
+
                 details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
                 details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
                 .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888; font-style: italic; }}
@@ -578,12 +578,12 @@ class MessageCard(SimpleCardWidget):
     interventionRequested = pyqtSignal(dict)
 
     def __init__(
-        self,
-        role: str,
-        timestamp: str = None,
-        parent=None,
-        tag_params: dict = None,
-        error: bool = False,
+            self,
+            role: str,
+            timestamp: str = None,
+            parent=None,
+            tag_params: dict = None,
+            error: bool = False,
     ):
         super().__init__(parent)
         self.parent = parent
@@ -725,9 +725,9 @@ class MessageCard(SimpleCardWidget):
             if scroll_area:
                 vbar = scroll_area.verticalScrollBar()
                 if (
-                    vbar
-                    and vbar.minimum() != vbar.maximum()
-                    and event.angleDelta().y() != 0
+                        vbar
+                        and vbar.minimum() != vbar.maximum()
+                        and event.angleDelta().y() != 0
                 ):
                     vbar.setValue(vbar.value() - event.angleDelta().y() // 2)
                     event.accept()

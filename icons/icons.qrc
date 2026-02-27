@@ -9,18 +9,22 @@
     <file>KMeans.svg</file>
     <file>MCP.svg</file>
     <file>Miniconda.svg</file>
+    <file>Ollama.svg</file>
     <file>Picture.svg</file>
     <file>Sync.svg</file>
     <file>ai模型.svg</file>
+    <file>baidu.svg</file>
     <file>banner.png</file>
     <file>bilibili.svg</file>
     <file>brush.svg</file>
     <file>collapse_all.svg</file>
     <file>console.svg</file>
     <file>dataframe.svg</file>
+    <file>deepseek.svg</file>
     <file>eraser.svg</file>
     <file>expand_all.svg</file>
     <file>fill.svg</file>
+    <file>groq.svg</file>
     <file>ipython.svg</file>
     <file>list.svg</file>
     <file>location.svg</file>
@@ -32,7 +36,10 @@
     <file>node_base.png</file>
     <file>number.svg</file>
     <file>python.svg</file>
+    <file>qwen.svg</file>
     <file>readme.svg</file>
+    <file>shell.svg</file>
+    <file>siliconflow.png</file>
     <file>spyder.ico</file>
     <file>string.svg</file>
     <file>upload.svg</file>
@@ -93,6 +100,7 @@
     <file>日志.svg</file>
     <file>智能体.svg</file>
     <file>智能视频.svg</file>
+    <file>智谱.svg</file>
     <file>暂停.svg</file>
     <file>更多.svg</file>
     <file>更新.svg</file>
