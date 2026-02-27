@@ -30,7 +30,7 @@ def execute_node(
     if callback_func: callback_func()
     # 3. 日志卡片开始记录
     # 日志准备逻辑...
-    is_log_node = "StatusDynamicNode_" in node.model.type_ or "DYNAMIC_CODE" in node.model.type_
+    is_log_node = "StatusDynamicNode_" in node.model.type_ or "DYNAMIC_CODE" in node.model.type_  or "AI_CODE" in node.model.type_
     run_id = ""
     if is_log_node:
         run_id_postfix_str = f'@{run_id_postfix}' if run_id_postfix else ''
