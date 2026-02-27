@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -52,7 +52,10 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector imp
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.constants import FREE_PROVIDERS
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+    FREE_PROVIDERS,
+    PROVIDER_ICONS,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
@@ -81,6 +84,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _current_search_index: int = -1
     _loaded_skill_doc: str = ""
     _skill_enabled: bool = True
+    _is_shell_mode: bool = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -213,7 +217,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self.memory_btn = TransparentToolButton(get_icon("长期记忆"), self)
         self.memory_btn.setFixedSize(26, 26)
-        self.memory_btn.setToolTip("长期记忆")
+        self.memory_btn.setToolTip("长期记忆管理")
         self.memory_btn.clicked.connect(self._show_soul_memory)
 
         self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
@@ -221,6 +225,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
 
+        self.shell_btn = TransparentToggleToolButton(get_icon("shell"), self)
+        self.shell_btn.setFixedSize(26, 26)
+        self.shell_btn.setToolTip("Shell执行模式")
+        self.shell_btn.toggled.connect(self._toggle_shell_mode)
+
+        hlayout.addWidget(self.shell_btn)
         hlayout.addWidget(self.memory_btn)
         hlayout.addWidget(self.history_btn)
         hlayout.addWidget(self.new_session_btn)
@@ -380,7 +390,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 all_model_names.append(provider_name)
 
         # ✅ 关键：一次性添加所有模型名
-        self.model_combo.addItems(all_model_names)
+        self._setup_combo_with_icons(all_model_names)
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
         # 恢复之前选中的项
@@ -390,6 +400,17 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.setCurrentIndex(idx)
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
+
+    def _setup_combo_with_icons(self, model_names: List[str]):
+        """为模型选择器添加图标，供应商显示图标，普通配置不显示"""
+        self.model_combo.clear()
+        for name in model_names:
+            if name in PROVIDER_ICONS:
+                icon_name = PROVIDER_ICONS.get(name, "API")
+                icon = get_icon(icon_name)
+                self.model_combo.addItem(icon=icon, text=name)
+            else:
+                self.model_combo.addItem(name)
 
     def _create_new_session(self):
         session = self.session_manager.create_new_session()
@@ -446,6 +467,46 @@ class OpenAIChatToolWindow(ToolWindow):
             self._in_history_mode = False
             self.chat_layout.setAlignment(Qt.AlignBottom)  # 关键：防止垂直拉伸
             self._display_current_session()
+
+    def _toggle_shell_mode(self, enabled: bool):
+        self._is_shell_mode = enabled
+        if enabled:
+            self.input_area.setPlaceholderText("输入Shell命令，按Enter执行")
+            self.title_edit.setText("Shell执行")
+        else:
+            self.input_area.setPlaceholderText("enter 发送信息, shift+enter 换行")
+            self.title_edit.setText("新对话")
+
+    def _execute_shell_command(self, cmd: str):
+        """执行Shell命令并显示结果"""
+        import subprocess
+        import platform
+
+        self._append_user_message(cmd, timestamp=datetime.now().strftime("%H:%M"))
+
+        try:
+            system = platform.system()
+            if system == "Windows":
+                res = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=120
+                )
+            else:
+                res = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, timeout=120
+                )
+            output = res.stdout.strip() if res.stdout else ""
+            error_out = res.stderr.strip() if res.stderr else ""
+            combined = "\n".join(filter(None, [output, error_out]))
+            result_text = combined if combined else "(命令执行完成，无输出)"
+        except subprocess.TimeoutExpired:
+            result_text = "[错误] 命令执行超时"
+        except Exception as e:
+            result_text = f"[错误] {str(e)}"
+
+        card = self._append_assistant_message()
+        card.update_content(f"```\n{result_text}\n```")
+        card.finish_streaming()
+        self._scroll_to_bottom()
 
     def _display_history_sessions(self):
         self._clear_chat_area()
@@ -714,6 +775,16 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_send_clicked(self, user_text: str = ""):
         if self._is_streaming:
             self._on_stop_clicked()
+
+        # Shell模式：直接执行命令
+        if self._is_shell_mode:
+            if not user_text:
+                user_text = self.input_area.toPlainText().strip()
+            if not user_text:
+                return
+            self.input_area.clear()
+            self._execute_shell_command(user_text)
+            return
 
         self.input_area.toggle_send_button(False)
 

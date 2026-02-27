@@ -126,3 +126,12 @@ FREE_PROVIDERS = {
         "获取地址": "https://ollama.com",
     },
 }
+
+PROVIDER_ICONS = {
+    "SiliconFlow (有免费额度)": "siliconflow",
+    "智谱AI (免费模型)": "智谱",
+    "DeepSeek": "deepseek",
+    "Groq (免费额度)": "groq",
+    "百度千帆": "baidu",
+    "Ollama (本地)": "Ollama",
+}

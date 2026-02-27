@@ -13,7 +13,6 @@ from qfluentwidgets import (
     SwitchButton,
     PasswordLineEdit,
     ComboBox,
-    HyperlinkButton,
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
@@ -136,9 +135,11 @@ class LLMConfigPopup(QWidget):
                 url_label = BodyLabel("获取API Key：", self)
                 self.layout.addWidget(url_label)
 
-                link_btn = HyperlinkButton(api_url, "点击获取API Key →", self)
+                link_btn = PushButton("点击获取API Key →", self)
                 link_btn.setCursor(QCursor(Qt.PointingHandCursor))
-                link_btn.clicked.connect(lambda: webbrowser.open(api_url))
+                link_btn.clicked.connect(
+                    lambda checked, url=api_url: self._on_get_api_key(url)
+                )
                 self.layout.addWidget(link_btn)
                 self._widgets["获取地址"] = (url_label, link_btn)
 
@@ -320,6 +321,10 @@ class LLMConfigPopup(QWidget):
 
     def _on_apply(self):
         self.configApplied.emit(self.get_config())
+        self.close()
+
+    def _on_get_api_key(self, url: str):
+        webbrowser.open(url)
         self.close()
 
     def show_at(self, reference_widget: QWidget):

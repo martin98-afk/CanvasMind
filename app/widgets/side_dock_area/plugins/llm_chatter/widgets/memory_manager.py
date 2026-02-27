@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (
     QLabel,
     QTextEdit,
     QWidget,
-    QCheckBox,
 )
 from PyQt5.QtGui import QColor, QPalette
 from qfluentwidgets import (
@@ -42,9 +41,11 @@ class MemoryItemWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
 
-        self.checkbox = QCheckBox(self)
-        self.checkbox.setChecked(enabled)
-        self.checkbox.toggled.connect(
+        self.switch = SwitchButton(self)
+        self.switch.setChecked(enabled)
+        self.switch.setOnText("启用")
+        self.switch.setOffText("禁用")
+        self.switch.checkedChanged.connect(
             lambda checked: self.toggled.emit(self.item_id, checked)
         )
 
@@ -55,7 +56,7 @@ class MemoryItemWidget(QWidget):
         self.delete_btn.setFixedWidth(60)
         self.delete_btn.clicked.connect(lambda: self.deleted.emit(self.item_id))
 
-        layout.addWidget(self.checkbox, 0)
+        layout.addWidget(self.switch, 0)
         layout.addWidget(self.label, 1)
         layout.addWidget(self.delete_btn, 0)
 
@@ -220,14 +221,14 @@ class MemoryManagerDialog(QDialog):
             item = self.list_widget.item(i)
             widget = self.list_widget.itemWidget(item)
             if widget:
-                widget.checkbox.setChecked(True)
+                widget.switch.setChecked(True)
 
     def _deselect_all(self):
         for i in range(self.list_widget.count()):
             item = self.list_widget.item(i)
             widget = self.list_widget.itemWidget(item)
             if widget:
-                widget.checkbox.setChecked(False)
+                widget.switch.setChecked(False)
 
     def _clear_disabled(self):
         enabled_memories = []
@@ -242,15 +243,7 @@ class MemoryManagerDialog(QDialog):
         self._load_memories()
 
     def _save_and_close(self):
-        final_memories = []
-        for mem in self.memories:
-            if isinstance(mem, dict):
-                if mem.get("enabled", True):
-                    final_memories.append(mem.get("content", ""))
-            else:
-                final_memories.append(str(mem))
-
-        self.memoryUpdated.emit(final_memories)
+        self.memoryUpdated.emit(self.memories)
         self.accept()
 
     def get_memories(self) -> list:
