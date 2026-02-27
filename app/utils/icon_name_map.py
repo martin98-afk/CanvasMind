@@ -34,6 +34,7 @@ ICON_NAME_TO_FILE = {
     "Ollama": "Ollama.svg",
     "Picture": "Picture.svg",
     "python": "python.svg",
+    "qwen": "qwen.svg",
     "readme": "readme.svg",
     "shell": "shell.svg",
     "siliconflow": "siliconflow.png",
