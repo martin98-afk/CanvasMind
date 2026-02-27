@@ -69,7 +69,7 @@ PROVIDER_MODELS = {
         "phi3",
     ],
     "阿里云 (DashScope)": [
-        "qwen-turbo",
+        "qwen3-max",
         "qwen-plus",
         "qwen-max",
         "qwen-max-longcontext",

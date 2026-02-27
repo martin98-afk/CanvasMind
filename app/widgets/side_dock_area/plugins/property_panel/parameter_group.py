@@ -1,9 +1,22 @@
 # -*- coding: utf-8 -*-
+from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
-from qfluentwidgets import PushButton, ListWidget, FluentIcon, InfoBar, TransparentToolButton, BodyLabel, LineEdit, \
-    ToggleToolButton, SearchLineEdit
+from qfluentwidgets import (
+    PushButton,
+    ListWidget,
+    FluentIcon,
+    InfoBar,
+    TransparentToolButton,
+    BodyLabel,
+    LineEdit,
+    ToggleToolButton,
+    SearchLineEdit,
+)
 
-from app.templates.global_custom_var_template import PARAMETER_TEMPLATE
+from app.templates.global_custom_var_template import (
+    PARAMETER_TEMPLATE,
+    get_llm_provider_templates,
+)
 from app.widgets.dialog_widget.step_messageboxbase import StepMessageBoxBase
 
 
@@ -12,9 +25,16 @@ class ParameterGroupDialog(StepMessageBoxBase):
 
     def __init__(self, parent=None, group_name="", group_data=None, is_new=True):
         # 定义步骤
+        context = "ParameterGroupDialog"
         steps = [
-            {"name": "template_selection", "title": self.tr("选择模板")},
-            {"name": "parameter_edit", "title": self.tr("编辑参数")}
+            {
+                "name": "template_selection",
+                "title": QCoreApplication.translate(context, "选择模板"),
+            },
+            {
+                "name": "parameter_edit",
+                "title": QCoreApplication.translate(context, "编辑参数"),
+            },
         ]
         super().__init__(parent=parent, steps=steps)
 
@@ -23,6 +43,8 @@ class ParameterGroupDialog(StepMessageBoxBase):
         self.is_new = is_new
         self.templates = PARAMETER_TEMPLATE
         self.selected_template_name = None
+        self.llm_provider_config = None
+        self._llm_provider_map = {}
 
         # 设置对话框大小
         self.widget.setFixedSize(700, 600)
@@ -75,6 +97,18 @@ class ParameterGroupDialog(StepMessageBoxBase):
 
         # 填充模板列表
         self.all_template_items = []
+        self._llm_provider_map = {}  # 存储LLM服务商配置
+
+        # 添加已配置的服务商（带API Key）
+        llm_providers = get_llm_provider_templates()
+        if llm_providers:
+            for template_name in llm_providers.keys():
+                display_name = f"🔑 {template_name}"
+                item = QListWidgetItem(display_name)
+                self._llm_provider_map[display_name] = llm_providers[template_name]
+                self.template_list.addItem(item)
+                self.all_template_items.append(item)
+
         for template_name in self.templates.keys():
             item = QListWidgetItem(template_name)
             self.template_list.addItem(item)
@@ -100,10 +134,14 @@ class ParameterGroupDialog(StepMessageBoxBase):
         self.name_edit.setPlaceholderText(self.tr("请输入参数组名称"))
         if self.group_name:
             self.name_edit.setText(self.group_name)
-        self.hbox_layout.addWidget(BodyLabel(self.tr("参数组名称："), self.param_edit_page))
+        self.hbox_layout.addWidget(
+            BodyLabel(self.tr("参数组名称："), self.param_edit_page)
+        )
         self.hbox_layout.addWidget(self.name_edit, 1)
 
-        self.save_as_template = ToggleToolButton(FluentIcon.SAVE_AS, self.param_edit_page)
+        self.save_as_template = ToggleToolButton(
+            FluentIcon.SAVE_AS, self.param_edit_page
+        )
         self.save_as_template.setChecked(False)
         self.save_as_template.setToolTip(self.tr("是否保存为参数模板"))
         self.hbox_layout.addStretch()
@@ -124,11 +162,22 @@ class ParameterGroupDialog(StepMessageBoxBase):
     def _filter_templates(self, text):
         """过滤模板列表"""
         for item in self.all_template_items:
-            item.setHidden(text.lower() not in item.text().lower())
+            if item.flags() == Qt.NoItemFlags:
+                # 隐藏分隔符标题
+                item.setHidden(bool(text))
+            else:
+                item.setHidden(text.lower() not in item.text().lower())
 
     def _on_template_selected(self, item):
         """模板选择响应"""
-        self.selected_template_name = item.text()
+        text = item.text()
+        # 检查是否是LLM服务商（以🔑开头）
+        if text.startswith("🔑 "):
+            self.selected_template_name = text.replace("🔑 ", "")
+            self.llm_provider_config = self._llm_provider_map.get(text, {})
+        else:
+            self.selected_template_name = text
+            self.llm_provider_config = None
 
     def validate_current_step(self) -> bool:
         """重写父类方法，验证当前步骤"""
@@ -136,7 +185,12 @@ class ParameterGroupDialog(StepMessageBoxBase):
         if current_index == 0:  # 模板选择步骤
             # 验证是否已选择模板
             if self.selected_template_name is None:
-                InfoBar.warning(self.tr("未选择模板"), self.tr("请选择一个模板或选择自定义"), parent=self, duration=2000)
+                InfoBar.warning(
+                    self.tr("未选择模板"),
+                    self.tr("请选择一个模板或选择自定义"),
+                    parent=self,
+                    duration=2000,
+                )
                 return False
             return True
         # 其他步骤的验证可以在这里添加
@@ -147,12 +201,22 @@ class ParameterGroupDialog(StepMessageBoxBase):
         # 验证参数组名称
         name = self.name_edit.text().strip()
         if not name:
-            InfoBar.warning(self.tr("无效名称"), self.tr("参数组名称不能为空"), parent=self, duration=2000)
+            InfoBar.warning(
+                self.tr("无效名称"),
+                self.tr("参数组名称不能为空"),
+                parent=self,
+                duration=2000,
+            )
             return False
         # 验证参数列表不为空
         params = self.get_parameters()
         if not params:
-            InfoBar.warning(self.tr("无效参数"), self.tr("参数组至少需要一个参数"), parent=self, duration=2000)
+            InfoBar.warning(
+                self.tr("无效参数"),
+                self.tr("参数组至少需要一个参数"),
+                parent=self,
+                duration=2000,
+            )
             return False
         return True
 
@@ -166,7 +230,7 @@ class ParameterGroupDialog(StepMessageBoxBase):
                 widget.deleteLater()
 
         # 设置名称（如果是模板，则使用模板名作为默认名称）
-        if name and not self.name_edit.text():
+        if name:
             self.name_edit.setText(name)
 
         # 添加参数行
@@ -230,15 +294,17 @@ class ParameterGroupDialog(StepMessageBoxBase):
                 if layout and layout.count() >= 2:
                     key_widget = layout.itemAt(0).widget()
                     value_widget = layout.itemAt(1).widget()
-                    if isinstance(key_widget, LineEdit) and isinstance(value_widget, LineEdit):
+                    if isinstance(key_widget, LineEdit) and isinstance(
+                        value_widget, LineEdit
+                    ):
                         key = key_widget.text().strip()
                         value = value_widget.text().strip()
                         if key:  # 只有当key不为空时才添加
                             try:
                                 # 尝试转换为合适的数据类型
-                                if value.lower() in ('true', 'false'):
-                                    value = value.lower() == 'true'
-                                elif '.' in value:
+                                if value.lower() in ("true", "false"):
+                                    value = value.lower() == "true"
+                                elif "." in value:
                                     value = float(value)
                                 elif value.isdigit():
                                     value = int(value)
@@ -260,6 +326,14 @@ class ParameterGroupDialog(StepMessageBoxBase):
         if self.current_step_index() == 0:  # 从模板选择页到参数编辑页
             if self.selected_template_name == self.tr("自定义参数组"):
                 self._load_parameters_for_edit("", {})
+            elif hasattr(self, "llm_provider_config") and self.llm_provider_config:
+                # LLM服务商配置
+                self._load_parameters_for_edit(
+                    self.selected_template_name, self.llm_provider_config
+                )
             elif self.selected_template_name in self.templates:
-                self._load_parameters_for_edit(self.selected_template_name, self.templates[self.selected_template_name])
+                self._load_parameters_for_edit(
+                    self.selected_template_name,
+                    self.templates[self.selected_template_name],
+                )
         super()._on_next_clicked()

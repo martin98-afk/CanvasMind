@@ -318,11 +318,7 @@ class OpenAIChatWorker(QThread):
                 # 无认证（如Ollama本地）
                 pass
             else:
-                # 默认bearer认证，确保有api_key
-                if not api_key:
-                    self.error_occurred.emit("[配置错误] 请填写API Key")
-                    return
-
+                pass
             # 5. 执行请求
             client = OpenAI(
                 api_key=api_key if api_key and auth_type != "none" else "dummy",
