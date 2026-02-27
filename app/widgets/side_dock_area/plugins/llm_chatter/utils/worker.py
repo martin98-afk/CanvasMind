@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import re
+import traceback
 from typing import Dict, List, Any, Optional
 import openai
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal
@@ -391,7 +392,7 @@ class OpenAIChatWorker(QThread):
             self.error_occurred.emit(f"[配置错误] 参数类型无效: {str(e)}")
 
         except Exception as e:
-            error_str = str(e)
+            error_str = traceback.format_exc()
             if "unrecognized_parameter" in error_str or "extra_parameters" in error_str:
                 self.error_occurred.emit(
                     f"[兼容性提示] 当前模型可能不支持某些高级设置（如思考模式或温度）。错误: {error_str}"

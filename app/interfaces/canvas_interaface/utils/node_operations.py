@@ -12,9 +12,14 @@ from qtpy import QtWidgets
 
 from app.interfaces.canvas_interaface.widgets.graph_menu import CustomGraphMenu
 from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
-from app.nodes.backdrop_node import ControlFlowBackdrop, ControlFlowIterateNode, ControlFlowLoopNode
+from app.nodes.backdrop_node import (
+    ControlFlowBackdrop,
+    ControlFlowIterateNode,
+    ControlFlowLoopNode,
+)
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
+from app.nodes.ai_code_node import create_ai_code_node
 from app.nodes.execute_node import create_node_class
 from app.nodes.group_node import GroupPortOutputNode, GroupPortInputNode
 from app.nodes.multimedia_node import create_media_node
@@ -48,7 +53,12 @@ class NodeOperations:
 
     # --- 内置节点注册 ---
     def _register_builtin_components(self):
-        # 迭代节点
+        # AI代码生成节点
+        ai_node = create_ai_code_node(self.parent)
+        ai_node.__name__ = "AI_CODE"
+        self.graph.register_node(ai_node)
+        self.node_type_map[ai_node.FULL_PATH] = f"ai.{ai_node.__name__}"
+        # 动态代码节点
         code_node = create_dynamic_code_node(self.parent)
         code_node.__name__ = "DYNAMIC_CODE"
         self.graph.register_node(code_node)
@@ -57,7 +67,9 @@ class NodeOperations:
         iterate_node = ControlFlowIterateNode
         iterate_node.__name__ = "ControlFlowIterateNode"
         self.graph.register_node(iterate_node)
-        self.node_type_map[iterate_node.FULL_PATH] = f"control_flow.ControlFlowIterateNode"
+        self.node_type_map[iterate_node.FULL_PATH] = (
+            f"control_flow.ControlFlowIterateNode"
+        )
         # 循环节点
         loop_node = ControlFlowLoopNode
         loop_node.__name__ = "ControlFlowLoopNode"
@@ -79,7 +91,9 @@ class NodeOperations:
         branch_node = create_branch_node(self.parent)
         branch_node.__name__ = "ControlFlowBranchNode"
         self.graph.register_node(branch_node)
-        self.node_type_map[branch_node.FULL_PATH] = f"control_flow.{branch_node.__name__}"
+        self.node_type_map[branch_node.FULL_PATH] = (
+            f"control_flow.{branch_node.__name__}"
+        )
         # 子工作流节点
         trigger_node = create_trigger_node(self.parent)
         trigger_node.__name__ = "trigger"
@@ -110,7 +124,9 @@ class NodeOperations:
             for full_path, comp_cls in component_map.items():
                 if f"StatusDynamicNode_{comp_cls.uuid}" in node_class_names:
                     continue
-                node_class = create_node_class(full_path, file_map.get(full_path), self.parent)
+                node_class = create_node_class(
+                    full_path, file_map.get(full_path), self.parent
+                )
                 node_class.__name__ = f"StatusDynamicNode_{comp_cls.uuid}"
                 node_class_names.append(node_class.__name__)
                 self.graph.register_node(node_class)
@@ -124,7 +140,9 @@ class NodeOperations:
     def setup_graph_menu(self, viewer):
         """注入函数"""
         left_panel = self.parent.nav_panel
-        left_panel.draggable_tree.filter_changed_signal.connect(self.graph_menu.set_category_filter)
+        left_panel.draggable_tree.filter_changed_signal.connect(
+            self.graph_menu.set_category_filter
+        )
         initial_cats = left_panel.draggable_tree.tree._selected_categories
         self.graph_menu.set_category_filter(initial_cats)
         viewer._custom_menu = self.graph_menu
@@ -167,44 +185,84 @@ class NodeOperations:
     def setup_context_menu(self):
         self.setup_graph_menu(self.graph.viewer())
         # 画布右键菜单注册
-        graph_menu = self.graph.get_context_menu('graph')
-        graph_menu.add_command('运行工作流', self.parent.canvas_runner.run_workflow, 'Ctrl+R')
-        graph_menu.add_command('保存工作流', self.parent.save_full_workflow, 'Ctrl+S')
-        graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
-        graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
-        graph_menu.add_command('自动布局', self.parent._auto_layout_selected, 'Ctrl+L')
+        graph_menu = self.graph.get_context_menu("graph")
         graph_menu.add_command(
-            '删除选中', lambda graph: (
+            "运行工作流", self.parent.canvas_runner.run_workflow, "Ctrl+R"
+        )
+        graph_menu.add_command("保存工作流", self.parent.save_full_workflow, "Ctrl+S")
+        graph_menu.add_command("撤销", self.parent._undo, "Ctrl+Z")
+        graph_menu.add_command("重做", self.parent._redo, "Ctrl+Y")  # 或 'Ctrl+Shift+Z'
+        graph_menu.add_command("自动布局", self.parent._auto_layout_selected, "Ctrl+L")
+        graph_menu.add_command(
+            "删除选中",
+            lambda graph: (
                 self.parent.node_operations.delete_selected_nodes(graph),
-                self.parent.property_panel.update_properties(None)
-            ), 'Del'
+                self.parent.property_panel.update_properties(None),
+            ),
+            "Del",
         )
         # 节点右键菜单注册
-        nodes_menu = self.graph.get_context_menu('nodes')
+        nodes_menu = self.graph.get_context_menu("nodes")
         for special_node in [
-            "visualize.MediaNode", "dynamic.DYNAMIC_CODE", "control_flow.ControlFlowIterateNode",
-            "control_flow.ControlFlowLoopNode", "control_flow.ControlFlowBranchNode", "general.trigger"
+            "visualize.MediaNode",
+            "dynamic.DYNAMIC_CODE",
+            "ai.AI_CODE",
+            "control_flow.ControlFlowIterateNode",
+            "control_flow.ControlFlowLoopNode",
+            "control_flow.ControlFlowBranchNode",
+            "general.trigger",
         ]:
-            nodes_menu.add_command('运行此节点', lambda graph, node: self.parent.run_node(node),
-                                   node_type=special_node, icon=get_icon("运行"))
-            nodes_menu.add_command('运行到此节点', lambda graph, node: self.parent.run_to(node),
-                                   node_type=special_node, icon=get_icon("运行到此处"))
-            nodes_menu.add_command('从此节点开始运行', lambda graph, node: self.parent.run_from(node),
-                                   node_type=special_node, icon=get_icon("从此处运行"))
+            nodes_menu.add_command(
+                "运行此节点",
+                lambda graph, node: self.parent.run_node(node),
+                node_type=special_node,
+                icon=get_icon("运行"),
+            )
+            nodes_menu.add_command(
+                "运行到此节点",
+                lambda graph, node: self.parent.run_to(node),
+                node_type=special_node,
+                icon=get_icon("运行到此处"),
+            )
+            nodes_menu.add_command(
+                "从此节点开始运行",
+                lambda graph, node: self.parent.run_from(node),
+                node_type=special_node,
+                icon=get_icon("从此处运行"),
+            )
             nodes_menu.add_separator(node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
                 nodes_menu.add_command(
-                    '固化为组件', lambda graph, node: node.save_to_component(),
-                    node_type=special_node, icon=get_icon("组件")
+                    "固化为组件",
+                    lambda graph, node: node.save_to_component(),
+                    node_type=special_node,
+                    icon=get_icon("组件"),
                 )
                 nodes_menu.add_command(
-                    '查看节点日志', lambda graph, node: node.show_logs(),
-                    node_type=special_node, icon=get_icon("系统运行日志")
+                    "查看节点日志",
+                    lambda graph, node: node.show_logs(),
+                    node_type=special_node,
+                    icon=get_icon("系统运行日志"),
+                )
+            elif special_node == "ai.AI_CODE":
+                nodes_menu.add_command(
+                    "固化为组件",
+                    lambda graph, node: node.save_to_component(),
+                    node_type=special_node,
+                    icon=get_icon("组件"),
+                )
+                nodes_menu.add_command(
+                    "查看节点日志",
+                    lambda graph, node: node.show_logs(),
+                    node_type=special_node,
+                    icon=get_icon("系统运行日志"),
                 )
             nodes_menu.add_separator(node_type=special_node)
             nodes_menu.add_command(
-                '删除节点', lambda graph, node: self.delete_node(node),
-                node_type=special_node, icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
+                "删除节点",
+                lambda graph, node: self.delete_node(node),
+                node_type=special_node,
+                icon=QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg"),
             )
 
         nodes_menu.add_commands(
@@ -251,13 +309,13 @@ class NodeOperations:
                     "name": "查看节点文档",
                     "func": lambda graph, node: self.show_node_doc(node),
                     "node_type": f"dynamic.StatusDynamicNode_*",
-                    "icon": get_icon("readme")
+                    "icon": get_icon("readme"),
                 },
                 {
                     "name": "删除节点",
                     "func": lambda graph, node: self.delete_node(node),
                     "node_type": f"dynamic.StatusDynamicNode_*",
-                    "icon": QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg")
+                    "icon": QIcon(f":/qfluentwidgets/images/icons/Delete_white.svg"),
                 },
             ]
         )
@@ -295,7 +353,7 @@ class NodeOperations:
             node = self.graph.create_node(node_type)
         QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(node))
         if isinstance(icon_path, str) and icon_path.startswith("builtin:\\"):
-            icon_name = icon_path.split('\\')[-1]
+            icon_name = icon_path.split("\\")[-1]
             icon_value = getattr(FluentIcon, icon_name).value
             icon_path = f":/qfluentwidgets/images/icons/{icon_value}_{getIconColor(Theme.AUTO)}.svg"
         if icon_path and isinstance(icon_path, str):
@@ -316,30 +374,31 @@ class NodeOperations:
     def create_group_node(self):
         graph = self.graph
         selected_nodes = graph.selected_nodes()
-        if not selected_nodes: return
+        if not selected_nodes:
+            return
 
-        graph.begin_undo('创建智能组节点')
+        graph.begin_undo("创建智能组节点")
         selected_ids = set(n.id for n in selected_nodes)
-        input_map = {};
+        input_map = {}
         output_map = {}
-        ext_in_conns = [];
+        ext_in_conns = []
         ext_out_conns = []
         used_port_names = set()
 
         # --- 1. 扫描内外连接并【标记端口可删除】 ---
         for node in selected_nodes:
             # 强制标记，确保序列化时会记录 input_ports 和 output_ports 列表
-            node.model.set_property('port_deletion_allowed', True)
+            node.model.set_property("port_deletion_allowed", True)
 
             for in_port in node.input_ports():
                 for cp in in_port.connected_ports():
                     if cp.node().id not in selected_ids:
                         key = (node.id, in_port.name())
                         if key not in input_map:
-                            g_name = in_port.name();
+                            g_name = in_port.name()
                             idx = 1
                             while g_name in used_port_names:
-                                g_name = f"{in_port.name()}_{idx}";
+                                g_name = f"{in_port.name()}_{idx}"
                                 idx += 1
                             used_port_names.add(g_name)
                             input_map[key] = g_name
@@ -350,10 +409,10 @@ class NodeOperations:
                     if cp.node().id not in selected_ids:
                         key = (node.id, out_port.name())
                         if key not in output_map:
-                            g_name = out_port.name();
+                            g_name = out_port.name()
                             idx = 1
                             while g_name in used_port_names:
-                                g_name = f"{out_port.name()}_{idx}";
+                                g_name = f"{out_port.name()}_{idx}"
                                 idx += 1
                             used_port_names.add(g_name)
                             output_map[key] = g_name
@@ -362,69 +421,83 @@ class NodeOperations:
         # --- 2. 序列化并手动修正数据（适配你的反序列化器） ---
         raw_session = graph._serialize(selected_nodes)
         session_data = {
-            'graph': raw_session.get('graph', {}),
-            'nodes': raw_session.get('nodes', {}),
-            'connections': []
+            "graph": raw_session.get("graph", {}),
+            "nodes": raw_session.get("nodes", {}),
+            "connections": [],
         }
 
         # 修复连线 Key 名：从 0/1 转换为 'in'/'out'
-        if 'connections' in raw_session:
-            for conn in raw_session['connections']:
-                c_in = conn.get('in') or conn.get(0) or conn.get('0')
-                c_out = conn.get('out') or conn.get(1) or conn.get('1')
+        if "connections" in raw_session:
+            for conn in raw_session["connections"]:
+                c_in = conn.get("in") or conn.get(0) or conn.get("0")
+                c_out = conn.get("out") or conn.get(1) or conn.get("1")
                 if c_in and c_out:
                     # 只有内部连线才进入 session_data，防止 AttributeError
                     if c_in[0] in selected_ids and c_out[0] in selected_ids:
-                        session_data['connections'].append({'in': list(c_in), 'out': list(c_out)})
+                        session_data["connections"].append(
+                            {"in": list(c_in), "out": list(c_out)}
+                        )
 
         # --- 3. 注入内部端口节点（适配你的 build_connections 延时加载） ---
-        xs = [n.x_pos() for n in selected_nodes];
+        xs = [n.x_pos() for n in selected_nodes]
         ys = [n.y_pos() for n in selected_nodes]
-        min_x, max_x = min(xs), max(xs);
+        min_x, max_x = min(xs), max(xs)
         center_y = (min(ys) + max(ys)) / 2
 
         for i, ((int_id, int_pname), g_name) in enumerate(input_map.items()):
             p_node_id = f"port_in_{g_name}"
-            session_data['nodes'][p_node_id] = {
-                'type_': PortInputNode.type_,
-                'name': g_name,
-                'pos': [min_x - 600, center_y + (i * 100)],
-                'outputs': {g_name: {}},
-                'custom': {}
+            session_data["nodes"][p_node_id] = {
+                "type_": PortInputNode.type_,
+                "name": g_name,
+                "pos": [min_x - 600, center_y + (i * 100)],
+                "outputs": {g_name: {}},
+                "custom": {},
             }
-            session_data['connections'].append({'out': [p_node_id, g_name], 'in': [int_id, int_pname]})
+            session_data["connections"].append(
+                {"out": [p_node_id, g_name], "in": [int_id, int_pname]}
+            )
 
         for i, ((int_id, int_pname), g_name) in enumerate(output_map.items()):
             p_node_id = f"port_out_{g_name}"
-            session_data['nodes'][p_node_id] = {
-                'type_': PortOutputNode.type_,
-                'name': g_name,
-                'pos': [max_x + 600, center_y + (i * 100)],
-                'inputs': {g_name: {}},
-                'custom': {}
+            session_data["nodes"][p_node_id] = {
+                "type_": PortOutputNode.type_,
+                "name": g_name,
+                "pos": [max_x + 600, center_y + (i * 100)],
+                "inputs": {g_name: {}},
+                "custom": {},
             }
-            session_data['connections'].append({'out': [int_id, int_pname], 'in': [p_node_id, g_name]})
+            session_data["connections"].append(
+                {"out": [int_id, int_pname], "in": [p_node_id, g_name]}
+            )
 
         # --- 4. 创建并应用组节点 ---
-        group_node = graph.create_node('general.GroupNode', name='Group', pos=[(min_x + max_x) / 2, center_y])
-        group_node.model.set_property('port_deletion_allowed', True)
+        group_node = graph.create_node(
+            "general.GroupNode", name="Group", pos=[(min_x + max_x) / 2, center_y]
+        )
+        group_node.model.set_property("port_deletion_allowed", True)
 
-        for g_name in list(dict.fromkeys(input_map.values())): group_node.add_input(g_name)
-        for g_name in list(dict.fromkeys(output_map.values())): group_node.add_output(g_name)
+        for g_name in list(dict.fromkeys(input_map.values())):
+            group_node.add_input(g_name)
+        for g_name in list(dict.fromkeys(output_map.values())):
+            group_node.add_output(g_name)
 
-        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph("Group")
+        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph(
+            "Group"
+        )
         new_graph.deserialize_session(session_data)
         self.setup_graph_menu(new_graph)
         self.setup_graph_menu(self.graph)
         # 画布右键菜单注册
-        graph_menu = new_graph.get_context_menu('graph')
-        graph_menu.add_command('撤销', self.parent._undo, 'Ctrl+Z')
-        graph_menu.add_command('重做', self.parent._redo, 'Ctrl+Y')  # 或 'Ctrl+Shift+Z'
+        graph_menu = new_graph.get_context_menu("graph")
+        graph_menu.add_command("撤销", self.parent._undo, "Ctrl+Z")
+        graph_menu.add_command("重做", self.parent._redo, "Ctrl+Y")  # 或 'Ctrl+Shift+Z'
         graph_menu.add_command(
-            '删除选中', lambda graph: (
+            "删除选中",
+            lambda graph: (
                 self.parent.node_operations.delete_selected_nodes(graph),
-                self.parent.property_panel.update_properties(None)
-            ), 'Del'
+                self.parent.property_panel.update_properties(None),
+            ),
+            "Del",
         )
         QTimer.singleShot(0, lambda: self.parent.ui_manager.update_position(True))
         group_node.graph_id = graph_id
@@ -453,7 +526,9 @@ class NodeOperations:
             elif node.type_ == "control_flow.ControlFlowOutputPort":
                 output_port_node = node
             elif isinstance(node, ControlFlowBackdrop) and init_io:
-                MessageManager.error("错误", "当前版本不支持嵌套循环或迭代结构！", self.parent)
+                MessageManager.error(
+                    "错误", "当前版本不支持嵌套循环或迭代结构！", self.parent
+                )
                 return
             else:
                 other_nodes.append(node)
@@ -464,10 +539,18 @@ class NodeOperations:
         center_x, center_y = scene_center.x(), scene_center.y()
         if init_io:
             if not selected_nodes:
-                input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
-                output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
-                input_port_node.set_pos(center_x - 500, center_y - input_port_node.view.height)
-                output_port_node.set_pos(center_x + 500, center_y + output_port_node.view.height + 200)
+                input_port_node = self.graph.create_node(
+                    "control_flow.ControlFlowInputPort"
+                )
+                output_port_node = self.graph.create_node(
+                    "control_flow.ControlFlowOutputPort"
+                )
+                input_port_node.set_pos(
+                    center_x - 500, center_y - input_port_node.view.height
+                )
+                output_port_node.set_pos(
+                    center_x + 500, center_y + output_port_node.view.height + 200
+                )
                 nodes_to_wrap = [input_port_node, output_port_node]
             else:
                 unconnected_inputs = []
@@ -483,22 +566,34 @@ class NodeOperations:
                             unconnected_outputs.append((node, output_port))
 
                 if not input_port_node:
-                    input_port_node = self.graph.create_node("control_flow.ControlFlowInputPort")
+                    input_port_node = self.graph.create_node(
+                        "control_flow.ControlFlowInputPort"
+                    )
                     if other_nodes:
                         min_x = min(n.x_pos() for n in other_nodes)
                         avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                        input_port_node.set_pos(min_x - 300, avg_y - input_port_node.view.height / 2)
+                        input_port_node.set_pos(
+                            min_x - 300, avg_y - input_port_node.view.height / 2
+                        )
                     else:
-                        input_port_node.set_pos(center_x - 250, center_y - input_port_node.view.height / 2)
+                        input_port_node.set_pos(
+                            center_x - 250, center_y - input_port_node.view.height / 2
+                        )
 
                 if not output_port_node:
-                    output_port_node = self.graph.create_node("control_flow.ControlFlowOutputPort")
+                    output_port_node = self.graph.create_node(
+                        "control_flow.ControlFlowOutputPort"
+                    )
                     if other_nodes:
                         max_x = max(n.x_pos() + n.view.width for n in other_nodes)
                         avg_y = sum(n.y_pos() for n in other_nodes) / len(other_nodes)
-                        output_port_node.set_pos(max_x + 150, avg_y - output_port_node.view.height / 2)
+                        output_port_node.set_pos(
+                            max_x + 150, avg_y - output_port_node.view.height / 2
+                        )
                     else:
-                        output_port_node.set_pos(center_x + 250, center_y - output_port_node.view.height / 2)
+                        output_port_node.set_pos(
+                            center_x + 250, center_y - output_port_node.view.height / 2
+                        )
 
                 nodes_to_wrap = other_nodes + [input_port_node, output_port_node]
         else:
@@ -507,7 +602,9 @@ class NodeOperations:
         backdrop_node = self.graph.create_node(key)
         backdrop_node.wrap_nodes(nodes_to_wrap)
         [node.set_selected(True) for node in nodes_to_wrap]
-        QTimer.singleShot(0, lambda: self.parent.property_panel.update_properties(backdrop_node))
+        QTimer.singleShot(
+            0, lambda: self.parent.property_panel.update_properties(backdrop_node)
+        )
 
         if "ControlFlowIterateNode" in key:
             backdrop_node.model.set_property("loop_nums", 3)
@@ -525,7 +622,9 @@ class NodeOperations:
             base_path = self.parent.file_path.parent / "workspace"
             for n_id in node_ids:
                 workspace_path = base_path / str(n_id)
-                log_file = self.parent.file_path.parent / "node_logs" / f"node_{n_id}.log"
+                log_file = (
+                    self.parent.file_path.parent / "node_logs" / f"node_{n_id}.log"
+                )
                 try:
                     if log_file.exists():
                         log_file.unlink()
@@ -592,7 +691,9 @@ class NodeOperations:
         if not selected_nodes:
             return
         if self.graph.copy_nodes():
-            MessageManager.info("复制成功", f"已复制 {len(selected_nodes)} 个节点", self.parent)
+            MessageManager.info(
+                "复制成功", f"已复制 {len(selected_nodes)} 个节点", self.parent
+            )
 
     def _paste_nodes(self):
         clipboard = QtWidgets.QApplication.clipboard()
@@ -626,15 +727,18 @@ class NodeOperations:
                 new_x = x - min_x + avg_x + offset[0]
                 new_y = y - min_y + avg_y + offset[1]
                 node.set_pos(new_x, new_y)
-            MessageManager.info("粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点", self.parent)
+            MessageManager.info(
+                "粘贴成功", f"已粘贴 {len(pasted_nodes)} 个节点", self.parent
+            )
         self._invalidate_node_cache()
 
     def _request_recommendations(self, node):
-        full_path = getattr(node, 'FULL_PATH', None)
+        full_path = getattr(node, "FULL_PATH", None)
         if not full_path:
             self.parent.nav_view.clear_recommendations()
             return
         from app.scheduler.node_recommendation_engine import RecommendationTask
+
         task = RecommendationTask(self.recommendation_engine, full_path)
         task.signals.finished.connect(self.parent.nav_view.add_recommendations)
         task.signals.error.connect(lambda msg: logger.error(f"推荐失败: {msg}"))
