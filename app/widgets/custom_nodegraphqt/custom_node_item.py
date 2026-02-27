@@ -368,21 +368,12 @@ class CustomNodeItem(NodeItem):
 
     def shape(self):
         path = QtGui.QPainterPath()
+        # 只需要包含节点的主体区域
         path.addRoundedRect(self.get_node_body_rect(), 12, 12)
-        path.addEllipse(
-            self._collapse_btn.boundingRect().translated(self._collapse_btn.pos())
-        )
-        path.addEllipse(
-            self._exec_mode_btn.boundingRect().translated(self._exec_mode_btn.pos())
-        )
-        if self._close_btn.isVisible():
-            for btn in [
-                self._center_btn,
-                self._run_btn,
-                self._mute_btn,
-                self._close_btn,
-            ]:
-                path.addEllipse(btn.boundingRect().translated(btn.pos()))
+
+        # 如果 Floating Toolbar 显示在节点外部（上方），
+        # 且你希望点击 Toolbar 也能选中节点，才需要添加 Toolbar 区域。
+        # 但通常建议 Toolbar 独立处理，不加入节点的 shape。
         return path
 
     def _update_elements_visibility(self):
