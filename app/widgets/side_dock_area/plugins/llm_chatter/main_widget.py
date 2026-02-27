@@ -891,16 +891,16 @@ class OpenAIChatToolWindow(ToolWindow):
             self._generate_conversation_title(current_title, session.messages)
         self._maybe_generate_topic_summary()
         # Start the execution plan (ClaudeDecode-style) in background
-        try:
-            long_term_memory = self._get_long_term_memory_context()
-            self._execution_agent.plan_and_execute(
-                messages=session.messages,
-                llm_config=self._last_llm_config or {},
-                long_term_memory=long_term_memory,
-                callback=self._execution_result_callback,
-            )
-        except Exception as e:
-            logger.error(f"[Execution] planning/execution failed: {e}")
+        # try:
+        #     long_term_memory = self._get_long_term_memory_context()
+        #     self._execution_agent.plan_and_execute(
+        #         messages=session.messages,
+        #         llm_config=self._last_llm_config or {},
+        #         long_term_memory=long_term_memory,
+        #         callback=self._execution_result_callback,
+        #     )
+        # except Exception as e:
+        #     logger.error(f"[Execution] planning/execution failed: {e}")
 
     def _maybe_generate_topic_summary(self):
         if self._current_history_index is None:
