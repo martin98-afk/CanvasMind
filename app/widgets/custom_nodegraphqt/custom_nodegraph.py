@@ -7,7 +7,12 @@ import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
 from NodeGraphQt.constants import (
-    Z_VAL_PIPE, ViewerEnum, PortTypeEnum, PipeLayoutEnum, PipeEnum, )
+    Z_VAL_PIPE,
+    ViewerEnum,
+    PortTypeEnum,
+    PipeLayoutEnum,
+    PipeEnum,
+)
 from NodeGraphQt.qgraphics.port import PortItem
 from NodeGraphQt.qgraphics.node_abstract import AbstractNodeItem
 from NodeGraphQt.qgraphics.node_backdrop import BackdropNodeItem
@@ -30,8 +35,14 @@ from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.custom_nodegraphqt.custom_node_menu import CustomNodesMenu, BaseMenu
-from app.widgets.custom_nodegraphqt.custom_pipe_item import CustomPipeItem, CustomLivePipeItem
-from app.widgets.custom_nodegraphqt.node_action_buttons import NodeActionButton, BaseCanvasToolbar
+from app.widgets.custom_nodegraphqt.custom_pipe_item import (
+    CustomPipeItem,
+    CustomLivePipeItem,
+)
+from app.widgets.custom_nodegraphqt.node_action_buttons import (
+    NodeActionButton,
+    BaseCanvasToolbar,
+)
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 
 # --- 常量配置 ---
@@ -40,21 +51,28 @@ SNAP_COLOR = QtGui.QColor(255, 128, 0, 200)  # 橙色对齐线
 
 
 class CustomNodeScene(NodeScene):
+    def __init__(self, parent=None):
+        super(CustomNodeScene, self).__init__(parent)
+        self._grid_cache = None
+        self._grid_cache_key = None
+        self._grid_cache_size = None
 
     def viewer(self):
         """
         重写基类方法。
         优先级：1. 事件上下文锁定 > 2. 活跃 Viewer > 3. 焦点 Viewer > 4. 兜底。
         """
-        if getattr(self, '_event_viewer', None):
+        if getattr(self, "_event_viewer", None):
             return self._event_viewer
 
         all_views = self.views()
-        if not all_views: return None
-        if len(all_views) == 1: return all_views[0]
+        if not all_views:
+            return None
+        if len(all_views) == 1:
+            return all_views[0]
 
         for v in all_views:
-            if hasattr(v, '_is_active') and v._is_active:
+            if hasattr(v, "_is_active") and v._is_active:
                 return v
 
         active_v = QtWidgets.QApplication.focusWidget()
@@ -64,41 +82,56 @@ class CustomNodeScene(NodeScene):
 
         return all_views[0]
 
+    def _invalidate_grid_cache(self):
+        """当网格配置或缩放变化时调用，强制重建缓存"""
+        self._grid_cache = None
+        self._grid_cache_key = None
+
+    def _get_grid_cache_key(self, viewer, rect):
+        """生成缓存键，用于判断是否需要重建缓存"""
+        if not viewer:
+            return None
+        zoom = viewer.get_zoom()
+        grid_size = ViewerEnum.GRID_SIZE.value
+        grid_mode = self.grid_mode
+        if zoom < 0:
+            grid_size = int(abs(zoom) / 0.3 + 1) * grid_size
+        return (
+            grid_mode,
+            grid_size,
+            int(rect.width()),
+            int(rect.height()),
+            int(rect.left()),
+            int(rect.top()),
+        )
+
     def drawBackground(self, painter, rect):
         """
-        完全重写背景绘制，解决 Python 3 / PyQt5 的类型错误。
-        不再调用 super().drawBackground()。
+        完全重写背景绘制，使用缓存网格优化性能。
         """
-        # 1. 识别当前 View 上下文
         current_painter_viewer = None
         for v in self.views():
             if v.viewport() == painter.device():
                 current_painter_viewer = v
                 break
 
-        old_viewer = getattr(self, '_event_viewer', None)
+        old_viewer = getattr(self, "_event_viewer", None)
         self._event_viewer = current_painter_viewer
 
-        # 2. 执行绘图逻辑 (手动实现库的功能)
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing, False)
-        # 填充背景色
         painter.fillRect(rect, self.backgroundBrush())
 
-        # 获取网格配置
         grid_size = ViewerEnum.GRID_SIZE.value
 
-        # 绘制网格
         if self.grid_mode == ViewerEnum.GRID_DISPLAY_DOTS.value:
             pen = QtGui.QPen(QtGui.QColor(*self.grid_color), 1.0)
             self._draw_dots(painter, rect, pen, grid_size)
         elif self.grid_mode == ViewerEnum.GRID_DISPLAY_LINES.value:
             zoom = self.viewer().get_zoom()
-            # 细网格
             if zoom > -0.5:
                 pen = QtGui.QPen(QtGui.QColor(*self.grid_color), 0.65)
                 self._draw_grid(painter, rect, pen, grid_size)
-            # 粗网格
             color = QtGui.QColor(*self.background_color).darker(200)
             if zoom < -0.0:
                 color = color.darker(100 - int(zoom * 110))
@@ -124,7 +157,6 @@ class CustomNodeScene(NodeScene):
         first_left = left - (left % grid_size)
         first_top = top - (top % grid_size)
 
-        # 核心修复：使用 // 确保 setWidth 得到 int
         pen.setWidth(max(1, grid_size // 10))
         painter.setPen(pen)
 
@@ -156,7 +188,7 @@ class CustomNodeScene(NodeScene):
     def _get_connecting_viewer(self):
         """查找当前哪个视图正处于拉线状态"""
         for v in self.views():
-            if hasattr(v, '_LIVE_PIPE') and v._LIVE_PIPE.isVisible():
+            if hasattr(v, "_LIVE_PIPE") and v._LIVE_PIPE.isVisible():
                 return v
         return None
 
@@ -164,8 +196,10 @@ class CustomNodeScene(NodeScene):
         connecting_viewer = self._get_connecting_viewer()
         if connecting_viewer:
             self._event_viewer = connecting_viewer
-            if hasattr(connecting_viewer.home_window.graph, 'graph_splitter'):
-                connecting_viewer.home_window.graph.graph_splitter.set_active_viewer(connecting_viewer)
+            if hasattr(connecting_viewer.home_window.graph, "graph_splitter"):
+                connecting_viewer.home_window.graph.graph_splitter.set_active_viewer(
+                    connecting_viewer
+                )
             connecting_viewer.sceneMousePressEvent(event)
             self._event_viewer = None
             return
@@ -178,7 +212,7 @@ class CustomNodeScene(NodeScene):
 
         if source_v:
             self._event_viewer = source_v
-            if hasattr(source_v.home_window.graph, 'graph_splitter'):
+            if hasattr(source_v.home_window.graph, "graph_splitter"):
                 source_v.home_window.graph.graph_splitter.set_active_viewer(source_v)
             source_v.sceneMousePressEvent(event)
 
@@ -270,16 +304,24 @@ class SelectionActionToolbar(BaseCanvasToolbar):
         self.btn_run = self.add_button("run", "执行", "#27ae60", "#2ecc71", True)
         self.btn_run.clicked_func = self.on_run
         self.add_separator()
-        self.btn_center = self.add_button("zoom", "聚焦选中内容", "#3498db", "#2980b9", False)
+        self.btn_center = self.add_button(
+            "zoom", "聚焦选中内容", "#3498db", "#2980b9", False
+        )
         self.btn_center.clicked_func = self._on_center
 
-        self.btn_layout = self.add_button("layout", "自动排布节点", "#3498db", "#2980b9", False)
+        self.btn_layout = self.add_button(
+            "layout", "自动排布节点", "#3498db", "#2980b9", False
+        )
         self.btn_layout.clicked_func = self._on_auto_layout
         self.add_separator()
-        self.btn_clone = self.add_button("clone", "克隆选中节点", "#27ae60", "#2ecc71", False)
+        self.btn_clone = self.add_button(
+            "clone", "克隆选中节点", "#27ae60", "#2ecc71", False
+        )
         self.btn_clone.clicked_func = self._on_clone
 
-        self.btn_template = self.add_button("template", "加入模板库", "#9b59b6", "#8e44ad", False)
+        self.btn_template = self.add_button(
+            "template", "加入模板库", "#9b59b6", "#8e44ad", False
+        )
         self.btn_template.clicked_func = self._on_template
         self.add_separator()
         self.btn_more = self.add_button("more", "更多操作", "#7f8c8d", "#95a5a6", False)
@@ -294,19 +336,22 @@ class SelectionActionToolbar(BaseCanvasToolbar):
 
     def _on_auto_layout(self):
         from .node_layout_handler import NodeLayoutHandler
+
         NodeLayoutHandler.auto_layout(self.viewer.graph)
         self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_comment(self):
-        if hasattr(self.viewer.home_window, 'node_operations'):
-            self.viewer.home_window.create_backdrop_node("general.StickyNote", init_io=False)
+        if hasattr(self.viewer.home_window, "node_operations"):
+            self.viewer.home_window.create_backdrop_node(
+                "general.StickyNote", init_io=False
+            )
 
     def _on_center(self):
         self.viewer.zoom_to_nodes(self.viewer.selected_nodes())
         self.viewer._selection_overlay.refresh(full_recalc=False)
 
     def _on_clone(self):
-        if hasattr(self.viewer.home_window, 'node_operations'):
+        if hasattr(self.viewer.home_window, "node_operations"):
             ops = self.viewer.home_window.node_operations
             ops._copy_selected_nodes()
             ops._paste_nodes()
@@ -352,9 +397,11 @@ class SelectionActionToolbar(BaseCanvasToolbar):
 
         ops = self.viewer.home_window.node_operations
         menu.addAction("🔄 创建循环结构").triggered.connect(
-            lambda: ops.create_backdrop_node("control_flow.ControlFlowLoopNode"))
+            lambda: ops.create_backdrop_node("control_flow.ControlFlowLoopNode")
+        )
         menu.addAction("🔁 创建迭代结构").triggered.connect(
-            lambda: ops.create_backdrop_node("control_flow.ControlFlowIterateNode"))
+            lambda: ops.create_backdrop_node("control_flow.ControlFlowIterateNode")
+        )
 
         menu.addSeparator()
         menu.addAction("📦 批量转为子进程").triggered.connect(self._on_batch_subprocess)
@@ -365,19 +412,27 @@ class SelectionActionToolbar(BaseCanvasToolbar):
         menu.addAction("➖ 批量折叠节点").triggered.connect(self._on_batch_fold)
 
         from .node_layout_handler import NodeLayoutHandler
-        menu.addAction("📏 吸附至网格").triggered.connect(lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph))
+
+        menu.addAction("📏 吸附至网格").triggered.connect(
+            lambda: NodeLayoutHandler.snap_to_grid(self.viewer.graph)
+        )
 
         # 对齐子菜单
         align_menu = menu.addMenu("📐 对齐方式")
-        for mode in ['left', 'right', 'top', 'bottom', 'center_h']:
+        for mode in ["left", "right", "top", "bottom", "center_h"]:
             align_menu.addAction(mode).triggered.connect(
-                lambda checked, m=mode: NodeLayoutHandler.align_nodes(self.viewer.graph, m))
+                lambda checked, m=mode: NodeLayoutHandler.align_nodes(
+                    self.viewer.graph, m
+                )
+            )
 
         dist_menu = menu.addMenu("↔️ 等间距排列")
         dist_menu.addAction("水平等距").triggered.connect(
-            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'horizontal'))
+            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, "horizontal")
+        )
         dist_menu.addAction("垂直等距").triggered.connect(
-            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, 'vertical'))
+            lambda: NodeLayoutHandler.distribute_nodes(self.viewer.graph, "vertical")
+        )
 
         button_scene_pos = self.btn_more.scenePos()
         view_pos = self.viewer.mapFromScene(button_scene_pos)
@@ -386,19 +441,23 @@ class SelectionActionToolbar(BaseCanvasToolbar):
 
     def _on_batch_subprocess(self):
         for node in self.viewer.selected_nodes():
-            if hasattr(node, '_toggle_exec_mode'): node._toggle_exec_mode("subprocess")
+            if hasattr(node, "_toggle_exec_mode"):
+                node._toggle_exec_mode("subprocess")
 
     def _on_batch_ipython(self):
         for node in self.viewer.selected_nodes():
-            if hasattr(node, '_toggle_exec_mode'): node._toggle_exec_mode("ipython")
+            if hasattr(node, "_toggle_exec_mode"):
+                node._toggle_exec_mode("ipython")
 
     def _on_batch_fold(self):
         for node in self.viewer.selected_nodes():
-            if hasattr(node, 'toggle_collapse'): node.toggle_collapse(True)
+            if hasattr(node, "toggle_collapse"):
+                node.toggle_collapse(True)
 
     def _on_batch_unfold(self):
         for node in self.viewer.selected_nodes():
-            if hasattr(node, 'toggle_collapse'): node.toggle_collapse(False)
+            if hasattr(node, "toggle_collapse"):
+                node.toggle_collapse(False)
 
     def _on_close(self):
         self.viewer.home_window.node_operations.delete_selected_nodes(self.viewer.graph)
@@ -406,7 +465,8 @@ class SelectionActionToolbar(BaseCanvasToolbar):
 
     def update_position(self, scene_rect):
         """核心：计算抗缩放后的偏移位置"""
-        if not self.isVisible(): return
+        if not self.isVisible():
+            return
         view_scale = self.viewer.transform().m11()
         # 将物理像素转换为场景坐标进行定位
         target_x = scene_rect.center().x() - (self._total_width / 2 / view_scale)
@@ -415,24 +475,31 @@ class SelectionActionToolbar(BaseCanvasToolbar):
 
 
 class SelectionOverlayManager:
+    _UPDATE_THROTTLE_MS = 16
+
     def __init__(self, viewer):
         self.viewer = viewer
         self.scene = viewer.scene()
-        self._visible = False  # <<< 确保这个属性存在
+        self._visible = False
 
-        # 1. 虚线框项 (使用之前建议的高性能 Item)
         self.rect_item = SelectionOverlayItem(viewer)
         self.scene.addItem(self.rect_item)
 
-        # 2. 工具栏
         self.toolbar = SelectionActionToolbar(viewer)
         self.scene.addItem(self.toolbar)
 
-        self.hide()  # 初始状态隐藏
+        self._pending_update = False
+        self._last_delta = QtCore.QPointF()
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._do_deferred_update)
+
+        self.hide()
 
     def refresh(self, full_recalc=True):
         selected_nodes = [
-            i for i in self.scene.selectedItems()
+            i
+            for i in self.scene.selectedItems()
             if isinstance(i, AbstractNodeItem) and i.isVisible()
         ]
 
@@ -440,34 +507,45 @@ class SelectionOverlayManager:
             self.hide()
             return
 
-        # 更新状态
         self._visible = True
 
         if full_recalc:
             self.rect_item.update_geometry(selected_nodes)
 
         self.toolbar.show()
-        # 传入当前的矩形区域进行位置锚定
         self.toolbar.update_position(self.rect_item._current_rect)
 
     def on_drag(self, delta):
-        """节点拖动时的极速刷新"""
-        if self._visible:
-            self.rect_item.quick_move(delta)
-            self.toolbar.update_position(self.rect_item._current_rect)
+        """节点拖动时的极速刷新，使用节流避免过度更新"""
+        if not self._visible:
+            return
+        self._last_delta += delta
+        if not self._pending_update:
+            self._pending_update = True
+            self._update_timer.start(self._UPDATE_THROTTLE_MS)
+
+    def _do_deferred_update(self):
+        if not self._visible:
+            self._pending_update = False
+            return
+        self.rect_item.quick_move(self._last_delta)
+        self.toolbar.update_position(self.rect_item._current_rect)
+        self._last_delta = QtCore.QPointF()
+        self._pending_update = False
 
     def hide(self):
         self._visible = False
+        self._pending_update = False
+        self._update_timer.stop()
+        self._last_delta = QtCore.QPointF()
         self.rect_item.hide()
         self.toolbar.hide()
 
     def is_visible(self):
-        """安全获取可见性状态"""
         return self._visible
 
 
 class CustomNodeViewer(NodeViewer):
-
     def __init__(self, parent=None, undo_stack=None, scene=None):
         super(CustomNodeViewer, self).__init__(parent)
         self.home_window = parent
@@ -499,20 +577,23 @@ class CustomNodeViewer(NodeViewer):
         self._snap_lines_item.hide()
         # -------------------------------------
         # context menus.
-        self._ctx_graph_menu = BaseMenu('NodeGraph', self)
-        self._ctx_node_menu = BaseMenu('Nodes', self)
+        self._ctx_graph_menu = BaseMenu("NodeGraph", self)
+        self._ctx_node_menu = BaseMenu("Nodes", self)
         self._LIVE_PIPE = CustomLivePipeItem()
         self._LIVE_PIPE.setVisible(False)
         self.scene().addItem(self._LIVE_PIPE)
-        text_color = QtGui.QColor(*tuple(map(
-            lambda i, j: i - j, (255, 255, 255),
-            ViewerEnum.BACKGROUND_COLOR.value
-        )))
+        text_color = QtGui.QColor(
+            *tuple(
+                map(
+                    lambda i, j: i - j,
+                    (255, 255, 255),
+                    ViewerEnum.BACKGROUND_COLOR.value,
+                )
+            )
+        )
         text_color.setAlpha(50)
         self._cursor_text = QtWidgets.QGraphicsTextItem()
-        self._cursor_text.setFlag(
-            QtWidgets.QGraphicsTextItem.ItemIsSelectable, False
-        )
+        self._cursor_text.setFlag(QtWidgets.QGraphicsTextItem.ItemIsSelectable, False)
         self._cursor_text.setDefaultTextColor(text_color)
         self._cursor_text.setZValue(Z_VAL_PIPE - 1)
         font = self._cursor_text.font()
@@ -561,13 +642,21 @@ class CustomNodeViewer(NodeViewer):
             self._rubber_band.isActive = False
 
     # --- 处理对齐逻辑 ---
+    _SNAP_UPDATE_INTERVAL_MS = 20
+    _last_snap_update_time = 0
+
     def _handle_snapping(self, moving_nodes):
         """
-        计算吸附并更新对齐虚线
+        计算吸附并更新对齐虚线（带节流）
         """
         if not moving_nodes:
             self._snap_lines_item.hide()
             return
+
+        current_time = QtCore.QDateTime.currentMSecsSinceEpoch()
+        if current_time - self._last_snap_update_time < self._SNAP_UPDATE_INTERVAL_MS:
+            return
+        self._last_snap_update_time = current_time
 
         # 1. 获取主节点（只以第一个选中的节点作为参考，避免逻辑冲突）
         primary_node = moving_nodes[0]
@@ -582,7 +671,11 @@ class CustomNodeViewer(NodeViewer):
         target_nodes = []
         for item in nearby_items:
             # 排除自己、排除不可见节点、排除非节点对象
-            if isinstance(item, AbstractNodeItem) and item not in moving_nodes and item.isVisible():
+            if (
+                isinstance(item, AbstractNodeItem)
+                and item not in moving_nodes
+                and item.isVisible()
+            ):
                 target_nodes.append(item)
 
         if not target_nodes:
@@ -592,7 +685,9 @@ class CustomNodeViewer(NodeViewer):
         # 3. 计算阈值（随缩放调整，保证视觉距离一致）
         zoom = self.get_zoom()
         # 避免 zoom 为 -1 (极小) 导致除零
-        scale_factor = max(0.1, 1.0 + zoom) if zoom >= 0 else max(0.1, 1.0 / (1.0 + abs(zoom)))
+        scale_factor = (
+            max(0.1, 1.0 + zoom) if zoom >= 0 else max(0.1, 1.0 / (1.0 + abs(zoom)))
+        )
         current_threshold = SNAP_THRESHOLD / scale_factor
 
         offset_x, offset_y = 0.0, 0.0
@@ -612,20 +707,21 @@ class CustomNodeViewer(NodeViewer):
             # 左对左
             if abs(primary_rect.left() - t_rect.left()) < current_threshold:
                 offset_x = t_rect.left() - primary_rect.left()
-                lines_to_draw.append((t_rect.left(), primary_rect, t_rect, 'vertical'))
+                lines_to_draw.append((t_rect.left(), primary_rect, t_rect, "vertical"))
                 snapped_x = True
             # 右对右
             elif abs(primary_rect.right() - t_rect.right()) < current_threshold:
                 offset_x = t_rect.right() - primary_rect.right()
-                lines_to_draw.append((t_rect.right(), primary_rect, t_rect, 'vertical'))
+                lines_to_draw.append((t_rect.right(), primary_rect, t_rect, "vertical"))
                 snapped_x = True
             # 中对中
             elif abs(p_center.x() - t_center.x()) < current_threshold:
                 offset_x = t_center.x() - p_center.x()
-                lines_to_draw.append((t_center.x(), primary_rect, t_rect, 'vertical'))
+                lines_to_draw.append((t_center.x(), primary_rect, t_rect, "vertical"))
                 snapped_x = True
 
-            if snapped_x: break
+            if snapped_x:
+                break
 
         # --- Y轴对齐 (顶、底、中) ---
         for target in target_nodes:
@@ -635,20 +731,23 @@ class CustomNodeViewer(NodeViewer):
             # 顶对顶
             if abs(primary_rect.top() - t_rect.top()) < current_threshold:
                 offset_y = t_rect.top() - primary_rect.top()
-                lines_to_draw.append((t_rect.top(), primary_rect, t_rect, 'horizontal'))
+                lines_to_draw.append((t_rect.top(), primary_rect, t_rect, "horizontal"))
                 snapped_y = True
             # 底对底
             elif abs(primary_rect.bottom() - t_rect.bottom()) < current_threshold:
                 offset_y = t_rect.bottom() - primary_rect.bottom()
-                lines_to_draw.append((t_rect.bottom(), primary_rect, t_rect, 'horizontal'))
+                lines_to_draw.append(
+                    (t_rect.bottom(), primary_rect, t_rect, "horizontal")
+                )
                 snapped_y = True
             # 中对中
             elif abs(p_center.y() - t_center.y()) < current_threshold:
                 offset_y = t_center.y() - p_center.y()
-                lines_to_draw.append((t_center.y(), primary_rect, t_rect, 'horizontal'))
+                lines_to_draw.append((t_center.y(), primary_rect, t_rect, "horizontal"))
                 snapped_y = True
 
-            if snapped_y: break
+            if snapped_y:
+                break
 
         # 4. 应用位置吸附
         if snapped_x or snapped_y:
@@ -658,7 +757,7 @@ class CustomNodeViewer(NodeViewer):
             # 5. 绘制虚线
             path = QtGui.QPainterPath()
             for pos_val, r1, r2, orientation in lines_to_draw:
-                if orientation == 'vertical':
+                if orientation == "vertical":
                     # 计算垂直线的上下端点
                     top = min(r1.top(), r2.top()) - 20
                     bottom = max(r1.bottom(), r2.bottom()) + 20
@@ -688,7 +787,7 @@ class CustomNodeViewer(NodeViewer):
         item = self.itemAt(pos)
         if isinstance(item, CustomNodeBaseWidget):
             widget = item.widget().get_node_widget()
-            if hasattr(widget, 'code_editor') and widget.code_editor.hasFocus():
+            if hasattr(widget, "code_editor") and widget.code_editor.hasFocus():
                 widget.code_editor.wheelEvent(event)
                 return
             elif hasattr(widget, "summary_label") and widget.summary_label.hasFocus():
@@ -696,7 +795,10 @@ class CustomNodeViewer(NodeViewer):
                 return
         elif isinstance(item, QtWidgets.QGraphicsProxyWidget):
             for widget in QtWidgets.QApplication.allWidgets():
-                if isinstance(widget, CustomComboBox) and widget.view().window().isVisible():
+                if (
+                    isinstance(widget, CustomComboBox)
+                    and widget.view().window().isVisible()
+                ):
                     widget.view().wheelEvent(event)
                     return
         try:
@@ -733,9 +835,13 @@ class CustomNodeViewer(NodeViewer):
             # 开始新操作前先隐藏
             self._selection_overlay.hide()
         # ----------------------------------------
-        if (event.button() == QtCore.Qt.MiddleButton or
-            (event.button() == QtCore.Qt.LeftButton and event.modifiers() == QtCore.Qt.AltModifier) or
-            (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)
+        if (
+            event.button() == QtCore.Qt.MiddleButton
+            or (
+                event.button() == QtCore.Qt.LeftButton
+                and event.modifiers() == QtCore.Qt.AltModifier
+            )
+            or (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)
         ):
             self._panning = True
             if self._navigation_mode:
@@ -749,8 +855,7 @@ class CustomNodeViewer(NodeViewer):
 
         self._origin_pos = event.pos()
         self._previous_pos = event.pos()
-        (self._prev_selection_nodes,
-         self._prev_selection_pipes) = self.selected_items()
+        (self._prev_selection_nodes, self._prev_selection_pipes) = self.selected_items()
 
         if self._search_widget.isVisible():
             self.tab_search_toggle()
@@ -758,9 +863,7 @@ class CustomNodeViewer(NodeViewer):
         map_pos = self.mapToScene(event.pos())
 
         if self.pipe_slicing:
-            slicer_mode = all([
-                self.ALT_state, self.SHIFT_state, self.LMB_state
-            ])
+            slicer_mode = all([self.ALT_state, self.SHIFT_state, self.LMB_state])
             if slicer_mode:
                 self._SLICER_PIPE.draw_path(map_pos, map_pos)
                 self._SLICER_PIPE.setVisible(True)
@@ -842,7 +945,7 @@ class CustomNodeViewer(NodeViewer):
                 pipes[0].reset()
                 port = pipes[0].port_from_pos(map_pos, reverse=True)
                 if not port.locked and port.multi_connection:
-                    self._cursor_text.setPlainText('')
+                    self._cursor_text.setPlainText("")
                     self._cursor_text.setVisible(False)
                     self.start_live_connection(port)
             return
@@ -862,21 +965,22 @@ class CustomNodeViewer(NodeViewer):
         super(CustomNodeViewer, self).mouseMoveEvent(event)
         # 3. 判定是否正在拖拽节点
         is_dragging_nodes = (
-                self.LMB_state and
-                not self.ALT_state and
-                not self.SHIFT_state and
-                not self._rubber_band.isActive and
-                not self._navigation_mode
+            self.LMB_state
+            and not self.ALT_state
+            and not self.SHIFT_state
+            and not self._rubber_band.isActive
+            and not self._navigation_mode
         )
 
         if is_dragging_nodes:
             selected_nodes = [
-                i for i in self.scene().selectedItems()
+                i
+                for i in self.scene().selectedItems()
                 if isinstance(i, AbstractNodeItem)
             ]
 
             # 排除正在缩放节点的情况
-            if any(getattr(n, '_is_resizing', False) for n in selected_nodes):
+            if any(getattr(n, "_is_resizing", False) for n in selected_nodes):
                 self._snap_lines_item.hide()
                 self._selection_overlay.hide()
             else:
@@ -897,7 +1001,7 @@ class CustomNodeViewer(NodeViewer):
         # 1. 检查拉线状态 (NodeGraphQt 基类在拉线时会填充 self._start_port)
         live_pipe_active = self._LIVE_PIPE.isVisible()
         # 关键：直接访问 viewer 自身的 _start_port
-        start_port_item = self._start_port if hasattr(self, '_start_port') else None
+        start_port_item = self._start_port if hasattr(self, "_start_port") else None
 
         # 2. 检测释放位置
         scene_pos = self.mapToScene(event.pos())
@@ -906,8 +1010,13 @@ class CustomNodeViewer(NodeViewer):
         on_port = any(isinstance(i, PortItem) for i in items)
 
         # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
-        if live_pipe_active and start_port_item and not on_port and event.button() == QtCore.Qt.LeftButton:
-            if hasattr(self, '_custom_menu') and self._custom_menu:
+        if (
+            live_pipe_active
+            and start_port_item
+            and not on_port
+            and event.button() == QtCore.Qt.LeftButton
+        ):
+            if hasattr(self, "_custom_menu") and self._custom_menu:
                 self._temp_connection_source = start_port_item
 
                 # 手动触发你的自定义菜单显示
@@ -943,9 +1052,7 @@ class CustomNodeViewer(NodeViewer):
                 self._rubber_band.hide()
 
                 rect = QtCore.QRect(self._origin_pos, event.pos()).normalized()
-                rect_items = self.scene().items(
-                    self.mapToScene(rect).boundingRect()
-                )
+                rect_items = self.scene().items(self.mapToScene(rect).boundingRect())
                 node_ids = []
                 for item in rect_items:
                     if isinstance(item, AbstractNodeItem):
@@ -954,7 +1061,8 @@ class CustomNodeViewer(NodeViewer):
                 self.scene().update(map_rect)
 
         moved_nodes = {
-            n: xy_pos for n, xy_pos in self._node_positions.items()
+            n: xy_pos
+            for n, xy_pos in self._node_positions.items()
             if n.xy_pos != xy_pos
         }
         if moved_nodes and not self.COLLIDING_state:
@@ -973,7 +1081,9 @@ class CustomNodeViewer(NodeViewer):
             if prev_ids != node_ids:
                 self.node_selection_changed.emit(node_ids, prev_ids)
 
-        self._prev_selection_nodes = [n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)]
+        self._prev_selection_nodes = [
+            n for n in self.scene().selectedItems() if isinstance(n, AbstractNodeItem)
+        ]
         if self._navigation_mode:
             self.LMB_state = False  # 确保状态位已重置
             self._panning = False  # 停止平移状态
@@ -983,7 +1093,7 @@ class CustomNodeViewer(NodeViewer):
     def keyPressEvent(self, event):
         focused_widget = QApplication.focusWidget()
         if focused_widget:
-            if hasattr(focused_widget, 'code_editor'):
+            if hasattr(focused_widget, "code_editor"):
                 QApplication.sendEvent(focused_widget.code_editor, event)
                 return
             elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
@@ -1014,7 +1124,7 @@ class CustomNodeViewer(NodeViewer):
 
         if overlay_text:
             self._cursor_text.setPlainText(overlay_text)
-            self._cursor_text.setFont(QtGui.QFont('Arial', 10))
+            self._cursor_text.setFont(QtGui.QFont("Arial", 10))
             self._cursor_text.setDefaultTextColor(Qt.white)
             self._cursor_text.setPos(self.mapToScene(self._previous_pos))
             self._cursor_text.setVisible(True)
@@ -1050,13 +1160,13 @@ class CustomNodeViewer(NodeViewer):
                 # 移出旧控件，重置样式
                 if self._last_drag_target:
                     group_box = self._last_drag_target.widget()
-                    if hasattr(group_box, 'reset'):
+                    if hasattr(group_box, "reset"):
                         group_box.reset()
 
                 # 进入新控件，高亮样式
                 if target_widget:
                     group_box = target_widget.widget()
-                    if hasattr(group_box, 'highlight'):
+                    if hasattr(group_box, "highlight"):
                         group_box.highlight()
 
                 self._last_drag_target = target_widget
@@ -1066,10 +1176,16 @@ class CustomNodeViewer(NodeViewer):
         else:
             # 处理普通的节点创建拖拽 以及 我们的子图模板拖拽
             # 在列表里增加 'application/x-subgraph-template'
-            is_acceptable = any([
-                mime_data.hasFormat(i) for i in
-                ['nodegraphqt/nodes', 'text/plain', 'application/x-subgraph-template']
-            ])
+            is_acceptable = any(
+                [
+                    mime_data.hasFormat(i)
+                    for i in [
+                        "nodegraphqt/nodes",
+                        "text/plain",
+                        "application/x-subgraph-template",
+                    ]
+                ]
+            )
 
             if is_acceptable:
                 event.accept()
@@ -1080,7 +1196,7 @@ class CustomNodeViewer(NodeViewer):
         """当拖拽彻底离开画布区域时，重置所有高亮"""
         if self._last_drag_target:
             group_box = self._last_drag_target.widget()
-            if hasattr(group_box, 'reset'):
+            if hasattr(group_box, "reset"):
                 group_box.reset()
             self._last_drag_target = None
         event.accept()
@@ -1092,9 +1208,11 @@ class CustomNodeViewer(NodeViewer):
             scene_pos = self.mapToScene(pos)
             # --- 情况 A：如果是画布模板，且鼠标下有属性控件 -> 创建节点组 ---
             if mime_data.hasFormat("application/x-subgraph-template"):
-                tid = bytes(mime_data.data("application/x-subgraph-template")).decode('utf-8')
+                tid = bytes(mime_data.data("application/x-subgraph-template")).decode(
+                    "utf-8"
+                )
                 # 找到 template_panel 实例（假设它在 home_window 下）
-                template_panel = getattr(self.home_window, 'template_manager', None)
+                template_panel = getattr(self.home_window, "template_manager", None)
                 if template_panel:
                     template_panel.apply_template(tid, pos=scene_pos)
                     event.accept()
@@ -1102,7 +1220,7 @@ class CustomNodeViewer(NodeViewer):
 
             if self._last_drag_target:
                 group_box = self._last_drag_target.widget()
-                if hasattr(group_box, 'reset'):
+                if hasattr(group_box, "reset"):
                     group_box.reset()
                 self._last_drag_target = None
 
@@ -1120,11 +1238,13 @@ class CustomNodeViewer(NodeViewer):
             # --- 情况 B：如果是变量，且鼠标下有属性控件 -> 执行绑定 ---
             if mime_data.hasFormat("application/x-global-variable") and target_widget:
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                drag_data = orjson.loads(data_bytes.decode('utf-8'))
+                drag_data = orjson.loads(data_bytes.decode("utf-8"))
                 # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
-                target_widget._global_widget.set_value(f"{drag_data['var_type']}.{drag_data['var_name']}")
+                target_widget._global_widget.set_value(
+                    f"{drag_data['var_type']}.{drag_data['var_name']}"
+                )
                 event.accept()
                 return
 
@@ -1133,17 +1253,21 @@ class CustomNodeViewer(NodeViewer):
                 node = self.home_window.graph.create_node(node_type)
                 self.home_window.nav_view.record_usage(full_path)
                 node.set_pos(scene_pos.x(), scene_pos.y())
-                QtCore.QTimer.singleShot(0, lambda: self.home_window.property_panel.update_properties(node))
-                if hasattr(node, 'status'):
+                QtCore.QTimer.singleShot(
+                    0, lambda: self.home_window.property_panel.update_properties(node)
+                )
+                if hasattr(node, "status"):
                     node.status = NodeStatus.NODE_STATUS_UNRUN
 
                 # 变量节点自动设置部分属性，便于与普通节点区分
                 if mime_data.hasFormat("application/x-global-variable"):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
-                    drag_data = orjson.loads(data_bytes.decode('utf-8'))
+                    drag_data = orjson.loads(data_bytes.decode("utf-8"))
                     node.set_icon(":/icons/变量.svg")
-                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
-                    node.set_name("\n".join(drag_data['var_name'].split("__")))
+                    node.set_property(
+                        "var_name", f"{drag_data['var_type']}.{drag_data['var_name']}"
+                    )
+                    node.set_name("\n".join(drag_data["var_name"].split("__")))
                     node.view.toggle_collapse()
                     self.home_window.canvas_runner.run_node(node)
                 event.accept()
@@ -1154,7 +1278,7 @@ class CustomNodeViewer(NodeViewer):
 
     def resizeEvent(self, event):
         self.home_window.ui_manager.update_position()
-        if hasattr(self, '_selection_overlay') and self._selection_overlay._visible:
+        if hasattr(self, "_selection_overlay") and self._selection_overlay._visible:
             self._selection_overlay.refresh(full_recalc=False)
         return super().resizeEvent(event)
 
@@ -1171,7 +1295,7 @@ class CustomNodeViewer(NodeViewer):
                 tight_rect = node.mapRectToScene(node.boundingRect())
 
                 # 2. 遍历子项，只合并可见的
-                if hasattr(node, 'childItems'):
+                if hasattr(node, "childItems"):
                     for child in node.childItems():
                         if child.isVisible():
                             # 将子项的包围盒映射到场景并合并
@@ -1206,7 +1330,7 @@ class CustomNodeViewer(NodeViewer):
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, False)
 
         # --- 优化 2: 安全清理旧动画 ---
-        if hasattr(self, '_zoom_anim_group') and self._zoom_anim_group:
+        if hasattr(self, "_zoom_anim_group") and self._zoom_anim_group:
             if self._zoom_anim_group.state() == QtCore.QAbstractAnimation.Running:
                 self._zoom_anim_group.stop()
             # 显式删除以防内存泄漏
@@ -1289,14 +1413,18 @@ class CustomNodeViewer(NodeViewer):
             anim_out.setDuration(int(duration * 0.4))  # 拉远稍快
             anim_out.setStartValue(start_rect)
             anim_out.setEndValue(overview_rect)
-            anim_out.setEasingCurve(QtCore.QEasingCurve.OutQuad)  # 拉远用 Quad，比较柔和
+            anim_out.setEasingCurve(
+                QtCore.QEasingCurve.OutQuad
+            )  # 拉远用 Quad，比较柔和
             anim_out.valueChanged.connect(n_update)
 
             anim_in = QtCore.QVariantAnimation(self._zoom_anim_group)
             anim_in.setDuration(int(duration * 0.6))  # 推近稍慢，便于人眼聚焦
             anim_in.setStartValue(overview_rect)
             anim_in.setEndValue(target_rect)
-            anim_in.setEasingCurve(QtCore.QEasingCurve.OutQuart)  # 推近用 Quart，精准停靠
+            anim_in.setEasingCurve(
+                QtCore.QEasingCurve.OutQuart
+            )  # 推近用 Quart，精准停靠
             anim_in.valueChanged.connect(n_update)
 
             self._zoom_anim_group.addAnimation(anim_out)
@@ -1360,9 +1488,7 @@ class CustomNodeViewer(NodeViewer):
                     pointer_color = PipeEnum.DISABLED_COLOR.value
             break
 
-        self._LIVE_PIPE.draw_path(
-            self._start_port, cursor_pos=pos, color=pointer_color
-        )
+        self._LIVE_PIPE.draw_path(self._start_port, cursor_pos=pos, color=pointer_color)
 
     def sceneMousePressEvent(self, event):
         """
@@ -1446,8 +1572,8 @@ class CustomNodeViewer(NodeViewer):
             from_port.hovered = True
 
             attr = {
-                PortTypeEnum.IN.value: 'output_port',
-                PortTypeEnum.OUT.value: 'input_port'
+                PortTypeEnum.IN.value: "output_port",
+                PortTypeEnum.OUT.value: "input_port",
             }
             self._detached_port = getattr(pipe, attr[from_port.port_type])
             self.start_live_connection(from_port)
@@ -1505,11 +1631,12 @@ class CustomNodeViewer(NodeViewer):
         # if port disconnected from existing pipe.
         if end_port is None:
             if self._detached_port and not self._LIVE_PIPE.shift_selected:
-                dist = math.hypot(self._previous_pos.x() - self._origin_pos.x(),
-                                  self._previous_pos.y() - self._origin_pos.y())
+                dist = math.hypot(
+                    self._previous_pos.x() - self._origin_pos.x(),
+                    self._previous_pos.y() - self._origin_pos.y(),
+                )
                 if dist <= 2.0:  # cursor pos threshold.
-                    self.establish_connection(self._start_port,
-                                              self._detached_port)
+                    self.establish_connection(self._start_port, self._detached_port)
                     self._detached_port = None
                 else:
                     disconnected.append((self._start_port, self._detached_port))
@@ -1529,18 +1656,20 @@ class CustomNodeViewer(NodeViewer):
             # allow a node cycle connection.
             same_node_connection = False
         # restore connection check.
-        restore_connection = any([
-            # if the end port is locked.
-            end_port.locked,
-            # if same port type.
-            end_port.port_type == self._start_port.port_type,
-            # if connection to itself.
-            same_node_connection,
-            # if end port is the start port.
-            end_port == self._start_port,
-            # if detached port is the end port.
-            self._detached_port == end_port,
-        ])
+        restore_connection = any(
+            [
+                # if the end port is locked.
+                end_port.locked,
+                # if same port type.
+                end_port.port_type == self._start_port.port_type,
+                # if connection to itself.
+                same_node_connection,
+                # if end port is the start port.
+                end_port == self._start_port,
+                # if detached port is the end port.
+                self._detached_port == end_port,
+            ]
+        )
         if restore_connection:
             if self._detached_port:
                 to_port = self._detached_port or end_port
@@ -1550,8 +1679,10 @@ class CustomNodeViewer(NodeViewer):
             return
 
         # end connection if starting port is already connected.
-        if self._start_port.multi_connection and \
-                self._start_port in end_port.connected_ports:
+        if (
+            self._start_port.multi_connection
+            and self._start_port in end_port.connected_ports
+        ):
             self._detached_port = None
             self.end_live_connection()
             return
@@ -1600,8 +1731,10 @@ class GraphSplitter(ModernSplitter):
         """递归寻找最后一个可用的 Viewer"""
         for i in range(self.count() - 1, -1, -1):
             w = self.widget(i)
-            if isinstance(w, CustomNodeViewer): return w
-            if isinstance(w, GraphSplitter): return w._find_fallback_viewer()
+            if isinstance(w, CustomNodeViewer):
+                return w
+            if isinstance(w, GraphSplitter):
+                return w._find_fallback_viewer()
         return None
 
     def set_active_viewer(self, viewer):
@@ -1638,14 +1771,16 @@ class GraphSplitter(ModernSplitter):
 
     def _do_split(self, orientation):
         source = self.get_active_viewer()
-        if not source: return
+        if not source:
+            return
 
         shared_scene = source.scene()
         new_viewer = CustomNodeViewer(parent=source.home_window, scene=shared_scene)
         new_viewer._ctx_node_menu = source._ctx_node_menu
         # 找到 source 所在的那个直接父 Splitter
         parent_sp = source.parent()
-        if not isinstance(parent_sp, GraphSplitter): return
+        if not isinstance(parent_sp, GraphSplitter):
+            return
 
         idx = parent_sp.indexOf(source)
 
@@ -1702,7 +1837,7 @@ class GraphSplitter(ModernSplitter):
             InfoBar.warning("无法删除主视角", "", parent=self.parent_window)
             return
 
-        p = target.parent() # 这里的 p 是当前的嵌套 Splitter
+        p = target.parent()  # 这里的 p 是当前的嵌套 Splitter
         target.setParent(None)
         target.deleteLater()
 
@@ -1726,7 +1861,6 @@ class GraphSplitter(ModernSplitter):
 
 
 class CustomNodeGraph(NodeGraph):
-
     def __init__(self, parent, **kwargs):
         self.graph_splitter = kwargs.get("splitter")
         super(CustomNodeGraph, self).__init__(parent, **kwargs)
@@ -1749,14 +1883,12 @@ class CustomNodeGraph(NodeGraph):
         viewer.moved_nodes.connect(self._on_nodes_moved)
         viewer.node_double_clicked.connect(self._on_node_double_clicked)
         viewer.node_name_changed.connect(self._on_node_name_changed)
-        viewer.node_backdrop_updated.connect(
-            self._on_node_backdrop_updated)
+        viewer.node_backdrop_updated.connect(self._on_node_backdrop_updated)
         viewer.insert_node.connect(self._on_insert_node)
 
         # pass through translated signals.
         viewer.node_selected.connect(self._on_node_selected)
-        viewer.node_selection_changed.connect(
-            self._on_node_selection_changed)
+        viewer.node_selection_changed.connect(self._on_node_selection_changed)
         viewer.data_dropped.connect(self._on_node_data_dropped)
         viewer.context_menu_prompt.connect(self._on_context_menu_prompt)
 
@@ -1855,10 +1987,10 @@ class CustomNodeGraph(NodeGraph):
         if not self.viewer():
             return
         menus = self.viewer().context_menus()
-        if menus.get('graph'):
-            self._context_menu['graph'] = NodeGraphMenu(self, menus['graph'])
-        if menus.get('nodes'):
-            self._context_menu['nodes'] = CustomNodesMenu(self, menus['nodes'])
+        if menus.get("graph"):
+            self._context_menu["graph"] = NodeGraphMenu(self, menus["graph"])
+        if menus.get("nodes"):
+            self._context_menu["nodes"] = CustomNodesMenu(self, menus["nodes"])
 
     def set_pipe_style(self, style=PipeLayoutEnum.CURVED.value):
         """
@@ -1879,9 +2011,13 @@ class CustomNodeGraph(NodeGraph):
         Args:
             style (int): pipe layout style.
         """
-        pipe_max = max([PipeLayoutEnum.CURVED.value,
-                        PipeLayoutEnum.STRAIGHT.value,
-                        PipeLayoutEnum.ANGLE.value])
+        pipe_max = max(
+            [
+                PipeLayoutEnum.CURVED.value,
+                PipeLayoutEnum.STRAIGHT.value,
+                PipeLayoutEnum.ANGLE.value,
+            ]
+        )
         style = style if 0 <= style <= pipe_max else PipeLayoutEnum.CURVED.value
         self._model.pipe_style = style
         self.viewer().set_pipe_layout(style)
@@ -1933,9 +2069,11 @@ class CustomNodeGraph(NodeGraph):
         """
 
         serial_data = deserialize_from_json(cb_data)
-        self._undo_stack.beginMacro('pasted nodes')
+        self._undo_stack.beginMacro("pasted nodes")
         self.clear_selection()
-        nodes, _ = self._deserialize(serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style)
+        nodes, _ = self._deserialize(
+            serial_data, relative_pos=True, adjust_graph_style=adjust_graph_style
+        )
         [n.set_selected(True) for n in nodes]
         self._undo_stack.endMacro()
         return nodes
@@ -1953,7 +2091,7 @@ class CustomNodeGraph(NodeGraph):
         if not isinstance(node, GroupNode):
             return
         if self._widget is None:
-            raise RuntimeError('NodeGraph.widget not initialized!')
+            raise RuntimeError("NodeGraph.widget not initialized!")
 
         self.viewer().clear_key_state()
         self.viewer().clearFocus()
@@ -1968,13 +2106,10 @@ class CustomNodeGraph(NodeGraph):
         node_factory = copy.deepcopy(self.node_factory)
         layout_direction = self.layout_direction()
         kwargs = {
-            'layout_direction': self.layout_direction(),
-            'pipe_style': self.pipe_style(),
+            "layout_direction": self.layout_direction(),
+            "pipe_style": self.pipe_style(),
         }
-        sub_graph = SubGraph(self,
-                             node=node,
-                             node_factory=node_factory,
-                             **kwargs)
+        sub_graph = SubGraph(self, node=node, node_factory=node_factory, **kwargs)
 
         # populate the sub graph.
         session = node.get_sub_graph_session()
@@ -1988,7 +2123,7 @@ class CustomNodeGraph(NodeGraph):
         sub_graph.viewer().zoom_to_nodes([n.view for n in sub_graph.all_nodes()])
         return sub_graph
 
-    def serialize_session(self, exclude_keys: list[str]=[]):
+    def serialize_session(self, exclude_keys: list[str] = []):
         """
         Serializes the current node graph layout to a dictionary.
 
@@ -2002,7 +2137,7 @@ class CustomNodeGraph(NodeGraph):
         """
         return self._serialize(self.all_nodes(), exclude_keys)
 
-    def _serialize(self, nodes, exclude_keys: list[str]=[]):
+    def _serialize(self, nodes, exclude_keys: list[str] = []):
         """
         serialize nodes to a dict.
         (used internally by the node graph)
@@ -2013,15 +2148,15 @@ class CustomNodeGraph(NodeGraph):
         Returns:
             dict: serialized data.
         """
-        serial_data = {'graph': {}, 'nodes': {}, 'connections': []}
+        serial_data = {"graph": {}, "nodes": {}, "connections": []}
         nodes_data = {}
 
         # serialize graph session.
-        serial_data['graph']['layout_direction'] = self.layout_direction()
-        serial_data['graph']['acyclic'] = self.acyclic()
-        serial_data['graph']['pipe_collision'] = self.pipe_collision()
-        serial_data['graph']['pipe_slicing'] = self.pipe_slicing()
-        serial_data['graph']['pipe_style'] = self.pipe_style()
+        serial_data["graph"]["layout_direction"] = self.layout_direction()
+        serial_data["graph"]["acyclic"] = self.acyclic()
+        serial_data["graph"]["pipe_collision"] = self.pipe_collision()
+        serial_data["graph"]["pipe_slicing"] = self.pipe_slicing()
+        serial_data["graph"]["pipe_style"] = self.pipe_style()
 
         # serialize nodes.
         for n in nodes:
@@ -2033,48 +2168,63 @@ class CustomNodeGraph(NodeGraph):
             if hasattr(n, "input_ports"):
                 node_dict[n_id].update(
                     {
-                        "input_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in n.input_ports()],
-                        "output_ports": [{"name": p.name(), "multi_connection": p.model.multi_connection} for p in
-                                        n.output_ports()],
-                        "output_values": {} if not hasattr(n, "_output_values") else serialize_for_json(n._output_values)
+                        "input_ports": [
+                            {
+                                "name": p.name(),
+                                "multi_connection": p.model.multi_connection,
+                            }
+                            for p in n.input_ports()
+                        ],
+                        "output_ports": [
+                            {
+                                "name": p.name(),
+                                "multi_connection": p.model.multi_connection,
+                            }
+                            for p in n.output_ports()
+                        ],
+                        "output_values": {}
+                        if not hasattr(n, "_output_values")
+                        else serialize_for_json(n._output_values),
                     }
                 )
                 node_dict[n_id]["custom"]["FULL_PATH"] = n.FULL_PATH
             # 过滤不需要的字段
-            node_dict[n_id] = {k: v for k, v in node_dict[n_id].items() if k not in exclude_keys}
+            node_dict[n_id] = {
+                k: v for k, v in node_dict[n_id].items() if k not in exclude_keys
+            }
             nodes_data.update(node_dict)
 
         for n_id, n_data in nodes_data.items():
-            serial_data['nodes'][n_id] = n_data
+            serial_data["nodes"][n_id] = n_data
 
             # serialize connections
-            inputs = n_data.pop('inputs') if n_data.get('inputs') else {}
-            outputs = n_data.pop('outputs') if n_data.get('outputs') else {}
+            inputs = n_data.pop("inputs") if n_data.get("inputs") else {}
+            outputs = n_data.pop("outputs") if n_data.get("outputs") else {}
 
             for pname, conn_data in inputs.items():
                 for conn_id, prt_names in conn_data.items():
                     for conn_prt in prt_names:
                         pipe = {
                             PortTypeEnum.IN.value: [n_id, pname],
-                            PortTypeEnum.OUT.value: [conn_id, conn_prt]
+                            PortTypeEnum.OUT.value: [conn_id, conn_prt],
                         }
-                        if pipe not in serial_data['connections']:
-                            serial_data['connections'].append(pipe)
+                        if pipe not in serial_data["connections"]:
+                            serial_data["connections"].append(pipe)
 
             for pname, conn_data in outputs.items():
                 for conn_id, prt_names in conn_data.items():
                     for conn_prt in prt_names:
                         pipe = {
                             PortTypeEnum.OUT.value: [n_id, pname],
-                            PortTypeEnum.IN.value: [conn_id, conn_prt]
+                            PortTypeEnum.IN.value: [conn_id, conn_prt],
                         }
-                        if pipe not in serial_data['connections']:
-                            serial_data['connections'].append(pipe)
+                        if pipe not in serial_data["connections"]:
+                            serial_data["connections"].append(pipe)
 
-        if not serial_data['connections']:
-            serial_data.pop('connections')
+        if not serial_data["connections"]:
+            serial_data.pop("connections")
         # 全局变量序列化
-        serial_data['global_variables'] = self.global_variables.serialize()
+        serial_data["global_variables"] = self.global_variables.serialize()
 
         return serial_data
 
@@ -2093,13 +2243,15 @@ class CustomNodeGraph(NodeGraph):
             list[NodeGraphQt.Nodes]: list of node instances.
         """
         try:
-            if isinstance(data, str): return
+            if isinstance(data, str):
+                return
             self.viewer().scene().blockSignals(True)
             self.viewer().setUpdatesEnabled(False)
             # 反序列化 全局变量
             if data.get("global_variables"):
                 self.global_variables.deserialize(data.get("global_variables"))
             node_resize_memory = Settings.get_instance().canvas_resize_memory.value
+
             # Recursive function to convert last lists to sets
             def convert_last_list_to_set(d):
                 for key, value in d.items():
@@ -2120,14 +2272,14 @@ class CustomNodeGraph(NodeGraph):
                         self.set_pipe_slicing(attr_value)
 
             # 分离 backdrop 节点和其他节点
-            nodes_data = data.get('nodes', {})
+            nodes_data = data.get("nodes", {})
             non_backdrop_nodes_data = {}
             backdrop_nodes_data = {}
 
             for n_id, n_data in nodes_data.items():
                 # 判断是否为 backdrop 节点
-                node_type = n_data.get('type_', '')
-                if 'control_flow' in node_type.lower():
+                node_type = n_data.get("type_", "")
+                if "control_flow" in node_type.lower():
                     backdrop_nodes_data[n_id] = n_data
                 else:
                     non_backdrop_nodes_data[n_id] = n_data
@@ -2137,20 +2289,24 @@ class CustomNodeGraph(NodeGraph):
 
             # 处理非 backdrop 节点
             for n_id, n_data in non_backdrop_nodes_data.items():
-                identifier = n_data['type_']
-                node_width, node_height = n_data.get('width'), n_data.get('height')
+                identifier = n_data["type_"]
+                node_width, node_height = n_data.get("width"), n_data.get("height")
                 node = self._node_factory.create_node_instance(identifier)
                 if node:
-                    node._output_values = deserialize_from_json(n_data.get('output_values', {}))
+                    node._output_values = deserialize_from_json(
+                        n_data.get("output_values", {})
+                    )
                     # 避免复制时触发重命名信号
-                    node.NODE_NAME = n_data.get('name', node.NODE_NAME)
+                    node.NODE_NAME = n_data.get("name", node.NODE_NAME)
                     # set properties.
                     for prop in node.model.properties.keys():
                         if prop in n_data.keys():
                             node.model.set_property(prop, n_data[prop])
-                    self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
+                    self.add_node(
+                        node, n_data.get("pos"), inherite_graph_style=adjust_graph_style
+                    )
                     # set custom properties.
-                    for prop, val in n_data.get('custom', {}).items():
+                    for prop, val in n_data.get("custom", {}).items():
                         try:
                             node.model.set_property(prop, val)
                         except:
@@ -2161,41 +2317,58 @@ class CustomNodeGraph(NodeGraph):
                             node._view.toggle_collapse()
                         if isinstance(node, BaseNode):
                             if prop in node.view.widgets:
-                                var_type = getattr(node.view.widgets[prop], "var_type")\
-                                        if hasattr(node.view.widgets[prop], "var_type") else None
-                                if GlobalVariableContext.is_variable_name(val) and var_type != "全局变量":
+                                var_type = (
+                                    getattr(node.view.widgets[prop], "var_type")
+                                    if hasattr(node.view.widgets[prop], "var_type")
+                                    else None
+                                )
+                                if (
+                                    GlobalVariableContext.is_variable_name(val)
+                                    and var_type != "全局变量"
+                                ):
                                     node.view.widgets[prop].toggle_global_mode(True)
                                 node.view.widgets[prop].set_value(val)
                         elif node.type_ == "general.StickyNote":
                             node.set_property(prop, val)
                     # 决定是否还原节点最后保存时缩放大小
-                    if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
+                    if node_resize_memory and hasattr(
+                        node.view, "_sync_size_from_model"
+                    ):
                         node.view._sync_size_from_model(node_width, node_height)
                     # 改变节点状态，成功状态改为上次成功状态进行区分
-                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
-                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if (
+                        n_data["custom"].get("_status")
+                        == NodeStatus.NODE_STATUS_SUCCESS
+                    ):
+                        n_data["custom"]["_status"] = (
+                            NodeStatus.NODE_STATUS_LAST_SUCCESS
+                        )
                     if hasattr(node, "status"):
                         node.status = n_data["custom"].get("_status")
                     nodes[n_id] = node
 
             # 处理 backdrop 节点（放到最后）
             for n_id, n_data in backdrop_nodes_data.items():
-                identifier = n_data['type_']
+                identifier = n_data["type_"]
                 node = self._node_factory.create_node_instance(identifier)
                 if node:
-                    node.NODE_NAME = n_data.get('name', node.NODE_NAME)
+                    node.NODE_NAME = n_data.get("name", node.NODE_NAME)
                     # set properties.
                     for prop in node.model.properties.keys():
                         if prop in n_data.keys():
                             node.model.set_property(prop, n_data[prop])
-                    self.add_node(node, n_data.get('pos'), inherite_graph_style=adjust_graph_style)
-                    if n_data.get('port_deletion_allowed', None):
-                        node.set_ports({
-                            'input_ports': n_data['input_ports'],
-                            'output_ports': n_data['output_ports']
-                        })
+                    self.add_node(
+                        node, n_data.get("pos"), inherite_graph_style=adjust_graph_style
+                    )
+                    if n_data.get("port_deletion_allowed", None):
+                        node.set_ports(
+                            {
+                                "input_ports": n_data["input_ports"],
+                                "output_ports": n_data["output_ports"],
+                            }
+                        )
                     # set custom properties.
-                    for prop, val in n_data.get('custom', {}).items():
+                    for prop, val in n_data.get("custom", {}).items():
                         try:
                             node.model.set_property(prop, val)
                         except:
@@ -2205,23 +2378,30 @@ class CustomNodeGraph(NodeGraph):
                         if isinstance(node, BaseNode):
                             if prop in node.view.widgets:
                                 node.view.widgets[prop].set_value(val)
-                    if node_resize_memory and hasattr(node.view, '_sync_size_from_model'):
+                    if node_resize_memory and hasattr(
+                        node.view, "_sync_size_from_model"
+                    ):
                         node.view._sync_size_from_model(node_width, node_height)
                     nodes[n_id] = node
 
                     # 改变节点状态，成功状态改为上次成功状态进行区分
-                    if n_data["custom"].get("_status") == NodeStatus.NODE_STATUS_SUCCESS:
-                        n_data["custom"]["_status"] = NodeStatus.NODE_STATUS_LAST_SUCCESS
+                    if (
+                        n_data["custom"].get("_status")
+                        == NodeStatus.NODE_STATUS_SUCCESS
+                    ):
+                        n_data["custom"]["_status"] = (
+                            NodeStatus.NODE_STATUS_LAST_SUCCESS
+                        )
                     if hasattr(node, "status"):
                         node.status = n_data["custom"].get("_status")
 
             node_objs = nodes.values()
             if relative_pos:
                 self.viewer().move_nodes([n.view for n in node_objs])
-                [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
+                [setattr(n.model, "pos", n.view.xy_pos) for n in node_objs]
             elif pos:
                 self.viewer().move_nodes([n.view for n in node_objs], pos=pos)
-                [setattr(n.model, 'pos', n.view.xy_pos) for n in node_objs]
+                [setattr(n.model, "pos", n.view.xy_pos) for n in node_objs]
             QtCore.QTimer.singleShot(150, lambda: self.build_connections(data, nodes))
         except:
             logger.exception("Error while building nodes")
@@ -2242,11 +2422,11 @@ class CustomNodeGraph(NodeGraph):
         retry_interval = 100  # 每次重试间隔 (ms)
 
         pending_connections = []
-        all_connections = data.get('connections', [])
+        all_connections = data.get("connections", [])
 
         for connection in all_connections:
-            in_nid, in_pname = connection.get('in', ('', ''))
-            out_nid, out_pname = connection.get('out', ('', ''))
+            in_nid, in_pname = connection.get("in", ("", ""))
+            out_nid, out_pname = connection.get("out", ("", ""))
 
             in_node = nodes.get(in_nid)
             out_node = nodes.get(out_nid)
@@ -2273,17 +2453,19 @@ class CustomNodeGraph(NodeGraph):
         # 如果还有没连上的线，并且没超过最大尝试次数
         if pending_connections and attempts < max_attempts:
             # 构造一个临时的 data 结构用于下次重试
-            retry_data = {'connections': pending_connections}
+            retry_data = {"connections": pending_connections}
 
             # 延迟重试
             QtCore.QTimer.singleShot(
                 retry_interval,
-                lambda: self.build_connections(retry_data, nodes, attempts + 1)
+                lambda: self.build_connections(retry_data, nodes, attempts + 1),
             )
         else:
             # 全部连完或彻底失败后的清理工作
             if pending_connections:
-                print(f"Warning: Failed to connect {len(pending_connections)} lines after {max_attempts} attempts.")
+                print(
+                    f"Warning: Failed to connect {len(pending_connections)} lines after {max_attempts} attempts."
+                )
 
             # 恢复 UI 更新
             self.viewer().setUpdatesEnabled(True)
@@ -2301,7 +2483,7 @@ class CustomNodeGraph(NodeGraph):
             NodeGraphQt.NodeObject: node object.
         """
         for node_id, node in self._model.nodes.items():
-            if not hasattr(node, 'persistent_id'):
+            if not hasattr(node, "persistent_id"):
                 continue
             if node.persistent_id == uuid:
                 return node

@@ -3,8 +3,12 @@ import math
 import weakref
 
 from NodeGraphQt.constants import (
-    PipeLayoutEnum, PortTypeEnum, PipeEnum,
-    Z_VAL_PIPE, Z_VAL_PORT, Z_VAL_NODE_WIDGET
+    PipeLayoutEnum,
+    PortTypeEnum,
+    PipeEnum,
+    Z_VAL_PIPE,
+    Z_VAL_PORT,
+    Z_VAL_NODE_WIDGET,
 )
 from NodeGraphQt.qgraphics.pipe import PipeItem, LivePipeItem
 from PyQt5 import QtGui, QtCore, sip
@@ -79,18 +83,26 @@ class CustomPipeItem(PipeItem):
         super(CustomPipeItem, self).__init__()
         self.setAcceptHoverEvents(True)
 
+        self._cached_path = None
+        self._cached_port_positions = None
+
     def paint(self, painter, option, widget):
         # --- 性能优化核心：获取当前视图的缩放比例 (Level of Detail) ---
         lod = option.levelOfDetailFromTransform(painter.worldTransform())
 
         path = self.path()
-        if path.isEmpty(): return
+        if path.isEmpty():
+            return
 
         c = self.color
         base_color = QtGui.QColor(c[0], c[1], c[2], c[3])
 
         if self._running:
-            base_color = QtGui.QColor(64, 158, 255) if self._running_type == "input" else QtGui.QColor(50, 205, 50)
+            base_color = (
+                QtGui.QColor(64, 158, 255)
+                if self._running_type == "input"
+                else QtGui.QColor(50, 205, 50)
+            )
         if self._active:
             base_color = QtGui.QColor(*PipeEnum.ACTIVE_COLOR.value)
         elif self._highlight and not self._running:
@@ -98,14 +110,20 @@ class CustomPipeItem(PipeItem):
 
         # 1. 绘制底层阴影 (极小缩放时不画)
         if lod > 0.4:
-            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 80), self.pen().widthF() + 1.5))
+            painter.setPen(
+                QtGui.QPen(QtGui.QColor(0, 0, 0, 80), self.pen().widthF() + 1.5)
+            )
             painter.drawPath(path)
 
         # 2. 绘制发光层 (只有在中等以上缩放才画，这是性能大户)
-        if lod > 0.7 and (self._active or self._highlight or self._is_hovered or self._running):
+        if lod > 0.7 and (
+            self._active or self._highlight or self._is_hovered or self._running
+        ):
             glow_steps = 2  # 减少循环次数
             for i in range(glow_steps, 0, -1):
-                g_col = QtGui.QColor(base_color.red(), base_color.green(), base_color.blue(), 30)
+                g_col = QtGui.QColor(
+                    base_color.red(), base_color.green(), base_color.blue(), 30
+                )
                 g_pen = QtGui.QPen(g_col, self.pen().widthF() + (i * 5))
                 g_pen.setCapStyle(QtCore.Qt.RoundCap)
                 painter.setPen(g_pen)
@@ -118,7 +136,7 @@ class CustomPipeItem(PipeItem):
         painter.drawPath(path)
 
         # 4. 绘制流光动画 (只有放大时才画动画，解决多视角卡顿)
-        if lod > 0.2 and getattr(self, '_flow_running', False):
+        if lod > 0.2 and getattr(self, "_flow_running", False):
             painter.save()
             # 使用半透明黑或白，增强对比
             f_pen = QtGui.QPen(QtGui.QColor(0, 0, 0, 180), 3)
@@ -137,10 +155,19 @@ class CustomPipeItem(PipeItem):
     # 路径绘制核心逻辑 (完美还原你的避让算法)
     # ==========================================================
     def _draw_path_horizontal(self, start_port, pos1, pos2, path):
+        current_pos_key = (pos1.x(), pos1.y(), pos2.x(), pos2.y())
+
+        if (
+            self._cached_path is not None
+            and self._cached_port_positions == current_pos_key
+        ):
+            path = self._cached_path
+            self.setPath(path)
+            return
+
         layout = self.viewer_pipe_layout()
 
         if layout == PipeLayoutEnum.CURVED.value:
-            # 改进贝塞尔曲线：根据距离动态调整曲率
             dist = math.hypot(pos2.x() - pos1.x(), pos2.y() - pos1.y())
             offset = min(dist * 0.5, 150.0)
 
@@ -148,15 +175,19 @@ class CustomPipeItem(PipeItem):
             cp2 = QtCore.QPointF(pos2.x() - offset, pos2.y())
 
             if start_port.port_type == PortTypeEnum.IN.value:
-                cp1, cp2 = QtCore.QPointF(pos1.x() - offset, pos1.y()), QtCore.QPointF(pos2.x() + offset, pos2.y())
+                cp1, cp2 = (
+                    QtCore.QPointF(pos1.x() - offset, pos1.y()),
+                    QtCore.QPointF(pos2.x() + offset, pos2.y()),
+                )
 
             path.cubicTo(cp1, cp2, pos2)
 
         elif layout == PipeLayoutEnum.ANGLE.value:
-            # 改进的折线避让逻辑
             points = self._calculate_smart_angles(start_port, pos1, pos2)
             self._draw_rounded_path(path, points, radius=12.0)
 
+        self._cached_path = QtGui.QPainterPath(path)
+        self._cached_port_positions = current_pos_key
         self.setPath(path)
 
     def _calculate_smart_angles(self, start_port, pos1, pos2):
@@ -166,12 +197,19 @@ class CustomPipeItem(PipeItem):
         margin = 40.0
 
         # 判断是否需要“掉头”避让 (即终点在起点的后方)
-        needs_bypass = (pos2.x() < pos1.x() + margin) if is_out else (pos2.x() > pos1.x() - margin)
+        needs_bypass = (
+            (pos2.x() < pos1.x() + margin) if is_out else (pos2.x() > pos1.x() - margin)
+        )
 
         if not needs_bypass:
             # 标准 Z 型走线
             mid_x = pos1.x() + (pos2.x() - pos1.x()) * 0.5
-            return [pos1, QtCore.QPointF(mid_x, pos1.y()), QtCore.QPointF(mid_x, pos2.y()), pos2]
+            return [
+                pos1,
+                QtCore.QPointF(mid_x, pos1.y()),
+                QtCore.QPointF(mid_x, pos2.y()),
+                pos2,
+            ]
         else:
             # 绕路避让逻辑
             node_rect = start_port.node.sceneBoundingRect()
@@ -189,10 +227,12 @@ class CustomPipeItem(PipeItem):
             return [pos1, p1, p2, p3, p4, pos2]
 
     def _draw_rounded_path(self, path, points, radius=10.0):
-        if not points: return
+        if not points:
+            return
         if len(points) < 3:
             path.moveTo(points[0])
-            for p in points[1:]: path.lineTo(p)
+            for p in points[1:]:
+                path.lineTo(p)
             return
 
         path.moveTo(points[0])
@@ -214,29 +254,37 @@ class CustomPipeItem(PipeItem):
     # 交互与状态控制
     # ==========================================================
     def running(self, type="input"):
+        self._cached_path = None
+        self._cached_port_positions = None
         self._running = True
         self._running_type = type
         color = (50, 205, 50, 255) if type == "output" else (64, 158, 255, 255)
-        self.set_pipe_styling(color=color, width=self._get_state_width("running"), style=self.style)
+        self.set_pipe_styling(
+            color=color, width=self._get_state_width("running"), style=self.style
+        )
         self.setZValue(Z_VAL_PIPE + 10)
         self.start_flow()
 
     def reset(self):
+        self._cached_path = None
+        self._cached_port_positions = None
         self._running = False
         self._active = False
         self._highlight = False
-        self.set_pipe_styling(color=self.color, width=self._get_state_width("normal"), style=self.style)
+        self.set_pipe_styling(
+            color=self.color, width=self._get_state_width("normal"), style=self.style
+        )
         self.setZValue(Z_VAL_PIPE)
         self.stop_flow()
 
     def start_flow(self):
-        if not getattr(self, '_flow_running', False):
+        if not getattr(self, "_flow_running", False):
             self._flow_running = True
             # 直接向控制器注册自己
             self._controller.register_pipe(self)
 
     def stop_flow(self):
-        if getattr(self, '_flow_running', False):
+        if getattr(self, "_flow_running", False):
             self._flow_running = False
             self._controller.unregister_pipe(self)
 
@@ -246,15 +294,39 @@ class CustomPipeItem(PipeItem):
             self.update()
 
     def activate(self):
+        self._cached_path = None
+        self._cached_port_positions = None
         self._active = True
-        self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("activate"), style=self.style)
+        self.set_pipe_styling(
+            color=PipeEnum.ACTIVE_COLOR.value,
+            width=self._get_state_width("activate"),
+            style=self.style,
+        )
+        self.setZValue(Z_VAL_PORT + 2)
+        self.start_flow()
+
+    def highlight(self):
+        self._cached_path = None
+        self._cached_port_positions = None
+        self._highlight = True
+        if not self._running:
+            self.set_pipe_styling(
+                color=PipeEnum.HIGHLIGHT_COLOR.value,
+                width=self._get_state_width("highlight"),
+                style=self.style,
+            )
+        self.update()
         self.setZValue(Z_VAL_PORT + 2)
         self.start_flow()
 
     def highlight(self):
         self._highlight = True
         if not self._running:
-            self.set_pipe_styling(color=PipeEnum.HIGHLIGHT_COLOR.value, width=self._get_state_width("highlight"), style=self.style)
+            self.set_pipe_styling(
+                color=PipeEnum.HIGHLIGHT_COLOR.value,
+                width=self._get_state_width("highlight"),
+                style=self.style,
+            )
         self.update()
         self.setZValue(Z_VAL_PORT + 2)
         self.start_flow()
@@ -308,17 +380,16 @@ class CustomPipeItem(PipeItem):
 
     def _get_state_width(self, state):
         """根据状态返回计算后的线宽"""
-        offsets = {
-            'normal': 0,
-            'highlight': 1,
-            'active': 2,
-            'running': 1
-        }
-        return int(max(1.0, Settings.get_instance().canvas_pipe_width.value + offsets.get(state, 0)))  # 确保最小宽度1.0
+        offsets = {"normal": 0, "highlight": 1, "active": 2, "running": 1}
+        return int(
+            max(
+                1.0,
+                Settings.get_instance().canvas_pipe_width.value + offsets.get(state, 0),
+            )
+        )  # 确保最小宽度1.0
 
 
 class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
-
     def __init__(self):
         self._flow_running = False
         self._start_port = None
@@ -333,5 +404,8 @@ class CustomLivePipeItem(CustomPipeItem, LivePipeItem):
             return
         self._start_port = start_port
         LivePipeItem.draw_path(self, start_port, end_port, cursor_pos, color)
-        self.set_pipe_styling(color=PipeEnum.ACTIVE_COLOR.value, width=self._get_state_width("highlight"),
-                              style=self.style)
+        self.set_pipe_styling(
+            color=PipeEnum.ACTIVE_COLOR.value,
+            width=self._get_state_width("highlight"),
+            style=self.style,
+        )
