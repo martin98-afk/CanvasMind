@@ -60,6 +60,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import 
     MessageCard,
     create_welcome_card,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
+    ConversationNodePreview,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
     MemoryManagerDialog,
 )
@@ -198,6 +201,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         layout.addWidget(self.chat_scroll_area, 1)
 
+        self.node_preview = ConversationNodePreview(self)
+        self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
+        layout.addWidget(self.node_preview)
+
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(0)
@@ -242,6 +249,8 @@ class OpenAIChatToolWindow(ToolWindow):
         setFont(self.input_area, 15)
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
+        self.input_area.clearRequested.connect(self._on_clear_shortcut)
+        self.input_area.newSessionRequested.connect(self._create_new_session)
         layout.addWidget(self.input_area)
 
     def set_system_prompt(self, prompt):
@@ -418,6 +427,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._clear_chat_area()
         self.title_edit.setText("新对话")
+        self.node_preview.clear_nodes()
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
@@ -450,6 +460,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 continue
 
         QTimer.singleShot(10, self._scroll_to_bottom)
+        self._update_node_preview()
 
     # 历史对话管理
     def _initialize_history_manager(self):
@@ -590,6 +601,18 @@ class OpenAIChatToolWindow(ToolWindow):
             if item.widget():
                 item.widget().deleteLater()
 
+    def _on_clear_shortcut(self):
+        self._clear_chat_area()
+        self.node_preview.clear_nodes()
+        session = self.session_manager.get_current_session()
+        if session:
+            session.clear()
+        welcome_card = create_welcome_card(self)
+        welcome_card._is_welcome = True
+        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
+        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
+        self.title_edit.setText("新对话")
+
     def _delete_history_session(self, index: int):
         self.history_manager.delete_history(index)
         self._display_history_sessions()
@@ -621,6 +644,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.actionRequested.connect(self._on_code_action)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
+        self._update_node_preview()
         return card
 
     def _append_assistant_message(self) -> MessageCard:
@@ -640,6 +664,62 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(new_content)
         if self._is_streaming:
             self._scroll_to_bottom()
+
+    def _update_node_preview(self):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        node_data = []
+        current_user_msg = None
+
+        for msg in session.messages:
+            if msg["role"] == "user":
+                current_user_msg = msg.get("content", "")[:30]
+            elif msg["role"] == "assistant" and current_user_msg:
+                timestamp = (
+                    msg.get("timestamp", "")[-5:] if msg.get("timestamp") else ""
+                )
+                node_data.append((current_user_msg, timestamp))
+                current_user_msg = None
+
+        # 如果最后是用户消息没有对应回复，也显示出来
+        if current_user_msg:
+            node_data.append((current_user_msg, ""))
+
+        self.node_preview.update_nodes(node_data)
+
+    def _on_node_preview_clicked(self, index: int):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        pair_index = 0
+        for i, msg in enumerate(session.messages):
+            if msg["role"] == "user":
+                if pair_index == index:
+                    card_index = i
+                    for j in range(i + 1, len(session.messages)):
+                        if isinstance(self.chat_layout.itemAt(j), type(None)):
+                            continue
+                        widget = self.chat_layout.itemAt(j).widget()
+                        if (
+                            widget
+                            and hasattr(widget, "role")
+                            and widget.role == "assistant"
+                        ):
+                            card_index = j
+                            break
+                    scroll_area = self.chat_scroll_area
+                    if scroll_area:
+                        y = 0
+                        for k in range(card_index):
+                            item = self.chat_layout.itemAt(k)
+                            if item and item.widget():
+                                y += item.widget().height() + 5
+                        scroll_area.verticalScrollBar().setValue(y)
+                    return
+                pair_index += 1
 
     def _delete_message(self, card: MessageCard):
         """删除用户消息时，连带删除下一条助手消息（如果存在）"""
@@ -673,6 +753,8 @@ class OpenAIChatToolWindow(ToolWindow):
             # 同步删除 session 中的消息
             if idx < len(session.messages):
                 session.messages.pop(idx)
+
+        self._update_node_preview()
 
     def _remove_message_at_index(self, index: int):
         if 0 <= index < self.chat_layout.count():

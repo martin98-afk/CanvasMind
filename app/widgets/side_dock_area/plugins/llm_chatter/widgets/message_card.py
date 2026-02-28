@@ -67,7 +67,7 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
         lang_part = match.group(1) or ""
         code_content = match.group(2)
         if re.search(r"\[[^\[\]]+\]\([^)\s]+\)", code_content) and lang_part not in (
-                "python"
+            "python"
         ):
             return code_content
         else:
@@ -209,11 +209,11 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
         parts.append(md_text[i:start_idx])
         end_idx = md_text.find("</think>", start_idx + len("<think>"))
         if end_idx != -1:
-            content = md_text[start_idx + len("<think>"): end_idx]
+            content = md_text[start_idx + len("<think>") : end_idx]
             parts.append(_render_think_block(content, completed=True))
             i = end_idx + len("</think>")
         else:
-            content = md_text[start_idx + len("<think>"):]
+            content = md_text[start_idx + len("<think>") :]
             parts.append(_render_think_block(content, completed=False))
             i = len(md_text)
     return "".join(parts)
@@ -365,6 +365,29 @@ class CodeWebViewer(QWebEngineView):
                 }}
                 {scrollbar_css}
 
+                /* 修复黑色内容问题：显式设置所有元素的颜色 */
+                #content-placeholder {{ color: #E0E0E0; }}
+                #content-placeholder * {{ color: inherit; }}
+                h1, h2, h3, h4, h5, h6 {{ color: #FFFFFF !important; font-weight: 600; }}
+                h1 {{ font-size: 1.5em; margin: 12px 0 8px; }}
+                h2 {{ font-size: 1.3em; margin: 10px 0 6px; }}
+                h3 {{ font-size: 1.1em; margin: 8px 0 4px; }}
+                p {{ margin: 6px 0; color: #D0D0D0; }}
+                a {{ color: #6BA3FF !important; text-decoration: none; }}
+                a:hover {{ text-decoration: underline; }}
+                ul, ol {{ margin: 6px 0; padding-left: 24px; }}
+                li {{ margin: 2px 0; color: #D0D0D0; }}
+                strong {{ color: #FFFFFF !important; font-weight: 600; }}
+                em {{ color: #B0B0B0 !important; font-style: italic; }}
+                code:not(.code-content *):not(pre code) {{ 
+                    background: #2D2D2D !important; 
+                    color: #FF7B72 !important;
+                    padding: 2px 4px; 
+                    border-radius: 3px; 
+                    font-family: Consolas, monospace;
+                }}
+                hr {{ border: none; border-top: 1px solid #3A3F47; margin: 12px 0; }}
+                
                 /* 优化：移除首尾元素的边距，彻底消除多余空白 */
                 #content-placeholder > :first-child {{ margin-top: 0 !important; }}
                 #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
@@ -374,8 +397,8 @@ class CodeWebViewer(QWebEngineView):
 
                 /* Markdown 表格 */
                 table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
-                table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff; border-bottom: 2px solid #454545; }}
-                table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc; }}
+                table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff !important; border-bottom: 2px solid #454545; }}
+                table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc !important; }}
                 table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
                 table:not(.code-table) tr:hover {{ background: #3A3F47; }}
 
@@ -434,8 +457,8 @@ class CodeWebViewer(QWebEngineView):
 
                 details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
                 details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
-                .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888; font-style: italic; }}
-                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc; }}
+                .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888 !important; font-style: italic; }}
+                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc !important; }}
             </style>
         </head>
         <body>
@@ -578,12 +601,12 @@ class MessageCard(SimpleCardWidget):
     interventionRequested = pyqtSignal(dict)
 
     def __init__(
-            self,
-            role: str,
-            timestamp: str = None,
-            parent=None,
-            tag_params: dict = None,
-            error: bool = False,
+        self,
+        role: str,
+        timestamp: str = None,
+        parent=None,
+        tag_params: dict = None,
+        error: bool = False,
     ):
         super().__init__(parent)
         self.parent = parent
@@ -725,9 +748,9 @@ class MessageCard(SimpleCardWidget):
             if scroll_area:
                 vbar = scroll_area.verticalScrollBar()
                 if (
-                        vbar
-                        and vbar.minimum() != vbar.maximum()
-                        and event.angleDelta().y() != 0
+                    vbar
+                    and vbar.minimum() != vbar.maximum()
+                    and event.angleDelta().y() != 0
                 ):
                     vbar.setValue(vbar.value() - event.angleDelta().y() // 2)
                     event.accept()
