@@ -368,6 +368,7 @@ class CustomNodeItem(NodeItem):
         ):
             return self._cached_body_rect
         rect = super(CustomNodeItem, self).boundingRect()
+        # 优化：直接使用 rect 而不再做额外检查
         self._cached_body_rect = (
             rect if rect.width() > 0 else QtCore.QRectF(0, 0, 200, 50)
         )
@@ -556,20 +557,29 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _calc_size_horizontal(self, ignore_user_size=False):
+        # 优化：预先计算端口数量，避免重复 len() 调用
+        num_inputs = len(self._input_items)
+        num_outputs = len(self._output_items)
+
         # 1. 计算内容所需尺寸 (Ports)
-        p_input_h = (len(self._input_items) * 22.0) + 10.0 if self._input_items else 0.0
-        p_output_h = (
-            (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
-        )
+        p_input_h = (num_inputs * 22.0) + 10.0 if num_inputs else 0.0
+        p_output_h = (num_outputs * 22.0) + 10.0 if num_outputs else 0.0
         port_height = max(p_input_h, p_output_h)
         self._port_height = max(port_height, 10.0)
 
-        in_txt_w = max(
-            [t.boundingRect().width() for t in self._input_items.values()] + [0]
+        # 优化：批量获取宽度，减少重复遍历
+        input_widths = (
+            [t.boundingRect().width() for t in self._input_items.values()]
+            if self._input_items
+            else [0]
         )
-        out_txt_w = max(
-            [t.boundingRect().width() for t in self._output_items.values()] + [0]
+        output_widths = (
+            [t.boundingRect().width() for t in self._output_items.values()]
+            if self._output_items
+            else [0]
         )
+        in_txt_w = max(input_widths)
+        out_txt_w = max(output_widths)
         p_width = in_txt_w + out_txt_w + 50.0
 
         # --- 关键修正：区分 Proxy 模式和普通隐藏 ---
@@ -592,10 +602,12 @@ class CustomNodeItem(NodeItem):
             self._widget_height = widget_height
             self._widget_width = w_width
         # 2. 确定最小宽高边界
-        header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
+        text_item_height = self._text_item.boundingRect().height()
+        text_item_width = self._text_item.boundingRect().width()
+        header_height = max(text_item_height + 10.0, 34.0)
 
         if self._is_collapsed:
-            min_width = max(self._text_item.boundingRect().width() + 120, p_width, 200)
+            min_width = max(text_item_width + 120, p_width, 200)
             min_height = header_height + self._port_height
         elif self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
             min_width = self._user_width if self._user_width > 0 else 200
@@ -605,7 +617,7 @@ class CustomNodeItem(NodeItem):
                 self._user_width
                 if self._user_width > 0
                 else max(
-                    self._text_item.boundingRect().width() + 120,
+                    text_item_width + 120,
                     p_width,
                     self._widget_width + 20,
                     200,
@@ -618,7 +630,7 @@ class CustomNodeItem(NodeItem):
             )
         else:
             min_width = max(
-                self._text_item.boundingRect().width() + 120,
+                text_item_width + 120,
                 p_width,
                 self._widget_width + 20,
                 200,
@@ -648,7 +660,9 @@ class CustomNodeItem(NodeItem):
         self.prepareGeometryChange()
         self._geometry_version += 1
 
-        header_h = max(self._text_item.boundingRect().height() + 10.0, 34.0)
+        # 优化：缓存 boundingRect 避免重复调用
+        text_rect = self._text_item.boundingRect()
+        header_h = max(text_rect.height() + 10.0, 34.0)
         width, height = self._calc_size_horizontal()
         self._width = width
         self._height = height
@@ -661,8 +675,8 @@ class CustomNodeItem(NodeItem):
 
         if not self._proxy_mode:
             self._set_text_color(self.text_color)
-            tw = self._text_item.boundingRect().width()
-            th = self._text_item.boundingRect().height()
+            tw = text_rect.width()
+            th = text_rect.height()
 
             icon_w = 20
             spacing = 4

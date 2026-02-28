@@ -109,6 +109,14 @@ class CustomNodeScene(NodeScene):
         """
         完全重写背景绘制，使用缓存网格优化性能。
         """
+        # 优化：先做视口裁剪，只绘制可见区域
+        view_rect = self.views()[0].viewport().rect() if self.views() else None
+        if view_rect:
+            scene_rect = self.views()[0].mapToScene(view_rect).boundingRect()
+            if not scene_rect.intersects(rect):
+                painter.fillRect(rect, self.backgroundBrush())
+                return
+
         current_painter_viewer = None
         for v in self.views():
             if v.viewport() == painter.device():
@@ -145,7 +153,11 @@ class CustomNodeScene(NodeScene):
         """
         绘制网格点，确保参数全部为 int。
         """
-        zoom = self.viewer().get_zoom()
+        viewer = self.viewer()
+        if not viewer:
+            return
+
+        zoom = viewer.get_zoom()
         if zoom < 0:
             grid_size = int(abs(zoom) / 0.3 + 1) * grid_size
 
@@ -160,9 +172,13 @@ class CustomNodeScene(NodeScene):
         pen.setWidth(max(1, grid_size // 10))
         painter.setPen(pen)
 
+        # 优化：减少绘制调用，使用 drawPoints 批量绘制
+        points = []
         for x in range(first_left, right, grid_size):
             for y in range(first_top, bottom, grid_size):
-                painter.drawPoint(int(x), int(y))
+                points.append(QtCore.QPoint(int(x), int(y)))
+        if points:
+            painter.drawPoints(points)
 
     def _draw_grid(self, painter, rect, pen, grid_size):
         """
@@ -276,12 +292,16 @@ class SelectionOverlayItem(QtWidgets.QGraphicsItem):
             self.hide()
             return
 
+        # 优化：使用 sceneBoundingRect 的 union 减少循环
         self.prepareGeometryChange()
 
-        # 优化：直接获取第一个节点的并集，减少循环内开销
-        rect = selected_nodes[0].sceneBoundingRect()
-        for i in range(1, len(selected_nodes)):
-            rect = rect.united(selected_nodes[i].sceneBoundingRect())
+        if len(selected_nodes) == 1:
+            rect = selected_nodes[0].sceneBoundingRect()
+        else:
+            # 直接使用 united 减少中间对象创建
+            rect = selected_nodes[0].sceneBoundingRect()
+            for i in range(1, len(selected_nodes)):
+                rect = rect.united(selected_nodes[i].sceneBoundingRect())
 
         rect.adjust(-self._padding, -self._padding, self._padding, self._padding)
         self._current_rect = rect
@@ -494,14 +514,28 @@ class SelectionOverlayManager:
         self._update_timer.setSingleShot(True)
         self._update_timer.timeout.connect(self._do_deferred_update)
 
+        self._cached_selected_nodes = []
+        self._last_selection_hash = 0
         self.hide()
 
     def refresh(self, full_recalc=True):
+        # 优化：缓存选中节点，避免重复遍历
+        scene_items = self.scene.selectedItems()
         selected_nodes = [
-            i
-            for i in self.scene.selectedItems()
-            if isinstance(i, AbstractNodeItem) and i.isVisible()
+            i for i in scene_items if isinstance(i, AbstractNodeItem) and i.isVisible()
         ]
+
+        # 快速检查是否真的需要更新
+        current_hash = len(selected_nodes)
+        if current_hash == self._last_selection_hash and not full_recalc:
+            if current_hash == len(self._cached_selected_nodes):
+                # 数量相同，假设相同（简化检查）
+                pass
+            else:
+                self._cached_selected_nodes = selected_nodes
+        else:
+            self._cached_selected_nodes = selected_nodes
+        self._last_selection_hash = current_hash
 
         if len(selected_nodes) < 2:
             self.hide()

@@ -161,8 +161,7 @@ class CustomPipeItem(PipeItem):
             self._cached_path is not None
             and self._cached_port_positions == current_pos_key
         ):
-            path = self._cached_path
-            self.setPath(path)
+            self.setPath(self._cached_path)
             return
 
         layout = self.viewer_pipe_layout()
@@ -308,18 +307,6 @@ class CustomPipeItem(PipeItem):
     def highlight(self):
         self._cached_path = None
         self._cached_port_positions = None
-        self._highlight = True
-        if not self._running:
-            self.set_pipe_styling(
-                color=PipeEnum.HIGHLIGHT_COLOR.value,
-                width=self._get_state_width("highlight"),
-                style=self.style,
-            )
-        self.update()
-        self.setZValue(Z_VAL_PORT + 2)
-        self.start_flow()
-
-    def highlight(self):
         self._highlight = True
         if not self._running:
             self.set_pipe_styling(

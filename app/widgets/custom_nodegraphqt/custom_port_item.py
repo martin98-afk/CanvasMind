@@ -6,6 +6,8 @@ from NodeGraphQt.qgraphics.port import PortItem
 class GlowPortItem(PortItem):
     _color_cache = {}
     _cache_version = 0
+    # 优化：类级别缓存渐变对象
+    _glow_cache = {}
 
     def __init__(self, parent=None):
         super(GlowPortItem, self).__init__(parent)
@@ -13,6 +15,8 @@ class GlowPortItem(PortItem):
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self._port_painter = None
         self._cached_base_color = None
+        self._cached_rect_w = None
+        self._cached_rect_h = None
 
     def setToolTip(self, tooltip):
         tooltip = tooltip.replace("\n", "<br/>")
@@ -47,8 +51,14 @@ class GlowPortItem(PortItem):
         else:
             self.setZValue(Z_VAL_PORT)
 
-        rect_w = self._width / 1.8
-        rect_h = self._height / 1.8
+        # 优化：缓存尺寸计算
+        if self._cached_rect_w is None:
+            self._cached_rect_w = self._width / 1.8
+            self._cached_rect_h = self._height / 1.8
+
+        rect_w = self._cached_rect_w
+        rect_h = self._cached_rect_h
+
         orig_rect = QtCore.QRectF(
             0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height
         )
@@ -87,15 +97,29 @@ class GlowPortItem(PortItem):
 
         if (is_connected or self._hovered) and lod > 0.3:
             glow_radius = rect_w * (2.5 if self._hovered else 1.8)
-            gradient = QtGui.QRadialGradient(center, glow_radius)
 
-            alpha = 120 if self._hovered else 60
-            c = base_color
-            gradient.setColorAt(0.0, QtGui.QColor(c.red(), c.green(), c.blue(), alpha))
-            gradient.setColorAt(
-                0.4, QtGui.QColor(c.red(), c.green(), c.blue(), int(alpha * 0.3))
+            # 优化：使用缓存键避免重复创建渐变
+            cache_key = (
+                glow_radius,
+                self._hovered,
+                base_color.red(),
+                base_color.green(),
+                base_color.blue(),
             )
-            gradient.setColorAt(1.0, QtCore.Qt.transparent)
+            if cache_key not in GlowPortItem._glow_cache:
+                gradient = QtGui.QRadialGradient(center, glow_radius)
+                alpha = 120 if self._hovered else 60
+                c = base_color
+                gradient.setColorAt(
+                    0.0, QtGui.QColor(c.red(), c.green(), c.blue(), alpha)
+                )
+                gradient.setColorAt(
+                    0.4, QtGui.QColor(c.red(), c.green(), c.blue(), int(alpha * 0.3))
+                )
+                gradient.setColorAt(1.0, QtCore.Qt.transparent)
+                GlowPortItem._glow_cache[cache_key] = gradient
+            else:
+                gradient = GlowPortItem._glow_cache[cache_key]
 
             painter.setBrush(gradient)
             painter.setPen(QtCore.Qt.NoPen)
