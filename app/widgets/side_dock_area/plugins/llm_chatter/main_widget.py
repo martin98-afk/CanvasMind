@@ -42,6 +42,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
     OpenAIChatWorker,
     TitleGenerationTask,
     TopicSummaryTask,
+    ShellExecutionTask,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
     SendableTextEdit,
@@ -489,35 +490,21 @@ class OpenAIChatToolWindow(ToolWindow):
             self.title_edit.setText("新对话")
 
     def _execute_shell_command(self, cmd: str):
-        """执行Shell命令并显示结果"""
-        import subprocess
-        import platform
-
+        """执行Shell命令并显示结果（异步执行，不阻塞UI）"""
         self._append_user_message(cmd, timestamp=datetime.now().strftime("%H:%M"))
+        self._is_streaming = True
+        self._toggle_send_stop(True)
 
-        try:
-            system = platform.system()
-            if system == "Windows":
-                res = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=120
-                )
-            else:
-                res = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=120
-                )
-            output = res.stdout.strip() if res.stdout else ""
-            error_out = res.stderr.strip() if res.stderr else ""
-            combined = "\n".join(filter(None, [output, error_out]))
-            result_text = combined if combined else "(命令执行完成，无输出)"
-        except subprocess.TimeoutExpired:
-            result_text = "[错误] 命令执行超时"
-        except Exception as e:
-            result_text = f"[错误] {str(e)}"
+        def on_result(result_text: str):
+            self._is_streaming = False
+            self._toggle_send_stop(False)
+            card = self._append_assistant_message()
+            card.update_content(f"```\n{result_text}\n```")
+            card.finish_streaming()
+            self._scroll_to_bottom()
 
-        card = self._append_assistant_message()
-        card.update_content(f"```\n{result_text}\n```")
-        card.finish_streaming()
-        self._scroll_to_bottom()
+        task = ShellExecutionTask(cmd, on_result)
+        self._gen_thread_pool.start(task)
 
     def _display_history_sessions(self):
         self._clear_chat_area()
@@ -638,6 +625,7 @@ class OpenAIChatToolWindow(ToolWindow):
             tag_params=tag_params
             or {key: value for key, value in self.context_selector.context.items()},
         )
+        card.viewer._install_dialog_filter()
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
@@ -649,6 +637,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _append_assistant_message(self) -> MessageCard:
         card = MessageCard(parent=self, role="assistant")
+        card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
         card.contextActionRequested.connect(self.handle_recommended_question)

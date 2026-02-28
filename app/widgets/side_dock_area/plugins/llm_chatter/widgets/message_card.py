@@ -281,7 +281,7 @@ class CodeWebViewer(QWebEngineView):
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
         self._render_timer.timeout.connect(self._perform_update)
-        self._min_render_interval = 35
+        self._min_render_interval = 10  # 减少到10ms以获得更流畅的流式输出
 
         # 2. Resize 定时器 (修复 Crash 的关键：作为成员变量，随 self 销毁)
         self._resize_timer = QTimer(self)
@@ -305,6 +305,29 @@ class CodeWebViewer(QWebEngineView):
         self._page.contentReady.connect(self._on_js_ready)
 
         self._load_skeleton()
+
+    def _install_dialog_filter(self):
+        """安装事件过滤器，监听对话框显示"""
+        from PyQt5.QtWidgets import QApplication
+
+        QApplication.instance().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        # 监听对话框显示事件
+        if event.type() == 4:  # QEvent.Show
+            obj_class = obj.__class__.__name__
+            if (
+                "Dialog" in obj_class
+                or "Popup" in obj_class
+                or "Flyout" in obj_class
+                or "InfoBar" in obj_class
+            ):
+                self.lower()
+        return super().eventFilter(obj, event)
+
+    def lower_for_popup(self):
+        """降低控件层级，让弹出窗口可以显示在前面"""
+        self.lower()
 
     # 安全的高度上报函数
     def _safe_report_height(self):
@@ -445,13 +468,12 @@ class CodeWebViewer(QWebEngineView):
                     word-wrap: normal;
                     overflow: visible;
                     background: transparent !important;
-                    color: #D4D4D4 !important;
                     font-family: Consolas, monospace !important;
                     font-size: 13px !important;
                     line-height: 1.5 !important;
                 }}
                 /* 关键：修复缩进丢失 */
-                .code-line {{ padding-left: 12px !important; color: #d4d4d4; font-size: 13px; line-height: 1.5; white-space: pre; font-family: Consolas, monospace; }}
+                .code-line {{ padding-left: 12px !important; white-space: pre; font-family: Consolas, monospace; }}
 
                 .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
 
@@ -502,7 +524,13 @@ class CodeWebViewer(QWebEngineView):
         if not text:
             return
         self._markdown_text += text
-        self._schedule_render()
+        # 流式输出时立即渲染，不等待定时器
+        if self._streaming and self._is_js_ready:
+            from PyQt5.QtCore import QTimer
+
+            QTimer.singleShot(0, self._perform_update)
+        else:
+            self._schedule_render()
 
     def _schedule_render(self):
         if not self._is_js_ready:

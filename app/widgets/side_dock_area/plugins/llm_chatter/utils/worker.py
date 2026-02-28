@@ -411,3 +411,47 @@ class OpenAIChatWorker(QThread):
                 )
             else:
                 self.error_occurred.emit(f"[未知错误] {error_str}")
+
+
+class ShellExecutionTask(QRunnable):
+    """异步执行Shell命令任务"""
+
+    def __init__(self, command: str, callback):
+        super().__init__()
+        self.command = command
+        self.callback = callback
+        self.setAutoDelete(True)
+
+    @pyqtSlot()
+    def run(self):
+        import subprocess
+        import platform
+
+        try:
+            system = platform.system()
+            if system == "Windows":
+                res = subprocess.run(
+                    self.command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            else:
+                res = subprocess.run(
+                    self.command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+            output = res.stdout.strip() if res.stdout else ""
+            error_out = res.stderr.strip() if res.stderr else ""
+            combined = "\n".join(filter(None, [output, error_out]))
+            result_text = combined if combined else "(命令执行完成，无输出)"
+        except subprocess.TimeoutExpired:
+            result_text = "[错误] 命令执行超时"
+        except Exception as e:
+            result_text = f"[错误] {str(e)}"
+
+        self.callback(result_text)
