@@ -29,7 +29,7 @@ from qfluentwidgets import InfoBar
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
-from app.nodes.status_node import NodeStatus
+from app.nodes.base.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.basic_widget.combo_widget import CustomComboBox

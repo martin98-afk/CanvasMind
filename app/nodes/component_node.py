@@ -13,7 +13,7 @@ from app.components.base import (
     resource_path,
     COMPONENT_IMPORT_CODE,
 )
-from app.nodes.executable_node import ExecutableNode
+from app.nodes.base.executable_node import ExecutableNode
 from app.scan_components import ComponentScanner
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem

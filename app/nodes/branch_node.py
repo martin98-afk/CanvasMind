@@ -3,7 +3,7 @@ import re
 from PyQt5 import QtCore
 
 from app.components.base import PropertyType, GlobalVariableContext
-from app.nodes.status_node import StatusNode
+from app.nodes.base.status_node import StatusNode
 from app.scheduler.expression_engine import ExpressionEngine
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem

@@ -9,7 +9,7 @@ from app.components.base import (
     ConnectionType,
     COMPONENT_IMPORT_CODE,
 )
-from app.nodes.executable_node import ExecutableNode
+from app.nodes.base.executable_node import ExecutableNode
 from app.templates.glue_code_templates import GLUE_CODE_TEMPLATES
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem

@@ -97,8 +97,18 @@ class SubprocessExecutor(BaseExecutor):
         self.read_logs(ctx)
         ctx.node._log_message(ctx.node.persistent_id, "✅ 节点在独立环境执行完成")
 
-        if not self.wait_for_result(ctx):
-            raise Exception("执行结束，未发现结果")
+        # 检查是否有错误
+        error_info = self.read_error(ctx)
+        if error_info:
+            ctx.node._log_message(
+                ctx.node.persistent_id, error_info.get("traceback", "")
+            )
+            raise Exception(error_info.get("traceback", "未知错误"))
+
+        # 等待结果，有结果就读取，没有结果但进程正常退出也视为成功
+        output = self.read_result(ctx)
+        self.apply_outputs(ctx, output)
+        return output
 
         output = self.read_result(ctx)
         self.apply_outputs(ctx, output)

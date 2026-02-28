@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.status_node import StatusNode, NoStatusNode, NodeStatus, NodeStatusColors
-from app.nodes.executable_node import (
+from app.nodes.base.base_node import BasicNodeWithGlobalProperty
+from app.nodes.base.status_node import StatusNode, NoStatusNode, NodeStatus, NodeStatusColors
+from app.nodes.base.executable_node import (
     ExecutableNode,
     ExecutableNodeMixin,
     SimpleExecutableNodeMixin,

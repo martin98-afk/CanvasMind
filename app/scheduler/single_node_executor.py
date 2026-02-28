@@ -2,7 +2,7 @@ import datetime
 import re
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.nodes.status_node import NodeStatus
+from app.nodes.base.status_node import NodeStatus
 
 
 def execute_node(
