@@ -604,11 +604,30 @@ class CustomNodeViewer(NodeViewer):
         self._SLICER_PIPE.setVisible(False)
         self.scene().addItem(self._SLICER_PIPE)
         self._selection_overlay = SelectionOverlayManager(self)
-        # 设置默认样式（透明边框，防止抖动）
         self.setObjectName("NodeViewer")
         self._is_active = False
         self._is_main = False
         self._update_style()
+
+        self._viewport_rect_cache = None
+        self._viewport_rect_cache_time = 0
+        self._viewport_transform_cache = None
+
+    def _get_viewport_scene_rect(self):
+        current_time = QtCore.QDateTime.currentMSecsSinceEpoch()
+        if (
+            self._viewport_rect_cache is None
+            or current_time - self._viewport_rect_cache_time > 16
+        ):
+            self._viewport_rect_cache = self.mapToScene(
+                self.viewport().rect()
+            ).boundingRect()
+            self._viewport_transform_cache = self.transform()
+            self._viewport_rect_cache_time = current_time
+        return self._viewport_rect_cache
+
+    def _invalidate_viewport_cache(self):
+        self._viewport_rect_cache = None
 
     def set_active(self, active):
         """设置活跃状态并刷新样式"""
@@ -953,17 +972,18 @@ class CustomNodeViewer(NodeViewer):
         if not self._LIVE_PIPE.isVisible():
             super(NodeViewer, self).mousePressEvent(event)
 
+    _selected_nodes_cache = None
+    _selected_nodes_cache_time = 0
+
     def mouseMoveEvent(self, event):
-        # 1. 注入导航模式下的平移逻辑
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
             delta = previous_pos - current_pos
             self._set_viewer_pan(delta.x(), delta.y())
 
-        # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
         super(CustomNodeViewer, self).mouseMoveEvent(event)
-        # 3. 判定是否正在拖拽节点
+
         is_dragging_nodes = (
             self.LMB_state
             and not self.ALT_state
@@ -973,25 +993,32 @@ class CustomNodeViewer(NodeViewer):
         )
 
         if is_dragging_nodes:
-            selected_nodes = [
-                i
-                for i in self.scene().selectedItems()
-                if isinstance(i, AbstractNodeItem)
-            ]
+            current_time = QtCore.QDateTime.currentMSecsSinceEpoch()
+            if (
+                self._selected_nodes_cache is None
+                or current_time - self._selected_nodes_cache_time > 50
+            ):
+                self._selected_nodes_cache = [
+                    i
+                    for i in self.scene().selectedItems()
+                    if isinstance(i, AbstractNodeItem)
+                ]
+                self._selected_nodes_cache_time = current_time
 
-            # 排除正在缩放节点的情况
+            selected_nodes = self._selected_nodes_cache
+
             if any(getattr(n, "_is_resizing", False) for n in selected_nodes):
                 self._snap_lines_item.hide()
                 self._selection_overlay.hide()
             else:
-                # 处理对齐线
                 self._handle_snapping(selected_nodes)
                 self._selection_overlay.refresh()
         else:
+            self._selected_nodes_cache = None
+
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
 
-            # 如果是在拉框选择，实时更新虚线框 (体验更好)
             if self._rubber_band.isActive:
                 self._selection_overlay.refresh(full_recalc=True)
 
@@ -1277,6 +1304,7 @@ class CustomNodeViewer(NodeViewer):
             logger.error(traceback.format_exc())
 
     def resizeEvent(self, event):
+        self._invalidate_viewport_cache()
         self.home_window.ui_manager.update_position()
         if hasattr(self, "_selection_overlay") and self._selection_overlay._visible:
             self._selection_overlay.refresh(full_recalc=False)

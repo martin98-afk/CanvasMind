@@ -4,15 +4,19 @@ from NodeGraphQt.qgraphics.port import PortItem
 
 
 class GlowPortItem(PortItem):
+    _color_cache = {}
+    _cache_version = 0
+
     def __init__(self, parent=None):
         super(GlowPortItem, self).__init__(parent)
         self.original_node = None
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self._port_painter = None
+        self._cached_base_color = None
 
     def setToolTip(self, tooltip):
-        tooltip = tooltip.replace('\n', '<br/>')
-        tooltip = '<b>{}</b><br/>{}'.format(self._name, tooltip)
+        tooltip = tooltip.replace("\n", "<br/>")
+        tooltip = "<b>{}</b><br/>{}".format(self._name, tooltip)
         super(GlowPortItem, self).setToolTip(tooltip)
 
     def set_painter(self, func=None):
@@ -20,15 +24,22 @@ class GlowPortItem(PortItem):
         self.update()
 
     def boundingRect(self):
-        return QtCore.QRectF(0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height)
+        return QtCore.QRectF(
+            0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height
+        )
+
+    @classmethod
+    def _get_cached_color(cls, color_tuple):
+        if color_tuple not in cls._color_cache:
+            cls._color_cache[color_tuple] = QtGui.QColor(*color_tuple)
+        return cls._color_cache[color_tuple]
 
     def hoverEnterEvent(self, event):
         self._hovered = True
-        self.update()  # 强制触发所有视口重绘
+        self.update()
         super(PortItem, self).hoverEnterEvent(event)
 
     def paint(self, painter, option, widget):
-        # --- 1. 动态层级 ---
         parent_node = self.node
         is_selected = parent_node.isSelected() if parent_node else False
         if self._hovered or is_selected:
@@ -36,76 +47,73 @@ class GlowPortItem(PortItem):
         else:
             self.setZValue(Z_VAL_PORT)
 
-        # --- 2. 几何位置 (保持原逻辑) ---
         rect_w = self._width / 1.8
         rect_h = self._height / 1.8
-        orig_rect = QtCore.QRectF(0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height)
+        orig_rect = QtCore.QRectF(
+            0.0, 0.0, self._width + PortEnum.CLICK_FALLOFF.value, self._height
+        )
         center = orig_rect.center()
-        port_rect = QtCore.QRectF(center.x() - rect_w / 2, center.y() - rect_h / 2, rect_w, rect_h)
+        port_rect = QtCore.QRectF(
+            center.x() - rect_w / 2, center.y() - rect_h / 2, rect_w, rect_h
+        )
         lod = option.levelOfDetailFromTransform(painter.worldTransform())
 
-        # --- 3. 逻辑分流 ---
         if self._port_painter:
             port_info = {
-                'port_type': self.port_type,
-                'color': self.color,
-                'border_color': self.border_color,
-                'connected': bool(self.connected_pipes),
-                'hovered': self.hovered,
-                'lod': lod
+                "port_type": self.port_type,
+                "color": self.color,
+                "border_color": self.border_color,
+                "connected": bool(self.connected_pipes),
+                "hovered": self.hovered,
+                "lod": lod,
             }
             self._port_painter(painter, port_rect, port_info)
             return
 
-        # --- 4. 优化后的 ComfyUI 风格绘制 ---
         painter.save()
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-        # 基础色提取
         if self._hovered:
-            base_color = QtGui.QColor(*PortEnum.HOVER_COLOR.value)
+            base_color = self._get_cached_color(PortEnum.HOVER_COLOR.value)
         else:
-            base_color = QtGui.QColor(*self.color)
+            if not self._cached_base_color or self._cached_base_color[0] != self.color:
+                self._cached_base_color = (
+                    self.color,
+                    self._get_cached_color(self.color),
+                )
+            base_color = self._cached_base_color[1]
 
         is_connected = bool(self.connected_pipes)
 
-        # A. 核心发光 (Glow) - 仅在连接或悬浮时显示
-        # 优化点：多级渐变，模拟真实光晕
         if (is_connected or self._hovered) and lod > 0.3:
             glow_radius = rect_w * (2.5 if self._hovered else 1.8)
             gradient = QtGui.QRadialGradient(center, glow_radius)
 
-            # ComfyUI 风格的光晕通常带有高透明度的扩散
             alpha = 120 if self._hovered else 60
             c = base_color
             gradient.setColorAt(0.0, QtGui.QColor(c.red(), c.green(), c.blue(), alpha))
-            gradient.setColorAt(0.4, QtGui.QColor(c.red(), c.green(), c.blue(), int(alpha * 0.3)))
+            gradient.setColorAt(
+                0.4, QtGui.QColor(c.red(), c.green(), c.blue(), int(alpha * 0.3))
+            )
             gradient.setColorAt(1.0, QtCore.Qt.transparent)
 
             painter.setBrush(gradient)
             painter.setPen(QtCore.Qt.NoPen)
             painter.drawEllipse(center, glow_radius, glow_radius)
 
-        # B. 绘制外边框 (Ring)
         pen_width = 2.5 if lod > 0.7 else 2.5 / lod
         if self._hovered:
-            # 悬浮时边框变白发亮
             painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 255), pen_width))
         else:
-            # 默认边框比底色略亮一点
             painter.setPen(QtGui.QPen(base_color.lighter(120), pen_width))
 
-        # C. 填充背景 (Core)
         if is_connected or self._hovered:
-            # 连接态：实心
             painter.setBrush(base_color)
         else:
-            # 非连接态：空心（深色背景）
             painter.setBrush(QtGui.QColor(35, 35, 35))
 
         painter.drawEllipse(port_rect)
 
-        # D. 绘制中心高亮小点 (可选，增加精致感)
         if is_connected and not self._hovered:
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtGui.QColor(255, 255, 255, 150))
@@ -119,12 +127,12 @@ def draw_special_outputport(painter, rect, info):
     painter.save()
     painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-    lod = info.get('lod', 1.0)
+    lod = info.get("lod", 1.0)
     center = rect.center()
     radius = rect.width() / 2
     NEON_PURPLE = QtGui.QColor(191, 0, 255)
-    is_connected = info['connected']
-    is_hovered = info['hovered']
+    is_connected = info["connected"]
+    is_hovered = info["hovered"]
 
     # 1. 弥散霓虹发光
     if (is_connected or is_hovered) and lod > 0.2:
@@ -139,7 +147,10 @@ def draw_special_outputport(painter, rect, info):
         painter.drawEllipse(center, glow_size, glow_size)
 
     # 2. 霓虹外环
-    ring_pen = QtGui.QPen(QtCore.Qt.white if is_hovered else NEON_PURPLE, 2.0 / (lod if lod < 1.0 else 1.0))
+    ring_pen = QtGui.QPen(
+        QtCore.Qt.white if is_hovered else NEON_PURPLE,
+        2.0 / (lod if lod < 1.0 else 1.0),
+    )
     painter.setPen(ring_pen)
 
     # 3. 内部填充
@@ -165,8 +176,8 @@ def draw_square_port(painter, rect, info):
     painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
     base_color = QtGui.QColor(195, 60, 60)
-    is_connected = info['connected']
-    is_hovered = info['hovered']
+    is_connected = info["connected"]
+    is_hovered = info["hovered"]
 
     if is_hovered:
         border_color = QtGui.QColor(255, 255, 255)
