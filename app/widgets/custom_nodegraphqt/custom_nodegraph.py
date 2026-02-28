@@ -1646,7 +1646,6 @@ class CustomNodeViewer(NodeViewer):
 
         self._start_port.hovered = False
 
-        # find the end port.
         end_port = None
         for item in self.scene().items(event.scenePos()):
             if isinstance(item, PortItem):
@@ -1656,14 +1655,13 @@ class CustomNodeViewer(NodeViewer):
         connected = []
         disconnected = []
 
-        # if port disconnected from existing pipe.
         if end_port is None:
             if self._detached_port and not self._LIVE_PIPE.shift_selected:
                 dist = math.hypot(
                     self._previous_pos.x() - self._origin_pos.x(),
                     self._previous_pos.y() - self._origin_pos.y(),
                 )
-                if dist <= 2.0:  # cursor pos threshold.
+                if dist <= 2.0:
                     self.establish_connection(self._start_port, self._detached_port)
                     self._detached_port = None
                 else:
@@ -1671,6 +1669,20 @@ class CustomNodeViewer(NodeViewer):
                     self.connection_changed.emit(disconnected, connected)
 
             self._detached_port = None
+
+            if hasattr(self, "_custom_menu") and self._custom_menu:
+                self._temp_connection_source = self._start_port
+                global_pos = (
+                    event.globalPos()
+                    if hasattr(event, "globalPos")
+                    else QtGui.QCursor.pos()
+                )
+                scene_pos = event.scenePos()
+                self._custom_menu._spawn_pos_scene = scene_pos
+                self._custom_menu._spawn_pos_set = True
+                self._custom_menu.show_at_cursor(global_pos)
+                self._temp_connection_source = None
+
             self.end_live_connection()
             return
 

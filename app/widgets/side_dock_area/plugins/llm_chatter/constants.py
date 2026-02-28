@@ -24,6 +24,12 @@ PARAM_RANGE_MAP = {
 
 
 PROVIDER_MODELS = {
+    "MiniMax (月之暗面)": [
+        "MiniMax-M2.5",
+        "MiniMax-M2.5-highspeed",
+        "MiniMax-M2.1",
+        "MiniMax-M2.1-highspeed",
+    ],
     "SiliconFlow (有免费额度)": [
         "Qwen/Qwen2.5-7B-Instruct",
         "Qwen/Qwen2.5-14B-Instruct",
@@ -77,6 +83,15 @@ PROVIDER_MODELS = {
 }
 
 FREE_PROVIDERS = {
+    "MiniMax (月之暗面)": {
+        "API_URL": "https://api.minimax.chat/v1",
+        "API_KEY": "",
+        "模型名称": "abab6.5s-chat",
+        "温度": 0.7,
+        "最大Token": 4096,
+        "认证方式": "bearer",
+        "获取地址": "https://platform.minimaxi.com/user-center/basic-information/interface-key",
+    },
     "SiliconFlow (有免费额度)": {
         "API_URL": "https://api.siliconflow.cn/v1",
         "API_KEY": "",
@@ -143,6 +158,7 @@ FREE_PROVIDERS = {
 }
 
 PROVIDER_ICONS = {
+    "MiniMax (月之暗面)": "MiniMax",
     "SiliconFlow (有免费额度)": "siliconflow",
     "阿里云 (DashScope)": "qwen",
     "智谱AI (免费模型)": "智谱",

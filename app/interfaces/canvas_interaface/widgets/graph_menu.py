@@ -184,6 +184,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._current_mode = MenuMode.CREATE
         self._is_upward_mode = False
         self._spawn_pos = QtCore.QPoint(0, 0)
+        self._spawn_pos_scene = None
+        self._spawn_pos_set = False
         self._visible_items = []
         self._ignore_connection_filter = False
 
@@ -595,7 +597,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
         scene_viewer = (
             viewer.get_scene_viewer() if hasattr(viewer, "get_scene_viewer") else viewer
         )
-        scene_pos = scene_viewer.mapToScene(self._spawn_pos)
+        spawn_pos_scene = getattr(self, "_spawn_pos_scene", None)
+        if spawn_pos_scene is not None:
+            scene_pos = spawn_pos_scene
+        else:
+            scene_pos = scene_viewer.mapToScene(self._spawn_pos)
 
         if self._current_mode == MenuMode.CREATE:
             self._graph.begin_undo("Create Node")
@@ -744,7 +750,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
         scene_viewer = (
             viewer.get_scene_viewer() if hasattr(viewer, "get_scene_viewer") else viewer
         )
-        self._spawn_pos = scene_viewer.mapFromGlobal(pos)
+        spawn_pos_set = getattr(self, "_spawn_pos_set", False)
+        if not spawn_pos_set:
+            self._spawn_pos = scene_viewer.mapFromGlobal(pos)
+        self._spawn_pos_set = False
         self.search_line.setText("")
         self.filter_list("")
 
