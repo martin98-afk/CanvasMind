@@ -15,8 +15,12 @@ from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.interfaces.canvas_interaface.utils.canvas_runner import CanvasRunner
 from app.interfaces.canvas_interaface.utils.exporter import CanvasExporter
 from app.interfaces.canvas_interaface.utils.node_operations import NodeOperations
-from app.interfaces.canvas_interaface.utils.quick_component_manager import QuickComponentManager
-from app.interfaces.canvas_interaface.utils.environment_manager import EnvironmentManager
+from app.interfaces.canvas_interaface.utils.quick_component_manager import (
+    QuickComponentManager,
+)
+from app.interfaces.canvas_interaface.utils.environment_manager import (
+    EnvironmentManager,
+)
 from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
@@ -35,6 +39,8 @@ class CanvasPage(QWidget):
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
 
+    _component_cache = {}  # 类级别缓存
+
     def __init__(self, parent=None, object_name: Path = None, manager=None):
         super().__init__()
         # --- 第一阶段：基础数据准备 (必须同步) ---
@@ -42,8 +48,12 @@ class CanvasPage(QWidget):
         self.manager = manager
         self.file_path = object_name
         # 国际化工作流名称
-        self.workflow_name = ".".join(object_name.stem.split(".")[:-1]) if object_name else self.tr("未命名工作流")
-        self.setObjectName('canvas_page' if object_name is None else str(object_name))
+        self.workflow_name = (
+            ".".join(object_name.stem.split(".")[:-1])
+            if object_name
+            else self.tr("未命名工作流")
+        )
+        self.setObjectName("canvas_page" if object_name is None else str(object_name))
         self.config = Settings.get_instance()
         self._pending_property_update = None
         # 线程池
@@ -55,8 +65,12 @@ class CanvasPage(QWidget):
 
         # 节点注册
         # 1. 节点操作与注册
-        self.node_operations = NodeOperations(self, self.graph, self.manager.recommendation_engine,
-                                              QThreadPool.globalInstance())
+        self.node_operations = NodeOperations(
+            self,
+            self.graph,
+            self.manager.recommendation_engine,
+            QThreadPool.globalInstance(),
+        )
         # 异步注册或分批注册节点
         self.node_operations.register_components()
         self.canvas_widget = self.graph.viewer()
@@ -84,7 +98,7 @@ class CanvasPage(QWidget):
             ui_manager=self.ui_manager,
             node_operations=self.node_operations,
             select_node_callback=self.select_node_by_name,
-            parent=self
+            parent=self,
         )
         self._connect_signals()
         self.node_operations.setup_context_menu()
@@ -95,7 +109,7 @@ class CanvasPage(QWidget):
             "从此处运行": self.canvas_runner.run_from,
             "运行到此处": self.canvas_runner.run_to,
             "运行所在子图": self.canvas_runner.run_subgraph,
-            "运行所有节点": self.canvas_runner.run_full
+            "运行所有节点": self.canvas_runner.run_full,
         }
 
     @property
@@ -165,13 +179,17 @@ class CanvasPage(QWidget):
 
     @property
     def component_map(self):
-        component_map, _ = ComponentScanner().get_components()
-        return component_map
+        if not self._component_cache:
+            component_map, _ = ComponentScanner().get_components()
+            self._component_cache["component_map"] = component_map
+        return self._component_cache["component_map"]
 
     @property
     def file_map(self):
-        _, file_map = ComponentScanner().get_components()
-        return file_map
+        if "file_map" not in self._component_cache:
+            _, file_map = ComponentScanner().get_components()
+            self._component_cache["file_map"] = file_map
+        return self._component_cache["file_map"]
 
     @property
     def property_panel(self):
@@ -218,25 +236,29 @@ class CanvasPage(QWidget):
         return self.environment_manager.env_data
 
     def rename_node_vars(self, old_name, new_name):
-        old_name = re.sub(r'\s+', '_', old_name)
-        new_name = re.sub(r'\s+', '_', new_name)
+        old_name = re.sub(r"\s+", "_", old_name)
+        new_name = re.sub(r"\s+", "_", new_name)
         input_proxy_old_name = f"input.{old_name}"
         input_proxy_new_name = f"input.{new_name}"
-        old_names, new_names = self.global_variables.rename_node_vars(old_name, new_name)
+        old_names, new_names = self.global_variables.rename_node_vars(
+            old_name, new_name
+        )
         for old_name, new_name in zip(old_names, new_names):
             self.global_variables_changed.emit(old_name, "delete")
             self.global_variables_changed.emit(new_name, "add")
         for node in self.graph.all_nodes():
             if hasattr(node, "rename_variable"):
                 node.rename_variable(
-                    old_names + [input_proxy_old_name], new_names + [input_proxy_new_name]
+                    old_names + [input_proxy_old_name],
+                    new_names + [input_proxy_new_name],
                 )
 
     def show_category_dialog(self, categories, tag):
         pos = tag.mapToGlobal(QPoint(0, 0))
         category_filter_dialog = CategoryFilterDialog(self, categories)
         category_filter_dialog.categories_changed.connect(
-            self.ui_manager.nav_panel.draggable_tree._on_categories_changed)
+            self.ui_manager.nav_panel.draggable_tree._on_categories_changed
+        )
         category_filter_dialog.show_at(pos)
 
     def add_template(self):
@@ -260,18 +282,26 @@ class CanvasPage(QWidget):
         action: "jump:node_102"
         """
         if action.startswith("jump"):
-            content = content if not "," in content else [x.strip() for x in content.split(",")]
+            content = (
+                content
+                if not "," in content
+                else [x.strip() for x in content.split(",")]
+            )
             self.select_node_by_name(content)
         elif action.startswith("create"):
             self.node_operations.create_next_node_using_name(content)
         elif action.startswith("generate"):
             # LLM prompt 通常保持业务逻辑，但UI反馈可国际化
-            question = self.tr("历史对话上下文：{}\n\n你的任务是结合历史信息生成这个 {} 组件的代码").format(
+            question = self.tr(
+                "历史对话上下文：{}\n\n你的任务是结合历史信息生成这个 {} 组件的代码"
+            ).format(
                 self.ui_manager.llm_chatter.session_manager.get_current_session().messages,
-                content
+                content,
             )
             self.parent.switchTo(self.parent.develop_page)
-            self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(question)
+            self.parent.develop_page.llm_context_provider.send_preset_generate_llm_request(
+                question
+            )
 
     def select_node_by_name(self, name_list, *args):
         if name_list is None:
@@ -329,12 +359,17 @@ class CanvasPage(QWidget):
             self._pending_property_update.stop()
         self._pending_property_update = QtCore.QTimer()
         self._pending_property_update.setSingleShot(True)
+        nodes_ref = nodes
         self._pending_property_update.timeout.connect(
-            lambda: self.property_panel.update_properties(nodes)
+            lambda: self.property_panel.update_properties(nodes_ref)
         )
-        self._pending_property_update.start(10)  # 10ms 防抖
+        self._pending_property_update.start(10)
 
     # --- 信号绑定 ---
+    def _invalidate_component_cache(self):
+        """组件变化时清除缓存"""
+        self._component_cache.clear()
+
     def set_node_status_by_id(self, node_id, status):
         node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
@@ -392,7 +427,9 @@ class CanvasPage(QWidget):
             title = self.tr("错误")
             content = self.tr('节点 "{}" 执行失败！').format(node.name())
             MessageManager.error(title, content, self)
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED))
+            QtCore.QTimer.singleShot(
+                0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_FAILED)
+            )
 
         self.run_btn.show()
         self.pause_btn.hide()
@@ -402,34 +439,48 @@ class CanvasPage(QWidget):
     def on_node_started_simple(self, node_id):
         node = self.node_operations._get_node_by_id_cached(node_id)
         if node:
-            QtCore.QTimer.singleShot(0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING))
+            QtCore.QTimer.singleShot(
+                0, lambda: self.set_node_status(node, NodeStatus.NODE_STATUS_RUNNING)
+            )
 
     def _connect_signals(self):
         """连接调度器信号到 UI 回调"""
         # 界面刷新信号
         self.ui_manager.connect_signals()
         self.graph.node_created.connect(self.node_operations.on_node_created)
-        self.graph.node_double_clicked.connect(self.node_operations.on_node_double_clicked)
+        self.graph.node_double_clicked.connect(
+            self.node_operations.on_node_double_clicked
+        )
         self.graph.port_connected.connect(self._on_port_connected)
+        self.graph.port_disconnected.connect(self._invalidate_pipe_cache)
         self.graph.node_selection_changed.connect(
             lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
         )
-        self.ui_manager.log_window.cardDoubleClicked.connect(self.node_operations.select_nodes_by_name)
-        self.quick_manager.quick_components_changed.connect(self.ui_manager._refresh_quick_buttons)
+        self.ui_manager.log_window.cardDoubleClicked.connect(
+            self.node_operations.select_nodes_by_name
+        )
+        self.quick_manager.quick_components_changed.connect(
+            self.ui_manager._refresh_quick_buttons
+        )
         self.canvas_io.canvas_loaded.connect(self.environment_manager.load_env_combos)
         # 连接自动组件同步刷新信号
         ComponentScanner.register_on_change(self.nav_view.refresh_components)
-        ComponentScanner.register_on_change(self.node_operations.register_components, False)
+        ComponentScanner.register_on_change(
+            self.node_operations.register_components, False
+        )
+        ComponentScanner.register_on_change(self._invalidate_component_cache, False)
         # 画布上按钮信号
         self.ui_manager.run_btn.clicked.connect(self.canvas_runner.run_workflow)
         self.ui_manager.pause_btn.clicked.connect(self._on_pause_resume_clicked)
         self.ui_manager.stop_btn.clicked.connect(self.canvas_runner.stop_workflow)
         self.ui_manager.save_btn.clicked.connect(lambda: self.save_full_workflow())
-        self.ui_manager.export_model_btn.clicked.connect(self.export_selected_nodes_as_project)
+        self.ui_manager.export_model_btn.clicked.connect(
+            self.export_selected_nodes_as_project
+        )
         self.ui_manager.close_btn.clicked.connect(
             lambda: (
                 QtCore.QTimer.singleShot(0, self.close_current_canvas),
-                self.switch_to_parent()
+                self.switch_to_parent(),
             )
         )
         # 状态信号
@@ -442,13 +493,25 @@ class CanvasPage(QWidget):
         # 节点信号
         self.canvas_runner.node_status_changed.connect(self.set_node_status_by_id)
         # 画布样式更改信号
-        self.config.canvas_grid_mode.valueChanged.connect(self.ui_manager._setup_pipeline_style)
-        self.config.canvas_pipelayout.valueChanged.connect(self.ui_manager._setup_pipeline_style)
-        self.config.canvas_direction.valueChanged.connect(self.ui_manager._setup_pipeline_style)
-        self.config.canvas_auto_collapse.valueChanged.connect(self.ui_manager._setup_pipeline_style)
+        self.config.canvas_grid_mode.valueChanged.connect(
+            self.ui_manager._setup_pipeline_style
+        )
+        self.config.canvas_pipelayout.valueChanged.connect(
+            self.ui_manager._setup_pipeline_style
+        )
+        self.config.canvas_direction.valueChanged.connect(
+            self.ui_manager._setup_pipeline_style
+        )
+        self.config.canvas_auto_collapse.valueChanged.connect(
+            self.ui_manager._setup_pipeline_style
+        )
         # 面板刷新信号
-        self.canvas_runner.property_changed.connect(self.property_panel.update_properties)
-        self.canvas_runner.node_vars_changed.connect(self.property_panel.refresh_node_vars_page)
+        self.canvas_runner.property_changed.connect(
+            self.property_panel.update_properties
+        )
+        self.canvas_runner.node_vars_changed.connect(
+            self.property_panel.refresh_node_vars_page
+        )
 
     # 断开信号
     def _disconnect_signals(self):
@@ -458,7 +521,9 @@ class CanvasPage(QWidget):
         try:
             self.ui_manager.run_btn.clicked.disconnect(self.canvas_runner.run_workflow)
             self.ui_manager.pause_btn.clicked.disconnect(self._on_pause_resume_clicked)
-            self.ui_manager.stop_btn.clicked.disconnect(self.canvas_runner.stop_workflow)
+            self.ui_manager.stop_btn.clicked.disconnect(
+                self.canvas_runner.stop_workflow
+            )
             self.ui_manager.save_btn.clicked.disconnect()
             self.ui_manager.export_model_btn.clicked.disconnect()
             self.ui_manager.close_btn.clicked.disconnect()
@@ -468,10 +533,14 @@ class CanvasPage(QWidget):
         try:
             self.canvas_runner.workflow_paused.disconnect(self._on_workflow_paused)
             self.canvas_runner.workflow_resumed.disconnect(self._on_workflow_resumed)
-            self.canvas_runner.workflow_cancelled.disconnect(self._on_workflow_cancelled)
+            self.canvas_runner.workflow_cancelled.disconnect(
+                self._on_workflow_cancelled
+            )
             self.canvas_runner.workflow_finished.disconnect(self._on_workflow_finished)
             self.canvas_runner.workflow_error.disconnect(self._on_workflow_error)
-            self.canvas_runner.node_status_changed.disconnect(self.set_node_status_by_id)
+            self.canvas_runner.node_status_changed.disconnect(
+                self.set_node_status_by_id
+            )
             self.canvas_runner.workflow_started.disconnect(self._on_workflow_started)
             self.canvas_runner.property_changed.disconnect()
             self.canvas_runner.node_vars_changed.disconnect()
@@ -479,9 +548,15 @@ class CanvasPage(QWidget):
             pass
 
         try:
-            self.config.canvas_grid_mode.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
-            self.config.canvas_pipelayout.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
-            self.config.canvas_direction.valueChanged.disconnect(self.ui_manager._setup_pipeline_style)
+            self.config.canvas_grid_mode.valueChanged.disconnect(
+                self.ui_manager._setup_pipeline_style
+            )
+            self.config.canvas_pipelayout.valueChanged.disconnect(
+                self.ui_manager._setup_pipeline_style
+            )
+            self.config.canvas_direction.valueChanged.disconnect(
+                self.ui_manager._setup_pipeline_style
+            )
             self.env_combo.currentIndexChanged.disconnect(self.on_environment_changed)
             self.global_variables_changed.disconnect(self._on_global_variables_changed)
         except TypeError:
@@ -501,7 +576,7 @@ class CanvasPage(QWidget):
         self.graph.fit_to_selection()
 
     def set_node_status(self, node, status):
-        if hasattr(node, 'status'):
+        if hasattr(node, "status"):
             try:
                 node.status = status
             except:
@@ -513,36 +588,44 @@ class CanvasPage(QWidget):
     def _highlight_node_connections(self, node, status):
         """优化的连接线高亮方法"""
         viewer = self.graph.viewer()
-
-        # 状态判断：是否处于运行中
-        # 假设你的 NodeStatus 定义中包含 NODE_STATUS_RUNNING
-        is_running = (status == NodeStatus.NODE_STATUS_RUNNING)
+        is_running = status == NodeStatus.NODE_STATUS_RUNNING
         if not hasattr(node, "input_ports"):
             return
-        # 1. 先处理输入端口
+
+        pipe_map = self._get_pipe_port_map(viewer)
+
         for port in node.input_ports():
             for connected_port in port.connected_ports():
-                # 找到连接线：注意参数顺序 (源端口, 目标端口)
-                # 输入端口的连接，源通常是对方的输出端口
-                pipe = self._find_pipe_by_ports(connected_port, port, viewer.all_pipes())
+                key = (connected_port.view, port.view)
+                pipe = pipe_map.get(key)
                 if pipe:
                     if is_running:
                         pipe.running(type="input")
-                    else:
-                        if hasattr(pipe, 'reset'):
-                            pipe.reset()
+                    elif hasattr(pipe, "reset"):
+                        pipe.reset()
 
-        # 2. 再处理输出端口
         for port in node.output_ports():
             for connected_port in port.connected_ports():
-                # 输出端口的连接，源是自己
-                pipe = self._find_pipe_by_ports(port, connected_port, viewer.all_pipes())
+                key = (port.view, connected_port.view)
+                pipe = pipe_map.get(key)
                 if pipe:
                     if is_running:
                         pipe.running(type="output")
-                    else:
-                        if hasattr(pipe, 'reset'):
-                            pipe.reset()
+                    elif hasattr(pipe, "reset"):
+                        pipe.reset()
+
+    def _get_pipe_port_map(self, viewer):
+        """建立端口到管道的映射缓存"""
+        if not hasattr(self, "_pipe_port_map_cache"):
+            self._pipe_port_map_cache = {}
+            for pipe in viewer.all_pipes():
+                self._pipe_port_map_cache[(pipe.output_port, pipe.input_port)] = pipe
+        return self._pipe_port_map_cache
+
+    def _invalidate_pipe_cache(self):
+        """当管道变化时使缓存失效"""
+        if hasattr(self, "_pipe_port_map_cache"):
+            self._pipe_port_map_cache.clear()
 
     def _find_pipe_by_ports(self, out_port, in_port, pipes):
         """根据输入输出端口查找对应的连接线"""
@@ -553,83 +636,82 @@ class CanvasPage(QWidget):
 
     def on_node_finished_simple(self, node):
         if node and node.selected() and len(self.graph.selected_nodes()) == 1:
-            QtCore.QTimer.singleShot(0, lambda: self.property_panel.update_properties(node))
+            QtCore.QTimer.singleShot(
+                0, lambda: self.property_panel.update_properties(node)
+            )
 
     def _on_port_connected(self, input_port, output_port):
         in_node = input_port.node()
         out_node = output_port.node()
-        src_path = getattr(out_node, 'FULL_PATH', None)
-        dst_path = getattr(in_node, 'FULL_PATH', None)
+        src_path = getattr(out_node, "FULL_PATH", None)
+        dst_path = getattr(in_node, "FULL_PATH", None)
         if src_path and dst_path:
-            self.manager.recommendation_engine._stats_manager.record_connection(src_path, dst_path)
+            self.manager.recommendation_engine._stats_manager.record_connection(
+                src_path, dst_path
+            )
 
     def on_selection_changed(self):
         selected_nodes = self.graph.selected_nodes()
-        # 1. 快速退出：无选中
         if not selected_nodes:
             self.nav_view.clear_recommendations()
             self.property_panel.reset_current_components()
             self._schedule_property_update(None)
             return
 
-        # 2. 分类节点：找出 Backdrop 和其他节点
-        # 使用 set 提高后续查找速度
-        selected_set = set([n for n in selected_nodes if hasattr(n, "execute_sync")])
-        backdrops = [n for n in selected_nodes if isinstance(n, ControlFlowBackdrop)]
-        # 3. 收集所有被选中 Backdrop 的内部节点
-        # 使用 set 存储内部节点，查找复杂度从 O(N) 降为 O(1)
-        all_backdrop_internals = set()
-        for bd in backdrops:
-            # 假设 bd.nodes() 返回的是列表或迭代器
-            all_backdrop_internals.update(bd.nodes())
-        # 4. 判断 "仅选中 Backdrop 模式"
-        target_backdrop_update = None
+        backdrops = []
+        executable_nodes = []
+        for node in selected_nodes:
+            if isinstance(node, ControlFlowBackdrop):
+                backdrops.append(node)
+            elif hasattr(node, "execute_sync"):
+                executable_nodes.append(node)
 
+        all_backdrop_internals = set()
+        backdrop_nodes_map = {}
+        for bd in backdrops:
+            bd_nodes = set(bd.nodes())
+            backdrop_nodes_map[bd] = bd_nodes
+            all_backdrop_internals.update(bd_nodes)
+
+        target_backdrop_update = None
         if backdrops:
-            # 只有当选中了 Backdrop 时才进行此复杂判断
             for bd in backdrops:
-                bd_internals = set(bd.nodes())
-                # 检查：是否所有非当前Backdrop的选中节点，实际上都是这个Backdrop的子节点
-                remaining_selection = selected_set - {bd}
-                if remaining_selection and remaining_selection.issubset(bd_internals):
+                remaining = set(executable_nodes) - {bd}
+                if remaining and remaining.issubset(backdrop_nodes_map.get(bd, set())):
                     target_backdrop_update = bd
                     break
+
         if target_backdrop_update:
-            # 命中特殊逻辑：只显示 Backdrop 属性
             self.nav_view.clear_recommendations()
             self._schedule_property_update(target_backdrop_update)
             self.property_panel.reset_current_components()
             return
 
-        # 5. 常规逻辑：过滤掉作为"内部节点"被连带选中的节点
-        # 使用集合差集高效过滤：保留那些 "不是任何选中Backdrop的子节点" 的节点
         top_level_nodes = [n for n in selected_nodes if n not in all_backdrop_internals]
-        # 6. 根据过滤后的顶层节点数量处理
-        if len(top_level_nodes) > 1:
-            self.nav_view.clear_recommendations()  # 多选时不显示推荐
-            self._schedule_property_update(top_level_nodes)
+        top_count = len(top_level_nodes)
 
-        elif len(top_level_nodes) == 1:
+        if top_count > 1:
+            self.nav_view.clear_recommendations()
+            self._schedule_property_update(top_level_nodes)
+        elif top_count == 1:
             node = top_level_nodes[0]
             if isinstance(node, BasicNodeWithGlobalProperty):
                 self._schedule_property_update(node)
                 self.property_panel.reset_current_components()
-                # 避免框选过程中快速划过节点时频繁触发 IO/LLM 计算
                 if hasattr(self, "_recommendation_timer"):
                     self._recommendation_timer.stop()
                 else:
                     self._recommendation_timer = QTimer()
                     self._recommendation_timer.setSingleShot(True)
                     self._recommendation_timer.timeout.connect(
-                        lambda: self.node_operations._request_recommendations(node))
-
-                self._recommendation_timer.start(50)  # 50ms 延迟
+                        lambda n=node: self.node_operations._request_recommendations(n)
+                    )
+                self._recommendation_timer.start(50)
             else:
                 self.nav_view.clear_recommendations()
                 self.property_panel.reset_current_components()
                 self._schedule_property_update(None)
         else:
-            # 这种情况可能是只选了内部节点但没选父 Backdrop，或者被全部过滤了
             self.nav_view.clear_recommendations()
             self.property_panel.reset_current_components()
             self._schedule_property_update(None)
@@ -660,9 +742,13 @@ class CanvasPage(QWidget):
     def _auto_layout_selected(self, graph, node=None):
         selected = self.graph.selected_nodes()
         if selected:
-            self.graph.auto_layout_nodes(nodes=selected, start_nodes=[node] if node else None)
+            self.graph.auto_layout_nodes(
+                nodes=selected, start_nodes=[node] if node else None
+            )
         else:
-            self.graph.auto_layout_nodes(nodes=self.graph.all_nodes(), start_nodes=[node] if node else None)
+            self.graph.auto_layout_nodes(
+                nodes=self.graph.all_nodes(), start_nodes=[node] if node else None
+            )
 
     # --- 画布关闭逻辑 ---
     def close_current_canvas(self):
@@ -676,7 +762,7 @@ class CanvasPage(QWidget):
                     manager.remove_by_canvas(self.workflow_name)
                 except Exception as e:
                     logger.exception(f"清理管理器 {manager.manager_name} 失败: {e}")
-        # 定时器关闭
+            # 定时器关闭
             self._auto_saver.stop()
             self.ipython_kernel.stop_kernel()
             self._disconnect_signals()

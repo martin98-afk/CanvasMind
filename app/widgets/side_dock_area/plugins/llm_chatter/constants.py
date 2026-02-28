@@ -86,7 +86,7 @@ FREE_PROVIDERS = {
     "MiniMax (月之暗面)": {
         "API_URL": "https://api.minimax.chat/v1",
         "API_KEY": "",
-        "模型名称": "abab6.5s-chat",
+        "模型名称": "MiniMax-M2.5",
         "温度": 0.7,
         "最大Token": 4096,
         "认证方式": "bearer",

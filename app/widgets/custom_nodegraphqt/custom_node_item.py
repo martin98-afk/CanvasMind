@@ -463,11 +463,21 @@ class CustomNodeItem(NodeItem):
         self._user_height += dy
 
         # 3. 核心逻辑：触碰/缩进边界自动恢复自适应
-        # 设置一个缓冲阈值(如5像素)，当用户缩到最小或者更小时，解除手动尺寸锁定
-        if self._user_width <= (min_w + 5):
-            self._user_width = 0.0
-        if self._user_height <= (min_h + 5):
-            self._user_height = 0.0
+        # Proxy模式下只在用户主动缩小到最小边界以下时才恢复自适应
+        if self._proxy_mode:
+            # Proxy模式下，只要用户有手动设置尺寸就保持
+            if self._user_width > 0 and dx < 0:
+                if self._user_width <= min_w:
+                    self._user_width = 0.0
+            if self._user_height > 0 and dy < 0:
+                if self._user_height <= min_h:
+                    self._user_height = 0.0
+        else:
+            threshold = 5
+            if self._user_width <= (min_w + threshold):
+                self._user_width = 0.0
+            if self._user_height <= (min_h + threshold):
+                self._user_height = 0.0
 
         # 4. 更新属性
         self._properties["width"] = self._user_width
@@ -586,8 +596,8 @@ class CustomNodeItem(NodeItem):
         widget_height = 0.0
         w_width = 0.0
 
-        # 只有在非 Proxy 且非折叠状态下，才去累加 Widget 高度
-        if not self._is_collapsed and not self._proxy_mode:
+        # 总是计算 widget 尺寸（即使在 proxy 模式下也计算，用于尺寸判断）
+        if not self._is_collapsed:
             for widget in self._widgets.values():
                 # 只有用户主动隐藏的控件才不计入高度
                 if not widget.isVisible():
@@ -601,6 +611,12 @@ class CustomNodeItem(NodeItem):
                 widget_height += 10.0
             self._widget_height = widget_height
             self._widget_width = w_width
+
+        # 缓存非 proxy 模式下的尺寸（用于切换到 proxy 模式时保持尺寸）
+        if not self._proxy_mode:
+            self._last_normal_width = self._width
+            self._last_normal_height = self._height
+
         # 2. 确定最小宽高边界
         text_item_height = self._text_item.boundingRect().height()
         text_item_width = self._text_item.boundingRect().width()
@@ -610,24 +626,20 @@ class CustomNodeItem(NodeItem):
             min_width = max(text_item_width + 120, p_width, 200)
             min_height = header_height + self._port_height
         elif self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
+            # canvas_auto_collapse=true: 使用最小尺寸
             min_width = self._user_width if self._user_width > 0 else 200
             min_height = self._user_height if self._user_height > 0 else 120
         elif self._proxy_mode and not self._is_collapsed:
-            min_width = (
-                self._user_width
-                if self._user_width > 0
-                else max(
-                    text_item_width + 120,
-                    p_width,
-                    self._widget_width + 20,
-                    200,
-                )
-            )
-            min_height = (
-                self._user_height
-                if self._user_height > 0
-                else header_height + self._port_height + self._widget_height
-            )
+            # canvas_auto_collapse=false: 保持普通模式下的尺寸
+            if self._user_width > 0:
+                min_width = self._user_width
+            else:
+                # 使用之前缓存的普通模式尺寸
+                min_width = getattr(self, "_last_normal_width", 200)
+            if self._user_height > 0:
+                min_height = self._user_height
+            else:
+                min_height = getattr(self, "_last_normal_height", 120)
         else:
             min_width = max(
                 text_item_width + 120,
