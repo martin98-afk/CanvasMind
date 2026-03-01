@@ -51,11 +51,23 @@ class BuiltinTools:
             f"[BuiltinTools.read_file] filePath={filePath}, offset={offset}, limit={limit}"
         )
         try:
+            if not filePath:
+                return ToolResult(False, error="Missing required parameter: filePath")
+
             path = self._resolve_path(filePath)
             logger.info(f"[BuiltinTools.read_file] resolved path: {path}")
             if not path.exists():
                 logger.warning(f"[BuiltinTools.read_file] File not found: {filePath}")
                 return ToolResult(False, error=f"File not found: {filePath}")
+
+            if path.is_dir():
+                logger.warning(
+                    f"[BuiltinTools.read_file] Path is a directory: {filePath}"
+                )
+                return ToolResult(
+                    False,
+                    error=f"Path is a directory, not a file: {filePath}. Use 'list' command to see directory contents.",
+                )
 
             with open(path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
@@ -69,12 +81,22 @@ class BuiltinTools:
                 f"File: {path}\nLines {start + 1}-{end} of {total_lines}:\n\n{content}"
             )
             return ToolResult(True, content=result)
+        except PermissionError:
+            return ToolResult(
+                False,
+                error=f"Permission denied: {filePath}. The path may be a directory or access is restricted.",
+            )
         except Exception as e:
             return ToolResult(False, error=f"Read error: {str(e)}")
 
     def write_file(self, filePath: str, content: str) -> ToolResult:
         """创建或覆盖文件"""
         try:
+            if not filePath:
+                return ToolResult(False, error="Missing required parameter: filePath")
+            if content is None:
+                content = ""
+
             path = self._resolve_path(filePath)
             path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -90,6 +112,13 @@ class BuiltinTools:
     ) -> ToolResult:
         """通过精确字符串替换编辑文件"""
         try:
+            if not filePath:
+                return ToolResult(False, error="Missing required parameter: filePath")
+            if oldString is None:
+                oldString = ""
+            if newString is None:
+                newString = ""
+
             path = self._resolve_path(filePath)
             if not path.exists():
                 return ToolResult(False, error=f"File not found: {filePath}")
@@ -118,6 +147,9 @@ class BuiltinTools:
     ) -> ToolResult:
         """使用正则表达式搜索文件内容"""
         try:
+            if not pattern:
+                return ToolResult(False, error="Missing required parameter: pattern")
+
             search_path = self._resolve_path(path) if path else self.workdir
             if not search_path.exists():
                 return ToolResult(
@@ -159,6 +191,9 @@ class BuiltinTools:
     def glob_files(self, pattern: str, path: str = None) -> ToolResult:
         """通过模式匹配查找文件"""
         try:
+            if not pattern:
+                return ToolResult(False, error="Missing required parameter: pattern")
+
             search_path = self._resolve_path(path) if path else self.workdir
             if not search_path.exists():
                 return ToolResult(
@@ -173,6 +208,10 @@ class BuiltinTools:
 
             results = [str(m.relative_to(self.workdir)) for m in matches[:100]]
             return ToolResult(True, content="\n".join(results))
+        except TypeError as e:
+            return ToolResult(
+                False, error=f"Glob error: {str(e)}. Pattern may be invalid."
+            )
         except Exception as e:
             return ToolResult(False, error=f"Glob error: {str(e)}")
 

@@ -96,6 +96,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _is_shell_mode: bool = False
     _builtin_tools: Optional[BuiltinTools] = None
     _is_continuing: bool = False
+    _processed_tool_ids: set = set()  # 防止重复处理工具调用
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -916,6 +917,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        # 清空已处理的工具调用集合
+        self._processed_tool_ids.clear()
+
         # Shell模式：直接执行命令
         if self._is_shell_mode:
             if not user_text:
@@ -1525,8 +1529,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._process_plugin_calls(content_piece, assistant_card)
         # 2) 处理简单的工具调用（如 shell 命令）
         self._process_tool_calls(content_piece, assistant_card)
-        # 3) 处理内置工具调用
-        self._process_builtin_tool_calls(content_piece, assistant_card)
+        # 3) 处理内置工具调用 - 已通过 function calling 处理，不再重复解析
+        # (function calling 是主要工具调用方式，builtin_tool_call 文本格式已废弃)
 
     def _on_tool_call_received(self, tool_call: dict, assistant_card: MessageCard):
         """处理原生 function calling 格式的工具调用"""
@@ -1535,6 +1539,23 @@ class OpenAIChatToolWindow(ToolWindow):
         func = tool_call.get("function", {})
         tool_name = func.get("name")
         arguments = func.get("arguments", "{}")
+
+        if not tool_name:
+            logger.warning("[ToolCallReceived] Tool name is empty, skipping")
+            return
+
+        tool_call_id = tool_call.get("id")
+        if not tool_call_id:
+            logger.warning("[ToolCallReceived] Tool call id is empty, skipping")
+            return
+
+        # 标记为已处理，防止重复
+        if tool_call_id in self._processed_tool_ids:
+            logger.warning(
+                f"[ToolCallReceived] Tool call {tool_call_id} already processed, skipping"
+            )
+            return
+        self._processed_tool_ids.add(tool_call_id)
 
         # arguments 可能是字符串，需要解析
         if isinstance(arguments, str):
@@ -1559,7 +1580,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     "content": self._worker.full_response if self._worker else "",
                     "tool_calls": [
                         {
-                            "id": tool_call.get("id"),
+                            "id": tool_call_id,
                             "type": "function",
                             "function": {
                                 "name": tool_name,
@@ -1576,7 +1597,7 @@ class OpenAIChatToolWindow(ToolWindow):
             session.messages.append(
                 {
                     "role": "tool",
-                    "tool_call_id": tool_call.get("id"),
+                    "tool_call_id": tool_call_id,
                     "content": tool_result_content,
                 }
             )
@@ -1826,6 +1847,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if not self._builtin_tools:
             logger.warning("[ExecuteBuiltinTool] Builtin tools not initialized")
             return ToolResult(False, error="Builtin tools not initialized")
+
+        # 记录详细的参数提取过程
+        logger.info(
+            f"[ExecuteBuiltinTool] args keys: {list(args.keys()) if args else []}"
+        )
 
         tool_map = {
             "read": lambda: self._builtin_tools.read_file(
