@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import re
+import json
 from typing import Dict, List, Any, Optional
 import openai
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal
@@ -225,7 +226,7 @@ class OpenAIChatWorker(QThread):
         self.stream = stream
         self.full_response = ""
         self._is_cancelled = False
-        self._tool_calls_buffer = []
+        self._tool_calls_buffer = {}
         self._max_tool_iterations = 10
 
     def cancel(self):
@@ -372,29 +373,86 @@ class OpenAIChatWorker(QThread):
                 if self._is_cancelled:
                     return
                 delta = chunk.choices[0].delta
-
                 # 自动兼容 DeepSeek 的推理内容
                 reasoning = getattr(delta, "reasoning_content", None)
                 content = getattr(delta, "content", None)
 
                 # 处理工具调用
                 tool_calls = getattr(delta, "tool_calls", None)
+                print(tool_calls)
                 if tool_calls:
                     for tc in tool_calls:
-                        tc_dict = {
-                            "id": tc.id,
-                            "type": tc.type,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            },
-                        }
-                        self.tool_call_received.emit(tc_dict)
+                        tc_id = tc.id
+
+                        # 如果 tc_id 为 None，使用最后一个有效的 tc_id
+                        if tc_id is None:
+                            if self._tool_calls_buffer:
+                                tc_id = list(self._tool_calls_buffer.keys())[-1]
+                            else:
+                                continue
+
+                        if tc_id not in self._tool_calls_buffer:
+                            self._tool_calls_buffer[tc_id] = {
+                                "id": tc_id,
+                                "type": getattr(tc, "type", "function"),
+                                "function": {
+                                    "name": "",
+                                    "arguments": "",
+                                },
+                            }
+
+                        buffer = self._tool_calls_buffer[tc_id]
+
+                        if tc.function and tc.function.name:
+                            buffer["function"]["name"] = tc.function.name
+
+                        if tc.function and tc.function.arguments:
+                            buffer["function"]["arguments"] += tc.function.arguments
+
+                        if (
+                            buffer["function"]["name"]
+                            and buffer["function"]["arguments"]
+                        ):
+                            try:
+                                parsed_args = json.loads(
+                                    buffer["function"]["arguments"]
+                                )
+                                tc_dict = {
+                                    "id": buffer["id"],
+                                    "type": buffer["type"],
+                                    "function": {
+                                        "name": buffer["function"]["name"],
+                                        "arguments": parsed_args,
+                                    },
+                                }
+                                self.tool_call_received.emit(tc_dict)
+                                del self._tool_calls_buffer[tc_id]
+                            except json.JSONDecodeError:
+                                pass
 
                 if content:
                     self.full_response += content
                     self.content_received.emit(content)
                     last_chunk_time = time.time()
+
+            # 处理剩余的buffered tool calls
+            for tc_id, buffer in self._tool_calls_buffer.items():
+                if buffer["function"]["name"] and buffer["function"]["arguments"]:
+                    try:
+                        parsed_args = json.loads(buffer["function"]["arguments"])
+                        tc_dict = {
+                            "id": buffer["id"],
+                            "type": buffer["type"],
+                            "function": {
+                                "name": buffer["function"]["name"],
+                                "arguments": parsed_args,
+                            },
+                        }
+                        self.tool_call_received.emit(tc_dict)
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            f"[Worker] Failed to parse tool call arguments: {buffer['function']['arguments']}"
+                        )
 
             self.finished_with_content.emit(self.full_response)
 

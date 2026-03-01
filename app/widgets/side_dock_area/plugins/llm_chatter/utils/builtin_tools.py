@@ -43,6 +43,15 @@ class BuiltinTools:
         self._todo_list: List[Dict] = []
         self._loaded_skills: Dict[str, str] = {}
 
+        # 获取项目根目录作为安全边界
+        self._root_dir = self.workdir
+        for _ in range(5):
+            parent = self._root_dir.parent
+            if parent == self._root_dir:
+                break
+            self._root_dir = parent
+        logger.info(f"[BuiltinTools] Root directory for security: {self._root_dir}")
+
     def read_file(
         self, filePath: str, offset: int = 1, limit: int = 2000
     ) -> ToolResult:
@@ -61,12 +70,17 @@ class BuiltinTools:
                 return ToolResult(False, error=f"File not found: {filePath}")
 
             if path.is_dir():
-                logger.warning(
-                    f"[BuiltinTools.read_file] Path is a directory: {filePath}"
+                logger.info(
+                    f"[BuiltinTools.read_file] Path is a directory, listing contents: {filePath}"
                 )
+                entries = []
+                for item in sorted(path.iterdir()):
+                    rel_path = item.relative_to(path)
+                    entries.append(str(rel_path))
+                if not entries:
+                    return ToolResult(True, content="Empty directory")
                 return ToolResult(
-                    False,
-                    error=f"Path is a directory, not a file: {filePath}. Use 'list' command to see directory contents.",
+                    True, content="Directory contents:\n" + "\n".join(entries)
                 )
 
             with open(path, "r", encoding="utf-8") as f:
@@ -214,27 +228,6 @@ class BuiltinTools:
             )
         except Exception as e:
             return ToolResult(False, error=f"Glob error: {str(e)}")
-
-    def list_directory(self, path: str = None) -> ToolResult:
-        """列出目录内容"""
-        try:
-            target_path = self._resolve_path(path) if path else self.workdir
-            if not target_path.exists():
-                return ToolResult(
-                    False, error=f"Path not found: {path or self.workdir}"
-                )
-
-            entries = []
-            for item in sorted(target_path.iterdir()):
-                rel_path = item.relative_to(self.workdir)
-                entries.append(str(rel_path))
-
-            if not entries:
-                return ToolResult(True, content="Empty directory")
-
-            return ToolResult(True, content="\n".join(entries))
-        except Exception as e:
-            return ToolResult(False, error=f"List error: {str(e)}")
 
     def apply_patch(self, filePath: str, patch_content: str) -> ToolResult:
         """对文件应用补丁"""
@@ -436,13 +429,36 @@ class BuiltinTools:
         )
 
     def _resolve_path(self, path: str) -> Path:
-        """解析相对路径为绝对路径"""
+        """解析相对路径为绝对路径，包含安全检查"""
         if not path:
             return self.workdir
-        p = Path(path)
-        if p.is_absolute():
-            return p
-        return self.workdir / p
+
+        import os
+
+        try:
+            expanded = os.path.expandvars(path)
+            if expanded != path:
+                path = expanded
+
+            p = Path(path)
+            if p.is_absolute():
+                resolved = p.resolve()
+            else:
+                resolved = (self.workdir / p).resolve()
+
+            try:
+                resolved.relative_to(self._root_dir)
+                return resolved
+            except ValueError:
+                logger.warning(
+                    f"[BuiltinTools] Path {resolved} is outside root {self._root_dir}, using workdir"
+                )
+                return self.workdir
+        except (ValueError, OSError, RuntimeError) as e:
+            logger.warning(
+                f"[BuiltinTools] Failed to resolve path {path}: {e}, using workdir"
+            )
+            return self.workdir
 
 
 def get_builtin_tools_schema() -> List[Dict]:
@@ -527,19 +543,6 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "path": {"type": "string", "description": "搜索路径"},
                     },
                     "required": ["pattern"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "list",
-                "description": "列出目录内容",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "path": {"type": "string", "description": "目录路径"},
-                    },
                 },
             },
         },

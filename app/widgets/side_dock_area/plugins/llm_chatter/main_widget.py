@@ -140,7 +140,8 @@ class OpenAIChatToolWindow(ToolWindow):
 ## 追问与行动规范
 - 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
 - [问题描述](ask)
-- 如需执行，请在拟议行动后附上你将执行的第一步（如调用技能、运行命令等）以便用户确认。"""
+- 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
+"""
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
@@ -1532,6 +1533,59 @@ class OpenAIChatToolWindow(ToolWindow):
         # 3) 处理内置工具调用 - 已通过 function calling 处理，不再重复解析
         # (function calling 是主要工具调用方式，builtin_tool_call 文本格式已废弃)
 
+    def _clean_minimax_arguments(self, arguments: str) -> dict:
+        """清理MiniMax模型输出的非标准JSON参数格式"""
+        if not isinstance(arguments, str):
+            return arguments
+
+        import re
+
+        cleaned = arguments.strip()
+
+        cleaned = re.sub(r"<[^>]+>", "", cleaned)
+
+        cleaned = re.sub(r"}\s*{", ",", cleaned)
+
+        json_match = re.search(r"\{.+\}", cleaned, re.DOTALL)
+        if json_match:
+            cleaned = json_match.group()
+
+        try:
+            return json.loads(cleaned)
+        except:
+            pass
+
+        try:
+            params = {}
+            param_pattern = re.compile(
+                r""""(\w+)":\s*("[^"]*"|[\d.]+|true|false|null)"""
+            )
+            for match in param_pattern.finditer(arguments):
+                key = match.group(1)
+                value = match.group(2)
+                if value.startswith('"') and value.endswith('"'):
+                    params[key] = value[1:-1]
+                elif value == "true":
+                    params[key] = True
+                elif value == "false":
+                    params[key] = False
+                elif value == "null":
+                    params[key] = None
+                else:
+                    try:
+                        params[key] = int(value)
+                    except:
+                        try:
+                            params[key] = float(value)
+                        except:
+                            params[key] = value
+            if params:
+                return params
+        except:
+            pass
+
+        return {}
+
     def _on_tool_call_received(self, tool_call: dict, assistant_card: MessageCard):
         """处理原生 function calling 格式的工具调用"""
         logger.info(f"[ToolCallReceived] Received tool call: {tool_call}")
@@ -1562,7 +1616,7 @@ class OpenAIChatToolWindow(ToolWindow):
             try:
                 arguments = json.loads(arguments)
             except:
-                arguments = {}
+                arguments = self._clean_minimax_arguments(arguments)
 
         logger.info(
             f"[ToolCallReceived] Executing tool: {tool_name} with args: {arguments}"
@@ -1872,7 +1926,6 @@ class OpenAIChatToolWindow(ToolWindow):
             "glob": lambda: self._builtin_tools.glob_files(
                 args.get("pattern"), args.get("path")
             ),
-            "list": lambda: self._builtin_tools.list_directory(args.get("path")),
             "patch": lambda: self._builtin_tools.apply_patch(
                 args.get("filePath"), args.get("patch_content", "")
             ),
