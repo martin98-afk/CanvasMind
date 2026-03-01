@@ -1,0 +1,373 @@
+# -*- coding: utf-8 -*-
+import os
+import platform
+import re
+import locale
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QTextEdit,
+    QMenu,
+)
+from PyQt5.QtCore import Qt, QProcess, pyqtSignal
+from PyQt5.QtGui import (
+    QTextCursor,
+    QColor,
+    QTextCharFormat,
+    QFont,
+    QKeyEvent,
+    QPalette,
+)
+
+from app.utils.utils import get_icon
+from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+
+
+class InlineTerminal(QTextEdit):
+    command_entered = pyqtSignal(str)
+    interrupt_requested = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._history = []
+        self._history_index = -1
+        self._command_start_pos = 0
+        self._max_line_count = 10000
+        self._setup_style()
+        self._setup_context_menu()
+
+    def _setup_style(self):
+        # 优先使用 Cascadia Code 或 Consolas 等宽字体
+        font = QFont("Cascadia Code", 10)
+        if not font.fixedPitch():
+            font = QFont("Consolas", 10)
+        font.setStyleHint(QFont.Monospace)
+        self.setFont(font)
+
+        self.setStyleSheet("""
+            QTextEdit {
+                background-color: #1E1E1E;
+                color: #D4D4D4;
+                border: none;
+                padding: 4px;
+            }
+        """)
+
+        self.setUndoRedoEnabled(False)
+        self.setAcceptRichText(False)
+        self.setTabChangesFocus(False)
+        self.setTabStopDistance(30)
+        # 解决滚动条样式适配
+        self.verticalScrollBar().setStyleSheet("width: 8px;")
+
+    def _setup_context_menu(self):
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+
+    def _show_context_menu(self, pos):
+        menu = QMenu(self)
+        copy_action = menu.addAction("复制")
+        paste_action = menu.addAction("粘贴")
+        menu.addSeparator()
+        clear_action = menu.addAction("清空终端")
+
+        copy_action.triggered.connect(self.copy)
+        paste_action.triggered.connect(self.paste)
+        clear_action.triggered.connect(self.clear)
+        menu.exec_(self.mapToGlobal(pos))
+
+    def keyPressEvent(self, event: QKeyEvent):
+        cursor = self.textCursor()
+
+        # 1. 保护机制：如果光标在只读区，尝试输入时自动跳到末尾
+        if cursor.position() < self._command_start_pos:
+            if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_C:
+                super().keyPressEvent(event)  # 允许复制
+                return
+            cursor.movePosition(QTextCursor.End)
+            self.setTextCursor(cursor)
+
+        # 2. 回车键执行命令
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            cmd = self._get_current_input()
+            cursor.movePosition(QTextCursor.End)
+            cursor.insertText("\n")
+            self._command_start_pos = cursor.position()
+            self.command_entered.emit(cmd)
+            self._history_index = -1
+            event.accept()
+            return
+
+        # 3. 退格键保护：不能删除提示符之前的文字
+        if event.key() == Qt.Key_Backspace:
+            if cursor.position() <= self._command_start_pos:
+                if not cursor.hasSelection():
+                    event.accept()
+                    return
+
+        # 4. 历史记录导航 (向上/向下)
+        if event.key() == Qt.Key_Up:
+            self._navigate_history(-1)
+            event.accept()
+            return
+        if event.key() == Qt.Key_Down:
+            self._navigate_history(1)
+            event.accept()
+            return
+
+        # 5. Ctrl+C 中断信号
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
+            if not cursor.hasSelection():
+                self.interrupt_requested.emit()
+                event.accept()
+                return
+
+        # 6. Home键跳到命令开头而不是行首
+        if event.key() == Qt.Key_Home:
+            cursor.setPosition(self._command_start_pos)
+            self.setTextCursor(cursor)
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
+
+    def _navigate_history(self, direction):
+        if not self._history:
+            return
+
+        if direction == -1:  # Up
+            if self._history_index < len(self._history) - 1:
+                self._history_index += 1
+        else:  # Down
+            if self._history_index > -1:
+                self._history_index -= 1
+
+        if self._history_index == -1:
+            self._replace_command("")
+        else:
+            cmd = self._history[-(self._history_index + 1)]
+            self._replace_command(cmd)
+
+    def _get_current_input(self):
+        cursor = self.textCursor()
+        cursor.setPosition(self._command_start_pos)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        return cursor.selectedText()
+
+    def _replace_command(self, text):
+        cursor = self.textCursor()
+        cursor.setPosition(self._command_start_pos)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
+        cursor.insertText(text)
+        self.setTextCursor(cursor)
+
+    def append_output(self, text):
+        """专业解析 ANSI 转义序列并追加文本"""
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.End)
+
+        # 简单的 ANSI 解析逻辑
+        ansi_pattern = re.compile(r'(\x1b\[[\d;]*m)')
+        parts = ansi_pattern.split(text)
+
+        current_fmt = QTextCharFormat()
+        current_fmt.setForeground(QColor("#D4D4D4"))
+
+        for part in parts:
+            if part.startswith('\x1b['):
+                codes = part.strip('\x1b[m').split(';')
+                for code in codes:
+                    if code in ('0', ''):
+                        current_fmt = QTextCharFormat()
+                        current_fmt.setForeground(QColor("#D4D4D4"))
+                    elif code == '1':
+                        current_fmt.setFontWeight(QFont.Bold)
+                    elif '30' <= code <= '37' or '90' <= code <= '97':
+                        current_fmt.setForeground(self._get_ansi_color(code))
+            else:
+                cursor.insertText(part, current_fmt)
+
+        self._command_start_pos = cursor.position()
+        self.ensureCursorVisible()
+
+    def _get_ansi_color(self, code):
+        colors = {
+            "30": "#000000", "31": "#CD3131", "32": "#0DBC79", "33": "#E5E510",
+            "34": "#2472C8", "35": "#BC3FBC", "36": "#11A8CD", "37": "#E5E5E5",
+            "90": "#666666", "91": "#F14C4C", "92": "#23D18B", "93": "#F5F543",
+            "94": "#3B8EEA", "95": "#D670D6", "96": "#29B8DB", "97": "#FFFFFF",
+        }
+        return QColor(colors.get(code, "#D4D4D4"))
+
+    def add_to_history(self, cmd):
+        if cmd.strip() and (not self._history or self._history[-1] != cmd):
+            self._history.append(cmd)
+        self._history_index = -1
+
+
+class ShellConsoleToolWindow(ToolWindow):
+    name = "Shell 命令行"
+    icon = get_icon("shell")
+    singleton = True
+    default_position = DockPosition.BOTTOM
+
+    def __init__(self, page, button):
+        self.process = None
+        self.working_directory = os.getcwd()
+        # 获取系统编码，Windows 下 PowerShell 通常是 GBK/CP936
+        self.encoding = locale.getpreferredencoding()
+        super().__init__(page, button)
+        self.setWindowTitle("Terminal")
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self._create_toolbar()
+
+        self.terminal = InlineTerminal()
+        self.terminal.command_entered.connect(self._on_command_entered)
+        self.terminal.interrupt_requested.connect(self._interrupt_process)
+
+        layout.addWidget(self.terminal, 1)
+
+        self._start_shell()
+        self._print_welcome()
+
+    def _create_toolbar(self):
+        toolbar = QWidget()
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(8, 4, 8, 4)
+        toolbar_layout.setSpacing(8)
+
+        self.title_label = QLabel("TERMINAL")
+        self.title_label.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 10px;")
+
+        self.cwd_label = QLabel(self._shorten_path(self.working_directory))
+        self.cwd_label.setStyleSheet("color: #666666; font-size: 10px;")
+
+        self.stop_btn = QPushButton("")
+        self.stop_btn.setIcon(get_icon("stop"))
+        self.stop_btn.setToolTip("中断当前命令 (Ctrl+C)")
+        self.stop_btn.setFixedSize(22, 22)
+        self.stop_btn.clicked.connect(self._interrupt_process)
+
+        self.clear_btn = QPushButton("")
+        self.clear_btn.setIcon(get_icon("clear"))
+        self.clear_btn.setToolTip("清空屏幕")
+        self.clear_btn.setFixedSize(22, 22)
+        self.clear_btn.clicked.connect(self._clear_terminal)
+
+        self.restart_btn = QPushButton("")
+        self.restart_btn.setIcon(get_icon("refresh"))
+        self.restart_btn.setToolTip("重启会话")
+        self.restart_btn.setFixedSize(22, 22)
+        self.restart_btn.clicked.connect(self._restart_shell)
+
+        toolbar_layout.addWidget(self.title_label)
+        toolbar_layout.addWidget(self.cwd_label)
+        toolbar_layout.addStretch()
+        toolbar_layout.addWidget(self.stop_btn)
+        toolbar_layout.addWidget(self.clear_btn)
+        toolbar_layout.addWidget(self.restart_btn)
+
+        toolbar.setStyleSheet("""
+            QWidget { background-color: #252526; border-bottom: 1px solid #333333; }
+            QPushButton { background: transparent; border: none; border-radius: 2px; }
+            QPushButton:hover { background-color: #37373D; }
+        """)
+        self.layout().addWidget(toolbar)
+
+    def _shorten_path(self, path):
+        if len(path) > 50:
+            return "..." + path[-47:]
+        return path
+
+    def _print_welcome(self):
+        welcome = f"PyQt Terminal Shell [Version 1.0]\n系统编码: {self.encoding}\n\n"
+        self.terminal.append_output(welcome)
+        self._update_prompt()
+
+    def _update_prompt(self):
+        prompt = f"\x1b[92mPS {self.working_directory}>\x1b[0m "
+        self.terminal.append_output(prompt)
+
+    def _start_shell(self):
+        if self.process:
+            self.process.kill()
+
+        self.process = QProcess(self)
+        self.process.setProcessChannelMode(QProcess.MergedChannels)
+        self.process.readyRead.connect(self._read_output)
+
+        env = self.process.processEnvironment()
+        # 强制设置 Python 在终端输出时不缓冲
+        env.insert("PYTHONUNBUFFERED", "1")
+        self.process.setProcessEnvironment(env)
+
+        if platform.system() == "Windows":
+            self.process.start("powershell.exe", ["-NoLogo", "-NoExit"])
+        else:
+            self.process.start("/bin/bash", ["-i"])
+
+    def _read_output(self):
+        if self.process:
+            data = self.process.readAll().data()
+            try:
+                # 尝试使用系统编码解码，通常解决 Windows 下乱码
+                text = data.decode(self.encoding)
+            except UnicodeDecodeError:
+                text = data.decode("utf-8", errors="replace")
+            self.terminal.append_output(text)
+
+    def _on_command_entered(self, cmd):
+        cmd_stripped = cmd.strip()
+        if not cmd_stripped:
+            self._update_prompt()
+            return
+
+        self.terminal.add_to_history(cmd_stripped)
+
+        # 特殊处理内部命令
+        if cmd_stripped.lower() in ("cls", "clear"):
+            self.terminal.clear()
+            self._update_prompt()
+            return
+
+        if cmd_stripped.lower().startswith("cd "):
+            path = cmd_stripped[3:].strip().strip('"')
+            if os.path.isdir(path):
+                os.chdir(path)
+                self.working_directory = os.getcwd()
+                self.cwd_label.setText(self._shorten_path(self.working_directory))
+                # 同时也让后台进程 cd
+                self.process.write(f"cd \"{self.working_directory}\"\n".encode(self.encoding))
+
+        # 发送给后台进程
+        self.process.write((cmd + "\n").encode(self.encoding))
+
+    def _interrupt_process(self):
+        """发送 Ctrl+C 中断信号"""
+        if self.process and self.process.state() == QProcess.Running:
+            # 在某些 Windows 环境下，直接写 \x03 可能无效
+            # 但对于交互式 shell 通常是有用的
+            self.process.write(b"\x03")
+
+    def _clear_terminal(self):
+        self.terminal.clear()
+        self._update_prompt()
+
+    def _restart_shell(self):
+        self._start_shell()
+        self.terminal.clear()
+        self._print_welcome()
+
+    def cleanup(self):
+        if self.process:
+            self.process.kill()
+            self.process.waitForFinished(1000)

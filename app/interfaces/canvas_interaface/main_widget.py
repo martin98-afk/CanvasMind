@@ -24,8 +24,8 @@ from app.interfaces.canvas_interaface.utils.environment_manager import (
 from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.nodes.base_node import BasicNodeWithGlobalProperty
-from app.nodes.status_node import NodeStatus
+from app.nodes.base.base_node import BasicNodeWithGlobalProperty
+from app.nodes.base.status_node import NodeStatus
 from app.plugins.trigger_plugins.base import ALL_MANAGERS
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings

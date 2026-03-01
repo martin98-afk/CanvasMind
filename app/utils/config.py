@@ -294,6 +294,10 @@ class Settings(QConfig):
     llm_enable_thinking = ConfigItem("LLM", "EnableThinking", True, BoolValidator())
     # 保存的免费/自定义服务商配置
     llm_saved_providers = ConfigItem("LLM", "SavedProviders", {})
+    # 最近选择的模型
+    llm_selected_model = ConfigItem("LLM", "SelectedModel", "")
+    # 启用的技能列表
+    llm_enabled_skills = ConfigItem("LLM", "EnabledSkills", [])
 
     # ========== 云组件库API ==========
     STEIN_URL = ConfigItem(

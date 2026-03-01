@@ -2,7 +2,7 @@ import traceback
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
-from app.nodes.status_node import NodeStatus
+from app.nodes.base.status_node import NodeStatus
 from app.scheduler.single_node_executor import execute_node
 from app.utils.utils import get_port_node
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode

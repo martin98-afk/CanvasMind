@@ -5,8 +5,6 @@ from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
 
-from app.nodes.base_node import BasicNodeWithGlobalProperty
-
 
 class CustomPortInputNode(PortInputNode):
     __identifier__ = 'control_flow'

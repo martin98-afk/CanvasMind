@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from dataclasses import dataclass
 
-from loguru import logger
-
-from app.nodes.base_node import BasicNodeWithGlobalProperty
+from app.nodes.base.base_node import BasicNodeWithGlobalProperty
 
 
 @dataclass

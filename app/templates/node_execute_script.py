@@ -1,4 +1,4 @@
-_EXECUTION_SCRIPT_TEMPLATE = '''# -*- coding: utf-8 -*-
+_EXECUTION_SCRIPT_TEMPLATE = """# -*- coding: utf-8 -*-
 import sys
 import os
 import gc 
@@ -53,7 +53,7 @@ def run_node():
 
     # 1. 配置日志
     logger.remove()
-    logger.add(LOG_FILE_PATH, format=sink_formatter, level="INFO", encoding='utf-8', enqueue=True,
+    logger.add(LOG_FILE_PATH, format=sink_formatter, level="INFO", encoding='utf-8', enqueue=False,
                filter=lambda record: record["extra"].get("node_id") == NODE_ID)
     node_logger = logger.bind(node_id=NODE_ID)
     raw_logger = logger.bind(node_id=NODE_ID, raw=True)
@@ -184,4 +184,4 @@ def run_node():
 
 if __name__ == "__main__":
     run_node()
-'''
+"""

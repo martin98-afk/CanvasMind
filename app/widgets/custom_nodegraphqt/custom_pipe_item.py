@@ -301,7 +301,7 @@ class CustomPipeItem(PipeItem):
             width=self._get_state_width("activate"),
             style=self.style,
         )
-        self.setZValue(Z_VAL_PORT + 2)
+        self.setZValue(Z_VAL_PORT - 0.5)
         self.start_flow()
 
     def highlight(self):
@@ -315,7 +315,7 @@ class CustomPipeItem(PipeItem):
                 style=self.style,
             )
         self.update()
-        self.setZValue(Z_VAL_PORT + 2)
+        self.setZValue(Z_VAL_PORT - 0.5)
         self.start_flow()
 
     def hoverEnterEvent(self, event):

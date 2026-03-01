@@ -2,14 +2,24 @@
 import os
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QSize, Qt, QTimer
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QPlainTextEdit, QApplication, QDesktopWidget,
-                             QSystemTrayIcon, QMenu, QAction, qApp)
-from loguru import logger
+from PyQt5.QtCore import QSize, Qt, QTimer, QPoint
+from PyQt5.QtWidgets import (
+    QApplication,
+    QDesktopWidget,
+    QSystemTrayIcon,
+    QMenu,
+    QAction,
+    qApp,
+)
 from qfluentwidgets import (
-    FluentWindow, Theme, setTheme, NavigationItemPosition,
-    SplashScreen, FluentIcon, setFontFamilies, MessageBox
+    FluentWindow,
+    Theme,
+    setTheme,
+    NavigationItemPosition,
+    SplashScreen,
+    FluentIcon,
+    setFontFamilies,
+    MessageBox,
 )
 
 # --- 页面模块 ---
@@ -20,14 +30,16 @@ from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
 from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
-from app.interfaces.workflow_manager_interface.main_widget import WorkflowCanvasGalleryPage
+from app.interfaces.workflow_manager_interface.main_widget import (
+    WorkflowCanvasGalleryPage,
+)
 from app.plugins.constants import PluginType
 from app.plugins.plugin_manager import UnifiedPluginManager
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
-from app.widgets.dialog_widget.logger_dialog import QTextEditLogger
+from app.widgets.dialog_widget.logger_dialog import LogPopupWidget
 
 
 class LowCodeWindow(FluentWindow):
@@ -58,7 +70,10 @@ class LowCodeWindow(FluentWindow):
         desktop = QApplication.desktop().availableGeometry()
         self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
         # 初始化位置
-        self.move(self.desktop_w // 2 - self.width() // 2, self.desktop_h // 2 - self.height() // 2)
+        self.move(
+            self.desktop_w // 2 - self.width() // 2,
+            self.desktop_h // 2 - self.height() // 2,
+        )
         self.navigationInterface.setExpandWidth(175)
 
     def _setup_splash_and_startup(self):
@@ -81,11 +96,15 @@ class LowCodeWindow(FluentWindow):
         plugin_manager = UnifiedPluginManager.get_instance()
 
         # ------------插件预加载（节点）
-        node_plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "node_plugins"))
+        node_plugin_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "plugins", "node_plugins")
+        )
         plugin_manager.load_plugins(node_plugin_dir, plugin_type=PluginType.NODE)
 
         # ------------加载触发器插件
-        trigger_plugin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins"))
+        trigger_plugin_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins")
+        )
         plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
         # ------------加载配置
         self.config = Settings.get_instance()
@@ -112,7 +131,7 @@ class LowCodeWindow(FluentWindow):
         self.workflow_manager.node_request_edit.connect(
             lambda uuid: (
                 self.switchTo(self.develop_page),
-                self.develop_page.load_component(uuid=uuid)
+                self.develop_page.load_component(uuid=uuid),
             )
         )
         self.project_manager.exported_projects_changed.connect(
@@ -129,50 +148,53 @@ class LowCodeWindow(FluentWindow):
         """所有导航栏的 text 参数都使用了 self.tr()"""
 
         # 主功能区
-        self.addSubInterface(self.home_interface, FluentIcon.HOME, self.tr('首页'))
+        self.addSubInterface(self.home_interface, FluentIcon.HOME, self.tr("首页"))
 
         workflow_item = self.addSubInterface(
-            self.workflow_manager, get_icon("画布管理"), self.tr('画布管理')
+            self.workflow_manager, get_icon("画布管理"), self.tr("画布管理")
         )
         workflow_item.clicked.connect(self._on_workflow_clicked)
 
-        self.addSubInterface(
-            self.develop_page, get_icon("组件"), self.tr('组件管理')
-        )
+        self.addSubInterface(self.develop_page, get_icon("组件"), self.tr("组件管理"))
 
         self.addSubInterface(
-            self.market_page, get_icon("插件市场"), self.tr('插件市场')
+            self.market_page, get_icon("插件市场"), self.tr("插件市场")
         )
 
         project_item = self.addSubInterface(
-            self.project_manager, get_icon("项目"), self.tr('项目管理')
+            self.project_manager, get_icon("项目"), self.tr("项目管理")
         )
         project_item.clicked.connect(self.project_manager.load_projects)
 
         pkg_item = self.addSubInterface(
-            self.package_manager, get_icon("工具包"), self.tr('环境管理')
+            self.package_manager, get_icon("工具包"), self.tr("环境管理")
         )
         pkg_item.clicked.connect(self.package_manager.on_env_changed)
 
         # 底部功能区
         self.navigationInterface.addItem(
-            routeKey='update',
+            routeKey="update",
             icon=FluentIcon.SYNC,
-            text=self.tr('检查更新'),
+            text=self.tr("检查更新"),
             onClick=self.updater.check_update,
             selectable=False,
             position=NavigationItemPosition.BOTTOM,
         )
 
-        log_item = self.addSubInterface(
-            self.log_viewer, get_icon("系统运行日志"), self.tr('执行日志'),
-            position=NavigationItemPosition.BOTTOM
+        self.navigationInterface.addItem(
+            routeKey="log",
+            icon=get_icon("系统运行日志"),
+            text=self.tr("执行日志"),
+            onClick=self._on_log_clicked,
+            selectable=True,
+            position=NavigationItemPosition.BOTTOM,
         )
-        log_item.clicked.connect(self._on_log_clicked)
 
         self.addSubInterface(
-            self.setting_card, FluentIcon.SETTING, self.tr('系统设置'),
-            position=NavigationItemPosition.BOTTOM
+            self.setting_card,
+            FluentIcon.SETTING,
+            self.tr("系统设置"),
+            position=NavigationItemPosition.BOTTOM,
         )
 
     # endregion
@@ -183,42 +205,43 @@ class LowCodeWindow(FluentWindow):
         self.workflow_manager.build_recommendation_engine()
 
     def _on_log_clicked(self):
-        self.text_logger._clean_trailing_empty_lines()
-        self.text_logger.scroll_to_bottom(force=True)
+        if self.log_popup.isVisible():
+            self.log_popup.hidePopup()
+        else:
+            log_item = self.navigationInterface.widget("log")
+            if log_item:
+                log_button_rect = log_item.rect()
+                log_button_top_right = log_item.mapToGlobal(
+                    QPoint(log_button_rect.right(), log_button_rect.top())
+                )
+                self.log_popup.show_at_left(self, log_button_top_right)
+                self.log_popup.scroll_to_bottom()
+                self.log_popup.activateWindow()
+                self.log_popup._follow_window = True
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if (
+            hasattr(self, "log_popup")
+            and self.log_popup.isVisible()
+            and getattr(self.log_popup, "_follow_window", False)
+        ):
+            self.log_popup._update_position(self)
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        if (
+            hasattr(self, "log_popup")
+            and self.log_popup.isVisible()
+            and getattr(self.log_popup, "_follow_window", False)
+        ):
+            self.log_popup._update_position(self)
 
     # endregion
 
     # region [7. 日志系统]
     def _setup_log_viewer(self):
-        self.log_viewer = QPlainTextEdit()
-        self.log_viewer.document().setDocumentMargin(0)
-        self.log_viewer.setObjectName(self.tr('运行日志'))
-        self.log_viewer.setReadOnly(True)
-        self.log_viewer.setFont(QFont("Consolas", 11))
-        self.log_viewer.setStyleSheet(self._get_log_viewer_style())
-
-        self.text_logger = QTextEditLogger(self.log_viewer, max_lines=1000)
-        logger.remove()
-        logger.add(
-            self.text_logger,
-            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
-            level="DEBUG"
-        )
-
-    def _get_log_viewer_style(self) -> str:
-        return """
-            QPlainTextEdit {
-                background-color: #0e1117;
-                color: white;
-                border: 1px solid #2c2f36;
-                font-family: Consolas, monospace;
-                font-size: 18px;
-                padding: 10px;
-            }
-            /* 滚动条样式省略以保持代码简洁，实际运行会包含在内 */
-            QPlainTextEdit QScrollBar:vertical { background: transparent; width: 8px; }
-            QPlainTextEdit QScrollBar::handle:vertical { background: #555555; border-radius: 4px; }
-        """
+        self.log_popup = LogPopupWidget(self)
 
     # endregion
 
@@ -229,9 +252,13 @@ class LowCodeWindow(FluentWindow):
         desktop = QApplication.desktop().availableGeometry()
         self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
         # 初始化位置
-        self.move(self.desktop_w // 2 - self.width() // 2, self.desktop_h // 2 - self.height() // 2)
+        self.move(
+            self.desktop_w // 2 - self.width() // 2,
+            self.desktop_h // 2 - self.height() // 2,
+        )
         if self.config.auto_check_update.value:
             QtCore.QTimer.singleShot(500, self.updater.check_update)
+
     # endregion
     # --- 新增区域：系统托盘与关闭逻辑 ---
 
@@ -286,29 +313,22 @@ class LowCodeWindow(FluentWindow):
         """
         重写关闭事件：弹出对话框询问用户
         """
-        # 使用 QFluentWidgets 的 MessageBox 保持界面风格一致
-        w = MessageBox(
-            '关闭提示',
-            '您希望将程序最小化到系统托盘，还是彻底退出？',
-            self
-        )
-        w.yesButton.setText('最小化')
-        w.cancelButton.setText('退出程序')
+        self.log_popup.hidePopup()
+        w = MessageBox("关闭提示", "您希望将程序最小化到系统托盘，还是彻底退出？", self)
+        w.yesButton.setText("最小化")
+        w.cancelButton.setText("退出程序")
 
-        # MessageBox.exec() 返回 True 表示点击了 YesButton (最小化)
         if w.exec():
-            event.ignore()  # 忽略关闭事件
-            self.hide()  # 隐藏窗口
-            # 可选：显示气泡提示
+            event.ignore()
+            self.hide()
             self.tray_icon.showMessage(
                 "Canvas Mind",
                 "程序已在后台运行，点击托盘图标可恢复。",
                 QSystemTrayIcon.Information,
-                2000
+                2000,
             )
         else:
-            # 点击了 CancelButton (退出程序)
-            event.accept()  # 接受关闭事件
+            event.accept()
             self.tray_icon.setVisible(False)
             self.config.save()
-            qApp.quit()  # 强制退出进程
+            qApp.quit()

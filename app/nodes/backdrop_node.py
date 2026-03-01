@@ -7,7 +7,7 @@ from NodeGraphQt.errors import PortError
 from PyQt5.QtWidgets import QUndoCommand
 from qtpy import QtCore
 
-from app.nodes.status_node import StatusNode
+from app.nodes.base.status_node import StatusNode
 from app.utils.utils import topological_sort
 from app.widgets.custom_nodegraphqt.control_flow_item import ControlFlowBackdropNodeItem
 from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port
