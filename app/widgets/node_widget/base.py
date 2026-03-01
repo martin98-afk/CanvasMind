@@ -74,12 +74,16 @@ class ModeSwitcherButton(QtWidgets.QAbstractButton):
             painter.setPen(glow_pen)
             painter.drawEllipse(center, icon_radius + 0.5, icon_radius + 0.5)
 
-            core_color = self._color_global_hover if self._is_hovered else self._color_global
+            core_color = (
+                self._color_global_hover if self._is_hovered else self._color_global
+            )
             painter.setBrush(core_color)
             painter.setPen(QtCore.Qt.NoPen)
             painter.drawEllipse(center, icon_radius, icon_radius)
         else:
-            pen_color = self._color_local_hover if self._is_hovered else self._color_local
+            pen_color = (
+                self._color_local_hover if self._is_hovered else self._color_local
+            )
             pen_width = 1.8 if self._is_hovered else 1.2
             painter.setPen(QtGui.QPen(pen_color, pen_width))
             if self._is_hovered:
@@ -98,12 +102,14 @@ class _NodeGroupBox(QtWidgets.QWidget):
     """
     自定义控件容器 - 布局优化版
     """
+
     toggle_clicked = pyqtSignal()
 
     def __init__(self, label, parent=None):
         super(_NodeGroupBox, self).__init__(parent)
         self._highlight = False
         self._label_text = label
+        self._font_family = None
 
         # === 1. 主垂直布局 (用于放置原来的大控件 或 全局变量控件) ===
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -211,15 +217,24 @@ class _NodeGroupBox(QtWidgets.QWidget):
             sp = widget.sizePolicy()
             h_policy = sp.horizontalPolicy()
             if hasattr(widget, "fixed_height") and widget.fixed_height:
-                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+                widget.setSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+                )
                 stretch = 0
             else:
-                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+                widget.setSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+                )
                 stretch = 1
 
             is_explicit_fixed = (
-                        widget.minimumWidth() == widget.maximumWidth() and 0 < widget.minimumWidth() < 16777215)
-            if h_policy in [QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Maximum] or is_explicit_fixed:
+                widget.minimumWidth() == widget.maximumWidth()
+                and 0 < widget.minimumWidth() < 16777215
+            )
+            if (
+                h_policy in [QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Maximum]
+                or is_explicit_fixed
+            ):
                 self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
             else:
                 self.layout.addWidget(widget, stretch)
@@ -228,7 +243,9 @@ class _NodeGroupBox(QtWidgets.QWidget):
         """专门添加全局变量控件，强制添加到垂直布局底部"""
         self._apply_unified_font(widget)
 
-        widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
         self.layout.addWidget(widget, 0)
         # self.layout.addWidget(widget, 0, QtCore.Qt.AlignCenter)
 
@@ -266,12 +283,15 @@ class _NodeGroupBox(QtWidgets.QWidget):
 
     def highlight(self):
         self.setObjectName("highlighted_group")
-        style = self.styleSheet() + """
+        style = (
+            self.styleSheet()
+            + """
             #highlighted_group { 
                 border: 2px dashed #00E5FF; 
                 border-radius: 5px; 
             }
         """
+        )
         self.setStyleSheet(style)
 
     def reset(self):
@@ -283,10 +303,11 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
     """
     支持状态显示与全局变量切换的基类控件
     """
+
     value_changed = pyqtSignal(str, object)
     VAR_WIDGET_CLASS = None
 
-    def __init__(self, parent=None, name=None, label=''):
+    def __init__(self, parent=None, name=None, label=""):
         super(CustomNodeBaseWidget, self).__init__(parent)
         self.setZValue(Z_VAL_NODE_WIDGET)
         self._name = name
@@ -307,8 +328,8 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         self._node = node
 
     def setToolTip(self, tooltip):
-        tooltip = tooltip.replace('\n', '<br/>')
-        tooltip = '<b>{}</b><br/>{}'.format(self.get_name(), tooltip)
+        tooltip = tooltip.replace("\n", "<br/>")
+        tooltip = "<b>{}</b><br/>{}".format(self.get_name(), tooltip)
         super(CustomNodeBaseWidget, self).setToolTip(tooltip)
 
     def toggle_global_mode(self, mode=None):
@@ -317,13 +338,17 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         优化逻辑：使用 Hide/Show 而不是 ReplaceWidget，确保在不同布局位置下都能正常工作，并保持对象引用。
         """
         group = self.widget()  # type: _NodeGroupBox
-        if not group: return
+        if not group:
+            return
 
         # 检查是否是参数类控件
-        if not hasattr(self.get_custom_widget(), "main_window"): return
+        if not hasattr(self.get_custom_widget(), "main_window"):
+            return
         # 检查槽位是否已经注入了类
         if self.VAR_WIDGET_CLASS is None:
-            logger.error("VarComboBoxWidget class not registered in CustomNodeBaseWidget")
+            logger.error(
+                "VarComboBoxWidget class not registered in CustomNodeBaseWidget"
+            )
             return
 
         # 确定目标模式
@@ -341,7 +366,8 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
                 # 2. 确保全局控件存在并添加到第二行
                 if not self._global_widget:
                     self._global_widget = self.VAR_WIDGET_CLASS(
-                        main_window=self.get_custom_widget().main_window, type="全局变量"
+                        main_window=self.get_custom_widget().main_window,
+                        type="全局变量",
                     )
                     self._global_widget.valueChanged.connect(self.on_value_changed)
                     # 使用专门的方法添加到第二行
@@ -374,7 +400,8 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
                 if not self._global_widget:
                     # 使用注入的类创建实例
                     self._global_widget = self.VAR_WIDGET_CLASS(
-                        main_window=self.get_custom_widget().main_window, type="全局变量"
+                        main_window=self.get_custom_widget().main_window,
+                        type="全局变量",
                     )
                     self._global_widget.valueChanged.connect(self.on_value_changed)
 
@@ -424,7 +451,7 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         :param add_on_label: True 表示放在标题栏右侧，False 表示放在第二行
         """
         if self.widget():
-            raise NodeWidgetError('Custom node widget already set.')
+            raise NodeWidgetError("Custom node widget already set.")
 
         self._local_widget = widget
 
@@ -445,24 +472,27 @@ class CustomNodeBaseWidget(QtWidgets.QGraphicsProxyWidget):
         return self._name
 
     def set_name(self, name):
-        if not name: return
+        if not name:
+            return
         if self.node:
-            raise NodeWidgetError('Can\'t set property name widget already added to a Node')
+            raise NodeWidgetError(
+                "Can't set property name widget already added to a Node"
+            )
         self._name = name
 
     def get_custom_widget(self):
         widget = self.widget()
-        if hasattr(widget, 'get_node_widget'):
+        if hasattr(widget, "get_node_widget"):
             return widget.get_node_widget()
         return widget
 
-    def set_label(self, label=''):
-        if self.widget() and hasattr(self.widget(), 'setTitle'):
+    def set_label(self, label=""):
+        if self.widget() and hasattr(self.widget(), "setTitle"):
             self.widget().setTitle(label)
         self._label = label
 
     def set_label_visible(self, visible=True):
-        if self.widget() and hasattr(self.widget(), 'setLabelVisible'):
+        if self.widget() and hasattr(self.widget(), "setLabelVisible"):
             self.label_visible = visible
             self.widget().setLabelVisible(visible)
 

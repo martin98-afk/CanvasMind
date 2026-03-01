@@ -3,7 +3,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector imp
 
 
 class LLMContextProvider:
-    system_prompt = LLM_CODE_CONTEXT
+    # system_prompt = LLM_CODE_CONTEXT
 
     def __init__(self, parent):
         self.parent = parent

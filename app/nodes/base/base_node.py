@@ -3,7 +3,7 @@ import collections
 import re
 import uuid
 
-from app.nodes.node_zmq import NodeZmqTransceiver
+from app.nodes.node_utils.node_zmq import NodeZmqTransceiver
 from app.plugins.plugin_manager import UnifiedPluginManager
 
 # 尝试导入高性能 json 库，如果不存在则回退

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt
 
-from app.nodes.status_node import NoStatusNode
+from app.nodes.base.status_node import NoStatusNode
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 from app.widgets.custom_nodegraphqt.custom_node_item import CustomNodeItem
 from app.widgets.custom_nodegraphqt.custom_port_item import draw_square_port

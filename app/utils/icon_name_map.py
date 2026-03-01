@@ -29,6 +29,7 @@ ICON_NAME_TO_FILE = {
     "ls": "ls.svg",
     "MCP": "MCP.svg",
     "Miniconda": "Miniconda.svg",
+    "MiniMax": "MiniMax.svg",
     "node_base": "node_base.png",
     "number": "number.svg",
     "Ollama": "Ollama.svg",

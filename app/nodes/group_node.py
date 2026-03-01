@@ -9,7 +9,7 @@ from NodeGraphQt.qgraphics.node_group import GroupNodeItem
 from NodeGraphQt.qgraphics.node_port_in import PortInputNodeItem
 from NodeGraphQt.qgraphics.node_port_out import PortOutputNodeItem
 
-from app.nodes.status_node import StatusNode
+from app.nodes.base.status_node import StatusNode
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
 
 

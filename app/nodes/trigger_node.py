@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 from loguru import logger
 
 from app.components.base import PropertyType
-from app.nodes.status_node import StatusNode
+from app.nodes.base.status_node import StatusNode
 from app.plugins.constants import PluginType
 from app.plugins.plugin_manager import UnifiedPluginManager
 from app.widgets.custom_nodegraphqt.custom_base_node import CustomBaseNode
@@ -109,9 +109,11 @@ def create_trigger_node(parent_window):
                 w = NumberWidgetWrapper(self.view, name, label, conf["default"], "float", self.parent_window, z_value)
             elif p_type == PropertyType.INT:
                 w = NumberWidgetWrapper(self.view, name, label, conf["default"], "int", self.parent_window, z_value)
+
             if w:
-                w.get_custom_widget().valueChanged.connect(self._request_sync)
                 self.add_custom_widget(w, tab="Properties")
+                if name not in ["run_strategy", "enable_throttle", "throttle_interval"]:
+                    w.get_custom_widget().valueChanged.connect(self._request_sync)
                 return w
             return None
 

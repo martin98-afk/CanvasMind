@@ -15,8 +15,8 @@ PARAM_UI_MAP = {
 PARAM_RANGE_MAP = {
     "温度": {"min": 0.0, "max": 2.0, "step": 0.01, "type": "float"},
     "temp": {"min": 0.0, "max": 2.0, "step": 0.01, "type": "float"},
-    "最大Token": {"min": 1, "max": 32768, "step": 1, "type": "int"},
-    "最大新Token": {"min": 1, "max": 8192, "step": 1, "type": "int"},
+    "最大Token": {"min": 1, "max": 327680, "step": 1, "type": "int"},
+    "最大新Token": {"min": 1, "max": 18192, "step": 1, "type": "int"},
     "top_p": {"min": 0.0, "max": 1.0, "step": 0.01, "type": "float"},
     "frequency_penalty": {"min": -2.0, "max": 2.0, "step": 0.01, "type": "float"},
     "presence_penalty": {"min": -2.0, "max": 2.0, "step": 0.01, "type": "float"},
@@ -24,6 +24,12 @@ PARAM_RANGE_MAP = {
 
 
 PROVIDER_MODELS = {
+    "MiniMax (月之暗面)": [
+        "MiniMax-M2.5",
+        "MiniMax-M2.5-highspeed",
+        "MiniMax-M2.1",
+        "MiniMax-M2.1-highspeed",
+    ],
     "SiliconFlow (有免费额度)": [
         "Qwen/Qwen2.5-7B-Instruct",
         "Qwen/Qwen2.5-14B-Instruct",
@@ -77,12 +83,21 @@ PROVIDER_MODELS = {
 }
 
 FREE_PROVIDERS = {
+    "MiniMax (月之暗面)": {
+        "API_URL": "https://api.minimax.chat/v1",
+        "API_KEY": "",
+        "模型名称": "MiniMax-M2.5",
+        "温度": 0.7,
+        "最大Token": 20960,
+        "认证方式": "bearer",
+        "获取地址": "https://platform.minimaxi.com/user-center/basic-information/interface-key",
+    },
     "SiliconFlow (有免费额度)": {
         "API_URL": "https://api.siliconflow.cn/v1",
         "API_KEY": "",
         "模型名称": "Qwen/Qwen2.5-7B-Instruct",
         "温度": 0.7,
-        "最大Token": 4096,
+        "最大Token": 20960,
         "认证方式": "bearer",
         "获取地址": "https://cloud.siliconflow.cn/account/ak",
     },
@@ -91,7 +106,7 @@ FREE_PROVIDERS = {
         "API_KEY": "",
         "模型名称": "qwen-plus",
         "温度": 0.7,
-        "最大Token": 4096,
+        "最大Token": 20960,
         "认证方式": "bearer",
         "获取地址": "https://dashscope.console.aliyun.com/manage/credential",
     },
@@ -143,6 +158,7 @@ FREE_PROVIDERS = {
 }
 
 PROVIDER_ICONS = {
+    "MiniMax (月之暗面)": "MiniMax",
     "SiliconFlow (有免费额度)": "siliconflow",
     "阿里云 (DashScope)": "qwen",
     "智谱AI (免费模型)": "智谱",

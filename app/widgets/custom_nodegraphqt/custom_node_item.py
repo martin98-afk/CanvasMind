@@ -261,9 +261,6 @@ class CustomNodeItem(NodeItem):
         self._x_item = CustomDisabledItem(self, "DISABLED")
         self._x_item.setZValue(Z_VAL_NODE_WIDGET + 20)
 
-        # -------------------
-        # 初始化尺寸变量 (0 代表自适应模式)
-        # -------------------
         self._user_width = 0.0
         self._user_height = 0.0
         self._size_initialized = False
@@ -276,6 +273,10 @@ class CustomNodeItem(NodeItem):
         self._port_height = 0.0
         self._widget_height = 0.0
         self._widget_width = 0.0
+
+        self._cached_body_rect = None
+        self._cached_body_rect_version = -1
+        self._geometry_version = 0
 
     def _init_base_components(self):
         font_type = Settings.get_instance().canvas_font_type.value
@@ -360,8 +361,19 @@ class CustomNodeItem(NodeItem):
         self.update()
 
     def get_node_body_rect(self):
+        current_version = self._geometry_version
+        if (
+            self._cached_body_rect is not None
+            and self._cached_body_rect_version == current_version
+        ):
+            return self._cached_body_rect
         rect = super(CustomNodeItem, self).boundingRect()
-        return rect if rect.width() > 0 else QtCore.QRectF(0, 0, 200, 50)
+        # 优化：直接使用 rect 而不再做额外检查
+        self._cached_body_rect = (
+            rect if rect.width() > 0 else QtCore.QRectF(0, 0, 200, 50)
+        )
+        self._cached_body_rect_version = current_version
+        return self._cached_body_rect
 
     def boundingRect(self):
         return self.get_node_body_rect().adjusted(-5, -40, 5, 5)
@@ -451,11 +463,21 @@ class CustomNodeItem(NodeItem):
         self._user_height += dy
 
         # 3. 核心逻辑：触碰/缩进边界自动恢复自适应
-        # 设置一个缓冲阈值(如5像素)，当用户缩到最小或者更小时，解除手动尺寸锁定
-        if self._user_width <= (min_w + 5):
-            self._user_width = 0.0
-        if self._user_height <= (min_h + 5):
-            self._user_height = 0.0
+        # Proxy模式下只在用户主动缩小到最小边界以下时才恢复自适应
+        if self._proxy_mode:
+            # Proxy模式下，只要用户有手动设置尺寸就保持
+            if self._user_width > 0 and dx < 0:
+                if self._user_width <= min_w:
+                    self._user_width = 0.0
+            if self._user_height > 0 and dy < 0:
+                if self._user_height <= min_h:
+                    self._user_height = 0.0
+        else:
+            threshold = 5
+            if self._user_width <= (min_w + threshold):
+                self._user_width = 0.0
+            if self._user_height <= (min_h + threshold):
+                self._user_height = 0.0
 
         # 4. 更新属性
         self._properties["width"] = self._user_width
@@ -485,11 +507,21 @@ class CustomNodeItem(NodeItem):
         self._set_action_btns_visible(True)
         super(CustomNodeItem, self).hoverEnterEvent(event)
 
+    _auto_switch_throttle_ms = 0
+    _last_auto_switch_time = 0
+    _AUTO_SWITCH_INTERVAL = 100
+
     def auto_switch_mode(self):
         """
-        精准感应判定：
-        只有在“能看见我”的视口中，寻找最大的物理宽度。
+        精准感应判定：在所有视角中取最大尺寸，添加节流避免频繁计算。
         """
+        import time
+
+        current_time = int(time.time() * 1000)
+        if current_time - self._last_auto_switch_time < self._AUTO_SWITCH_INTERVAL:
+            return
+        self._last_auto_switch_time = current_time
+
         scene = self.scene()
         if not scene:
             return
@@ -505,26 +537,19 @@ class CustomNodeItem(NodeItem):
             if not view.isVisible():
                 continue
 
-            # --- 关键：获取该视口的场景视野矩形 ---
-            # viewport().rect() 是屏幕像素区域，mapToScene 将其转为画布上的坐标区域
             view_scene_rect = view.mapToScene(view.viewport().rect()).boundingRect()
 
-            # 只有当节点在当前视口的视野内时，才参与判定
             if view_scene_rect.intersects(node_scene_rect):
                 is_observed_by_any_view = True
-                # 计算在该视口下的物理像素宽度
                 view_rect = view.mapFromScene(node_scene_rect).boundingRect()
                 if view_rect.width() > max_physical_width:
                     max_physical_width = view_rect.width()
 
-        # 获取配置的阈值（例如 250 像素）
         proxy_threshold = Settings.get_instance().node_proxy_size.value
 
         if not is_observed_by_any_view:
-            # 如果没有任何窗口看见这个节点，默认进入 Proxy 模式节省性能
             self.set_proxy_mode(True)
         else:
-            # 只要【能看见我】的窗口中有一个离得够近，就显示 Normal
             self.set_proxy_mode(max_physical_width < proxy_threshold)
 
     def _set_action_btns_visible(self, visible):
@@ -542,28 +567,37 @@ class CustomNodeItem(NodeItem):
         super(CustomNodeItem, self).hoverLeaveEvent(event)
 
     def _calc_size_horizontal(self, ignore_user_size=False):
+        # 优化：预先计算端口数量，避免重复 len() 调用
+        num_inputs = len(self._input_items)
+        num_outputs = len(self._output_items)
+
         # 1. 计算内容所需尺寸 (Ports)
-        p_input_h = (len(self._input_items) * 22.0) + 10.0 if self._input_items else 0.0
-        p_output_h = (
-            (len(self._output_items) * 22.0) + 10.0 if self._output_items else 0.0
-        )
+        p_input_h = (num_inputs * 22.0) + 10.0 if num_inputs else 0.0
+        p_output_h = (num_outputs * 22.0) + 10.0 if num_outputs else 0.0
         port_height = max(p_input_h, p_output_h)
         self._port_height = max(port_height, 10.0)
 
-        in_txt_w = max(
-            [t.boundingRect().width() for t in self._input_items.values()] + [0]
+        # 优化：批量获取宽度，减少重复遍历
+        input_widths = (
+            [t.boundingRect().width() for t in self._input_items.values()]
+            if self._input_items
+            else [0]
         )
-        out_txt_w = max(
-            [t.boundingRect().width() for t in self._output_items.values()] + [0]
+        output_widths = (
+            [t.boundingRect().width() for t in self._output_items.values()]
+            if self._output_items
+            else [0]
         )
+        in_txt_w = max(input_widths)
+        out_txt_w = max(output_widths)
         p_width = in_txt_w + out_txt_w + 50.0
 
         # --- 关键修正：区分 Proxy 模式和普通隐藏 ---
         widget_height = 0.0
         w_width = 0.0
 
-        # 只有在非 Proxy 且非折叠状态下，才去累加 Widget 高度
-        if not self._is_collapsed and not self._proxy_mode:
+        # 总是计算 widget 尺寸（即使在 proxy 模式下也计算，用于尺寸判断）
+        if not self._is_collapsed:
             for widget in self._widgets.values():
                 # 只有用户主动隐藏的控件才不计入高度
                 if not widget.isVisible():
@@ -577,34 +611,38 @@ class CustomNodeItem(NodeItem):
                 widget_height += 10.0
             self._widget_height = widget_height
             self._widget_width = w_width
+
+        # 缓存非 proxy 模式下的尺寸（用于切换到 proxy 模式时保持尺寸）
+        if not self._proxy_mode:
+            self._last_normal_width = self._width
+            self._last_normal_height = self._height
+
         # 2. 确定最小宽高边界
-        header_height = max(self._text_item.boundingRect().height() + 10.0, 34.0)
+        text_item_height = self._text_item.boundingRect().height()
+        text_item_width = self._text_item.boundingRect().width()
+        header_height = max(text_item_height + 10.0, 34.0)
 
         if self._is_collapsed:
-            min_width = max(self._text_item.boundingRect().width() + 120, p_width, 200)
+            min_width = max(text_item_width + 120, p_width, 200)
             min_height = header_height + self._port_height
         elif self._proxy_mode and Settings.get_instance().canvas_auto_collapse.value:
+            # canvas_auto_collapse=true: 使用最小尺寸
             min_width = self._user_width if self._user_width > 0 else 200
             min_height = self._user_height if self._user_height > 0 else 120
         elif self._proxy_mode and not self._is_collapsed:
-            min_width = (
-                self._user_width
-                if self._user_width > 0
-                else max(
-                    self._text_item.boundingRect().width() + 120,
-                    p_width,
-                    self._widget_width + 20,
-                    200,
-                )
-            )
-            min_height = (
-                self._user_height
-                if self._user_height > 0
-                else header_height + self._port_height + self._widget_height
-            )
+            # canvas_auto_collapse=false: 保持普通模式下的尺寸
+            if self._user_width > 0:
+                min_width = self._user_width
+            else:
+                # 使用之前缓存的普通模式尺寸
+                min_width = getattr(self, "_last_normal_width", 200)
+            if self._user_height > 0:
+                min_height = self._user_height
+            else:
+                min_height = getattr(self, "_last_normal_height", 120)
         else:
             min_width = max(
-                self._text_item.boundingRect().width() + 120,
+                text_item_width + 120,
                 p_width,
                 self._widget_width + 20,
                 200,
@@ -632,8 +670,11 @@ class CustomNodeItem(NodeItem):
 
     def _draw_node_horizontal(self):
         self.prepareGeometryChange()
+        self._geometry_version += 1
 
-        header_h = max(self._text_item.boundingRect().height() + 10.0, 34.0)
+        # 优化：缓存 boundingRect 避免重复调用
+        text_rect = self._text_item.boundingRect()
+        header_h = max(text_rect.height() + 10.0, 34.0)
         width, height = self._calc_size_horizontal()
         self._width = width
         self._height = height
@@ -646,8 +687,8 @@ class CustomNodeItem(NodeItem):
 
         if not self._proxy_mode:
             self._set_text_color(self.text_color)
-            tw = self._text_item.boundingRect().width()
-            th = self._text_item.boundingRect().height()
+            tw = text_rect.width()
+            th = text_rect.height()
 
             icon_w = 20
             spacing = 4

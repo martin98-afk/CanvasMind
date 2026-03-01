@@ -11,7 +11,7 @@ from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, QTimer
 from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
-from app.nodes.status_node import NodeStatus
+from app.nodes.base.status_node import NodeStatus
 from app.scan_components import ComponentScanner
 from app.scheduler.backdrop_executor import BackdropExecutor
 from app.scheduler.execution_context import ExecutionContext

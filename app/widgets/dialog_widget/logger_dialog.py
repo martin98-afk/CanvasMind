@@ -1,8 +1,166 @@
 # -*- coding: utf-8 -*-
+from loguru import logger
 from collections import deque
 
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
+from PyQt5.QtCore import QObject, pyqtSignal, Qt, QPoint
+from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QFont
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QPlainTextEdit, QApplication
+from qfluentwidgets import StrongBodyLabel
+
+from app.utils.config import Settings
+
+
+class LogPopupWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._resizing = False
+        self._start_pos = None
+        self._start_width = None
+        self._min_width = 200
+        self._max_width = 600
+        self._base_x = 0
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        header = QWidget()
+        header.setFixedHeight(32)
+        header.setStyleSheet("""
+            background-color: #1e1e1e;
+            border-bottom: 1px solid #3c3c3c;
+        """)
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(10, 0, 10, 0)
+
+        title_label = StrongBodyLabel("执行日志")
+        title_label.setStyleSheet("color: white;")
+        header_layout.addWidget(title_label)
+
+        self.text_logger = QPlainTextEdit()
+        self.text_logger.document().setDocumentMargin(0)
+        self.text_logger.setObjectName("运行日志")
+        self.text_logger.setReadOnly(True)
+        self.text_logger.setFont(QFont(Settings.get_instance().canvas_font_type.value, 11))
+        self.text_logger.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #0e1117;
+                color: white;
+                border: none;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+                padding: 5px;
+            }
+            QPlainTextEdit QScrollBar:vertical { 
+                background: transparent; 
+                width: 8px; 
+            }
+            QPlainTextEdit QScrollBar::handle:vertical { 
+                background: #555555; 
+                border-radius: 4px; 
+            }
+        """)
+
+        self.log_handler = QTextEditLogger(self.text_logger, max_lines=1000)
+        logger.remove()
+        logger.add(
+            self.log_handler,
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+        )
+
+        main_layout.addWidget(header)
+        main_layout.addWidget(self.text_logger)
+
+        self.resize(400, 600)
+
+    def set_width(self, width):
+        width = max(self._min_width, min(width, self._max_width))
+        self.resize(width, self.height())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and event.pos().x() >= self.width() - 5:
+            self._resizing = True
+            self._start_pos = event.globalPos()
+            self._start_width = self.width()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.pos().x() >= self.width() - 5:
+            self.setCursor(Qt.SizeHorCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+        if self._resizing:
+            delta = event.globalPos() - self._start_pos
+            new_width = self._start_width + delta.x()
+            self.set_width(new_width)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._resizing = False
+        super().mouseReleaseEvent(event)
+
+    def show_at_left(self, parent_widget, log_button_top_right):
+        self._parent_widget = parent_widget
+        x = log_button_top_right.x() - 5
+        self._base_x = x
+
+        parent_global_y = parent_widget.mapToGlobal(QPoint(0, 0)).y()
+        y = parent_global_y
+
+        popup_height = parent_widget.height()
+        screen = QApplication.desktop().screenGeometry(parent_widget)
+        if y + popup_height > screen.bottom():
+            popup_height = screen.bottom() - y - 10
+
+        self.move(x, y)
+        self.resize(400, popup_height)
+        self.show()
+        self.activateWindow()
+
+    def _update_position(self, parent_widget):
+        if not hasattr(self, "_parent_widget"):
+            return
+
+        nav_interface = parent_widget.navigationInterface
+        nav_right = nav_interface.rect().right()
+        nav_right_global = nav_interface.mapToGlobal(QPoint(nav_right, 0))
+        x = nav_right_global.x() - 5
+
+        parent_global_y = parent_widget.mapToGlobal(QPoint(0, 0)).y()
+        y = parent_global_y
+
+        popup_height = parent_widget.height()
+        screen = QApplication.desktop().screenGeometry(parent_widget)
+        if y + popup_height > screen.bottom():
+            popup_height = screen.bottom() - y - 10
+
+        self.move(x, y)
+        self.resize(self.width(), popup_height)
+
+    def hidePopup(self):
+        self.hide()
+
+    def scroll_to_bottom(self, force=False):
+        self.text_logger.verticalScrollBar().setValue(
+            self.text_logger.verticalScrollBar().maximum()
+        )
+
+    def _clean_trailing_empty_lines(self):
+        cursor = self.text_logger.textCursor()
+        cursor.movePosition(cursor.End)
+        while cursor.block().text() == "" and cursor.position() > 0:
+            cursor.deletePreviousChar()
+            cursor.movePosition(cursor.End)
+        while cursor.block().text() == "" and cursor.position() > 0:
+            cursor.deletePreviousChar()
+            cursor.movePosition(cursor.End)
 
 
 class QTextEditLogger(QObject):

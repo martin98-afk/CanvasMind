@@ -42,6 +42,12 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
     OpenAIChatWorker,
     TitleGenerationTask,
     TopicSummaryTask,
+    ShellExecutionTask,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
+    BuiltinTools,
+    get_builtin_tools_schema,
+    ToolResult,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
     SendableTextEdit,
@@ -59,6 +65,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
+    ConversationNodePreview,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
     MemoryManagerDialog,
@@ -85,6 +94,9 @@ class OpenAIChatToolWindow(ToolWindow):
     _loaded_skill_doc: str = ""
     _skill_enabled: bool = True
     _is_shell_mode: bool = False
+    _builtin_tools: Optional[BuiltinTools] = None
+    _is_continuing: bool = False
+    _processed_tool_ids: set = set()  # 防止重复处理工具调用
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -94,7 +106,7 @@ class OpenAIChatToolWindow(ToolWindow):
     # Signals for execution results coming from the execution engine
     executionResultProduced = pyqtSignal(str)
     _system_prompt = """# 角色
-你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地落地执行用户的需求。
+你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地执行用户的需求。
 
 职责与行为准则
 - 以清晰、专业的语言输出，必要时附带可执行的步骤（命令、代码、API 调用等）。
@@ -102,10 +114,34 @@ class OpenAIChatToolWindow(ToolWindow):
 - 始终优先使用长期记忆和历史对话上下文来提升回答相关性。
 - 如需扩展能力，优先通过内部技能/工具执行，而非直接输出未验证的信息。
 
+## 可用内置工具
+你可以使用以下内置工具来完成任务：
+
+1. **read(filePath, offset, limit)** - 读取文件内容
+2. **write(filePath, content)** - 创建或覆盖文件
+3. **edit(filePath, oldString, newString, replaceAll)** - 精确字符串替换编辑文件
+4. **grep(pattern, path, include)** - 使用正则表达式搜索文件内容
+5. **glob(pattern, path)** - 通过 glob 模式查找文件
+6. **list(path)** - 列出目录内容
+7. **patch(filePath, patch_content)** - 对文件应用补丁
+8. **bash(command, timeout)** - 执行 shell 命令
+9. **webfetch(url, format)** - 获取网页内容
+10. **websearch(query, num_results)** - 网络搜索
+11. **todowrite(todos)** - 创建和更新待办事项列表
+12. **todoread()** - 读取待办事项列表
+13. **skill(name)** - 加载技能文档
+14. **question(question, options)** - 向用户提问
+
+**工具调用格式**：
+```builtin_tool_call
+{"name": "工具名", "args": {"参数1": "值1", ...}}
+```
+
 ## 追问与行动规范
 - 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
 - [问题描述](ask)
-- 如需执行，请在拟议行动后附上你将执行的第一步（如调用技能、运行命令等）以便用户确认。"""
+- 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
+"""
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
@@ -117,6 +153,31 @@ class OpenAIChatToolWindow(ToolWindow):
         if hasattr(self.homepage, "global_variables_changed"):
             self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_history_manager()
+        self._initialize_builtin_tools()
+
+    def _initialize_builtin_tools(self):
+        import os
+
+        # 使用项目根目录作为默认工作目录
+        workdir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+        try:
+            if hasattr(self.homepage, "workflow_name") and self.homepage.workflow_name:
+                canvas_name = self.homepage.workflow_name
+                workspace_path = (
+                    Path(workdir)
+                    / "canvas_files"
+                    / "workflows"
+                    / canvas_name
+                    / "workspace"
+                )
+                if workspace_path.exists():
+                    workdir = str(workspace_path)
+        except Exception:
+            pass
+        logger.info(f"[BuiltinTools] Initialized with workdir: {workdir}")
+        self._builtin_tools = BuiltinTools(self.homepage, workdir)
 
     def showEvent(self, event):
         if not self._first_show:
@@ -170,6 +231,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo = ComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
         right_layout.addWidget(self.model_combo)
         self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
         self.settings_btn.setToolTip("模型设置")
@@ -197,6 +259,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_scroll_area.setWidget(self.chat_container)
 
         layout.addWidget(self.chat_scroll_area, 1)
+
+        self.node_preview = ConversationNodePreview(self)
+        self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
+        layout.addWidget(self.node_preview)
 
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
@@ -242,10 +308,17 @@ class OpenAIChatToolWindow(ToolWindow):
         setFont(self.input_area, 15)
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
+        self.input_area.clearRequested.connect(self._on_clear_shortcut)
+        self.input_area.newSessionRequested.connect(self._create_new_session)
         layout.addWidget(self.input_area)
 
     def set_system_prompt(self, prompt):
         self._system_prompt += prompt
+
+    def _on_model_changed(self, model_name: str):
+        if model_name:
+            setting = Settings.get_instance()
+            setting.set(setting.llm_selected_model, model_name, save=True)
 
     def _open_settings_popup(self):
         # 懒加载 popup
@@ -335,6 +408,9 @@ class OpenAIChatToolWindow(ToolWindow):
                 )
 
     def _load_model_configs(self):
+        setting = Settings.get_instance()
+        saved_model = setting.llm_selected_model.value
+
         current_text = (
             self.model_combo.currentText() if self.model_combo.count() > 0 else ""
         )
@@ -394,7 +470,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
         # 恢复之前选中的项
-        if current_text in self._valid_configs:
+        saved_model = setting.llm_selected_model.value
+        if saved_model and saved_model in self._valid_configs:
+            idx = self.model_combo.findText(saved_model)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+        elif current_text in self._valid_configs:
             idx = self.model_combo.findText(current_text)
             if idx >= 0:
                 self.model_combo.setCurrentIndex(idx)
@@ -418,6 +499,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setChecked(False)
         self._clear_chat_area()
         self.title_edit.setText("新对话")
+        self.node_preview.clear_nodes()
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
@@ -450,6 +532,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 continue
 
         QTimer.singleShot(10, self._scroll_to_bottom)
+        self._update_node_preview()
 
     # 历史对话管理
     def _initialize_history_manager(self):
@@ -478,35 +561,21 @@ class OpenAIChatToolWindow(ToolWindow):
             self.title_edit.setText("新对话")
 
     def _execute_shell_command(self, cmd: str):
-        """执行Shell命令并显示结果"""
-        import subprocess
-        import platform
-
+        """执行Shell命令并显示结果（异步执行，不阻塞UI）"""
         self._append_user_message(cmd, timestamp=datetime.now().strftime("%H:%M"))
+        self._is_streaming = True
+        self._toggle_send_stop(True)
 
-        try:
-            system = platform.system()
-            if system == "Windows":
-                res = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=120
-                )
-            else:
-                res = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=120
-                )
-            output = res.stdout.strip() if res.stdout else ""
-            error_out = res.stderr.strip() if res.stderr else ""
-            combined = "\n".join(filter(None, [output, error_out]))
-            result_text = combined if combined else "(命令执行完成，无输出)"
-        except subprocess.TimeoutExpired:
-            result_text = "[错误] 命令执行超时"
-        except Exception as e:
-            result_text = f"[错误] {str(e)}"
+        def on_result(result_text: str):
+            self._is_streaming = False
+            self._toggle_send_stop(False)
+            card = self._append_assistant_message()
+            card.update_content(f"```\n{result_text}\n```")
+            card.finish_streaming()
+            self._scroll_to_bottom()
 
-        card = self._append_assistant_message()
-        card.update_content(f"```\n{result_text}\n```")
-        card.finish_streaming()
-        self._scroll_to_bottom()
+        task = ShellExecutionTask(cmd, on_result)
+        self._gen_thread_pool.start(task)
 
     def _display_history_sessions(self):
         self._clear_chat_area()
@@ -590,6 +659,18 @@ class OpenAIChatToolWindow(ToolWindow):
             if item.widget():
                 item.widget().deleteLater()
 
+    def _on_clear_shortcut(self):
+        self._clear_chat_area()
+        self.node_preview.clear_nodes()
+        session = self.session_manager.get_current_session()
+        if session:
+            session.clear()
+        welcome_card = create_welcome_card(self)
+        welcome_card._is_welcome = True
+        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
+        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
+        self.title_edit.setText("新对话")
+
     def _delete_history_session(self, index: int):
         self.history_manager.delete_history(index)
         self._display_history_sessions()
@@ -615,16 +696,19 @@ class OpenAIChatToolWindow(ToolWindow):
             tag_params=tag_params
             or {key: value for key, value in self.context_selector.context.items()},
         )
+        card.viewer._install_dialog_filter()
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
         card.actionRequested.connect(self._on_code_action)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
+        self._update_node_preview()
         return card
 
     def _append_assistant_message(self) -> MessageCard:
         card = MessageCard(parent=self, role="assistant")
+        card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
         card.contextActionRequested.connect(self.handle_recommended_question)
@@ -640,6 +724,62 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(new_content)
         if self._is_streaming:
             self._scroll_to_bottom()
+
+    def _update_node_preview(self):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        node_data = []
+        current_user_msg = None
+
+        for msg in session.messages:
+            if msg["role"] == "user":
+                current_user_msg = msg.get("content", "")[:30]
+            elif msg["role"] == "assistant" and current_user_msg:
+                timestamp = (
+                    msg.get("timestamp", "")[-5:] if msg.get("timestamp") else ""
+                )
+                node_data.append((current_user_msg, timestamp))
+                current_user_msg = None
+
+        # 如果最后是用户消息没有对应回复，也显示出来
+        if current_user_msg:
+            node_data.append((current_user_msg, ""))
+
+        self.node_preview.update_nodes(node_data)
+
+    def _on_node_preview_clicked(self, index: int):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        pair_index = 0
+        for i, msg in enumerate(session.messages):
+            if msg["role"] == "user":
+                if pair_index == index:
+                    card_index = i
+                    for j in range(i + 1, len(session.messages)):
+                        if isinstance(self.chat_layout.itemAt(j), type(None)):
+                            continue
+                        widget = self.chat_layout.itemAt(j).widget()
+                        if (
+                            widget
+                            and hasattr(widget, "role")
+                            and widget.role == "assistant"
+                        ):
+                            card_index = j
+                            break
+                    scroll_area = self.chat_scroll_area
+                    if scroll_area:
+                        y = 0
+                        for k in range(card_index):
+                            item = self.chat_layout.itemAt(k)
+                            if item and item.widget():
+                                y += item.widget().height() + 5
+                        scroll_area.verticalScrollBar().setValue(y)
+                    return
+                pair_index += 1
 
     def _delete_message(self, card: MessageCard):
         """删除用户消息时，连带删除下一条助手消息（如果存在）"""
@@ -673,6 +813,8 @@ class OpenAIChatToolWindow(ToolWindow):
             # 同步删除 session 中的消息
             if idx < len(session.messages):
                 session.messages.pop(idx)
+
+        self._update_node_preview()
 
     def _remove_message_at_index(self, index: int):
         if 0 <= index < self.chat_layout.count():
@@ -776,6 +918,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        # 清空已处理的工具调用集合
+        self._processed_tool_ids.clear()
+
         # Shell模式：直接执行命令
         if self._is_shell_mode:
             if not user_text:
@@ -851,17 +996,21 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 7. 启动 Worker (透传整个 llm_config 字典)
         self._is_streaming = True
-        # available_tools = self._get_available_mcp_tools()
+        available_tools = self._get_available_builtin_tools()
+        logger.info(f"[LLM] Starting chat with {len(available_tools)} tools available")
 
         self._worker = OpenAIChatWorker(
             messages=messages,
             llm_config=llm_config,  # 直接传递字典，Worker 内部会动态解析
-            # tools=available_tools
+            tools=available_tools,
         )
 
         # 信号连接
         self._worker.content_received.connect(
             lambda c: self._on_content_received(c, assistant_card)
+        )
+        self._worker.tool_call_received.connect(
+            lambda tc: self._on_tool_call_received(tc, assistant_card)
         )
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
         self._worker.finished_with_content.connect(
@@ -882,6 +1031,13 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
         card.finish_streaming()
+
+        # 如果是继续对话，不要立即启用输入，等待下一轮工具调用
+        if self._is_continuing:
+            logger.info("[WorkerFinished] Continuing mode - not enabling input yet")
+            self._is_continuing = False
+            return
+
         self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
@@ -1366,11 +1522,238 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
+        logger.info(
+            f"[ContentReceived] Received content piece, length: {len(content_piece)}"
+        )
         self._update_assistant_message(assistant_card, content_piece)
         # 1) 处理插件调用（技能执行）若检测到 plugin_call 指令
         self._process_plugin_calls(content_piece, assistant_card)
         # 2) 处理简单的工具调用（如 shell 命令）
         self._process_tool_calls(content_piece, assistant_card)
+        # 3) 处理内置工具调用 - 已通过 function calling 处理，不再重复解析
+        # (function calling 是主要工具调用方式，builtin_tool_call 文本格式已废弃)
+
+    def _clean_minimax_arguments(self, arguments: str) -> dict:
+        """清理MiniMax模型输出的非标准JSON参数格式"""
+        if not isinstance(arguments, str):
+            return arguments
+
+        import re
+
+        cleaned = arguments.strip()
+
+        cleaned = re.sub(r"<[^>]+>", "", cleaned)
+
+        cleaned = re.sub(r"}\s*{", ",", cleaned)
+
+        json_match = re.search(r"\{.+\}", cleaned, re.DOTALL)
+        if json_match:
+            cleaned = json_match.group()
+
+        try:
+            return json.loads(cleaned)
+        except:
+            pass
+
+        try:
+            params = {}
+            param_pattern = re.compile(
+                r""""(\w+)":\s*("[^"]*"|[\d.]+|true|false|null)"""
+            )
+            for match in param_pattern.finditer(arguments):
+                key = match.group(1)
+                value = match.group(2)
+                if value.startswith('"') and value.endswith('"'):
+                    params[key] = value[1:-1]
+                elif value == "true":
+                    params[key] = True
+                elif value == "false":
+                    params[key] = False
+                elif value == "null":
+                    params[key] = None
+                else:
+                    try:
+                        params[key] = int(value)
+                    except:
+                        try:
+                            params[key] = float(value)
+                        except:
+                            params[key] = value
+            if params:
+                return params
+        except:
+            pass
+
+        return {}
+
+    def _on_tool_call_received(self, tool_call: dict, assistant_card: MessageCard):
+        """处理原生 function calling 格式的工具调用"""
+        logger.info(f"[ToolCallReceived] Received tool call: {tool_call}")
+
+        func = tool_call.get("function", {})
+        tool_name = func.get("name")
+        arguments = func.get("arguments", "{}")
+
+        if not tool_name:
+            logger.warning("[ToolCallReceived] Tool name is empty, skipping")
+            return
+
+        tool_call_id = tool_call.get("id")
+        if not tool_call_id:
+            logger.warning("[ToolCallReceived] Tool call id is empty, skipping")
+            return
+
+        # 标记为已处理，防止重复
+        if tool_call_id in self._processed_tool_ids:
+            logger.warning(
+                f"[ToolCallReceived] Tool call {tool_call_id} already processed, skipping"
+            )
+            return
+        self._processed_tool_ids.add(tool_call_id)
+
+        # arguments 可能是字符串，需要解析
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except:
+                arguments = self._clean_minimax_arguments(arguments)
+
+        logger.info(
+            f"[ToolCallReceived] Executing tool: {tool_name} with args: {arguments}"
+        )
+
+        result = self._execute_builtin_tool(tool_name, arguments)
+
+        # 将工具调用和结果添加到消息历史
+        session = self.session_manager.get_current_session()
+        if session:
+            # 添加助手的消息（包含工具调用）
+            session.messages.append(
+                {
+                    "role": "assistant",
+                    "content": self._worker.full_response if self._worker else "",
+                    "tool_calls": [
+                        {
+                            "id": tool_call_id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_name,
+                                "arguments": json.dumps(arguments)
+                                if isinstance(arguments, dict)
+                                else str(arguments),
+                            },
+                        }
+                    ],
+                }
+            )
+            # 添加工具结果
+            tool_result_content = str(result)
+            session.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": tool_result_content,
+                }
+            )
+
+        # 显示工具结果
+        self._display_tool_result(result, tool_name, arguments)
+
+        # 继续调用 LLM 处理工具结果（多轮迭代）
+        self._is_continuing = True
+        self._continue_with_tool_result(assistant_card)
+
+    def _continue_with_tool_result(self, assistant_card: MessageCard):
+        """在工具调用后继续对话"""
+        logger.info("[Continue] Continuing conversation after tool call...")
+
+        session = self.session_manager.get_current_session()
+        if not session:
+            logger.warning("[Continue] No session found")
+            return
+
+        # 获取当前模型配置
+        selected_name = self.model_combo.currentText()
+        llm_config = self._valid_configs.get(selected_name)
+        if not llm_config:
+            logger.error("[Continue] No LLM config found")
+            return
+
+        # 构建消息列表（包含工具调用历史）
+        messages = self._build_continuation_messages(session.messages)
+
+        # 创建新的 worker 继续对话
+        self._worker = OpenAIChatWorker(
+            messages=messages,
+            llm_config=llm_config,
+            tools=self._get_available_builtin_tools(),
+        )
+
+        # 连接信号
+        self._worker.content_received.connect(
+            lambda c: self._on_content_received(c, assistant_card)
+        )
+        self._worker.tool_call_received.connect(
+            lambda tc: self._on_tool_call_received(tc, assistant_card)
+        )
+        self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
+        self._worker.finished_with_content.connect(
+            lambda r: self._on_worker_finished(r, assistant_card)
+        )
+
+        logger.info("[Continue] Starting continued chat...")
+        self._worker.start()
+
+    def _build_continuation_messages(self, session_messages: List[Dict]) -> List[Dict]:
+        """构建继续对话的消息列表（包含工具调用历史）"""
+        messages = []
+
+        # 添加系统提示
+        full_system_prompt = (self._system_prompt + "\n").strip()
+
+        long_term_memory = self._get_long_term_memory_context()
+        if long_term_memory:
+            full_system_prompt += f"\n\n{long_term_memory}"
+
+        messages.append({"role": "system", "content": full_system_prompt})
+
+        # 添加所有历史消息
+        for msg in session_messages:
+            role = msg.get("role")
+            if role == "system":
+                continue
+
+            # 处理工具调用消息
+            if "tool_calls" in msg:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg.get("tool_calls", []),
+                    }
+                )
+            elif role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "content": msg.get("content", ""),
+                    }
+                )
+            else:
+                content = msg.get("content")
+                if isinstance(content, list):
+                    content = "\n".join(
+                        [
+                            item.get("text", "")
+                            for item in content
+                            if item.get("type") == "text"
+                        ]
+                    )
+                messages.append({"role": role, "content": content})
+
+        logger.info(f"[Continue] Built {len(messages)} messages for continuation")
+        return messages
 
     def _on_execution_result(self, content: str):
         if content is None:
@@ -1459,6 +1842,156 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.error(f"[ToolCall] Failed to process: {e}")
 
+    def _process_builtin_tool_calls(
+        self, content_piece: str, assistant_card: MessageCard
+    ):
+        """Detect and execute builtin tool calls from model output."""
+        logger.info(
+            f"[BuiltinToolCall] Checking for tool calls, content length: {len(content_piece)}"
+        )
+
+        if not self._builtin_tools:
+            logger.warning("[BuiltinToolCall] Builtin tools not initialized")
+            return
+
+        try:
+            pattern = re.compile(r"```builtin_tool_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            logger.info(f"[BuiltinToolCall] Pattern match result: {match is not None}")
+
+            if not match:
+                # 也尝试其他可能的格式
+                alt_pattern = re.compile(
+                    r'```json\s*\n(\{.*?"tool".*?\})\s*\n```', re.S
+                )
+                alt_match = alt_pattern.search(content_piece)
+                if alt_match:
+                    logger.info(f"[BuiltinToolCall] Found alternative format tool call")
+                    match = alt_match
+                else:
+                    logger.info(f"[BuiltinToolCall] No tool call found in content")
+                    return
+
+            payload_str = match.group(1).strip()
+            logger.info(f"[BuiltinToolCall] Raw payload: {payload_str[:200]}")
+
+            payload = json.loads(payload_str)
+            tool_name = payload.get("name") or payload.get("tool")
+            tool_args = payload.get("args", {}) or payload.get("arguments", {})
+
+            logger.info(f"[BuiltinToolCall] Tool: {tool_name}, Args: {tool_args}")
+
+            if not tool_name:
+                logger.warning("[BuiltinToolCall] No tool name found")
+                return
+
+            result = self._execute_builtin_tool(tool_name, tool_args)
+            logger.info(f"[BuiltinToolCall] Result: {result}")
+            self._display_tool_result(result, tool_name)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"[BuiltinToolCall] JSON parse error: {e}")
+        except Exception as e:
+            logger.error(f"[BuiltinToolCall] Failed to process: {e}")
+
+    def _execute_builtin_tool(self, tool_name: str, args: dict) -> ToolResult:
+        """Execute a builtin tool and return the result."""
+        logger.info(f"[ExecuteBuiltinTool] tool_name={tool_name}, args={args}")
+
+        if not self._builtin_tools:
+            logger.warning("[ExecuteBuiltinTool] Builtin tools not initialized")
+            return ToolResult(False, error="Builtin tools not initialized")
+
+        # 记录详细的参数提取过程
+        logger.info(
+            f"[ExecuteBuiltinTool] args keys: {list(args.keys()) if args else []}"
+        )
+
+        tool_map = {
+            "read": lambda: self._builtin_tools.read_file(
+                args.get("filePath"), args.get("offset", 1), args.get("limit", 2000)
+            ),
+            "write": lambda: self._builtin_tools.write_file(
+                args.get("filePath"), args.get("content", "")
+            ),
+            "edit": lambda: self._builtin_tools.edit_file(
+                args.get("filePath"),
+                args.get("oldString", ""),
+                args.get("newString", ""),
+                args.get("replaceAll", False),
+            ),
+            "grep": lambda: self._builtin_tools.grep_files(
+                args.get("pattern"), args.get("path"), args.get("include")
+            ),
+            "glob": lambda: self._builtin_tools.glob_files(
+                args.get("pattern"), args.get("path")
+            ),
+            "list": lambda: self._builtin_tools.list_directory(args.get("path")),
+            "patch": lambda: self._builtin_tools.apply_patch(
+                args.get("filePath"), args.get("patch_content", "")
+            ),
+            "bash": lambda: self._builtin_tools.execute_bash(
+                args.get("command", ""), args.get("timeout", 120)
+            ),
+            "webfetch": lambda: self._builtin_tools.fetch_web(
+                args.get("url", ""), args.get("format", "markdown")
+            ),
+            "websearch": lambda: self._builtin_tools.search_web(
+                args.get("query", ""), args.get("num_results", 10)
+            ),
+            "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
+            "todoread": lambda: self._builtin_tools.todo_read(),
+            "skill": lambda: self._builtin_tools.load_skill(args.get("name", "")),
+            "question": lambda: self._builtin_tools.ask_question(
+                args.get("question", ""), args.get("options")
+            ),
+        }
+
+        executor = tool_map.get(tool_name)
+        if executor:
+            try:
+                return executor()
+            except Exception as e:
+                return ToolResult(False, error=f"Execution error: {str(e)}")
+
+        return ToolResult(False, error=f"Unknown tool: {tool_name}")
+
+    def _display_tool_result(
+        self, result: ToolResult, tool_name: str, tool_args: dict = None
+    ):
+        """Display tool execution result in chat."""
+        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
+            _render_tool_block,
+        )
+
+        content = str(result)
+        tool_html = _render_tool_block(
+            tool_name, tool_args or {}, content, result.success
+        )
+
+        # 获取当前卡片（应该是最新的助手消息卡片）
+        tool_call_card = None
+        for i in range(self.chat_layout.count() - 1, -1, -1):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if isinstance(widget, MessageCard):
+                    tool_call_card = widget
+                    break
+
+        if tool_call_card:
+            # 追加到当前卡片内容中
+            new_content = tool_html
+            tool_call_card.update_content(new_content)
+            tool_call_card.finish_streaming()
+        else:
+            # 如果没有找到当前卡片，创建新的
+            tool_card = self._append_assistant_message()
+            tool_card.update_content(tool_html)
+            tool_card.finish_streaming()
+
+        self._scroll_to_bottom()
+
     # 对话标题总结
     def _generate_conversation_title(self, current_title: str, messages: List[Dict]):
         """异步请求大模型生成对话标题"""
@@ -1511,6 +2044,10 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.warning(f"获取 MCP 工具失败: {e}")
             return []
+
+    def _get_available_builtin_tools(self) -> List[Dict]:
+        """获取内置工具定义"""
+        return get_builtin_tools_schema()
 
     def _toggle_search_mode(self):
         self._is_searching = not self._is_searching
