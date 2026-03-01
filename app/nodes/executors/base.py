@@ -7,6 +7,7 @@ import os
 from loguru import logger
 
 from app.components.base import GlobalVariableContext, ArgumentType, resource_path
+from app.utils.utils import _safe_load_pickle
 
 
 class BaseExecutor(ABC):
@@ -37,16 +38,12 @@ class BaseExecutor(ABC):
 
     def read_result(self, ctx):
         """读取执行结果"""
-        from app.utils.utils import _safe_load_pickle
-
         if ctx.result_path and ctx.result_path.exists():
             return _safe_load_pickle(ctx.result_path)
         return None
 
     def read_error(self, ctx):
         """读取错误信息"""
-        from app.utils.utils import _safe_load_pickle
-
         if ctx.error_path and ctx.error_path.exists():
             return _safe_load_pickle(ctx.error_path)
         return None

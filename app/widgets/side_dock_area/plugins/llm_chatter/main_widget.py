@@ -44,6 +44,11 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
     TopicSummaryTask,
     ShellExecutionTask,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
+    BuiltinTools,
+    get_builtin_tools_schema,
+    ToolResult,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
     SendableTextEdit,
 )
@@ -89,6 +94,8 @@ class OpenAIChatToolWindow(ToolWindow):
     _loaded_skill_doc: str = ""
     _skill_enabled: bool = True
     _is_shell_mode: bool = False
+    _builtin_tools: Optional[BuiltinTools] = None
+    _is_continuing: bool = False
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -98,13 +105,36 @@ class OpenAIChatToolWindow(ToolWindow):
     # Signals for execution results coming from the execution engine
     executionResultProduced = pyqtSignal(str)
     _system_prompt = """# 角色
-你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地落地执行用户的需求。
+你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地执行用户的需求。
 
 职责与行为准则
 - 以清晰、专业的语言输出，必要时附带可执行的步骤（命令、代码、API 调用等）。
 - 遇到不清晰的需求时，主动提出澄清问题或给出可操作的分步方案。
 - 始终优先使用长期记忆和历史对话上下文来提升回答相关性。
 - 如需扩展能力，优先通过内部技能/工具执行，而非直接输出未验证的信息。
+
+## 可用内置工具
+你可以使用以下内置工具来完成任务：
+
+1. **read(filePath, offset, limit)** - 读取文件内容
+2. **write(filePath, content)** - 创建或覆盖文件
+3. **edit(filePath, oldString, newString, replaceAll)** - 精确字符串替换编辑文件
+4. **grep(pattern, path, include)** - 使用正则表达式搜索文件内容
+5. **glob(pattern, path)** - 通过 glob 模式查找文件
+6. **list(path)** - 列出目录内容
+7. **patch(filePath, patch_content)** - 对文件应用补丁
+8. **bash(command, timeout)** - 执行 shell 命令
+9. **webfetch(url, format)** - 获取网页内容
+10. **websearch(query, num_results)** - 网络搜索
+11. **todowrite(todos)** - 创建和更新待办事项列表
+12. **todoread()** - 读取待办事项列表
+13. **skill(name)** - 加载技能文档
+14. **question(question, options)** - 向用户提问
+
+**工具调用格式**：
+```builtin_tool_call
+{"name": "工具名", "args": {"参数1": "值1", ...}}
+```
 
 ## 追问与行动规范
 - 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
@@ -121,6 +151,31 @@ class OpenAIChatToolWindow(ToolWindow):
         if hasattr(self.homepage, "global_variables_changed"):
             self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_history_manager()
+        self._initialize_builtin_tools()
+
+    def _initialize_builtin_tools(self):
+        import os
+
+        # 使用项目根目录作为默认工作目录
+        workdir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
+        try:
+            if hasattr(self.homepage, "workflow_name") and self.homepage.workflow_name:
+                canvas_name = self.homepage.workflow_name
+                workspace_path = (
+                    Path(workdir)
+                    / "canvas_files"
+                    / "workflows"
+                    / canvas_name
+                    / "workspace"
+                )
+                if workspace_path.exists():
+                    workdir = str(workspace_path)
+        except Exception:
+            pass
+        logger.info(f"[BuiltinTools] Initialized with workdir: {workdir}")
+        self._builtin_tools = BuiltinTools(self.homepage, workdir)
 
     def showEvent(self, event):
         if not self._first_show:
@@ -936,17 +991,21 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 7. 启动 Worker (透传整个 llm_config 字典)
         self._is_streaming = True
-        # available_tools = self._get_available_mcp_tools()
+        available_tools = self._get_available_builtin_tools()
+        logger.info(f"[LLM] Starting chat with {len(available_tools)} tools available")
 
         self._worker = OpenAIChatWorker(
             messages=messages,
             llm_config=llm_config,  # 直接传递字典，Worker 内部会动态解析
-            # tools=available_tools
+            tools=available_tools,
         )
 
         # 信号连接
         self._worker.content_received.connect(
             lambda c: self._on_content_received(c, assistant_card)
+        )
+        self._worker.tool_call_received.connect(
+            lambda tc: self._on_tool_call_received(tc, assistant_card)
         )
         self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
         self._worker.finished_with_content.connect(
@@ -967,6 +1026,13 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_worker_finished(self, response: str, card: MessageCard):
         self._is_streaming = False
         card.finish_streaming()
+
+        # 如果是继续对话，不要立即启用输入，等待下一轮工具调用
+        if self._is_continuing:
+            logger.info("[WorkerFinished] Continuing mode - not enabling input yet")
+            self._is_continuing = False
+            return
+
         self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
         session = self.session_manager.get_current_session()
@@ -1451,11 +1517,168 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
+        logger.info(
+            f"[ContentReceived] Received content piece, length: {len(content_piece)}"
+        )
         self._update_assistant_message(assistant_card, content_piece)
         # 1) 处理插件调用（技能执行）若检测到 plugin_call 指令
         self._process_plugin_calls(content_piece, assistant_card)
         # 2) 处理简单的工具调用（如 shell 命令）
         self._process_tool_calls(content_piece, assistant_card)
+        # 3) 处理内置工具调用
+        self._process_builtin_tool_calls(content_piece, assistant_card)
+
+    def _on_tool_call_received(self, tool_call: dict, assistant_card: MessageCard):
+        """处理原生 function calling 格式的工具调用"""
+        logger.info(f"[ToolCallReceived] Received tool call: {tool_call}")
+
+        func = tool_call.get("function", {})
+        tool_name = func.get("name")
+        arguments = func.get("arguments", "{}")
+
+        # arguments 可能是字符串，需要解析
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except:
+                arguments = {}
+
+        logger.info(
+            f"[ToolCallReceived] Executing tool: {tool_name} with args: {arguments}"
+        )
+
+        result = self._execute_builtin_tool(tool_name, arguments)
+
+        # 将工具调用和结果添加到消息历史
+        session = self.session_manager.get_current_session()
+        if session:
+            # 添加助手的消息（包含工具调用）
+            session.messages.append(
+                {
+                    "role": "assistant",
+                    "content": self._worker.full_response if self._worker else "",
+                    "tool_calls": [
+                        {
+                            "id": tool_call.get("id"),
+                            "type": "function",
+                            "function": {
+                                "name": tool_name,
+                                "arguments": json.dumps(arguments)
+                                if isinstance(arguments, dict)
+                                else str(arguments),
+                            },
+                        }
+                    ],
+                }
+            )
+            # 添加工具结果
+            tool_result_content = str(result)
+            session.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.get("id"),
+                    "content": tool_result_content,
+                }
+            )
+
+        # 显示工具结果
+        self._display_tool_result(result, tool_name, arguments)
+
+        # 继续调用 LLM 处理工具结果（多轮迭代）
+        self._is_continuing = True
+        self._continue_with_tool_result(assistant_card)
+
+    def _continue_with_tool_result(self, assistant_card: MessageCard):
+        """在工具调用后继续对话"""
+        logger.info("[Continue] Continuing conversation after tool call...")
+
+        session = self.session_manager.get_current_session()
+        if not session:
+            logger.warning("[Continue] No session found")
+            return
+
+        # 获取当前模型配置
+        selected_name = self.model_combo.currentText()
+        llm_config = self._valid_configs.get(selected_name)
+        if not llm_config:
+            logger.error("[Continue] No LLM config found")
+            return
+
+        # 构建消息列表（包含工具调用历史）
+        messages = self._build_continuation_messages(session.messages)
+
+        # 创建新的 worker 继续对话
+        self._worker = OpenAIChatWorker(
+            messages=messages,
+            llm_config=llm_config,
+            tools=self._get_available_builtin_tools(),
+        )
+
+        # 连接信号
+        self._worker.content_received.connect(
+            lambda c: self._on_content_received(c, assistant_card)
+        )
+        self._worker.tool_call_received.connect(
+            lambda tc: self._on_tool_call_received(tc, assistant_card)
+        )
+        self._worker.error_occurred.connect(lambda e: self._on_error(e, assistant_card))
+        self._worker.finished_with_content.connect(
+            lambda r: self._on_worker_finished(r, assistant_card)
+        )
+
+        logger.info("[Continue] Starting continued chat...")
+        self._worker.start()
+
+    def _build_continuation_messages(self, session_messages: List[Dict]) -> List[Dict]:
+        """构建继续对话的消息列表（包含工具调用历史）"""
+        messages = []
+
+        # 添加系统提示
+        full_system_prompt = (self._system_prompt + "\n").strip()
+
+        long_term_memory = self._get_long_term_memory_context()
+        if long_term_memory:
+            full_system_prompt += f"\n\n{long_term_memory}"
+
+        messages.append({"role": "system", "content": full_system_prompt})
+
+        # 添加所有历史消息
+        for msg in session_messages:
+            role = msg.get("role")
+            if role == "system":
+                continue
+
+            # 处理工具调用消息
+            if "tool_calls" in msg:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg.get("tool_calls", []),
+                    }
+                )
+            elif role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "content": msg.get("content", ""),
+                    }
+                )
+            else:
+                content = msg.get("content")
+                if isinstance(content, list):
+                    content = "\n".join(
+                        [
+                            item.get("text", "")
+                            for item in content
+                            if item.get("type") == "text"
+                        ]
+                    )
+                messages.append({"role": role, "content": content})
+
+        logger.info(f"[Continue] Built {len(messages)} messages for continuation")
+        return messages
 
     def _on_execution_result(self, content: str):
         if content is None:
@@ -1544,6 +1767,151 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.error(f"[ToolCall] Failed to process: {e}")
 
+    def _process_builtin_tool_calls(
+        self, content_piece: str, assistant_card: MessageCard
+    ):
+        """Detect and execute builtin tool calls from model output."""
+        logger.info(
+            f"[BuiltinToolCall] Checking for tool calls, content length: {len(content_piece)}"
+        )
+
+        if not self._builtin_tools:
+            logger.warning("[BuiltinToolCall] Builtin tools not initialized")
+            return
+
+        try:
+            pattern = re.compile(r"```builtin_tool_call\s*\n(.*?)\n```", re.S)
+            match = pattern.search(content_piece)
+            logger.info(f"[BuiltinToolCall] Pattern match result: {match is not None}")
+
+            if not match:
+                # 也尝试其他可能的格式
+                alt_pattern = re.compile(
+                    r'```json\s*\n(\{.*?"tool".*?\})\s*\n```', re.S
+                )
+                alt_match = alt_pattern.search(content_piece)
+                if alt_match:
+                    logger.info(f"[BuiltinToolCall] Found alternative format tool call")
+                    match = alt_match
+                else:
+                    logger.info(f"[BuiltinToolCall] No tool call found in content")
+                    return
+
+            payload_str = match.group(1).strip()
+            logger.info(f"[BuiltinToolCall] Raw payload: {payload_str[:200]}")
+
+            payload = json.loads(payload_str)
+            tool_name = payload.get("name") or payload.get("tool")
+            tool_args = payload.get("args", {}) or payload.get("arguments", {})
+
+            logger.info(f"[BuiltinToolCall] Tool: {tool_name}, Args: {tool_args}")
+
+            if not tool_name:
+                logger.warning("[BuiltinToolCall] No tool name found")
+                return
+
+            result = self._execute_builtin_tool(tool_name, tool_args)
+            logger.info(f"[BuiltinToolCall] Result: {result}")
+            self._display_tool_result(result, tool_name)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"[BuiltinToolCall] JSON parse error: {e}")
+        except Exception as e:
+            logger.error(f"[BuiltinToolCall] Failed to process: {e}")
+
+    def _execute_builtin_tool(self, tool_name: str, args: dict) -> ToolResult:
+        """Execute a builtin tool and return the result."""
+        logger.info(f"[ExecuteBuiltinTool] tool_name={tool_name}, args={args}")
+
+        if not self._builtin_tools:
+            logger.warning("[ExecuteBuiltinTool] Builtin tools not initialized")
+            return ToolResult(False, error="Builtin tools not initialized")
+
+        tool_map = {
+            "read": lambda: self._builtin_tools.read_file(
+                args.get("filePath"), args.get("offset", 1), args.get("limit", 2000)
+            ),
+            "write": lambda: self._builtin_tools.write_file(
+                args.get("filePath"), args.get("content", "")
+            ),
+            "edit": lambda: self._builtin_tools.edit_file(
+                args.get("filePath"),
+                args.get("oldString", ""),
+                args.get("newString", ""),
+                args.get("replaceAll", False),
+            ),
+            "grep": lambda: self._builtin_tools.grep_files(
+                args.get("pattern"), args.get("path"), args.get("include")
+            ),
+            "glob": lambda: self._builtin_tools.glob_files(
+                args.get("pattern"), args.get("path")
+            ),
+            "list": lambda: self._builtin_tools.list_directory(args.get("path")),
+            "patch": lambda: self._builtin_tools.apply_patch(
+                args.get("filePath"), args.get("patch_content", "")
+            ),
+            "bash": lambda: self._builtin_tools.execute_bash(
+                args.get("command", ""), args.get("timeout", 120)
+            ),
+            "webfetch": lambda: self._builtin_tools.fetch_web(
+                args.get("url", ""), args.get("format", "markdown")
+            ),
+            "websearch": lambda: self._builtin_tools.search_web(
+                args.get("query", ""), args.get("num_results", 10)
+            ),
+            "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
+            "todoread": lambda: self._builtin_tools.todo_read(),
+            "skill": lambda: self._builtin_tools.load_skill(args.get("name", "")),
+            "question": lambda: self._builtin_tools.ask_question(
+                args.get("question", ""), args.get("options")
+            ),
+        }
+
+        executor = tool_map.get(tool_name)
+        if executor:
+            try:
+                return executor()
+            except Exception as e:
+                return ToolResult(False, error=f"Execution error: {str(e)}")
+
+        return ToolResult(False, error=f"Unknown tool: {tool_name}")
+
+    def _display_tool_result(
+        self, result: ToolResult, tool_name: str, tool_args: dict = None
+    ):
+        """Display tool execution result in chat."""
+        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
+            _render_tool_block,
+        )
+
+        content = str(result)
+        tool_html = _render_tool_block(
+            tool_name, tool_args or {}, content, result.success
+        )
+
+        # 获取当前卡片（应该是最新的助手消息卡片）
+        tool_call_card = None
+        for i in range(self.chat_layout.count() - 1, -1, -1):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if isinstance(widget, MessageCard):
+                    tool_call_card = widget
+                    break
+
+        if tool_call_card:
+            # 追加到当前卡片内容中
+            new_content = tool_html
+            tool_call_card.update_content(new_content)
+            tool_call_card.finish_streaming()
+        else:
+            # 如果没有找到当前卡片，创建新的
+            tool_card = self._append_assistant_message()
+            tool_card.update_content(tool_html)
+            tool_card.finish_streaming()
+
+        self._scroll_to_bottom()
+
     # 对话标题总结
     def _generate_conversation_title(self, current_title: str, messages: List[Dict]):
         """异步请求大模型生成对话标题"""
@@ -1596,6 +1964,10 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.warning(f"获取 MCP 工具失败: {e}")
             return []
+
+    def _get_available_builtin_tools(self) -> List[Dict]:
+        """获取内置工具定义"""
+        return get_builtin_tools_schema()
 
     def _toggle_search_mode(self):
         self._is_searching = not self._is_searching

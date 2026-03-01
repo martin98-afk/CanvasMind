@@ -12,6 +12,7 @@ from openai import (
     BadRequestError,
     APITimeoutError,
 )
+from loguru import logger
 
 
 class TopicSummaryTask(QRunnable):
@@ -207,6 +208,8 @@ class OpenAIChatWorker(QThread):
     content_received = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
+    tool_call_received = pyqtSignal(dict)
+    tool_calls_finished = pyqtSignal(list)
 
     def __init__(
         self,
@@ -222,6 +225,8 @@ class OpenAIChatWorker(QThread):
         self.stream = stream
         self.full_response = ""
         self._is_cancelled = False
+        self._tool_calls_buffer = []
+        self._max_tool_iterations = 10
 
     def cancel(self):
         self._is_cancelled = True
@@ -304,6 +309,35 @@ class OpenAIChatWorker(QThread):
             if extra_body:
                 req_kwargs["extra_body"] = extra_body
 
+            # 添加工具定义
+            if self.tools:
+                logger.info(
+                    f"[Worker] Adding {len(self.tools)} tools to request, model={model}"
+                )
+                # 检查工具定义
+                for i, tool in enumerate(self.tools):
+                    func = tool.get("function", {})
+                    logger.info(
+                        f"[Worker] Tool {i}: name={func.get('name')}, has_params={bool(func.get('parameters'))}"
+                    )
+                    if not func.get("name"):
+                        logger.error(f"[Worker] Tool {i} has empty name!")
+                    if not func.get("parameters"):
+                        logger.error(f"[Worker] Tool {i} has empty parameters!")
+
+                # 打印第一个工具的完整定义用于调试
+                import json
+
+                first_tool = self.tools[0]
+                logger.info(
+                    f"[Worker] First tool: {json.dumps(first_tool, ensure_ascii=False)}"
+                )
+
+                # 尝试不传工具，看看是否正常工作
+                # 如果你看到这行日志但请求仍然失败，说明问题不在工具
+                logger.info(f"[Worker] Proceeding with tools in request...")
+                req_kwargs["tools"] = self.tools
+
             # 处理不同的认证方式
             auth_type = self.llm_config.get("认证方式", "bearer")
 
@@ -342,6 +376,20 @@ class OpenAIChatWorker(QThread):
                 # 自动兼容 DeepSeek 的推理内容
                 reasoning = getattr(delta, "reasoning_content", None)
                 content = getattr(delta, "content", None)
+
+                # 处理工具调用
+                tool_calls = getattr(delta, "tool_calls", None)
+                if tool_calls:
+                    for tc in tool_calls:
+                        tc_dict = {
+                            "id": tc.id,
+                            "type": tc.type,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        self.tool_call_received.emit(tc_dict)
 
                 if content:
                     self.full_response += content

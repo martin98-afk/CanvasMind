@@ -198,6 +198,20 @@ def _render_think_block(content: str, completed: bool = True) -> str:
     return f'<details{open_attr} class="think-block"><summary>{status_text}</summary><div class="think-content">{content}</div></details>'
 
 
+def _render_tool_block(
+    tool_name: str, tool_args: dict, result: str, success: bool = True
+) -> str:
+    """渲染工具执行折叠框（默认折叠）"""
+    status_icon = "✅" if success else "❌"
+    args_str = json.dumps(tool_args, ensure_ascii=False, indent=2) if tool_args else ""
+    header = f"{status_icon} 🔧 工具调用: {tool_name}"
+    if args_str:
+        header += f"\n📝 参数: {args_str}"
+
+    result_html = result.replace("\n", "<br>")
+    return f'<details class="tool-block"><summary>{header}</summary><div class="tool-content"><pre>{result_html}</pre></div></details>'
+
+
 def _inject_think_cards(md_text: str, completed: bool = True) -> str:
     parts = []
     i = 0
@@ -480,6 +494,12 @@ class CodeWebViewer(QWebEngineView):
                 details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
                 details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
                 .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888 !important; font-style: italic; }}
+                
+                details.tool-block {{ margin: 6px 0; background: #1e1f22; border: 1px solid #4a4d50; border-radius: 6px; }}
+                details.tool-block summary {{ padding: 6px 10px; cursor: pointer; color: #9cdcfe; font-weight: 600; font-size: 13px; white-space: pre-wrap; }}
+                .tool-content {{ padding: 8px; border-top: 1px solid #4a4d50; background: #25262b; }}
+                .tool-content pre {{ margin: 0; color: #ce9178; font-size: 12px; font-family: Consolas, monospace; }}
+                
                 blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc !important; }}
             </style>
         </head>
