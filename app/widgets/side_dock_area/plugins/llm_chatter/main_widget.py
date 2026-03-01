@@ -1926,6 +1926,7 @@ class OpenAIChatToolWindow(ToolWindow):
             "glob": lambda: self._builtin_tools.glob_files(
                 args.get("pattern"), args.get("path")
             ),
+            "list": lambda: self._builtin_tools.list_directory(args.get("path")),
             "patch": lambda: self._builtin_tools.apply_patch(
                 args.get("filePath"), args.get("patch_content", "")
             ),

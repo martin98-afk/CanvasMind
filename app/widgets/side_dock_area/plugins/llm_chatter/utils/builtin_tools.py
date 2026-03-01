@@ -229,6 +229,27 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Glob error: {str(e)}")
 
+    def list_directory(self, path: str = None) -> ToolResult:
+        """列出目录内容"""
+        try:
+            target_path = self._resolve_path(path) if path else self.workdir
+            if not target_path.exists():
+                return ToolResult(
+                    False, error=f"Path not found: {path or self.workdir}"
+                )
+
+            entries = []
+            for item in sorted(target_path.iterdir()):
+                rel_path = item.relative_to(target_path)
+                entries.append(str(rel_path))
+
+            if not entries:
+                return ToolResult(True, content="Empty directory")
+
+            return ToolResult(True, content="\n".join(entries))
+        except Exception as e:
+            return ToolResult(False, error=f"List error: {str(e)}")
+
     def apply_patch(self, filePath: str, patch_content: str) -> ToolResult:
         """对文件应用补丁"""
         try:
@@ -543,6 +564,19 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "path": {"type": "string", "description": "搜索路径"},
                     },
                     "required": ["pattern"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list",
+                "description": "列出目录内容",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "目录路径"},
+                    },
                 },
             },
         },
