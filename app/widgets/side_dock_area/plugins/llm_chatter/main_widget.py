@@ -174,6 +174,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo = ComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
         right_layout.addWidget(self.model_combo)
         self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
         self.settings_btn.setToolTip("模型设置")
@@ -256,6 +257,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def set_system_prompt(self, prompt):
         self._system_prompt += prompt
+
+    def _on_model_changed(self, model_name: str):
+        if model_name:
+            setting = Settings.get_instance()
+            setting.set(setting.llm_selected_model, model_name, save=True)
 
     def _open_settings_popup(self):
         # 懒加载 popup
@@ -345,6 +351,9 @@ class OpenAIChatToolWindow(ToolWindow):
                 )
 
     def _load_model_configs(self):
+        setting = Settings.get_instance()
+        saved_model = setting.llm_selected_model.value
+
         current_text = (
             self.model_combo.currentText() if self.model_combo.count() > 0 else ""
         )
@@ -404,7 +413,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
         # 恢复之前选中的项
-        if current_text in self._valid_configs:
+        saved_model = setting.llm_selected_model.value
+        if saved_model and saved_model in self._valid_configs:
+            idx = self.model_combo.findText(saved_model)
+            if idx >= 0:
+                self.model_combo.setCurrentIndex(idx)
+        elif current_text in self._valid_configs:
             idx = self.model_combo.findText(current_text)
             if idx >= 0:
                 self.model_combo.setCurrentIndex(idx)

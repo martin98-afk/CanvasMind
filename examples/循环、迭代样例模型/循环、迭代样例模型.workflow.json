@@ -1,17 +1,14 @@
 {
-  "version": "1.0",
   "graph": {
     "graph": {
       "layout_direction": 0,
       "acyclic": true,
       "pipe_collision": false,
       "pipe_slicing": true,
-      "pipe_style": 2,
-      "accept_connection_types": "{}",
-      "reject_connection_types": "{}"
+      "pipe_style": 2
     },
     "nodes": {
-      "0x162b404ff90": {
+      "0x170526fe5d0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串",
@@ -39,8 +36,8 @@
         "width": 426.535,
         "height": 95.28,
         "pos": [
-          -574.2346902297165,
-          -216.98272509855562
+          -347.8456678311364,
+          -708.0324647702253
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -49,13 +46,31 @@
           "persistent_id": "2ddbb9ac-ad95-4531-9f4b-5eca1fd64a14",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop1": "node_vars.添加字符串_2__output1",
-          "_zmq_ports": "59780/59781"
+          "_column_select": {},
+          "_zmq_ports": "59780/59781",
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
         }
       },
-      "0x162dd553690": {
+      "0x170526fead0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装",
@@ -83,8 +98,8 @@
         "width": 332.695,
         "height": 98.4,
         "pos": [
-          294.0794948891404,
-          -477.8061278193884
+          491.68933216886364,
+          -788.0324647702253
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -93,13 +108,33 @@
           "persistent_id": "f75fef39-bac1-4728-a283-559af9a9d642",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop_0": "text",
-          "_zmq_ports": "59822/59823"
+          "_column_select": {},
+          "_zmq_ports": "59822/59823",
+          "_status": "success",
+          "FULL_PATH": "大模型组件/JSON文本包装"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": {
+            "text": "['文本内容[\\'文本内容\\', \\'文本内容\\', \"{\\'text\\': \\'0\\'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore', '文本内容[\\'文本内容\\', \\'文本内容\\', \"{\\'text\\': \\'0\\'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore']"
+          }
         }
       },
-      "0x162dd558dd0": {
+      "0x170526fe990": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 1",
@@ -127,8 +162,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1264.3929556992134,
-          -36.219360746465924
+          -1127.9256678311363,
+          -20.512464770225392
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -137,13 +172,26 @@
           "persistent_id": "af61c25e-f907-4798-badc-b02096a4ffa5",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "input": "文本内容",
-          "_zmq_ports": "59724/59725"
+          "_column_select": {},
+          "_zmq_ports": "59724/59725",
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
         }
       },
-      "0x162dd55aa10": {
+      "0x170526fee90": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 1",
@@ -168,11 +216,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 405.375,
-        "height": 95.28,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
-          -253.34255475880184,
-          274.99667385216685
+          -335.8456678311364,
+          59.48753522977461
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -181,56 +229,31 @@
           "persistent_id": "6cb8599c-ec10-4a84-b87f-eab6e63c4240",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop1": "env.LANG",
-          "_zmq_ports": "51569/51570"
-        }
-      },
-      "0x162dd5700d0": {
-        "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
-        "icon": null,
-        "name": "JSON文本包装 1",
-        "color": [
-          44,
-          62,
-          80,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": true,
-        "selected": false,
-        "visible": true,
-        "width": 335.94375,
-        "height": 98.4,
-        "pos": [
-          1058.5154394300737,
-          772.9591470655467
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "a96cf177-a323-4fc0-ae11-91f7d2d08bc3",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
           "_column_select": {},
-          "version": "latest",
-          "prop_0": "text"
+          "_zmq_ports": "51569/51570",
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8"
         }
       },
-      "0x162dd5713d0": {
+      "0x170526ff390": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 2",
@@ -258,8 +281,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1219.0225037028695,
-          258.80203954600586
+          -1127.9256678311363,
+          338.2475352297747
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -268,20 +291,33 @@
           "persistent_id": "795ff325-cf70-43f7-a3f0-d4cb416adf68",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "input": "文本内容",
-          "_zmq_ports": "59738/59739"
+          "_column_select": {},
+          "_zmq_ports": "59738/59739",
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
         }
       },
-      "0x162dd572bd0": {
+      "0x170526ff610": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 3",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -302,8 +338,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1194.4205985099793,
-          592.4597225050138
+          -1127.9256678311363,
+          697.0075352297745
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -312,12 +348,25 @@
           "persistent_id": "6dc54266-e78d-449a-b8dc-e9e95e6473e8",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "input": "$node_vars.JSON文本包装_3__output1$"
+          "input": "$node_vars.JSON文本包装_3__output1$",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "{'text': '0'}"
         }
       },
-      "0x162dd573f90": {
+      "0x170526ff890": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 2",
@@ -342,11 +391,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 411.815,
-        "height": 95.28,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
-          268.43916291324086,
-          272.14797488090744
+          179.52933216886356,
+          59.48753522977461
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -355,13 +404,31 @@
           "persistent_id": "a38c4bbc-2370-4fdb-ac81-f07ab631f638",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop1": "env.PYTHONWARNINGS",
-          "_zmq_ports": "51583/51584"
+          "_column_select": {},
+          "_zmq_ports": "51583/51584",
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
         }
       },
-      "0x162dd57d810": {
+      "0x170526ffb10": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 3",
@@ -386,11 +453,11 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 405.375,
-        "height": 95.28,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
-          841.5403828060585,
-          305.9593041327553
+          701.3443321688636,
+          59.48753522977461
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -399,20 +466,38 @@
           "persistent_id": "3efcd86a-0e6a-49f7-aca9-ce5d4be491e9",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop1": "custom.test",
-          "_zmq_ports": "51597/51598"
+          "_column_select": {},
+          "_zmq_ports": "51597/51598",
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
         }
       },
-      "0x162dd57eed0": {
+      "0x170526ffd90": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 4",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -433,8 +518,8 @@
         "width": 405.375,
         "height": 95.28,
         "pos": [
-          -776.4917898015907,
-          1564.174461086811
+          -347.45615734427025,
+          1184.3435468623047
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -443,19 +528,37 @@
           "persistent_id": "63c9e462-4f4a-4870-b492-f12bd99f4aa9",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "prop1": "env.PYTHONWARNINGS"
+          "prop1": "env.PYTHONWARNINGS",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "文本内容ignore"
         }
       },
-      "0x162dd58c890": {
+      "0x1705d4e0050": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 5",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -476,8 +579,8 @@
         "width": 405.375,
         "height": 95.28,
         "pos": [
-          -174.42824843224253,
-          1578.3655389268763
+          167.91884265572958,
+          1184.3435468623047
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -486,19 +589,37 @@
           "persistent_id": "1a9c39cc-bb48-44e4-95c4-7cb9a4d4d472",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "prop1": "env.CUDA_VISIBLE_DEVICES"
+          "prop1": "env.CUDA_VISIBLE_DEVICES",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "文本内容ignore0"
         }
       },
-      "0x162dd58e090": {
+      "0x1705d4e02d0": {
         "type_": "dynamic.StatusDynamicNode_f114eeb9-c581-4c17-b953-847d0ee9dcd6",
         "icon": null,
         "name": "添加字符串 6",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -519,8 +640,8 @@
         "width": 405.375,
         "height": 95.28,
         "pos": [
-          -515.0957592540981,
-          1834.9655306419206
+          -347.45615734427025,
+          1374.6235468623045
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -529,19 +650,37 @@
           "persistent_id": "a89709ec-7524-49ce-a2f7-c5d2ad684ff9",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "prop1": "env.TZ"
+          "prop1": "env.TZ",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "测试组件/添加字符串"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": "文本内容Asia/Shanghai"
         }
       },
-      "0x162dd58f750": {
+      "0x1705d4e0550": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 4",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -562,8 +701,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1841.584884955706,
-          1186.6527080305418
+          -1139.5361573442704,
+          1104.3435468623047
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -572,19 +711,32 @@
           "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "input": "文本内容"
+          "input": "文本内容",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
         }
       },
-      "0x162dd59ce10": {
+      "0x1705d4e07d0": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 2",
         "color": [
-          139,
-          115,
-          85,
+          39,
+          174,
+          96,
           255
         ],
         "border_color": [
@@ -605,8 +757,8 @@
         "width": 335.94375,
         "height": 98.4,
         "pos": [
-          831.9813743255004,
-          1433.9722497380947
+          998.2938426557295,
+          1104.3435468623047
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -615,142 +767,32 @@
           "persistent_id": "17e65534-3b29-4905-93f3-eeb52813f142",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
-          "prop_0": "text"
+          "prop_0": "text",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "大模型组件/JSON文本包装"
+        },
+        "input_ports": [
+          {
+            "name": "input1",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "output1",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output1": {
+            "text": "[['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai']]"
+          }
         }
       },
-      "0x162dd59e110": {
-        "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
-        "icon": null,
-        "name": "JSON文本包装 3",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 335.94375,
-        "height": 98.4,
-        "pos": [
-          894.0225757132955,
-          951.1195204921406
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "b7a9b3fd-47e5-49d6-b917-cea2a5f030be",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "prop_0": "text"
-        }
-      },
-      "0x162dd59f690": {
-        "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
-        "icon": null,
-        "name": "JSON文本包装 4",
-        "color": [
-          44,
-          62,
-          80,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": true,
-        "selected": false,
-        "visible": true,
-        "width": 335.94375,
-        "height": 98.4,
-        "pos": [
-          764.1915011289412,
-          1145.3452318173124
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "20bd0bf3-4030-40c8-8a10-eb8e105ba96b",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "prop_0": "text"
-        }
-      },
-      "0x162dd5acbd0": {
-        "type_": "dynamic.StatusDynamicNode_bd25adc1-1abc-4192-9598-6a82696dea83",
-        "icon": null,
-        "name": "知识库查询",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 408.5375,
-        "height": 160.8,
-        "pos": [
-          1544.748300196913,
-          896.1109968278416
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "5b629dcd-53b3-4555-bfdf-f45c6988eaec",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "top_k": 3,
-          "knowledge_base_id": "default_kb"
-        }
-      },
-      "0x162dd5ae890": {
+      "0x1705d4e1090": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 5",
@@ -778,8 +820,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1264.3929556992134,
-          -385.46272509855567
+          -1127.9256678311363,
+          -429.2724647702255
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -788,13 +830,26 @@
           "persistent_id": "a4f5b7a2-726a-43f8-823c-9ad4459e26d1",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "input": "文本内容",
-          "_zmq_ports": "59696/59697"
+          "_column_select": {},
+          "_zmq_ports": "59696/59697",
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
         }
       },
-      "0x162dd5c04d0": {
+      "0x1705d4e1310": {
         "type_": "dynamic.StatusDynamicNode_ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10",
         "icon": null,
         "name": "JSON文本包装 5",
@@ -822,8 +877,8 @@
         "width": 335.94375,
         "height": 98.4,
         "pos": [
-          2037.8349279592367,
-          149.03366918133466
+          1531.7193321688635,
+          -20.512464770225392
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -832,647 +887,257 @@
           "persistent_id": "3de3a575-68e7-4997-bec1-02092bfdf83f",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "prop_0": "text",
-          "_zmq_ports": "51611/51612"
-        }
-      },
-      "0x162dd5c1710": {
-        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-        "icon": null,
-        "name": "文本输入 6",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
-        "pos": [
-          -1791.584884955706,
-          1236.6527080305418
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
           "_column_select": {},
-          "version": "latest",
-          "input": "文本内容"
-        }
-      },
-      "0x162dd5c2f50": {
-        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-        "icon": null,
-        "name": "文本输入 7",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
-        "pos": [
-          -1741.584884955706,
-          1286.6527080305418
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "input": "文本内容"
-        }
-      },
-      "0x162dd5d0490": {
-        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-        "icon": null,
-        "name": "文本输入 8",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
-        "pos": [
-          -1691.584884955706,
-          1336.6527080305418
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "input": "文本内容"
-        }
-      },
-      "0x162dd5d1950": {
-        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
-        "icon": null,
-        "name": "文本输入 9",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
-        "pos": [
-          -1641.584884955706,
-          1386.6527080305418
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "version": "latest",
-          "input": "文本内容"
-        }
-      },
-      "0x162dd5d2cd0": {
-        "type_": "control_flow.ControlFlowInputPort",
-        "icon": null,
-        "name": "输入端口",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 153.0,
-        "height": 60,
-        "pos": [
-          -613.6030705449075,
-          -426.0103548692857
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "8bb4de28-26f0-4375-b71f-34f874b1bade"
-        }
-      },
-      "0x162dd5d3450": {
-        "type_": "control_flow.ControlFlowOutputPort",
-        "icon": null,
-        "name": "输出端口",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 153.0,
-        "height": 60,
-        "pos": [
-          -200.60307054490755,
-          -426.0103548692857
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "ebeb99b3-cd9c-48e6-8dc0-94b2d6160ee5"
-        }
-      },
-      "0x162dd5d3b90": {
-        "type_": "control_flow.ControlFlowIterateNode",
-        "icon": null,
-        "name": "迭代控制流区域",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 646.0,
-        "height": 391.47285071557167,
-        "pos": [
-          -653.6030705449075,
-          -466.0103548692857
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "5ffb722b-6a16-478b-b66a-7f5c12bb43a5",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "backdrop_text": "",
-          "current_index": 2,
-          "current_key": null,
-          "loop_nums": 2,
-          "max_iterations": 1000,
-          "loop_condition": "",
-          "loop_mode": "count",
-          "parallel_count": 1
-        }
-      },
-      "0x162dd5da150": {
-        "type_": "control_flow.ControlFlowInputPort",
-        "icon": null,
-        "name": "输入端口 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 165.0,
-        "height": 60,
-        "pos": [
-          -641.4855008473442,
-          211.01178061557073
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "4fab0064-d378-4004-8f06-a2515796576c"
-        }
-      },
-      "0x162dd5da7d0": {
-        "type_": "control_flow.ControlFlowOutputPort",
-        "icon": null,
-        "name": "输出端口 1",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 165.0,
-        "height": 60,
-        "pos": [
-          1474.9312867053827,
-          193.63311615694892
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "c3a6fb75-a773-460f-8f8b-5bbef0441d72"
-        }
-      },
-      "0x162dd5db090": {
-        "type_": "control_flow.ControlFlowLoopNode",
-        "icon": null,
-        "name": "循环控制流区域",
-        "color": [
-          39,
-          174,
-          96,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 2361.416787552727,
-        "height": 287.60618797580634,
-        "pos": [
-          -681.4855008473442,
-          153.63311615694892
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "6b86cb12-c940-40c8-bd6f-3bfea61ecc93",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "backdrop_text": "",
-          "current_index": 6,
-          "current_key": "",
-          "loop_nums": 6,
-          "max_iterations": 1000,
-          "loop_condition": "$len(node_vars.添加字符串_2_output1)<50$",
-          "loop_mode": "count",
-          "parallel_count": 1
-        }
-      },
-      "0x162dd5e4290": {
-        "type_": "control_flow.ControlFlowInputPort",
-        "icon": null,
-        "name": "输入端口 3",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 165.0,
-        "height": 60,
-        "pos": [
-          -1010.2191278618382,
-          1470.2440427220524
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "c6096dcb-514c-4446-9cec-89f117f7c7e6"
-        }
-      },
-      "0x162dd5e4910": {
-        "type_": "control_flow.ControlFlowOutputPort",
-        "icon": null,
-        "name": "输出端口 2",
-        "color": [
-          13,
-          18,
-          23,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 165.0,
-        "height": 60,
-        "pos": [
-          423.9585250028026,
-          1470.2440427220524
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "be406e6f-26b1-4750-b1c5-b221d781b810"
-        }
-      },
-      "0x162dd5e51d0": {
-        "type_": "control_flow.ControlFlowIterateNode",
-        "icon": null,
-        "name": "迭代控制流区域 1",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 1679.1776528646408,
-        "height": 540.0014879198682,
-        "pos": [
-          -1050.2191278618382,
-          1430.2440427220524
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": false,
-        "subgraph_session": {},
-        "custom": {
-          "persistent_id": "cf87e455-f640-4df2-b45b-5172480db998",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "backdrop_text": "",
-          "current_index": 5,
-          "current_key": "",
-          "loop_nums": 5,
-          "max_iterations": 1000,
-          "loop_condition": "",
-          "loop_mode": "count",
-          "parallel_count": 1
-        }
-      },
-      "0x162dd5e63d0": {
-        "type_": "control_flow.ControlFlowBranchNode",
-        "icon": "D:\\work\\WorkFlowGUI\\./icons/条件分支.png",
-        "name": "条件分支",
-        "color": [
-          139,
-          115,
-          85,
-          255
-        ],
-        "border_color": [
-          74,
-          84,
-          85,
-          255
-        ],
-        "text_color": [
-          255,
-          255,
-          255,
-          180
-        ],
-        "disabled": false,
-        "selected": false,
-        "visible": true,
-        "width": 367.08000000000004,
-        "height": 263.76,
-        "pos": [
-          -50.33411588900617,
-          624.6566581742159
-        ],
-        "layout_direction": 0,
-        "port_deletion_allowed": true,
-        "subgraph_session": {},
+          "_zmq_ports": "51611/51612",
+          "_status": "success",
+          "FULL_PATH": "大模型组件/JSON文本包装"
+        },
         "input_ports": [
           {
-            "name": "input",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
-            "name": "test_port_condition",
-            "multi_connection": false,
-            "display_name": true
-          },
-          {
-            "name": "branch2_condition",
-            "multi_connection": false,
-            "display_name": true
+            "name": "input1",
+            "multi_connection": false
           }
         ],
         "output_ports": [
           {
-            "name": "test_port",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
-            "name": "branch2",
-            "multi_connection": true,
-            "display_name": true
-          },
-          {
-            "name": "else",
-            "multi_connection": true,
-            "display_name": true
+            "name": "output1",
+            "multi_connection": true
           }
         ],
-        "custom": {
-          "persistent_id": "e3f9a56a-705f-4539-ac48-c551d2a646d9",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_column_select": {},
-          "conditions": [
-            {
-              "expr": "$input.input=='0'$",
-              "name": "test_port"
-            },
-            {
-              "expr": "$input.input[0]==\"0\"$",
-              "name": "branch2"
-            }
-          ],
-          "enable_else": true,
-          "execute_all_matches": true
+        "output_values": {
+          "output1": {
+            "text": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+          }
         }
       },
-      "0x162fabc4b90": {
+      "0x1705d4e1590": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": null,
+        "name": "文本输入 6",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 367.08000000000004,
+        "height": 263.76,
+        "pos": [
+          -1139.5361573442704,
+          1463.103546862305
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "文本内容",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
+        }
+      },
+      "0x1705d4e1810": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": null,
+        "name": "文本输入 7",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 367.08000000000004,
+        "height": 263.76,
+        "pos": [
+          -1139.5361573442704,
+          1821.8635468623042
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "文本内容",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
+        }
+      },
+      "0x1705d4e1a90": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": null,
+        "name": "文本输入 8",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 367.08000000000004,
+        "height": 263.76,
+        "pos": [
+          -1139.5361573442704,
+          2180.6235468623045
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "文本内容",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
+        }
+      },
+      "0x1705d4e1d10": {
+        "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
+        "icon": null,
+        "name": "文本输入 9",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 367.08000000000004,
+        "height": 263.76,
+        "pos": [
+          -1139.5361573442704,
+          2539.3835468623047
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "a316c217-b4db-4c77-9ae0-a96a35cbb689",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "version": "latest",
+          "input": "文本内容",
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
+        }
+      },
+      "0x1705d4e1f90": {
         "type_": "dynamic.StatusDynamicNode_c93e1838-6219-4aa8-b9d5-c5f464ae5da1",
         "icon": null,
         "name": "文本输入 10",
@@ -1500,8 +1165,8 @@
         "width": 367.08000000000004,
         "height": 263.76,
         "pos": [
-          -1264.3929556992134,
-          -706.1520920493792
+          -1127.9256678311363,
+          -788.0324647702253
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1510,13 +1175,26 @@
           "persistent_id": "aa24f408-9721-4cd0-bbb7-6a927a368145",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "input": "文本内容",
-          "_zmq_ports": "59710/59711"
+          "_column_select": {},
+          "_zmq_ports": "59710/59711",
+          "_status": "success",
+          "FULL_PATH": "数据集成/文本输入"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "text",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "text": "文本内容"
         }
       },
-      "0x162fac13b90": {
+      "0x1705d4e20d0": {
         "type_": "dynamic.StatusDynamicNode_23a17af9-b9dc-4839-a909-3724d0d60122",
         "icon": ":/icons/同心圆.svg",
         "name": "插入数据",
@@ -1544,8 +1222,8 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          1191.9963262134381,
-          -477.80612781938834
+          934.3843321688637,
+          -788.0324647702253
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
@@ -1554,638 +1232,884 @@
           "persistent_id": "8023bcf2-7141-41b6-aad0-33a42ebfa3c9",
           "_collapsed": false,
           "_exec_mode": "subprocess",
-          "_column_select": {},
+          "_data_select": {},
           "version": "latest",
           "table_name": "",
           "mode": "INSERT",
-          "_zmq_ports": "59850/59851"
+          "_column_select": {},
+          "_zmq_ports": "59850/59851",
+          "_status": "success",
+          "FULL_PATH": "sqlite套件/插入数据"
+        },
+        "input_ports": [
+          {
+            "name": "database_path",
+            "multi_connection": false
+          },
+          {
+            "name": "data",
+            "multi_connection": false
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "status",
+            "multi_connection": true
+          },
+          {
+            "name": "row_count",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "status": "失败: expected str, bytes or os.PathLike object, not NoneType",
+          "row_count": 0
+        }
+      },
+      "0x1705d4e2210": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          -600.8456678311363,
+          -708.0324647702253
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "8bb4de28-26f0-4375-b71f-34f874b1bade",
+          "FULL_PATH": "控制流/输入端口"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output": "文本内容"
+        }
+      },
+      "0x1705d4e2350": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 153.0,
+        "height": 60,
+        "pos": [
+          188.68933216886364,
+          -708.0324647702253
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "ebeb99b3-cd9c-48e6-8dc0-94b2d6160ee5",
+          "FULL_PATH": "控制流/输出端口"
+        },
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [],
+        "output_values": {}
+      },
+      "0x1705d4e2490": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1042.535,
+        "height": 270.28,
+        "pos": [
+          -650.8456678311363,
+          -788.0324647702253
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "5ffb722b-6a16-478b-b66a-7f5c12bb43a5",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "backdrop_text": "",
+          "current_index": 2,
+          "current_key": null,
+          "loop_nums": 2,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "count",
+          "parallel_count": 1,
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "控制流/迭代控制流区域"
+        },
+        "input_ports": [
+          {
+            "name": "inputs",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "outputs",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "outputs": [
+            "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore",
+            "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
+          ]
+        }
+      },
+      "0x1705d4e2710": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          -600.8456678311363,
+          59.48753522977461
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "4fab0064-d378-4004-8f06-a2515796576c",
+          "FULL_PATH": "控制流/输入端口"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+        }
+      },
+      "0x1705d4e2990": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 1",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          1216.7193321688637,
+          59.48753522977461
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "c3a6fb75-a773-460f-8f8b-5bbef0441d72",
+          "FULL_PATH": "控制流/输出端口"
+        },
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [],
+        "output_values": {}
+      },
+      "0x1705d4e2ad0": {
+        "type_": "control_flow.ControlFlowLoopNode",
+        "icon": null,
+        "name": "循环控制流区域",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 2082.565,
+        "height": 270.28000000000003,
+        "pos": [
+          -650.8456678311363,
+          -20.512464770225392
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "6b86cb12-c940-40c8-bd6f-3bfea61ecc93",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "backdrop_text": "",
+          "current_index": 6,
+          "current_key": "",
+          "loop_nums": 6,
+          "max_iterations": 1000,
+          "loop_condition": "$len(node_vars.添加字符串_2_output1)<50$",
+          "loop_mode": "count",
+          "parallel_count": 1,
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "控制流/循环控制流区域"
+        },
+        "input_ports": [
+          {
+            "name": "inputs",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "outputs",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "outputs": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
+        }
+      },
+      "0x1705d4e2d50": {
+        "type_": "control_flow.ControlFlowInputPort",
+        "icon": null,
+        "name": "输入端口 3",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          -612.4561573442703,
+          1184.3435468623047
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "c6096dcb-514c-4446-9cec-89f117f7c7e6",
+          "FULL_PATH": "控制流/输入端口"
+        },
+        "input_ports": [],
+        "output_ports": [
+          {
+            "name": "output",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "output": "文本内容"
+        }
+      },
+      "0x1705d4e2fd0": {
+        "type_": "control_flow.ControlFlowOutputPort",
+        "icon": null,
+        "name": "输出端口 2",
+        "color": [
+          13,
+          18,
+          23,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 165.0,
+        "height": 60,
+        "pos": [
+          683.2938426557297,
+          1184.3435468623047
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "be406e6f-26b1-4750-b1c5-b221d781b810",
+          "FULL_PATH": "控制流/输出端口"
+        },
+        "input_ports": [
+          {
+            "name": "input",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [],
+        "output_values": {}
+      },
+      "0x1705d4e3250": {
+        "type_": "control_flow.ControlFlowIterateNode",
+        "icon": null,
+        "name": "迭代控制流区域 1",
+        "color": [
+          39,
+          174,
+          96,
+          255
+        ],
+        "border_color": [
+          74,
+          84,
+          85,
+          255
+        ],
+        "text_color": [
+          255,
+          255,
+          255,
+          180
+        ],
+        "disabled": false,
+        "selected": false,
+        "visible": true,
+        "width": 1560.75,
+        "height": 460.55999999999995,
+        "pos": [
+          -662.4561573442703,
+          1104.3435468623047
+        ],
+        "layout_direction": 0,
+        "port_deletion_allowed": false,
+        "subgraph_session": {},
+        "custom": {
+          "persistent_id": "cf87e455-f640-4df2-b45b-5172480db998",
+          "_collapsed": false,
+          "_exec_mode": "subprocess",
+          "_data_select": {},
+          "backdrop_text": "",
+          "current_index": 5,
+          "current_key": null,
+          "loop_nums": 5,
+          "max_iterations": 1000,
+          "loop_condition": "",
+          "loop_mode": "count",
+          "parallel_count": 1,
+          "_column_select": {},
+          "_status": "success",
+          "FULL_PATH": "控制流/迭代控制流区域"
+        },
+        "input_ports": [
+          {
+            "name": "inputs",
+            "multi_connection": true
+          }
+        ],
+        "output_ports": [
+          {
+            "name": "outputs",
+            "multi_connection": true
+          }
+        ],
+        "output_values": {
+          "outputs": [
+            [
+              "文本内容ignore0",
+              "文本内容Asia/Shanghai"
+            ],
+            [
+              "文本内容ignore0",
+              "文本内容Asia/Shanghai"
+            ],
+            [
+              "文本内容ignore0",
+              "文本内容Asia/Shanghai"
+            ],
+            [
+              "文本内容ignore0",
+              "文本内容Asia/Shanghai"
+            ],
+            [
+              "文本内容ignore0",
+              "文本内容Asia/Shanghai"
+            ]
+          ]
         }
       }
     },
     "connections": [
       {
         "in": [
-          "0x162b404ff90",
+          "0x170526fe5d0",
           "input1"
         ],
         "out": [
-          "0x162dd5d2cd0",
+          "0x1705d4e2210",
           "output"
         ]
       },
       {
         "out": [
-          "0x162b404ff90",
+          "0x170526fe5d0",
           "output1"
         ],
         "in": [
-          "0x162dd5d3450",
+          "0x1705d4e2350",
           "input"
         ]
       },
       {
         "in": [
-          "0x162dd553690",
+          "0x170526fead0",
           "input1"
         ],
         "out": [
-          "0x162dd5d3b90",
+          "0x1705d4e2490",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x162dd553690",
+          "0x170526fead0",
           "output1"
         ],
         "in": [
-          "0x162fac13b90",
+          "0x1705d4e20d0",
           "data"
         ]
       },
       {
         "out": [
-          "0x162dd558dd0",
+          "0x170526fe990",
           "text"
         ],
         "in": [
-          "0x162dd5db090",
+          "0x1705d4e2ad0",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x162dd55aa10",
+          "0x170526fee90",
           "input1"
         ],
         "out": [
-          "0x162dd5da150",
+          "0x1705d4e2710",
           "output"
         ]
       },
       {
         "out": [
-          "0x162dd55aa10",
+          "0x170526fee90",
           "output1"
         ],
         "in": [
-          "0x162dd573f90",
+          "0x170526ff890",
           "input1"
         ]
       },
       {
-        "in": [
-          "0x162dd5700d0",
-          "input1"
-        ],
         "out": [
-          "0x162dd5e63d0",
-          "test_port"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd5713d0",
+          "0x170526ff390",
           "text"
         ],
         "in": [
-          "0x162dd5db090",
+          "0x1705d4e2ad0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x162dd572bd0",
+          "0x170526ff610",
           "text"
         ],
         "in": [
-          "0x162dd5db090",
+          "0x1705d4e2ad0",
           "inputs"
         ]
       },
       {
         "out": [
-          "0x162dd573f90",
+          "0x170526ff890",
           "output1"
         ],
         "in": [
-          "0x162dd57d810",
+          "0x170526ffb10",
           "input1"
         ]
       },
       {
         "out": [
-          "0x162dd57d810",
+          "0x170526ffb10",
           "output1"
         ],
         "in": [
-          "0x162dd5da7d0",
+          "0x1705d4e2990",
           "input"
         ]
       },
       {
         "in": [
-          "0x162dd57eed0",
+          "0x170526ffd90",
           "input1"
         ],
         "out": [
-          "0x162dd5e4290",
+          "0x1705d4e2d50",
           "output"
         ]
       },
       {
         "out": [
-          "0x162dd57eed0",
+          "0x170526ffd90",
           "output1"
         ],
         "in": [
-          "0x162dd58c890",
+          "0x1705d4e0050",
           "input1"
         ]
       },
       {
         "out": [
-          "0x162dd58c890",
+          "0x1705d4e0050",
           "output1"
         ],
         "in": [
-          "0x162dd5e4910",
+          "0x1705d4e2fd0",
           "input"
         ]
       },
       {
         "in": [
-          "0x162dd58e090",
+          "0x1705d4e02d0",
           "input1"
         ],
         "out": [
-          "0x162dd5e4290",
+          "0x1705d4e2d50",
           "output"
         ]
       },
       {
         "out": [
-          "0x162dd58e090",
+          "0x1705d4e02d0",
           "output1"
         ],
         "in": [
-          "0x162dd5e4910",
+          "0x1705d4e2fd0",
           "input"
         ]
       },
       {
         "out": [
-          "0x162dd58f750",
+          "0x1705d4e0550",
           "text"
         ],
         "in": [
-          "0x162dd5e51d0",
+          "0x1705d4e3250",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x162dd59ce10",
+          "0x1705d4e07d0",
           "input1"
         ],
         "out": [
-          "0x162dd5e51d0",
-          "outputs"
-        ]
-      },
-      {
-        "in": [
-          "0x162dd59e110",
-          "input1"
-        ],
-        "out": [
-          "0x162dd5e63d0",
-          "branch2"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd59e110",
-          "output1"
-        ],
-        "in": [
-          "0x162dd5acbd0",
-          "query"
-        ]
-      },
-      {
-        "in": [
-          "0x162dd59f690",
-          "input1"
-        ],
-        "out": [
-          "0x162dd5e63d0",
-          "else"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd5ae890",
-          "text"
-        ],
-        "in": [
-          "0x162dd5d3b90",
-          "inputs"
-        ]
-      },
-      {
-        "in": [
-          "0x162dd5c04d0",
-          "input1"
-        ],
-        "out": [
-          "0x162dd5db090",
+          "0x1705d4e3250",
           "outputs"
         ]
       },
       {
         "out": [
-          "0x162dd5c1710",
+          "0x1705d4e1090",
           "text"
         ],
         "in": [
-          "0x162dd5e51d0",
-          "inputs"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd5c2f50",
-          "text"
-        ],
-        "in": [
-          "0x162dd5e51d0",
-          "inputs"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd5d0490",
-          "text"
-        ],
-        "in": [
-          "0x162dd5e51d0",
-          "inputs"
-        ]
-      },
-      {
-        "out": [
-          "0x162dd5d1950",
-          "text"
-        ],
-        "in": [
-          "0x162dd5e51d0",
+          "0x1705d4e2490",
           "inputs"
         ]
       },
       {
         "in": [
-          "0x162dd5d3b90",
-          "inputs"
+          "0x1705d4e1310",
+          "input1"
         ],
         "out": [
-          "0x162fabc4b90",
+          "0x1705d4e2ad0",
+          "outputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1705d4e1590",
           "text"
+        ],
+        "in": [
+          "0x1705d4e3250",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1705d4e1810",
+          "text"
+        ],
+        "in": [
+          "0x1705d4e3250",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1705d4e1a90",
+          "text"
+        ],
+        "in": [
+          "0x1705d4e3250",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1705d4e1d10",
+          "text"
+        ],
+        "in": [
+          "0x1705d4e3250",
+          "inputs"
+        ]
+      },
+      {
+        "out": [
+          "0x1705d4e1f90",
+          "text"
+        ],
+        "in": [
+          "0x1705d4e2490",
+          "inputs"
         ]
       }
-    ]
+    ],
+    "global_variables": {
+      "env": {
+        "user_id": null,
+        "canvas_id": null,
+        "session_id": null,
+        "run_id": null,
+        "metadata": {
+          "TZ": "Asia/Shanghai",
+          "LANG": "en_US.UTF-8",
+          "LC_ALL": "en_US.UTF-8",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "NUMEXPR_NUM_THREADS": "1",
+          "CUDA_VISIBLE_DEVICES": "0",
+          "PYTHONPATH": ".",
+          "PYTHONUNBUFFERED": "1",
+          "PYTHONIOENCODING": "utf-8",
+          "PYTHONWARNINGS": "ignore"
+        }
+      },
+      "custom": {
+        "test": {
+          "value": "0.,.12321"
+        },
+        "大模型配置": {
+          "value": {
+            "模型名称": "gpt-4",
+            "API_URL": "https://api.openai.com/v1/chat/completions",
+            "API_KEY": "",
+            "温度": 0.7,
+            "最大Token": 2048,
+            "系统提示": ""
+          }
+        },
+        "数据源配置 (JSON)": {
+          "value": {
+            "文件路径": "/path/to/data.json",
+            "根级数据路径": "$.data",
+            "编码": "utf-8"
+          }
+        }
+      },
+      "custom_order": [
+        "test",
+        "大模型配置",
+        "数据源配置 (JSON)"
+      ],
+      "node_vars": {
+        "添加字符串_2__output1": {
+          "value": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore",
+          "update_policy": "更新"
+        },
+        "JSON文本包装_3__output1": {
+          "value": {
+            "text": "0"
+          },
+          "update_policy": "更新"
+        },
+        "JSON文本包装_2__output1": {
+          "value": {
+            "text": "[['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai']]"
+          },
+          "update_policy": "更新"
+        }
+      },
+      "node_vars_order": [
+        "添加字符串_2__output1",
+        "JSON文本包装_3__output1",
+        "JSON文本包装_2__output1"
+      ]
+    }
   },
   "runtime": {
     "environment": {
-      "name": "3.11",
+      "name": "3.13",
       "type": "local",
-      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe"
-    },
-    "environment_exe": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.11\\python.exe",
-    "node_id2stable_key": {
-      "0x162b404ff90": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串",
-      "0x162dd553690": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装",
-      "0x162dd558dd0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1",
-      "0x162dd55aa10": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1",
-      "0x162dd5700d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1",
-      "0x162dd5713d0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2",
-      "0x162dd572bd0": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3",
-      "0x162dd573f90": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2",
-      "0x162dd57d810": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3",
-      "0x162dd57eed0": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4",
-      "0x162dd58c890": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5",
-      "0x162dd58e090": "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6",
-      "0x162dd58f750": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4",
-      "0x162dd59ce10": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2",
-      "0x162dd59e110": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3",
-      "0x162dd59f690": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4",
-      "0x162dd5acbd0": "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询",
-      "0x162dd5ae890": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5",
-      "0x162dd5c04d0": "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5",
-      "0x162dd5c1710": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6",
-      "0x162dd5c2f50": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7",
-      "0x162dd5d0490": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8",
-      "0x162dd5d1950": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9",
-      "0x162dd5d2cd0": "unknown||输入端口",
-      "0x162dd5d3450": "unknown||输出端口",
-      "0x162dd5d3b90": "unknown||迭代控制流区域",
-      "0x162dd5da150": "unknown||输入端口 1",
-      "0x162dd5da7d0": "unknown||输出端口 1",
-      "0x162dd5db090": "unknown||循环控制流区域",
-      "0x162dd5e4290": "unknown||输入端口 3",
-      "0x162dd5e4910": "unknown||输出端口 2",
-      "0x162dd5e51d0": "unknown||迭代控制流区域 1",
-      "0x162dd5e63d0": "unknown||条件分支",
-      "0x162fabc4b90": "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 10",
-      "0x162fac13b90": "23a17af9-b9dc-4839-a909-3724d0d60122||插入数据"
-    },
-    "node_states": {
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1": "disabled",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": "last_success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": "success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": "last_success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": "last_success",
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": "last_success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": "last_success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": "last_success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4": "disabled",
-      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": "success",
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": "success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": "last_success",
-      "unknown||输入端口": "pending",
-      "unknown||输出端口": "pending",
-      "unknown||迭代控制流区域": "success",
-      "unknown||输入端口 1": "pending",
-      "unknown||输出端口 1": "pending",
-      "unknown||循环控制流区域": "success",
-      "unknown||输入端口 3": "unrun",
-      "unknown||输出端口 2": "unrun",
-      "unknown||迭代控制流区域 1": "last_success",
-      "unknown||条件分支": "last_success",
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 10": "success",
-      "23a17af9-b9dc-4839-a909-3724d0d60122||插入数据": "success"
-    },
-    "node_inputs": {
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": {},
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4": {},
-      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": {},
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": {},
-      "unknown||输入端口": {},
-      "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {},
-      "unknown||输入端口 1": {},
-      "unknown||输出端口 1": {},
-      "unknown||循环控制流区域": {},
-      "unknown||输入端口 3": {},
-      "unknown||输出端口 2": {},
-      "unknown||迭代控制流区域 1": {},
-      "unknown||条件分支": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 10": {},
-      "23a17af9-b9dc-4839-a909-3724d0d60122||插入数据": {}
-    },
-    "node_outputs": {
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串": {
-        "output1": "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装": {
-        "output1": {
-          "text": "['文本内容[\\'文本内容\\', \\'文本内容\\', \"{\\'text\\': \\'0\\'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore', '文本内容[\\'文本内容\\', \\'文本内容\\', \"{\\'text\\': \\'0\\'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore']"
-        }
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 1": {
-        "text": "文本内容"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 1": {
-        "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8"
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 1": {},
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 2": {
-        "text": "文本内容"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 3": {
-        "text": "{'text': '0'}"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 2": {
-        "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 3": {
-        "output1": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 4": {
-        "output1": "文本内容ignore"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 5": {
-        "output1": "文本内容ignore0"
-      },
-      "f114eeb9-c581-4c17-b953-847d0ee9dcd6||添加字符串 6": {
-        "output1": "文本内容Asia/Shanghai"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 4": {
-        "text": "文本内容"
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 2": {
-        "output1": {
-          "text": "[['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai']]"
-        }
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 3": {
-        "output1": {
-          "text": "0"
-        }
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 4": {},
-      "bd25adc1-1abc-4192-9598-6a82696dea83||知识库查询": {
-        "context": "Python 是一种高级编程语言。\n\n大模型可以生成文本、代码等。\n\n大模型可以生成文本、代码等。",
-        "documents": [
-          {
-            "content": "Python 是一种高级编程语言。",
-            "score": 0.95
-          },
-          {
-            "content": "大模型可以生成文本、代码等。",
-            "score": 0.89
-          },
-          {
-            "content": "大模型可以生成文本、代码等。",
-            "score": 0.89
-          }
-        ]
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 5": {
-        "text": "文本内容"
-      },
-      "ff78d3b5-aeb9-4d8a-b247-8d4041d2cf10||JSON文本包装 5": {
-        "output1": {
-          "text": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
-        }
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 6": {
-        "text": "文本内容"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 7": {
-        "text": "文本内容"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 8": {
-        "text": "文本内容"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 9": {
-        "text": "文本内容"
-      },
-      "unknown||输入端口": {
-        "output": "文本内容"
-      },
-      "unknown||输出端口": {},
-      "unknown||迭代控制流区域": {
-        "outputs": [
-          "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore",
-          "文本内容['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore"
-        ]
-      },
-      "unknown||输入端口 1": {
-        "output": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
-      },
-      "unknown||输出端口 1": {},
-      "unknown||循环控制流区域": {
-        "outputs": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321"
-      },
-      "unknown||输入端口 3": {},
-      "unknown||输出端口 2": {},
-      "unknown||迭代控制流区域 1": {
-        "outputs": [
-          [
-            "文本内容ignore0",
-            "文本内容Asia/Shanghai"
-          ],
-          [
-            "文本内容ignore0",
-            "文本内容Asia/Shanghai"
-          ],
-          [
-            "文本内容ignore0",
-            "文本内容Asia/Shanghai"
-          ],
-          [
-            "文本内容ignore0",
-            "文本内容Asia/Shanghai"
-          ],
-          [
-            "文本内容ignore0",
-            "文本内容Asia/Shanghai"
-          ]
-        ]
-      },
-      "unknown||条件分支": {
-        "branch2": "0"
-      },
-      "c93e1838-6219-4aa8-b9d5-c5f464ae5da1||文本输入 10": {
-        "text": "文本内容"
-      },
-      "23a17af9-b9dc-4839-a909-3724d0d60122||插入数据": {
-        "status": "失败: expected str, bytes or os.PathLike object, not NoneType",
-        "row_count": 0
-      }
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.13\\python.exe"
     }
-  },
-  "global_variable": {
-    "env": {
-      "user_id": null,
-      "canvas_id": null,
-      "session_id": null,
-      "run_id": null,
-      "metadata": {
-        "TZ": "Asia/Shanghai",
-        "LANG": "en_US.UTF-8",
-        "LC_ALL": "en_US.UTF-8",
-        "OMP_NUM_THREADS": "1",
-        "MKL_NUM_THREADS": "1",
-        "OPENBLAS_NUM_THREADS": "1",
-        "NUMEXPR_NUM_THREADS": "1",
-        "CUDA_VISIBLE_DEVICES": "0",
-        "PYTHONPATH": ".",
-        "PYTHONUNBUFFERED": "1",
-        "PYTHONIOENCODING": "utf-8",
-        "PYTHONWARNINGS": "ignore"
-      }
-    },
-    "custom": {
-      "test": {
-        "value": "0.,.12321"
-      },
-      "大模型配置": {
-        "value": {
-          "模型名称": "gpt-4",
-          "API_URL": "https://api.openai.com/v1/chat/completions",
-          "API_KEY": "",
-          "温度": 0.7,
-          "最大Token": 2048,
-          "系统提示": ""
-        }
-      },
-      "数据源配置 (JSON)": {
-        "value": {
-          "文件路径": "/path/to/data.json",
-          "根级数据路径": "$.data",
-          "编码": "utf-8"
-        }
-      }
-    },
-    "custom_order": [
-      "test",
-      "大模型配置",
-      "数据源配置 (JSON)"
-    ],
-    "node_vars": {
-      "添加字符串_2__output1": {
-        "value": "['文本内容', '文本内容', \"{'text': '0'}\"]en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore0.,.12321en_US.UTF-8ignore",
-        "update_policy": "更新"
-      },
-      "JSON文本包装_3__output1": {
-        "value": {
-          "text": "0"
-        },
-        "update_policy": "更新"
-      },
-      "JSON文本包装_2__output1": {
-        "value": {
-          "text": "[['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai'], ['文本内容ignore0', '文本内容Asia/Shanghai']]"
-        },
-        "update_policy": "更新"
-      }
-    },
-    "node_vars_order": [
-      "添加字符串_2__output1",
-      "JSON文本包装_3__output1",
-      "JSON文本包装_2__output1"
-    ]
   }
 }
