@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "基于 DiscreteFlow 针对 SD3/Flux 等模型调整采样 Shift 和 Multiplier 参数。",
   "category": "comfyui节点/基础节点",
-  "updated_at": "2026-02-10 01:01:14",
+  "updated_at": "2026-03-02 10:54:28",
   "author": "black"
 }

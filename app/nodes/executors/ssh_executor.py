@@ -203,9 +203,6 @@ class SSHExecutor(BaseExecutor):
                 ctx.node.persistent_id, "✅ 节点在ssh远程环境执行完成"
             )
 
-            if not self.wait_for_result(ctx):
-                raise Exception("执行结束，未发现结果")
-
             output = self.read_result(ctx)
             self.apply_outputs(ctx, output)
             return output

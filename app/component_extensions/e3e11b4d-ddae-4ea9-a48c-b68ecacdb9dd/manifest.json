@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "在视频的指定位置插入参考帧（Keyframes），支持多图引导。",
   "category": "comfyui节点/LTX模型适配",
-  "updated_at": "2026-02-14 22:40:17",
+  "source_file": "..\\..\\comfyui节点\\LTX模型适配\\e3e11b4d-ddae-4ea9-a48c-b68ecacdb9dd.py",
+  "updated_at": "2026-03-02 12:12:20",
   "author": "mading"
 }

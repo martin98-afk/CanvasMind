@@ -379,7 +379,6 @@ class OpenAIChatWorker(QThread):
 
                 # 处理工具调用
                 tool_calls = getattr(delta, "tool_calls", None)
-                print(tool_calls)
                 if tool_calls:
                     for tc in tool_calls:
                         tc_id = tc.id

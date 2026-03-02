@@ -6,6 +6,6 @@
   "api_version": "2.0",
   "description": "将条件向量的所有值置零，用于生成无条件引导或中和条件影响",
   "category": "comfyui节点/基础节点",
-  "updated_at": "2026-02-10 00:36:07",
+  "updated_at": "2026-03-02 11:18:12",
   "author": "black"
 }

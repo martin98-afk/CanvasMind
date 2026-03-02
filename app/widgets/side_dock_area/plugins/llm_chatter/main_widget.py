@@ -5,7 +5,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
+from PyQt5.QtCore import (
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QThreadPool,
+    QMetaObject,
+    Q_ARG,
+    pyqtSlot,
+)
 from PyQt5.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QVBoxLayout,
@@ -27,6 +35,12 @@ from qfluentwidgets import (
     CaptionLabel,
     TransparentToolButton,
     TransparentToggleToolButton,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
+    TodoFloatingWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
+    QuestionFloatingWidget,
 )
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
@@ -97,6 +111,10 @@ class OpenAIChatToolWindow(ToolWindow):
     _builtin_tools: Optional[BuiltinTools] = None
     _is_continuing: bool = False
     _processed_tool_ids: set = set()  # 防止重复处理工具调用
+    _current_assistant_card = None  # 当前处理的助手消息卡片
+    _todo_floating_widget = None  # TODO 悬浮框
+    _question_floating_widget = None  # Question 悬浮框
+    _question_tool_call_id = None  # 当前 question 工具调用的 ID
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -158,10 +176,18 @@ class OpenAIChatToolWindow(ToolWindow):
     def _initialize_builtin_tools(self):
         import os
 
-        # 使用项目根目录作为默认工作目录
-        workdir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        )
+        # 使用 resource_path 获取正确的项目根目录
+        try:
+            from app.utils.utils import resource_path
+
+            workdir = resource_path("app")
+        except Exception:
+            workdir = os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+            )
+
         try:
             if hasattr(self.homepage, "workflow_name") and self.homepage.workflow_name:
                 canvas_name = self.homepage.workflow_name
@@ -243,6 +269,11 @@ class OpenAIChatToolWindow(ToolWindow):
         session_bar_layout.addLayout(right_layout)
         layout.addLayout(session_bar_layout)
 
+        # TODO 悬浮框（在对话上方）
+        self._todo_floating_widget = TodoFloatingWidget(self)
+        self._todo_floating_widget.setVisible(False)
+        layout.addWidget(self._todo_floating_widget)
+
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet(
@@ -263,6 +294,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview = ConversationNodePreview(self)
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
         layout.addWidget(self.node_preview)
+
+        # Question 悬浮框（在对话下方）
+        self._question_floating_widget = QuestionFloatingWidget(self)
+        self._question_floating_widget.setVisible(False)
+        self._question_floating_widget.answered.connect(self._on_question_answered)
+        layout.addWidget(self._question_floating_widget)
 
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
@@ -500,6 +537,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._clear_chat_area()
         self.title_edit.setText("新对话")
         self.node_preview.clear_nodes()
+        # 隐藏 TODO 和 Question 悬浮框
+        if self._todo_floating_widget:
+            self._todo_floating_widget.clear()
+        if self._question_floating_widget:
+            self._question_floating_widget.clear()
+        self._question_tool_call_id = None
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
@@ -931,8 +974,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._execute_shell_command(user_text)
             return
 
-        self.input_area.toggle_send_button(False)
-
         # 1. 获取当前会话和配置
         session = self.session_manager.get_current_session()
         selected_name = self.model_combo.currentText()
@@ -967,14 +1008,35 @@ class OpenAIChatToolWindow(ToolWindow):
 
         messages.append({"role": "system", "content": full_system_prompt})
 
-        # 4. 注入历史消息
+        # 4. 注入历史消息（保留工具调用历史）
         for msg in session.messages[:-1]:
-            content = msg["content"]
-            if isinstance(content, list):  # 简化多模态历史
-                content = "\n".join(
-                    [item["text"] for item in content if item["type"] == "text"]
+            role = msg.get("role")
+            content = msg.get("content")
+
+            # 保留工具调用消息
+            if "tool_calls" in msg:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg.get("tool_calls", []),
+                    }
                 )
-            messages.append({"role": msg["role"], "content": content})
+            # 保留工具结果消息
+            elif role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "content": msg.get("content", ""),
+                    }
+                )
+            else:
+                if isinstance(content, list):  # 简化多模态历史
+                    content = "\n".join(
+                        [item["text"] for item in content if item.get("type") == "text"]
+                    )
+                messages.append({"role": role, "content": content})
 
         # 5. 处理当前消息的多模态逻辑
         model_name = str(llm_config.get("模型名称", "")).lower()
@@ -1026,20 +1088,19 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(error)
         self._is_streaming = False
         self._toggle_send_stop(False)
-        self.input_area.toggle_send_button(True)
 
     def _on_worker_finished(self, response: str, card: MessageCard):
-        self._is_streaming = False
         card.finish_streaming()
 
-        # 如果是继续对话，不要立即启用输入，等待下一轮工具调用
+        # 如果是继续对话模式，等待工具调用处理完成
         if self._is_continuing:
-            logger.info("[WorkerFinished] Continuing mode - not enabling input yet")
-            self._is_continuing = False
+            logger.info("[WorkerFinished] Continuing mode - waiting for tool calls")
             return
 
-        self.input_area.toggle_send_button(True)
+        # 正常对话结束，重置状态
+        self._is_streaming = False
         self._toggle_send_stop(False)
+
         session = self.session_manager.get_current_session()
         if session:
             session.add_assistant_message(content=response)
@@ -1420,54 +1481,6 @@ class OpenAIChatToolWindow(ToolWindow):
             callback({"error": "Skill execution not available"})
         return {"error": "Skill execution not available"}
 
-    def request_user_intervention(self, options: List[dict], callback):
-        """请求用户干预选择"""
-        from PyQt5.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QRadioButton,
-            QPushButton,
-            QButtonGroup,
-        )
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("请选择")
-        dialog.setMinimumWidth(300)
-        layout = QVBoxLayout(dialog)
-
-        label = QLabel("请选择以下选项之一：")
-        layout.addWidget(label)
-
-        group = QButtonGroup(dialog)
-        for i, option in enumerate(options):
-            radio = QRadioButton(option.get("label", f"选项 {i + 1}"))
-            radio.setData(option)
-            group.addButton(radio)
-            layout.addWidget(radio)
-
-        if group.buttons():
-            group.buttons()[0].setChecked(True)
-
-        btn_layout = QHBoxLayout()
-        ok_btn = QPushButton("确定")
-        cancel_btn = QPushButton("取消")
-        btn_layout.addWidget(ok_btn)
-        btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-
-        def on_ok():
-            selected = group.checkedButton()
-            if selected:
-                result = selected.data()
-                dialog.accept()
-                if callback:
-                    callback(result)
-
-        ok_btn.clicked.connect(on_ok)
-        cancel_btn.clicked.connect(lambda: dialog.reject())
-
-        dialog.exec_()
-
     def enable_skills(self, enabled: bool):
         """启用/禁用技能"""
         self._skill_enabled = enabled
@@ -1499,9 +1512,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if is_sending:
             self.model_combo.setDisabled(True)
             self.history_btn.setDisabled(True)
+            self.input_area.toggle_send_button(False)
         else:
             self.model_combo.setDisabled(False)
             self.history_btn.setDisabled(False)
+            self.input_area.toggle_send_button(True)
 
     def _on_stop_clicked(self):
         if self._worker and self._worker.isRunning():
@@ -1510,7 +1525,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = None
         self._is_streaming = False
         self._toggle_send_stop(False)
-        self.input_area.toggle_send_button(True)
         InfoBar.warning(
             title="已中止",
             content="问答请求已被手动中止。",
@@ -1590,6 +1604,8 @@ class OpenAIChatToolWindow(ToolWindow):
         """处理原生 function calling 格式的工具调用"""
         logger.info(f"[ToolCallReceived] Received tool call: {tool_call}")
 
+        self._current_assistant_card = assistant_card
+
         func = tool_call.get("function", {})
         tool_name = func.get("name")
         arguments = func.get("arguments", "{}")
@@ -1600,8 +1616,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
         tool_call_id = tool_call.get("id")
         if not tool_call_id:
-            logger.warning("[ToolCallReceived] Tool call id is empty, skipping")
-            return
+            import uuid
+
+            tool_call_id = f"call_{uuid.uuid4().hex[:12]}"
+            logger.warning(
+                f"[ToolCallReceived] Tool call id is empty, generated: {tool_call_id}"
+            )
 
         # 标记为已处理，防止重复
         if tool_call_id in self._processed_tool_ids:
@@ -1622,12 +1642,59 @@ class OpenAIChatToolWindow(ToolWindow):
             f"[ToolCallReceived] Executing tool: {tool_name} with args: {arguments}"
         )
 
-        result = self._execute_builtin_tool(tool_name, arguments)
+        # 所有工具都使用异步执行，避免卡死主进程
+        # 工具执行期间显示停止按钮
+        self._is_streaming = True
+        self._toggle_send_stop(True)
+        self._execute_tool_async(tool_call_id, tool_name, arguments, assistant_card)
 
-        # 将工具调用和结果添加到消息历史
+    def _execute_tool_async(
+        self,
+        tool_call_id: str,
+        tool_name: str,
+        arguments: dict,
+        assistant_card: MessageCard,
+    ):
+        """异步执行工具（避免卡死主进程）"""
+        import threading
+
+        def run_in_thread():
+            result = self._execute_builtin_tool(tool_name, arguments)
+            # 使用信号在主线程中处理结果
+            QMetaObject.invokeMethod(
+                self,
+                "_async_tool_finished",
+                Qt.QueuedConnection,
+                Q_ARG(str, tool_call_id),
+                Q_ARG(str, tool_name),
+                Q_ARG("QVariant", arguments),
+                Q_ARG("QVariant", result),
+            )
+
+        thread = threading.Thread(target=run_in_thread, daemon=True)
+        thread.start()
+
+    @pyqtSlot(str, str, "QVariant", "QVariant")
+    def _async_tool_finished(
+        self, tool_call_id: str, tool_name: str, arguments, result
+    ):
+        """异步工具执行完成后的处理"""
+        self._process_tool_result(
+            tool_call_id, tool_name, arguments, result, self._current_assistant_card
+        )
+
+    def _process_tool_result(
+        self,
+        tool_call_id: str,
+        tool_name: str,
+        arguments: dict,
+        result,
+        assistant_card: MessageCard,
+    ):
         session = self.session_manager.get_current_session()
+
+        # 先添加助手的消息（包含工具调用）
         if session:
-            # 添加助手的消息（包含工具调用）
             session.messages.append(
                 {
                     "role": "assistant",
@@ -1646,7 +1713,29 @@ class OpenAIChatToolWindow(ToolWindow):
                     ],
                 }
             )
-            # 添加工具结果
+
+        # 显示工具结果
+        self._display_tool_result(result, tool_name, arguments)
+
+        # 处理 Question 工具 - 显示悬浮框让用户选择
+        if tool_name == "question":
+            # 提取问题信息（但不添加 tool 结果消息，等待用户选择）
+            question_text = ""
+            options = []
+            if hasattr(result, "content") and isinstance(result.content, dict):
+                question_text = result.content.get("question", "")
+                options = result.content.get("options", [])
+            if not question_text:
+                question_text = arguments.get("question", "")
+                options = arguments.get("options", [])
+            if question_text:
+                self._question_tool_call_id = tool_call_id
+                self._question_floating_widget.show_question(question_text, options)
+                # 不继续调用 LLM，等待用户选择
+                return
+
+        # 对于非 question 工具，添加工具结果消息
+        if session:
             tool_result_content = str(result)
             session.messages.append(
                 {
@@ -1656,12 +1745,38 @@ class OpenAIChatToolWindow(ToolWindow):
                 }
             )
 
-        # 显示工具结果
-        self._display_tool_result(result, tool_name, arguments)
+        # 更新 TODO 悬浮框
+        if tool_name in ("todowrite", "todoread"):
+            todos = self._builtin_tools._todo_list if self._builtin_tools else []
+            self._todo_floating_widget.update_todos(todos)
 
         # 继续调用 LLM 处理工具结果（多轮迭代）
         self._is_continuing = True
         self._continue_with_tool_result(assistant_card)
+
+    def _on_question_answered(self, answer: str):
+        """用户回答问题后继续对话"""
+        if not self._question_tool_call_id:
+            return
+
+        tool_call_id = self._question_tool_call_id
+        self._question_tool_call_id = None
+
+        # 将用户答案作为工具结果添加到消息历史
+        session = self.session_manager.get_current_session()
+        if session:
+            # 添加用户答案作为工具结果
+            session.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": answer,
+                }
+            )
+
+        # 继续调用 LLM
+        self._is_continuing = True
+        self._continue_with_tool_result(self._current_assistant_card)
 
     def _continue_with_tool_result(self, assistant_card: MessageCard):
         """在工具调用后继续对话"""
@@ -1702,6 +1817,9 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         logger.info("[Continue] Starting continued chat...")
+        self._is_streaming = True
+        self._is_continuing = True
+        self._toggle_send_stop(True)
         self._worker.start()
 
     def _build_continuation_messages(self, session_messages: List[Dict]) -> List[Dict]:
@@ -1717,29 +1835,50 @@ class OpenAIChatToolWindow(ToolWindow):
 
         messages.append({"role": "system", "content": full_system_prompt})
 
+        # 收集所有已处理的 tool_call_id
+        processed_tool_ids = set()
+
         # 添加所有历史消息
-        for msg in session_messages:
+        for i, msg in enumerate(session_messages):
             role = msg.get("role")
             if role == "system":
                 continue
 
             # 处理工具调用消息
             if "tool_calls" in msg:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": msg.get("content", ""),
-                        "tool_calls": msg.get("tool_calls", []),
-                    }
-                )
+                # 检查是否有对应的 tool 结果
+                tool_call_ids = {
+                    tc.get("id") for tc in msg.get("tool_calls", []) if tc.get("id")
+                }
+                has_result = False
+                for j in range(i + 1, len(session_messages)):
+                    next_msg = session_messages[j]
+                    if next_msg.get("role") == "tool":
+                        tid = next_msg.get("tool_call_id")
+                        if tid in tool_call_ids:
+                            has_result = True
+                            processed_tool_ids.add(tid)
+                            break
+
+                if has_result:
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": msg.get("content", ""),
+                            "tool_calls": msg.get("tool_calls", []),
+                        }
+                    )
             elif role == "tool":
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": msg.get("tool_call_id"),
-                        "content": msg.get("content", ""),
-                    }
-                )
+                # 只添加有对应 tool_call 的 tool 结果
+                tid = msg.get("tool_call_id")
+                if tid in processed_tool_ids:
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tid,
+                            "content": msg.get("content", ""),
+                        }
+                    )
             else:
                 content = msg.get("content")
                 if isinstance(content, list):
@@ -1764,6 +1903,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._scroll_to_bottom()
 
     def _execution_result_callback(self, content: str):
+        """Callback forwarded from the execution engine to display results."""
         if content is None:
             return
         self.executionResultProduced.emit(str(content))

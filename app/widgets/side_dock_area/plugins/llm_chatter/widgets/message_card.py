@@ -3,10 +3,9 @@ import base64
 import json
 import re
 import urllib
-import uuid
 from datetime import datetime
 from html import escape
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QWheelEvent
@@ -17,8 +16,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSizePolicy,
-    QPushButton,
-    QButtonGroup,
 )
 from markdown import Markdown
 from pygments import highlight
@@ -35,6 +32,7 @@ from qfluentwidgets.components.widgets.card_widget import (
     CardSeparator,
     SimpleCardWidget,
 )
+
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextRegistry,
 )
@@ -291,11 +289,18 @@ class CodeWebViewer(QWebEngineView):
         self._streaming = True
         self._is_js_ready = False
 
+        # 打字机效果相关
+        self._pending_chars = ""  # 待显示的字符队列
+        self._typewriter_timer = QTimer(self)
+        self._typewriter_timer.setInterval(15)  # 每个字符间隔15ms
+        self._typewriter_timer.timeout.connect(self._typewriter_tick)
+        self._last_render_time = 0
+        self._min_render_interval = 50  # 渲染节流：至少50ms渲染一次
+
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
         self._render_timer.timeout.connect(self._perform_update)
-        self._min_render_interval = 10  # 减少到10ms以获得更流畅的流式输出
 
         # 2. Resize 定时器 (修复 Crash 的关键：作为成员变量，随 self 销毁)
         self._resize_timer = QTimer(self)
@@ -327,21 +332,44 @@ class CodeWebViewer(QWebEngineView):
         QApplication.instance().installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        # 监听对话框显示事件
-        if event.type() == 4:  # QEvent.Show
+        # 监听对话框显示/激活事件
+        event_type = event.type()
+        if event_type == 24 or event_type == 9:  # QEvent.Show = 24, QEvent.FocusIn = 9
             obj_class = obj.__class__.__name__
-            if (
-                "Dialog" in obj_class
-                or "Popup" in obj_class
-                or "Flyout" in obj_class
-                or "InfoBar" in obj_class
-            ):
+            popup_keywords = [
+                "Dialog",
+                "Popup",
+                "Flyout",
+                "InfoBar",
+                "Toast",
+                "ComboBox",
+                "Menu",
+                "ToolTip",
+            ]
+            if any(kw in obj_class for kw in popup_keywords):
+                # 降低当前WebView及其父组件的层级
                 self.lower()
+                parent = self.parent()
+                while parent:
+                    parent.lower()
+                    # 找到 MessageCard 或聊天容器为止
+                    if (
+                        hasattr(parent, "chat_layout")
+                        or parent.__class__.__name__ == "MessageCard"
+                    ):
+                        break
+                    parent = parent.parent()
+                # 同时将弹窗提升到最顶层
+                obj.raise_()
         return super().eventFilter(obj, event)
 
     def lower_for_popup(self):
         """降低控件层级，让弹出窗口可以显示在前面"""
         self.lower()
+        # 降低父级
+        parent_card = self.parent()
+        if parent_card:
+            parent_card.lower()
 
     # 安全的高度上报函数
     def _safe_report_height(self):
@@ -364,6 +392,17 @@ class CodeWebViewer(QWebEngineView):
             self._schedule_render()
 
     def _load_skeleton(self):
+        # 获取系统字体
+        font_family = "Segoe UI, sans-serif"
+        try:
+            from app.utils.config import Settings
+
+            font_family = Settings.get_instance().canvas_font_type.value
+            if not font_family:
+                font_family = "Segoe UI, sans-serif"
+        except Exception:
+            pass
+
         tag_css = []
         for act, col in ACTION_COLOR_MAP.items():
             tag_css.append(
@@ -394,7 +433,7 @@ class CodeWebViewer(QWebEngineView):
                 html {{ overflow: hidden; }}
                 body {{
                     background: transparent !important; color: #E0E0E0;
-                    font-family: "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
+                    font-family: "{font_family}", "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
                     margin: 0; 
                     /* 优化：减小上下内边距 */
                     padding: 4px 12px; 
@@ -543,14 +582,72 @@ class CodeWebViewer(QWebEngineView):
     def append_chunk(self, text: str):
         if not text:
             return
-        self._markdown_text += text
-        # 流式输出时立即渲染，不等待定时器
-        if self._streaming and self._is_js_ready:
-            from PyQt5.QtCore import QTimer
 
-            QTimer.singleShot(0, self._perform_update)
-        else:
-            self._schedule_render()
+        # 将新文本加入待显示队列
+        self._pending_chars += text
+        self._markdown_text += text
+
+        # 如果JavaScript未就绪，直接返回
+        if not self._is_js_ready:
+            return
+
+        # 启动打字机定时器（如果未启动）
+        if self._streaming and not self._typewriter_timer.isActive():
+            self._typewriter_timer.start()
+
+    def _typewriter_tick(self):
+        """打字机效果：每次显示一小部分字符"""
+        if not self._pending_chars:
+            self._typewriter_timer.stop()
+            return
+
+        # 每次取出少量字符进行显示（2-4个字符，兼顾速度和体验）
+        chunk_size = min(3, len(self._pending_chars))
+        display_chars = self._pending_chars[:chunk_size]
+        self._pending_chars = self._pending_chars[chunk_size:]
+
+        # 实际显示的文本 = 已显示的全部 + 当前批次
+        visible_text = self._markdown_text[
+            : len(self._markdown_text) - len(self._pending_chars)
+        ]
+
+        # 节流渲染控制
+        import time
+
+        current_time = time.time() * 1000
+        render_throttle = 50  # 50ms节流
+        if current_time - self._last_render_time >= render_throttle:
+            self._last_render_time = current_time
+            self._perform_update_for_text(visible_text)
+
+        # 如果队列处理完了，执行最后一次完整渲染
+        if not self._pending_chars and self._streaming:
+            self._typewriter_timer.stop()
+            self._perform_update()
+
+    def _perform_update_for_text(self, visible_text: str):
+        """渲染指定文本（用于打字机效果）"""
+        try:
+            if not self.page():
+                return
+
+            raw_md = visible_text
+            safe_md = _sanitize_incomplete_markdown(raw_md)
+            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
+            safe_md = _inject_context_links(safe_md)
+            processed_md = _inject_think_cards(safe_md, False)
+            try:
+                md = get_markdown_instance()
+                md.reset()
+                html_content = md.convert(processed_md)
+                html_content = _wrap_code_blocks_with_copy_button_web(html_content)
+            except Exception:
+                html_content = f"<pre>{escape(raw_md)}</pre>"
+
+            js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
+            self.page().runJavaScript(js_code)
+        except RuntimeError:
+            pass
 
     def _schedule_render(self):
         if not self._is_js_ready:
@@ -584,6 +681,11 @@ class CodeWebViewer(QWebEngineView):
 
     def finish_streaming(self):
         self._streaming = False
+        # 停止打字机定时器
+        if self._typewriter_timer.isActive():
+            self._typewriter_timer.stop()
+        # 清空待显示队列，直接显示全部内容
+        self._pending_chars = ""
         self._perform_update()
 
     def get_plain_text(self) -> str:
