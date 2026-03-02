@@ -702,7 +702,7 @@ class OpenAIChatToolWindow(ToolWindow):
     ) -> QWidget:
         card = CardWidget(self)
 
-        base_style = "background-color: #2d2d2d; border-radius: 6px; padding: 8px; background-color: transparent;"
+        base_style = "background-color: transparent; border-radius: 6px; padding: 8px; color: white;"
         if is_current:
             card.setStyleSheet(
                 "background-color: #ff6f00; border-radius: 6px; padding: 8px; color: white;"
@@ -927,7 +927,11 @@ class OpenAIChatToolWindow(ToolWindow):
             if item and item.widget() and isinstance(item.widget(), MessageCard):
                 if item.widget().role == "user":
                     widget = item.widget()
-                    user_input = widget._content or ""
+                    user_input = (
+                        widget.viewer.get_plain_text()
+                        if hasattr(widget, "viewer")
+                        else ""
+                    )
                     if hasattr(widget, "context_tags"):
                         user_params = widget.context_tags
                     break

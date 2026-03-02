@@ -4,7 +4,7 @@ import re
 import json
 from typing import Dict, List, Any, Optional
 import openai
-from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal
+from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
 from openai import (
     OpenAI,
     APIError,
@@ -291,6 +291,9 @@ class OpenAIChatWorker(QThread):
                     }
                 )
                 current_messages.extend(tool_results)
+
+                QCoreApplication.processEvents()
+                time.sleep(0.2)
 
             self.finished_with_content.emit(self.full_response)
 

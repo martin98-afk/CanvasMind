@@ -48,7 +48,7 @@ class BuiltinTools:
             try:
                 from app.utils.utils import resource_path
 
-                self.workdir = Path(resource_path("app"))
+                self.workdir = Path(resource_path("./"))
             except Exception:
                 self.workdir = Path.cwd()
 
