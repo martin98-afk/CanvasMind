@@ -961,6 +961,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        # 重置继续状态
+        self._is_continuing = False
+
         # 清空已处理的工具调用集合
         self._processed_tool_ids.clear()
 
@@ -1536,9 +1539,6 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
     def _on_content_received(self, content_piece: str, assistant_card: MessageCard):
-        logger.info(
-            f"[ContentReceived] Received content piece, length: {len(content_piece)}"
-        )
         self._update_assistant_message(assistant_card, content_piece)
         # 1) 处理插件调用（技能执行）若检测到 plugin_call 指令
         self._process_plugin_calls(content_piece, assistant_card)
@@ -1645,6 +1645,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 所有工具都使用异步执行，避免卡死主进程
         # 工具执行期间显示停止按钮
         self._is_streaming = True
+        self._is_continuing = True  # 标记有工具调用，防止按钮被恢复
         self._toggle_send_stop(True)
         self._execute_tool_async(tool_call_id, tool_name, arguments, assistant_card)
 
@@ -1751,7 +1752,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._todo_floating_widget.update_todos(todos)
 
         # 继续调用 LLM 处理工具结果（多轮迭代）
-        self._is_continuing = True
         self._continue_with_tool_result(assistant_card)
 
     def _on_question_answered(self, answer: str):
@@ -1775,7 +1775,6 @@ class OpenAIChatToolWindow(ToolWindow):
             )
 
         # 继续调用 LLM
-        self._is_continuing = True
         self._continue_with_tool_result(self._current_assistant_card)
 
     def _continue_with_tool_result(self, assistant_card: MessageCard):
@@ -1793,6 +1792,10 @@ class OpenAIChatToolWindow(ToolWindow):
         if not llm_config:
             logger.error("[Continue] No LLM config found")
             return
+
+        # 重置继续状态，让本轮 Worker 完成后能恢复按钮
+        # 只有当收到新的工具调用时，_on_tool_call_received 会重新设置 _is_continuing
+        self._is_continuing = False
 
         # 构建消息列表（包含工具调用历史）
         messages = self._build_continuation_messages(session.messages)
@@ -1818,7 +1821,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         logger.info("[Continue] Starting continued chat...")
         self._is_streaming = True
-        self._is_continuing = True
+        # _is_continuing 会在收到新的工具调用时由 _on_tool_call_received 设置
+        # 如果没有新的工具调用，_on_worker_finished 会恢复按钮
         self._toggle_send_stop(True)
         self._worker.start()
 
