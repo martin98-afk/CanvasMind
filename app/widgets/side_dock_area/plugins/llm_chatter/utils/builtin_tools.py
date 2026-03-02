@@ -304,6 +304,8 @@ class BuiltinTools:
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=timeout,
                     cwd=str(self.workdir),
                 )
@@ -313,6 +315,8 @@ class BuiltinTools:
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=timeout,
                     cwd=str(self.workdir),
                 )

@@ -209,8 +209,9 @@ class OpenAIChatWorker(QThread):
     content_received = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
-    tool_call_received = pyqtSignal(dict)
-    tool_calls_finished = pyqtSignal(list)
+    tool_call_started = pyqtSignal(str, str, dict, str)
+    tool_result_received = pyqtSignal(str, str, dict, object)
+    question_asked = pyqtSignal(str, str, list)
 
     def __init__(
         self,
@@ -218,288 +219,363 @@ class OpenAIChatWorker(QThread):
         llm_config: Dict,
         tools: List[Dict] = None,
         stream: bool = True,
+        tool_executor=None,
     ):
         super().__init__()
         self.messages = messages
         self.llm_config = llm_config
         self.tools = tools or []
         self.stream = stream
+        self.tool_executor = tool_executor
         self.full_response = ""
         self._is_cancelled = False
-        self._tool_calls_buffer = {}
-        self._max_tool_iterations = 10
+        self._question_pending = None
+        self._pending_answer = None
 
     def cancel(self):
         self._is_cancelled = True
 
+    def provide_answer(self, answer: str):
+        self._pending_answer = answer
+
     def run(self):
         try:
-            # 1. 基础必需参数
-            api_key = self.llm_config.get("API_KEY", "").strip()
-            base_url = self.llm_config.get("API_URL") or None
-            model = str(self.llm_config.get("模型名称", "gpt-4o"))
+            iteration = 0
+            max_iterations = 10
+            current_messages = self.messages.copy()
 
-            # 2. 准备参数桶
-            # 顶层参数：极其严格，只放最稳妥的
-            req_kwargs = {
-                "model": model,
-                "messages": self.messages,
-                "stream": self.stream,
-            }
-
-            # 额外参数桶：比较宽松，大部分平台会忽略不认识的
-            extra_body = {}
-            # 3. 映射表：将中文配置映射为 API 英文键名
-            mapping = {
-                "温度": "temperature",
-                "最大Token": "max_tokens",
-                "核采样": "top_p",
-                "频率惩罚": "presence_penalty",
-                "重复惩罚": "frequency_penalty",
-                "思考等级": "reasoning_effort",
-            }
-
-            # 4. 【一股脑逻辑】遍历所有配置
-            for cn_key, value in self.llm_config.items():
-                if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
-                    continue
-
-                # --- 核心处理：根据参数类型决定放哪 ---
-
-                # A. 思考模式的特殊结构处理（自动适配 Claude 和普通模型）
-                if cn_key == "是否思考":
-                    status = (
-                        "enabled"
-                        if (value is True or str(value).lower() == "true")
-                        else "disabled"
-                    )
-                    # 针对 Claude：放在顶层，但如果报错我们会捕获
-                    # 针对其他模型：在 extra_body 传一份布尔值
-                    extra_body["enable_thinking"] = status == "enabled"
-                    extra_body["include_reasoning"] = status == "enabled"
-
-                # B. 温度和 Top_P 的特殊性
-                # 获取对应的英文 Key（如果没映射，且本来就是英文，则直接用）
-                en_key = mapping.get(cn_key)
-                if not en_key and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", cn_key):
-                    en_key = cn_key
-                if not en_key:
-                    continue
-                # 很多推理模型 (o1, R1) 传温度会报错，所以我们优先放 extra_body，或者只在非 o1 模型放顶层
-                elif en_key in ["temperature", "top_p"] and (
-                    model.startswith("o1") or model.startswith("o3")
-                ):
-                    continue  # o1 模型坚决不传温度
-
-                # C. 其他所有参数一律尝试放进 req_kwargs
-                # 如果这个参数属于 OpenAI 的标准顶层参数，放这里
-                elif en_key in [
-                    "temperature",
-                    "max_tokens",
-                    "top_p",
-                    "presence_penalty",
-                    "frequency_penalty",
-                    "reasoning_effort",
-                ]:
-                    req_kwargs[en_key] = value
-
-                # D. 其余不确定的全塞进 extra_body（这部分最安全，不认识也不报错）
-                else:
-                    extra_body[en_key] = value
-
-            if extra_body:
-                req_kwargs["extra_body"] = extra_body
-
-            # 添加工具定义
-            if self.tools:
-                # 检查工具定义
-                for i, tool in enumerate(self.tools):
-                    func = tool.get("function", {})
-                    if not func.get("name"):
-                        logger.error(f"[Worker] Tool {i} has empty name!")
-                    if not func.get("parameters"):
-                        logger.error(f"[Worker] Tool {i} has empty parameters!")
-
-                logger.info(f"[Worker] Proceeding with tools in request...")
-                req_kwargs["tools"] = self.tools
-
-            # 处理不同的认证方式
-            auth_type = self.llm_config.get("认证方式", "bearer")
-
-            if auth_type == "bce":
-                # 百度BCE认证方式
-                import base64
-
-                auth_str = f"{api_key}:{api_key}"
-                b64_auth = base64.b64encode(auth_str.encode()).decode()
-                req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
-            elif auth_type == "none":
-                # 无认证（如Ollama本地）
-                pass
-            else:
-                pass
-            # 5. 执行请求
-            client = OpenAI(
-                api_key=api_key if api_key and auth_type != "none" else "dummy",
-                base_url=base_url,
-                timeout=120.0,
-            )
-
-            # --- 最后的“暴力”修正：处理不支持流式的模型 ---
-            if "o1-preview" in model or "o1-mini" in model:
-                req_kwargs.pop("stream", None)
-                self.stream = False
-            response = client.chat.completions.create(**req_kwargs)
-
-            # --- 流式处理逻辑 (提取 content 和 reasoning_content) ...
-            self.full_response = ""
-            for chunk in response:
+            while iteration < max_iterations:
                 if self._is_cancelled:
                     return
-                delta = chunk.choices[0].delta
-                # 自动兼容 DeepSeek 的推理内容
-                reasoning = getattr(delta, "reasoning_content", None)
-                content = getattr(delta, "content", None)
 
-                # 处理工具调用
-                tool_calls = getattr(delta, "tool_calls", None)
-                if tool_calls:
-                    for tc in tool_calls:
-                        tc_id = tc.id
+                iteration += 1
+                tool_results = self._make_api_call(current_messages)
 
-                        # 如果 tc_id 为 None，使用最后一个有效的 tc_id
-                        if tc_id is None:
-                            if self._tool_calls_buffer:
-                                tc_id = list(self._tool_calls_buffer.keys())[-1]
-                            else:
-                                continue
+                if self._is_cancelled:
+                    return
 
-                        if tc_id not in self._tool_calls_buffer:
-                            self._tool_calls_buffer[tc_id] = {
-                                "id": tc_id,
-                                "type": getattr(tc, "type", "function"),
-                                "function": {
-                                    "name": "",
-                                    "arguments": "",
-                                },
-                            }
+                if tool_results is None:
+                    while self._pending_answer is None and not self._is_cancelled:
+                        time.sleep(0.1)
 
-                        buffer = self._tool_calls_buffer[tc_id]
+                    if self._is_cancelled:
+                        return
 
-                        if tc.function and tc.function.name:
-                            buffer["function"]["name"] = tc.function.name
+                    q = self._question_pending
+                    current_messages.append(
+                        {
+                            "role": "assistant",
+                            "content": self.full_response,
+                            "tool_calls": self._current_tool_calls,
+                        }
+                    )
+                    current_messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": q["tool_call_id"],
+                            "content": self._pending_answer,
+                        }
+                    )
+                    self._question_pending = None
+                    self._pending_answer = None
+                    continue
 
-                        if tc.function and tc.function.arguments:
-                            buffer["function"]["arguments"] += tc.function.arguments
+                if not tool_results:
+                    break
 
-                        if (
-                            buffer["function"]["name"]
-                            and buffer["function"]["arguments"]
-                        ):
-                            try:
-                                parsed_args = json.loads(
-                                    buffer["function"]["arguments"]
-                                )
-                                tc_dict = {
+                current_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": self.full_response,
+                        "tool_calls": self._current_tool_calls,
+                    }
+                )
+                current_messages.extend(tool_results)
+
+            self.finished_with_content.emit(self.full_response)
+
+        except Exception as e:
+            self._handle_error(e)
+
+    def _make_api_call(self, messages: List[Dict]):
+        api_key = self.llm_config.get("API_KEY", "").strip()
+        base_url = self.llm_config.get("API_URL") or None
+        model = str(self.llm_config.get("模型名称", "gpt-4o"))
+
+        req_kwargs = {
+            "model": model,
+            "messages": messages,
+            "stream": self.stream,
+        }
+
+        extra_body = {}
+        mapping = {
+            "温度": "temperature",
+            "最大Token": "max_tokens",
+            "核采样": "top_p",
+            "频率惩罚": "presence_penalty",
+            "重复惩罚": "frequency_penalty",
+            "思考等级": "reasoning_effort",
+        }
+
+        for cn_key, value in self.llm_config.items():
+            if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
+                continue
+
+            if cn_key == "是否思考":
+                status = (
+                    "enabled"
+                    if (value is True or str(value).lower() == "true")
+                    else "disabled"
+                )
+                extra_body["enable_thinking"] = status == "enabled"
+                extra_body["include_reasoning"] = status == "enabled"
+
+            en_key = mapping.get(cn_key)
+            if not en_key and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", cn_key):
+                en_key = cn_key
+            if not en_key:
+                continue
+            elif en_key in ["temperature", "top_p"] and (
+                model.startswith("o1") or model.startswith("o3")
+            ):
+                continue
+            elif en_key in [
+                "temperature",
+                "max_tokens",
+                "top_p",
+                "presence_penalty",
+                "frequency_penalty",
+                "reasoning_effort",
+            ]:
+                req_kwargs[en_key] = value
+            else:
+                extra_body[en_key] = value
+
+        if extra_body:
+            req_kwargs["extra_body"] = extra_body
+
+        if self.tools:
+            req_kwargs["tools"] = self.tools
+
+        auth_type = self.llm_config.get("认证方式", "bearer")
+        if auth_type == "bce":
+            import base64
+
+            auth_str = f"{api_key}:{api_key}"
+            b64_auth = base64.b64encode(auth_str.encode()).decode()
+            req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
+
+        client = OpenAI(
+            api_key=api_key if api_key and auth_type != "none" else "dummy",
+            base_url=base_url,
+            timeout=120.0,
+        )
+
+        if "o1-preview" in model or "o1-mini" in model:
+            req_kwargs.pop("stream", None)
+            self.stream = False
+
+        response = client.chat.completions.create(**req_kwargs)
+
+        tool_calls_found = self._process_response(response)
+
+        if not tool_calls_found:
+            return []
+
+        tool_results = self._execute_all_tools()
+
+        if tool_results is None:
+            return None
+
+        if tool_results:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": self.full_response,
+                    "tool_calls": self._current_tool_calls,
+                }
+            )
+            messages.extend(tool_results)
+            return self._make_api_call(messages)
+
+        return []
+
+    def _process_response(self, response):
+        self.full_response = ""
+        self._current_tool_calls = []
+        self._tool_calls_buffer = {}
+        tool_calls_found = False
+
+        for chunk in response:
+            if self._is_cancelled:
+                return False
+
+            delta = chunk.choices[0].delta
+            content = getattr(delta, "content", None)
+
+            tool_calls = getattr(delta, "tool_calls", None)
+            if tool_calls:
+                tool_calls_found = True
+                for tc in tool_calls:
+                    tc_id = tc.id
+                    if tc_id is None:
+                        if self._tool_calls_buffer:
+                            tc_id = list(self._tool_calls_buffer.keys())[-1]
+                        else:
+                            continue
+
+                    if tc_id not in self._tool_calls_buffer:
+                        self._tool_calls_buffer[tc_id] = {
+                            "id": tc_id,
+                            "type": getattr(tc, "type", "function"),
+                            "function": {"name": "", "arguments": ""},
+                        }
+
+                    buffer = self._tool_calls_buffer[tc_id]
+                    if tc.function and tc.function.name:
+                        buffer["function"]["name"] = tc.function.name
+                    if tc.function and tc.function.arguments:
+                        buffer["function"]["arguments"] += tc.function.arguments
+
+                    if buffer["function"]["name"] and buffer["function"]["arguments"]:
+                        try:
+                            parsed_args = json.loads(buffer["function"]["arguments"])
+                            self._current_tool_calls.append(
+                                {
                                     "id": buffer["id"],
                                     "type": buffer["type"],
                                     "function": {
                                         "name": buffer["function"]["name"],
-                                        "arguments": parsed_args,
+                                        "arguments": buffer["function"]["arguments"],
                                     },
                                 }
-                                self.tool_call_received.emit(tc_dict)
-                                del self._tool_calls_buffer[tc_id]
-                            except json.JSONDecodeError:
-                                pass
+                            )
+                            del self._tool_calls_buffer[tc_id]
+                        except json.JSONDecodeError:
+                            pass
 
-                if content:
-                    self.full_response += content
-                    self.content_received.emit(content)
-                    last_chunk_time = time.time()
+            if content:
+                self.full_response += content
+                self.content_received.emit(content)
 
-            # 处理剩余的buffered tool calls
-            for tc_id, buffer in self._tool_calls_buffer.items():
-                if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                    try:
-                        parsed_args = json.loads(buffer["function"]["arguments"])
-                        tc_dict = {
+        for tc_id, buffer in self._tool_calls_buffer.items():
+            if buffer["function"]["name"] and buffer["function"]["arguments"]:
+                try:
+                    parsed_args = json.loads(buffer["function"]["arguments"])
+                    self._current_tool_calls.append(
+                        {
                             "id": buffer["id"],
                             "type": buffer["type"],
                             "function": {
                                 "name": buffer["function"]["name"],
-                                "arguments": parsed_args,
+                                "arguments": buffer["function"]["arguments"],
                             },
                         }
-                        self.tool_call_received.emit(tc_dict)
-                    except json.JSONDecodeError:
-                        logger.warning(
-                            f"[Worker] Failed to parse tool call arguments: {buffer['function']['arguments']}"
-                        )
+                    )
+                except json.JSONDecodeError:
+                    pass
 
-            self.finished_with_content.emit(self.full_response)
+        return tool_calls_found
 
-        except BadRequestError as e:
-            error_msg = e.message or str(e)
+    def _execute_all_tools(self):
+        if not self._current_tool_calls or not self.tool_executor:
+            return []
+
+        results = []
+        for tc in self._current_tool_calls:
+            tool_name = tc["function"]["name"]
+            arguments = tc["function"]["arguments"]
+
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except:
+                    arguments = {}
+
+            tool_call_id = tc["id"]
+
+            round_id = f"round_{id(tc)}"
+            self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
+
+            if tool_name == "question":
+                question_text = arguments.get("question", "")
+                options = arguments.get("options", [])
+                self.question_asked.emit(tool_call_id, question_text, options)
+                self._question_pending = {
+                    "tool_call_id": tool_call_id,
+                    "question": question_text,
+                    "options": options,
+                }
+                return None
+
+            result = self.tool_executor.execute(tool_name, arguments)
+            result_content = str(result) if result else ""
+
+            self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
+            results.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": result_content,
+                    "round_id": round_id,
+                }
+            )
+
+        return results
+
+    def _handle_error(self, error):
+        from openai import (
+            BadRequestError,
+            RateLimitError,
+            APIConnectionError,
+            APITimeoutError,
+            APIError,
+        )
+
+        error_msg = str(error)
+        if isinstance(error, BadRequestError):
             if "json" in error_msg.lower() or "format" in error_msg.lower():
                 self.error_occurred.emit(
                     f"[JSON格式错误] 请确保输入有效的JSON格式: {error_msg}"
                 )
             else:
                 self.error_occurred.emit(f"[请求错误] {error_msg}")
-
-        except RateLimitError as e:
+        elif isinstance(error, RateLimitError):
             self.error_occurred.emit(
-                f"[速率限制] 请求过于频繁，请稍后再试。详情: {str(e)}"
+                f"[速率限制] 请求过于频繁，请稍后再试。详情: {error_msg}"
             )
-
-        except APIConnectionError as e:
+        elif isinstance(error, APIConnectionError):
             self.error_occurred.emit(
-                f"[连接失败] 无法连接到 API 服务器，请检查网络或 API_URL 设置。详情: {str(e)}"
+                f"[连接失败] 无法连接到 API 服务器，请检查网络或 API_URL 设置。详情: {error_msg}"
             )
-
-        except APITimeoutError as e:
+        elif isinstance(error, APITimeoutError):
             self.error_occurred.emit(
-                f"[超时] 请求超时（120秒），请检查网络或模型负载。详情: {str(e)}"
+                f"[超时] 请求超时（120秒），请检查网络或模型负载。详情: {error_msg}"
             )
-
-        except APIError as e:
-            error_str = str(e)
-            if "context length" in error_str and "overflow" in error_str:
+        elif isinstance(error, APIError):
+            if "context length" in error_msg and "overflow" in error_msg:
                 self.error_occurred.emit(
-                    f"[上下文超限] 输入内容过长，请缩短对话或清除历史记录。详情: {error_str}"
+                    f"[上下文超限] 输入内容过长，请缩短对话或清除历史记录。详情: {error_msg}"
                 )
-            elif "insufficient_quota" in error_str:
+            elif "insufficient_quota" in error_msg:
                 self.error_occurred.emit(
                     f"[配额不足] API配额已用完，请检查账户余额或更换API Key。"
                 )
             else:
-                self.error_occurred.emit(f"[API错误] {error_str}")
-
-        except ValueError as e:
-            self.error_occurred.emit(f"[配置错误] 参数类型无效: {str(e)}")
-
-        except Exception as e:
-            error_str = str(e)
-            if "unrecognized_parameter" in error_str or "extra_parameters" in error_str:
-                self.error_occurred.emit(
-                    f"[兼容性提示] 当前模型可能不支持某些高级设置（如思考模式或温度）。错误: {error_str}"
-                )
-            elif (
-                "max_tokens" in error_str.lower()
-                or "context length" in error_str.lower()
-            ):
-                self.error_occurred.emit(
-                    f"[错误] 模型上下文或最大Token超出限制，请减少输入长度或调低 max_tokens"
-                )
-            elif (
-                "authentication" in error_str.lower() or "api key" in error_str.lower()
-            ):
-                self.error_occurred.emit(
-                    f"[认证错误] API Key无效或已过期，请检查配置。"
-                )
-            else:
-                self.error_occurred.emit(f"[未知错误] {error_str}")
+                self.error_occurred.emit(f"[API错误] {error_msg}")
+        elif "unrecognized_parameter" in error_msg or "extra_parameters" in error_msg:
+            self.error_occurred.emit(
+                f"[兼容性提示] 当前模型可能不支持某些高级设置（如思考模式或温度）。错误: {error_msg}"
+            )
+        elif "max_tokens" in error_msg.lower() or "context length" in error_msg.lower():
+            self.error_occurred.emit(
+                f"[错误] 模型上下文或最大Token超出限制，请减少输入长度或调低 max_tokens"
+            )
+        elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+            self.error_occurred.emit(f"[认证错误] API Key无效或已过期，请检查配置。")
+        else:
+            self.error_occurred.emit(f"[未知错误] {error_msg}")
 
 
 class ShellExecutionTask(QRunnable):
@@ -524,6 +600,8 @@ class ShellExecutionTask(QRunnable):
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=120,
                 )
             else:
@@ -532,6 +610,8 @@ class ShellExecutionTask(QRunnable):
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=120,
                 )
             output = res.stdout.strip() if res.stdout else ""

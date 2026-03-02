@@ -7,6 +7,75 @@ from pathlib import Path
 from app.utils.utils import serialize_for_json, deserialize_from_json
 
 
+def merge_session_messages(messages: List[Dict]) -> List[Dict]:
+    """
+    合并一轮对话：
+    - user 消息保留
+    - 同一 round_id 的 assistant + tool 消息合并成一条
+    - 删除 tool_calls 和 tool_results（不需要存给 API）
+    - 跳过 tool 消息
+    """
+    if not messages:
+        return []
+
+    merged = []
+    i = 0
+    while i < len(messages):
+        msg = messages[i]
+        role = msg.get("role")
+
+        if role == "system":
+            merged.append(msg.copy())
+            i += 1
+            continue
+
+        if role == "user":
+            merged.append(msg.copy())
+            i += 1
+            continue
+
+        if role == "assistant":
+            final_content = msg.get("content", "")
+            current_round_id = msg.get("round_id")
+
+            j = i + 1
+            while j < len(messages):
+                next_msg = messages[j]
+                next_role = next_msg.get("role")
+                next_round_id = next_msg.get("round_id")
+
+                if next_role == "assistant" and next_round_id == current_round_id:
+                    if next_msg.get("content"):
+                        final_content = next_msg.get("content", "")
+                    j += 1
+                elif next_role == "tool" and next_round_id == current_round_id:
+                    j += 1
+                elif next_role == "assistant" and next_round_id is None:
+                    final_content = next_msg.get("content", "")
+                    j += 1
+                else:
+                    break
+
+            merged_msg = {
+                "role": "assistant",
+                "content": final_content,
+                "timestamp": msg.get("timestamp"),
+            }
+
+            merged.append(merged_msg)
+            i = j
+            continue
+
+        if role == "tool":
+            i += 1
+            continue
+
+        merged.append(msg.copy())
+        i += 1
+
+    return merged
+
+
 class HistoryManager:
     def __init__(self, canvas_name: str):
         self.canvas_name = canvas_name
@@ -40,13 +109,25 @@ class HistoryManager:
     def save_session(self, messages: List[Dict], title: str = None):
         if not messages:
             return
-        last_msg_time = messages[-1].get(
+
+        merged_messages = merge_session_messages(messages)
+
+        last_msg_time = merged_messages[-1].get(
             "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
         )
         if not title:
-            for msg in messages:
+            for msg in merged_messages:
                 if msg.get("role") == "user":
-                    title = msg.get("content", "")[:30].strip() or "新对话"
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = "\n".join(
+                            [
+                                item.get("text", "")
+                                for item in content
+                                if item.get("type") == "text"
+                            ]
+                        )
+                    title = content[:30].strip() or "新对话"
                     break
             else:
                 title = "新对话"
@@ -56,9 +137,9 @@ class HistoryManager:
             {
                 "title": title,
                 "last_time": last_msg_time,
-                "messages": messages,
+                "messages": merged_messages,
                 "topic_summary": "",
-                "message_count": len(messages),
+                "message_count": self._count_conversation_pairs(merged_messages),
             },
         )
         self._save_to_disk()
@@ -91,8 +172,16 @@ class HistoryManager:
             session = self._history_sessions[index]
             msg_count = session.get("message_count", len(session.get("messages", [])))
             current_summary = session.get("topic_summary", "")
-            return msg_count >= 4 and not current_summary
+            return msg_count >= 2 and not current_summary
         return False
+
+    def _count_conversation_pairs(self, messages: List[Dict]) -> int:
+        """计算对话轮数（用户消息数量）"""
+        count = 0
+        for msg in messages:
+            if msg.get("role") == "user":
+                count += 1
+        return count
 
     def _save_to_disk(self):
         with open(self.history_file, "w", encoding="utf-8") as f:
@@ -118,10 +207,13 @@ class HistoryManager:
 
     def update_session(self, index: int, messages: List[Dict]):
         if 0 <= index < len(self._history_sessions):
-            last_msg_time = messages[-1].get(
+            merged_messages = merge_session_messages(messages)
+            last_msg_time = merged_messages[-1].get(
                 "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
             )
-            self._history_sessions[index]["messages"] = messages
+            self._history_sessions[index]["messages"] = merged_messages
             self._history_sessions[index]["last_time"] = last_msg_time
-            self._history_sessions[index]["message_count"] = len(messages)
+            self._history_sessions[index]["message_count"] = (
+                self._count_conversation_pairs(merged_messages)
+            )
             self._save_to_disk()
