@@ -5,7 +5,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool
+from PyQt5.QtCore import (
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QThreadPool,
+    QMetaObject,
+    Q_ARG,
+    pyqtSlot,
+)
 from PyQt5.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QVBoxLayout,
@@ -97,6 +105,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _builtin_tools: Optional[BuiltinTools] = None
     _is_continuing: bool = False
     _processed_tool_ids: set = set()  # 防止重复处理工具调用
+    _current_assistant_card = None  # 当前处理的助手消息卡片
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -969,12 +978,34 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 4. 注入历史消息
         for msg in session.messages[:-1]:
-            content = msg["content"]
-            if isinstance(content, list):  # 简化多模态历史
-                content = "\n".join(
-                    [item["text"] for item in content if item["type"] == "text"]
+            role = msg.get("role")
+            content = msg.get("content")
+
+            # 处理工具调用消息
+            if "tool_calls" in msg:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg.get("tool_calls", []),
+                    }
                 )
-            messages.append({"role": msg["role"], "content": content})
+            # 处理工具结果消息
+            elif role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "content": msg.get("content", ""),
+                    }
+                )
+            # 普通消息
+            else:
+                if isinstance(content, list):  # 简化多模态历史
+                    content = "\n".join(
+                        [item["text"] for item in content if item.get("type") == "text"]
+                    )
+                messages.append({"role": role, "content": content})
 
         # 5. 处理当前消息的多模态逻辑
         model_name = str(llm_config.get("模型名称", "")).lower()
@@ -1590,6 +1621,8 @@ class OpenAIChatToolWindow(ToolWindow):
         """处理原生 function calling 格式的工具调用"""
         logger.info(f"[ToolCallReceived] Received tool call: {tool_call}")
 
+        self._current_assistant_card = assistant_card
+
         func = tool_call.get("function", {})
         tool_name = func.get("name")
         arguments = func.get("arguments", "{}")
@@ -1626,9 +1659,55 @@ class OpenAIChatToolWindow(ToolWindow):
             f"[ToolCallReceived] Executing tool: {tool_name} with args: {arguments}"
         )
 
-        result = self._execute_builtin_tool(tool_name, arguments)
+        # 所有工具都使用异步执行，避免卡死主进程
+        # 工具执行期间显示停止按钮
+        self._is_streaming = True
+        self._toggle_send_stop(True)
+        self._execute_tool_async(tool_call_id, tool_name, arguments, assistant_card)
 
-        # 将工具调用和结果添加到消息历史
+    def _execute_tool_async(
+        self,
+        tool_call_id: str,
+        tool_name: str,
+        arguments: dict,
+        assistant_card: MessageCard,
+    ):
+        """异步执行工具（避免卡死主进程）"""
+        import threading
+
+        def run_in_thread():
+            result = self._execute_builtin_tool(tool_name, arguments)
+            # 使用信号在主线程中处理结果
+            QMetaObject.invokeMethod(
+                self,
+                "_async_tool_finished",
+                Qt.QueuedConnection,
+                Q_ARG(str, tool_call_id),
+                Q_ARG(str, tool_name),
+                Q_ARG("QVariant", arguments),
+                Q_ARG("QVariant", result),
+            )
+
+        thread = threading.Thread(target=run_in_thread, daemon=True)
+        thread.start()
+
+    @pyqtSlot(str, str, "QVariant", "QVariant")
+    def _async_tool_finished(
+        self, tool_call_id: str, tool_name: str, arguments, result
+    ):
+        """异步工具执行完成后的处理"""
+        self._process_tool_result(
+            tool_call_id, tool_name, arguments, result, self._current_assistant_card
+        )
+
+    def _process_tool_result(
+        self,
+        tool_call_id: str,
+        tool_name: str,
+        arguments: dict,
+        result,
+        assistant_card: MessageCard,
+    ):
         session = self.session_manager.get_current_session()
         if session:
             # 添加助手的消息（包含工具调用）

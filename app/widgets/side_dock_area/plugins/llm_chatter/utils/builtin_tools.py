@@ -363,6 +363,7 @@ class BuiltinTools:
         try:
             import requests
             import os
+            from urllib.parse import urlencode
 
             proxies = None
             http_proxy = (
@@ -378,37 +379,42 @@ class BuiltinTools:
                 }
 
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Content-Type": "application/x-www-form-urlencoded",
             }
 
-            search_engines = [
-                f"https://duckduckgo.com/html/?q={requests.utils.quote(query)}",
-                f"https://lite.duckduckgo.com/lite/?q={requests.utils.quote(query)}",
-            ]
+            # 使用 POST 请求（与官方 API 一致）
+            data = {"q": query, "b": "", "kl": "wt-wt"}
+
+            response = requests.post(
+                "https://html.duckduckgo.com/html/",
+                headers=headers,
+                data=data,
+                proxies=proxies,
+                timeout=30,
+            )
+            response.raise_for_status()
 
             results = []
-            for url in search_engines:
-                try:
-                    response = requests.get(
-                        url, headers=headers, proxies=proxies, timeout=30
-                    )
-                    response.raise_for_status()
+            # 使用与 cheerio 相同的选择器
+            pattern = re.compile(
+                r'<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
+            )
+            for match in pattern.finditer(response.text):
+                href = match.group(1)
+                title = match.group(2)
+                title = re.sub(r"<[^>]+>", "", title)
+                # 提取真实 URL
+                if "uddg=" in href:
+                    from urllib.parse import unquote
+                    import re as re_module
 
-                    pattern = re.compile(
-                        r'<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
-                    )
-                    for match in pattern.finditer(response.text):
-                        href = match.group(1)
-                        title = match.group(2)
-                        title = re.sub(r"<[^>]+>", "", title)
-                        results.append(f"- {title}: {href}")
-                        if len(results) >= num_results:
-                            break
-
-                    if results:
-                        break
-                except Exception:
-                    continue
+                    match_url = re_module.search(r"uddg=([^&]+)", href)
+                    if match_url:
+                        href = unquote(match_url.group(1))
+                results.append(f"- {title}: {href}")
+                if len(results) >= num_results:
+                    break
 
             if not results:
                 return ToolResult(True, content="No results found")

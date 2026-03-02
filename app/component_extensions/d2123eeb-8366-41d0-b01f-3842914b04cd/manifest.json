@@ -6,7 +6,6 @@
   "api_version": "2.0",
   "description": "为 LTX2 模型应用动态 Shift 修正。这是 LTX2 能够生成高质量视频的关键。",
   "category": "comfyui节点/LTX模型适配",
-  "main": "main.py",
-  "updated_at": "2026-01-26 15:39:57",
+  "updated_at": "2026-03-02 10:55:02",
   "author": "mading"
 }
