@@ -171,6 +171,7 @@ class ChatEngine:
         self._current_worker.tool_result_received.connect(self._on_tool_result_received)
         self._current_worker.error_occurred.connect(self._on_error)
         self._current_worker.finished_with_content.connect(self._on_worker_finished)
+        self._current_worker.question_asked.connect(self._on_question_asked)
 
         self._current_worker.start()
         self._emit("stream_started")
@@ -182,6 +183,9 @@ class ChatEngine:
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str
     ):
         self._emit("tool_call_started", tool_call_id, tool_name, arguments, round_id)
+
+    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
+        self._emit("question_asked", tool_call_id, question, options)
 
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any

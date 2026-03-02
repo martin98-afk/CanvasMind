@@ -204,6 +204,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback(
             "shell_command_requested", self._on_shell_command_requested
         )
+        self._chat_engine.set_callback("question_asked", self._on_question_asked)
 
         self._initialize_history_manager()
 
@@ -900,24 +901,48 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
+        if card.role != "assistant":
+            return
+
         card_index = -1
         for i in range(self.chat_layout.count()):
             if self.chat_layout.itemAt(i).widget() is card:
                 card_index = i
                 break
 
-        if card_index <= 0 or card_index >= len(session.messages):
+        if card_index <= 0:
             return
 
-        user_input = session.messages[card_index - 1]["content"]
-        params = session.messages[card_index - 1].get("params")
-        if params:
+        ui_items = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                ui_items.append((i, item.widget()))
+
+        user_input = None
+        user_params = None
+
+        for i in range(card_index - 1, -1, -1):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), MessageCard):
+                if item.widget().role == "user":
+                    widget = item.widget()
+                    user_input = widget._content or ""
+                    if hasattr(widget, "context_tags"):
+                        user_params = widget.context_tags
+                    break
+
+        if user_input is None:
+            return
+
+        if user_params:
             user_input = (
-                "\n".join([value[1] for value in params.values()])
+                "\n".join([value[1] for value in user_params.values()])
                 + "\n\n"
                 + user_input
                 + "\n\n回复内容:\n"
             )
+
         self._delete_message(card)
         self._on_send_clicked(user_input)
 
@@ -1003,7 +1028,22 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
     ):
-        pass
+        if tool_name == "question":
+            question_text = arguments.get("question", "")
+            options = arguments.get("options", [])
+            if question_text:
+                self._question_tool_call_id = tool_call_id
+                self._question_floating_widget.show_question(question_text, options)
+            return
+
+        if tool_name in ("todowrite", "todoread"):
+            todos = self._tool_executor.todo_list if self._tool_executor else []
+            self._todo_floating_widget.update_todos(todos)
+            self._todo_floating_widget.setVisible(True)
+
+    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
+        self._question_tool_call_id = tool_call_id
+        self._question_floating_widget.show_question(question, options)
 
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
