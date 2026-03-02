@@ -176,10 +176,18 @@ class OpenAIChatToolWindow(ToolWindow):
     def _initialize_builtin_tools(self):
         import os
 
-        # 使用项目根目录作为默认工作目录
-        workdir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        )
+        # 使用 resource_path 获取正确的项目根目录
+        try:
+            from app.utils.utils import resource_path
+
+            workdir = resource_path("app")
+        except Exception:
+            workdir = os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
+            )
+
         try:
             if hasattr(self.homepage, "workflow_name") and self.homepage.workflow_name:
                 canvas_name = self.homepage.workflow_name
@@ -1002,18 +1010,29 @@ class OpenAIChatToolWindow(ToolWindow):
 
         messages.append({"role": "system", "content": full_system_prompt})
 
-        # 4. 注入历史消息（过滤掉旧的工具调用消息，只保留最近的）
+        # 4. 注入历史消息（保留工具调用历史）
         for msg in session.messages[:-1]:
             role = msg.get("role")
             content = msg.get("content")
 
-            # 跳过工具调用相关的历史消息（避免 API 报错）
-            if role == "assistant" and "tool_calls" in msg:
-                continue
-            if role == "tool":
-                continue
-
-            # 普通消息
+            # 保留工具调用消息
+            if "tool_calls" in msg:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.get("content", ""),
+                        "tool_calls": msg.get("tool_calls", []),
+                    }
+                )
+            # 保留工具结果消息
+            elif role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "content": msg.get("content", ""),
+                    }
+                )
             else:
                 if isinstance(content, list):  # 简化多模态历史
                     content = "\n".join(
@@ -1074,17 +1093,24 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.toggle_send_button(True)
 
     def _on_worker_finished(self, response: str, card: MessageCard):
-        self._is_streaming = False
         card.finish_streaming()
 
-        # 如果是继续对话，不要立即启用输入，等待下一轮工具调用
+        # 如果是继续对话模式，等待工具调用处理完成
         if self._is_continuing:
-            logger.info("[WorkerFinished] Continuing mode - not enabling input yet")
-            self._is_continuing = False
+            logger.info("[WorkerFinished] Continuing mode - waiting for tool calls")
             return
 
+        # 正常对话结束，重置状态
+        self._is_streaming = False
         self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
+
+        session = self.session_manager.get_current_session()
+        if session:
+            session.add_assistant_message(content=response)
+            current_title = self._auto_save_current_session()
+            self._generate_conversation_title(current_title, session.messages)
+        self._maybe_generate_topic_summary()
         session = self.session_manager.get_current_session()
         if session:
             session.add_assistant_message(content=response)
@@ -1848,6 +1874,9 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         logger.info("[Continue] Starting continued chat...")
+        self._is_streaming = True
+        self._is_continuing = True
+        self._toggle_send_stop(True)
         self._worker.start()
 
     def _build_continuation_messages(self, session_messages: List[Dict]) -> List[Dict]:
@@ -1863,29 +1892,50 @@ class OpenAIChatToolWindow(ToolWindow):
 
         messages.append({"role": "system", "content": full_system_prompt})
 
+        # 收集所有已处理的 tool_call_id
+        processed_tool_ids = set()
+
         # 添加所有历史消息
-        for msg in session_messages:
+        for i, msg in enumerate(session_messages):
             role = msg.get("role")
             if role == "system":
                 continue
 
             # 处理工具调用消息
             if "tool_calls" in msg:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": msg.get("content", ""),
-                        "tool_calls": msg.get("tool_calls", []),
-                    }
-                )
+                # 检查是否有对应的 tool 结果
+                tool_call_ids = {
+                    tc.get("id") for tc in msg.get("tool_calls", []) if tc.get("id")
+                }
+                has_result = False
+                for j in range(i + 1, len(session_messages)):
+                    next_msg = session_messages[j]
+                    if next_msg.get("role") == "tool":
+                        tid = next_msg.get("tool_call_id")
+                        if tid in tool_call_ids:
+                            has_result = True
+                            processed_tool_ids.add(tid)
+                            break
+
+                if has_result:
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": msg.get("content", ""),
+                            "tool_calls": msg.get("tool_calls", []),
+                        }
+                    )
             elif role == "tool":
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": msg.get("tool_call_id"),
-                        "content": msg.get("content", ""),
-                    }
-                )
+                # 只添加有对应 tool_call 的 tool 结果
+                tid = msg.get("tool_call_id")
+                if tid in processed_tool_ids:
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tid,
+                            "content": msg.get("content", ""),
+                        }
+                    )
             else:
                 content = msg.get("content")
                 if isinstance(content, list):

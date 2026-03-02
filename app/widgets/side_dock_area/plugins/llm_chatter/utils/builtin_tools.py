@@ -39,18 +39,23 @@ class BuiltinTools:
 
     def __init__(self, homepage=None, workdir: str = None):
         self.homepage = homepage
-        self.workdir = Path(workdir) if workdir else Path.cwd()
+
+        # 使用 resource_path 获取正确的基准路径（支持打包后的环境）
+        if workdir:
+            self.workdir = Path(workdir)
+        else:
+            # 尝试使用 resource_path 获取 app 目录
+            try:
+                from app.utils.utils import resource_path
+
+                self.workdir = Path(resource_path("app"))
+            except Exception:
+                self.workdir = Path.cwd()
+
         self._todo_list: List[Dict] = []
         self._loaded_skills: Dict[str, str] = {}
 
-        # 获取项目根目录作为安全边界
-        self._root_dir = self.workdir
-        for _ in range(5):
-            parent = self._root_dir.parent
-            if parent == self._root_dir:
-                break
-            self._root_dir = parent
-        logger.info(f"[BuiltinTools] Root directory for security: {self._root_dir}")
+        logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
 
     def read_file(
         self, filePath: str, offset: int = 1, limit: int = 2000
@@ -484,7 +489,7 @@ class BuiltinTools:
         )
 
     def _resolve_path(self, path: str) -> Path:
-        """解析相对路径为绝对路径，包含安全检查"""
+        """解析路径为绝对路径"""
         if not path:
             return self.workdir
 
@@ -497,22 +502,12 @@ class BuiltinTools:
 
             p = Path(path)
             if p.is_absolute():
-                resolved = p.resolve()
+                return p.resolve()
             else:
-                resolved = (self.workdir / p).resolve()
-
-            try:
-                resolved.relative_to(self._root_dir)
-                return resolved
-            except ValueError:
-                logger.warning(
-                    f"[BuiltinTools] Path {resolved} is outside root {self._root_dir}, using workdir"
-                )
-                return self.workdir
+                return (self.workdir / p).resolve()
         except (ValueError, OSError, RuntimeError) as e:
-            logger.warning(
-                f"[BuiltinTools] Failed to resolve path {path}: {e}, using workdir"
-            )
+            logger.warning(f"[BuiltinTools] Failed to resolve path {path}: {e}")
+            return self.workdir
             return self.workdir
 
 
