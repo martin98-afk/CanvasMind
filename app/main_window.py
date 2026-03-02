@@ -35,6 +35,7 @@ from app.interfaces.workflow_manager_interface.main_widget import (
 )
 from app.plugins.constants import PluginType
 from app.plugins.plugin_manager import UnifiedPluginManager
+
 # --- 核心服务 ---
 from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
@@ -309,16 +310,64 @@ class LowCodeWindow(FluentWindow):
         self.tray_icon.setVisible(False)  # 隐藏图标，防止残留
         qApp.quit()
 
+    def _hide_all_webviews(self):
+        """隐藏所有聊天卡片的WebView，防止遮挡弹窗"""
+        try:
+            from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import (
+                OpenAIChatToolWindow,
+            )
+
+            chat_window = self.findChild(OpenAIChatToolWindow)
+            if chat_window and hasattr(chat_window, "chat_layout"):
+                for i in range(chat_window.chat_layout.count()):
+                    item = chat_window.chat_layout.itemAt(i)
+                    if item and item.widget():
+                        widget = item.widget()
+                        # 找到 MessageCard 中的 viewer
+                        if hasattr(widget, "viewer"):
+                            viewer = widget.viewer
+                            if hasattr(viewer, "hide"):
+                                viewer.hide()
+                        # 也隐藏 MessageCard 本身
+                        if hasattr(widget, "hide"):
+                            widget.hide()
+        except Exception as e:
+            pass
+
+    def _show_all_webviews(self):
+        """显示所有聊天卡片的WebView"""
+        try:
+            from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import (
+                OpenAIChatToolWindow,
+            )
+
+            chat_window = self.findChild(OpenAIChatToolWindow)
+            if chat_window and hasattr(chat_window, "chat_layout"):
+                for i in range(chat_window.chat_layout.count()):
+                    item = chat_window.chat_layout.itemAt(i)
+                    if item and item.widget():
+                        widget = item.widget()
+                        if hasattr(widget, "show"):
+                            widget.show()
+        except Exception as e:
+            pass
+
     def closeEvent(self, event):
         """
         重写关闭事件：弹出对话框询问用户
         """
         self.log_popup.hidePopup()
+
+        # 隐藏WebView防止遮挡弹窗
+        self._hide_all_webviews()
+
         w = MessageBox("关闭提示", "您希望将程序最小化到系统托盘，还是彻底退出？", self)
         w.yesButton.setText("最小化")
         w.cancelButton.setText("退出程序")
 
         if w.exec():
+            # 恢复WebView显示
+            self._show_all_webviews()
             event.ignore()
             self.hide()
             self.tray_icon.showMessage(
