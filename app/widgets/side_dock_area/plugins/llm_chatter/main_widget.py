@@ -1600,8 +1600,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
         tool_call_id = tool_call.get("id")
         if not tool_call_id:
-            logger.warning("[ToolCallReceived] Tool call id is empty, skipping")
-            return
+            import uuid
+
+            tool_call_id = f"call_{uuid.uuid4().hex[:12]}"
+            logger.warning(
+                f"[ToolCallReceived] Tool call id is empty, generated: {tool_call_id}"
+            )
 
         # 标记为已处理，防止重复
         if tool_call_id in self._processed_tool_ids:

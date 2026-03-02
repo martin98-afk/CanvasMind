@@ -362,25 +362,53 @@ class BuiltinTools:
         """网络搜索"""
         try:
             import requests
+            import os
+
+            proxies = None
+            http_proxy = (
+                os.environ.get("HTTP_PROXY")
+                or os.environ.get("http_proxy")
+                or os.environ.get("HTTPS_PROXY")
+                or os.environ.get("https_proxy")
+            )
+            if http_proxy:
+                proxies = {
+                    "http": http_proxy,
+                    "https": http_proxy,
+                }
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
-            url = f"https://duckduckgo.com/html/?q={requests.utils.quote(query)}"
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
+
+            search_engines = [
+                f"https://duckduckgo.com/html/?q={requests.utils.quote(query)}",
+                f"https://lite.duckduckgo.com/lite/?q={requests.utils.quote(query)}",
+            ]
 
             results = []
-            pattern = re.compile(
-                r'<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
-            )
-            for match in pattern.finditer(response.text):
-                href = match.group(1)
-                title = match.group(2)
-                title = re.sub(r"<[^>]+>", "", title)
-                results.append(f"- {title}: {href}")
-                if len(results) >= num_results:
-                    break
+            for url in search_engines:
+                try:
+                    response = requests.get(
+                        url, headers=headers, proxies=proxies, timeout=30
+                    )
+                    response.raise_for_status()
+
+                    pattern = re.compile(
+                        r'<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
+                    )
+                    for match in pattern.finditer(response.text):
+                        href = match.group(1)
+                        title = match.group(2)
+                        title = re.sub(r"<[^>]+>", "", title)
+                        results.append(f"- {title}: {href}")
+                        if len(results) >= num_results:
+                            break
+
+                    if results:
+                        break
+                except Exception:
+                    continue
 
             if not results:
                 return ToolResult(True, content="No results found")

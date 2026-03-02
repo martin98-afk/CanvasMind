@@ -225,6 +225,8 @@ class ExecutableNodeMixin:
         if not executor:
             raise Exception("无法选择合适的执行器")
 
+        executor.prepare_environment(ctx)
+
         try:
             result = executor.execute(ctx)
             return result
