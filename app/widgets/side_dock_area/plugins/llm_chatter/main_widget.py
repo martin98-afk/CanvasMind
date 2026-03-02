@@ -14,7 +14,7 @@ from PyQt5.QtCore import (
     Q_ARG,
     pyqtSlot,
 )
-from PyQt5.QtGui import QFont, QIcon, QStandardItem, QStandardItemModel
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -36,16 +36,19 @@ from qfluentwidgets import (
     TransparentToolButton,
     TransparentToggleToolButton,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
-    TodoFloatingWidget,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
-    QuestionFloatingWidget,
-)
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
+from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+    FREE_PROVIDERS,
+    PROVIDER_ICONS,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
+    BuiltinTools,
+    get_builtin_tools_schema,
+    ToolResult,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
 )
@@ -58,33 +61,30 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
     TopicSummaryTask,
     ShellExecutionTask,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-    BuiltinTools,
-    get_builtin_tools_schema,
-    ToolResult,
-)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area import (
     SendableTextEdit,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextSelector,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
+    ConversationNodePreview,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
-    FREE_PROVIDERS,
-    PROVIDER_ICONS,
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
+    MemoryManagerDialog,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
     MessageCard,
     create_welcome_card,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
-    ConversationNodePreview,
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
+    QuestionFloatingWidget,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
-    MemoryManagerDialog,
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
+    TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -1694,8 +1694,48 @@ class OpenAIChatToolWindow(ToolWindow):
     ):
         session = self.session_manager.get_current_session()
 
-        # 先添加助手的消息（包含工具调用）
-        if session:
+        # 检查当前最后一条消息是否是 assistant 且有 tool_calls
+        # 如果是，更新它的 content（多轮工具调用存在同一条消息里）
+        if session and session.messages:
+            last_msg = session.messages[-1]
+            if last_msg.get("role") == "assistant" and last_msg.get("tool_calls"):
+                # 更新现有 assistant 消息的 content
+                last_msg["content"] = self._worker.full_response if self._worker else ""
+                # 追加新的 tool_call
+                last_msg["tool_calls"].append(
+                    {
+                        "id": tool_call_id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_name,
+                            "arguments": json.dumps(arguments)
+                            if isinstance(arguments, dict)
+                            else str(arguments),
+                        },
+                    }
+                )
+            else:
+                # 创建新的 assistant 消息
+                session.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": self._worker.full_response if self._worker else "",
+                        "tool_calls": [
+                            {
+                                "id": tool_call_id,
+                                "type": "function",
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": json.dumps(arguments)
+                                    if isinstance(arguments, dict)
+                                    else str(arguments),
+                                },
+                            }
+                        ],
+                    }
+                )
+        else:
+            # 没有 session 时也创建消息
             session.messages.append(
                 {
                     "role": "assistant",

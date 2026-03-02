@@ -591,8 +591,8 @@ class CodeWebViewer(QWebEngineView):
         if not self._is_js_ready:
             return
 
-        # 启动打字机定时器（如果未启动）
-        if self._streaming and not self._typewriter_timer.isActive():
+        # 只要有待显示字符就启动打字机，支持多轮工具调用后的流式输出
+        if self._pending_chars and not self._typewriter_timer.isActive():
             self._typewriter_timer.start()
 
     def _typewriter_tick(self):

@@ -312,30 +312,14 @@ class OpenAIChatWorker(QThread):
 
             # 添加工具定义
             if self.tools:
-                logger.info(
-                    f"[Worker] Adding {len(self.tools)} tools to request, model={model}"
-                )
                 # 检查工具定义
                 for i, tool in enumerate(self.tools):
                     func = tool.get("function", {})
-                    logger.info(
-                        f"[Worker] Tool {i}: name={func.get('name')}, has_params={bool(func.get('parameters'))}"
-                    )
                     if not func.get("name"):
                         logger.error(f"[Worker] Tool {i} has empty name!")
                     if not func.get("parameters"):
                         logger.error(f"[Worker] Tool {i} has empty parameters!")
 
-                # 打印第一个工具的完整定义用于调试
-                import json
-
-                first_tool = self.tools[0]
-                logger.info(
-                    f"[Worker] First tool: {json.dumps(first_tool, ensure_ascii=False)}"
-                )
-
-                # 尝试不传工具，看看是否正常工作
-                # 如果你看到这行日志但请求仍然失败，说明问题不在工具
                 logger.info(f"[Worker] Proceeding with tools in request...")
                 req_kwargs["tools"] = self.tools
 
