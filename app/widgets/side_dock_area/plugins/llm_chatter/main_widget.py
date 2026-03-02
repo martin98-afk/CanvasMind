@@ -974,8 +974,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._execute_shell_command(user_text)
             return
 
-        self.input_area.toggle_send_button(False)
-
         # 1. 获取当前会话和配置
         session = self.session_manager.get_current_session()
         selected_name = self.model_combo.currentText()
@@ -1090,7 +1088,6 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(error)
         self._is_streaming = False
         self._toggle_send_stop(False)
-        self.input_area.toggle_send_button(True)
 
     def _on_worker_finished(self, response: str, card: MessageCard):
         card.finish_streaming()
@@ -1102,15 +1099,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 正常对话结束，重置状态
         self._is_streaming = False
-        self.input_area.toggle_send_button(True)
         self._toggle_send_stop(False)
 
-        session = self.session_manager.get_current_session()
-        if session:
-            session.add_assistant_message(content=response)
-            current_title = self._auto_save_current_session()
-            self._generate_conversation_title(current_title, session.messages)
-        self._maybe_generate_topic_summary()
         session = self.session_manager.get_current_session()
         if session:
             session.add_assistant_message(content=response)
@@ -1491,54 +1481,6 @@ class OpenAIChatToolWindow(ToolWindow):
             callback({"error": "Skill execution not available"})
         return {"error": "Skill execution not available"}
 
-    def request_user_intervention(self, options: List[dict], callback):
-        """请求用户干预选择"""
-        from PyQt5.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QRadioButton,
-            QPushButton,
-            QButtonGroup,
-        )
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("请选择")
-        dialog.setMinimumWidth(300)
-        layout = QVBoxLayout(dialog)
-
-        label = QLabel("请选择以下选项之一：")
-        layout.addWidget(label)
-
-        group = QButtonGroup(dialog)
-        for i, option in enumerate(options):
-            radio = QRadioButton(option.get("label", f"选项 {i + 1}"))
-            radio.setData(option)
-            group.addButton(radio)
-            layout.addWidget(radio)
-
-        if group.buttons():
-            group.buttons()[0].setChecked(True)
-
-        btn_layout = QHBoxLayout()
-        ok_btn = QPushButton("确定")
-        cancel_btn = QPushButton("取消")
-        btn_layout.addWidget(ok_btn)
-        btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-
-        def on_ok():
-            selected = group.checkedButton()
-            if selected:
-                result = selected.data()
-                dialog.accept()
-                if callback:
-                    callback(result)
-
-        ok_btn.clicked.connect(on_ok)
-        cancel_btn.clicked.connect(lambda: dialog.reject())
-
-        dialog.exec_()
-
     def enable_skills(self, enabled: bool):
         """启用/禁用技能"""
         self._skill_enabled = enabled
@@ -1570,9 +1512,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if is_sending:
             self.model_combo.setDisabled(True)
             self.history_btn.setDisabled(True)
+            self.input_area.toggle_send_button(False)
         else:
             self.model_combo.setDisabled(False)
             self.history_btn.setDisabled(False)
+            self.input_area.toggle_send_button(True)
 
     def _on_stop_clicked(self):
         if self._worker and self._worker.isRunning():
@@ -1581,7 +1525,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._worker = None
         self._is_streaming = False
         self._toggle_send_stop(False)
-        self.input_area.toggle_send_button(True)
         InfoBar.warning(
             title="已中止",
             content="问答请求已被手动中止。",
@@ -1960,6 +1903,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._scroll_to_bottom()
 
     def _execution_result_callback(self, content: str):
+        """Callback forwarded from the execution engine to display results."""
         if content is None:
             return
         self.executionResultProduced.emit(str(content))
