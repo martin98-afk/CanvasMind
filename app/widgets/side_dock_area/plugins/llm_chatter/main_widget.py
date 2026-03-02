@@ -36,6 +36,12 @@ from qfluentwidgets import (
     TransparentToolButton,
     TransparentToggleToolButton,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
+    TodoFloatingWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
+    QuestionFloatingWidget,
+)
 
 from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
@@ -106,6 +112,9 @@ class OpenAIChatToolWindow(ToolWindow):
     _is_continuing: bool = False
     _processed_tool_ids: set = set()  # 防止重复处理工具调用
     _current_assistant_card = None  # 当前处理的助手消息卡片
+    _todo_floating_widget = None  # TODO 悬浮框
+    _question_floating_widget = None  # Question 悬浮框
+    _question_tool_call_id = None  # 当前 question 工具调用的 ID
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -252,6 +261,11 @@ class OpenAIChatToolWindow(ToolWindow):
         session_bar_layout.addLayout(right_layout)
         layout.addLayout(session_bar_layout)
 
+        # TODO 悬浮框（在对话上方）
+        self._todo_floating_widget = TodoFloatingWidget(self)
+        self._todo_floating_widget.setVisible(False)
+        layout.addWidget(self._todo_floating_widget)
+
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet(
@@ -272,6 +286,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview = ConversationNodePreview(self)
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
         layout.addWidget(self.node_preview)
+
+        # Question 悬浮框（在对话下方）
+        self._question_floating_widget = QuestionFloatingWidget(self)
+        self._question_floating_widget.setVisible(False)
+        self._question_floating_widget.answered.connect(self._on_question_answered)
+        layout.addWidget(self._question_floating_widget)
 
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
@@ -509,6 +529,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._clear_chat_area()
         self.title_edit.setText("新对话")
         self.node_preview.clear_nodes()
+        # 隐藏 TODO 和 Question 悬浮框
+        if self._todo_floating_widget:
+            self._todo_floating_widget.clear()
+        if self._question_floating_widget:
+            self._question_floating_widget.clear()
+        self._question_tool_call_id = None
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
@@ -976,29 +1002,17 @@ class OpenAIChatToolWindow(ToolWindow):
 
         messages.append({"role": "system", "content": full_system_prompt})
 
-        # 4. 注入历史消息
+        # 4. 注入历史消息（过滤掉旧的工具调用消息，只保留最近的）
         for msg in session.messages[:-1]:
             role = msg.get("role")
             content = msg.get("content")
 
-            # 处理工具调用消息
-            if "tool_calls" in msg:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": msg.get("content", ""),
-                        "tool_calls": msg.get("tool_calls", []),
-                    }
-                )
-            # 处理工具结果消息
-            elif role == "tool":
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": msg.get("tool_call_id"),
-                        "content": msg.get("content", ""),
-                    }
-                )
+            # 跳过工具调用相关的历史消息（避免 API 报错）
+            if role == "assistant" and "tool_calls" in msg:
+                continue
+            if role == "tool":
+                continue
+
             # 普通消息
             else:
                 if isinstance(content, list):  # 简化多模态历史
@@ -1709,8 +1723,9 @@ class OpenAIChatToolWindow(ToolWindow):
         assistant_card: MessageCard,
     ):
         session = self.session_manager.get_current_session()
+
+        # 先添加助手的消息（包含工具调用）
         if session:
-            # 添加助手的消息（包含工具调用）
             session.messages.append(
                 {
                     "role": "assistant",
@@ -1729,7 +1744,29 @@ class OpenAIChatToolWindow(ToolWindow):
                     ],
                 }
             )
-            # 添加工具结果
+
+        # 显示工具结果
+        self._display_tool_result(result, tool_name, arguments)
+
+        # 处理 Question 工具 - 显示悬浮框让用户选择
+        if tool_name == "question":
+            # 提取问题信息（但不添加 tool 结果消息，等待用户选择）
+            question_text = ""
+            options = []
+            if hasattr(result, "content") and isinstance(result.content, dict):
+                question_text = result.content.get("question", "")
+                options = result.content.get("options", [])
+            if not question_text:
+                question_text = arguments.get("question", "")
+                options = arguments.get("options", [])
+            if question_text:
+                self._question_tool_call_id = tool_call_id
+                self._question_floating_widget.show_question(question_text, options)
+                # 不继续调用 LLM，等待用户选择
+                return
+
+        # 对于非 question 工具，添加工具结果消息
+        if session:
             tool_result_content = str(result)
             session.messages.append(
                 {
@@ -1739,12 +1776,38 @@ class OpenAIChatToolWindow(ToolWindow):
                 }
             )
 
-        # 显示工具结果
-        self._display_tool_result(result, tool_name, arguments)
+        # 更新 TODO 悬浮框
+        if tool_name in ("todowrite", "todoread"):
+            todos = self._builtin_tools._todo_list if self._builtin_tools else []
+            self._todo_floating_widget.update_todos(todos)
 
         # 继续调用 LLM 处理工具结果（多轮迭代）
         self._is_continuing = True
         self._continue_with_tool_result(assistant_card)
+
+    def _on_question_answered(self, answer: str):
+        """用户回答问题后继续对话"""
+        if not self._question_tool_call_id:
+            return
+
+        tool_call_id = self._question_tool_call_id
+        self._question_tool_call_id = None
+
+        # 将用户答案作为工具结果添加到消息历史
+        session = self.session_manager.get_current_session()
+        if session:
+            # 添加用户答案作为工具结果
+            session.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": answer,
+                }
+            )
+
+        # 继续调用 LLM
+        self._is_continuing = True
+        self._continue_with_tool_result(self._current_assistant_card)
 
     def _continue_with_tool_result(self, assistant_card: MessageCard):
         """在工具调用后继续对话"""
