@@ -402,7 +402,12 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            if self._pending_chars and not self._typewriter_timer.isActive():
+            if (
+                hasattr(self, "_typewriter_timer")
+                and self._typewriter_timer
+                and self._pending_chars
+                and not self._typewriter_timer.isActive()
+            ):
                 self._typewriter_timer.start()
             else:
                 self._schedule_render()
@@ -605,12 +610,21 @@ class CodeWebViewer(QWebEngineView):
         if not self._is_js_ready:
             return
 
-        if self._pending_chars and not self._typewriter_timer.isActive():
+        if (
+            hasattr(self, "_typewriter_timer")
+            and self._typewriter_timer
+            and self._pending_chars
+            and not self._typewriter_timer.isActive()
+        ):
             self._typewriter_timer.start()
 
     def _typewriter_tick(self):
         if not self._pending_chars:
-            self._typewriter_timer.stop()
+            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
+                self._typewriter_timer.stop()
+            return
+
+        if not hasattr(self, "_typewriter_timer") or not self._typewriter_timer:
             return
 
         pending_len = len(self._pending_chars)
@@ -640,7 +654,8 @@ class CodeWebViewer(QWebEngineView):
             self._perform_update_for_text(visible_text)
 
         if not self._pending_chars and self._streaming:
-            self._typewriter_timer.stop()
+            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
+                self._typewriter_timer.stop()
             self._perform_update()
 
     def _perform_update_for_text(self, visible_text: str):
@@ -700,7 +715,11 @@ class CodeWebViewer(QWebEngineView):
     def finish_streaming(self):
         self._streaming = False
         # 停止打字机定时器
-        if self._typewriter_timer.isActive():
+        if (
+            hasattr(self, "_typewriter_timer")
+            and self._typewriter_timer
+            and self._typewriter_timer.isActive()
+        ):
             self._typewriter_timer.stop()
         # 清空待显示队列，直接显示全部内容
         self._pending_chars = ""
@@ -992,6 +1011,24 @@ class MessageCard(SimpleCardWidget):
 
     def update_content(self, txt):
         self.viewer.append_chunk(txt)
+
+    def run_js(self, js_code: str):
+        """运行 JavaScript 代码"""
+        try:
+            if self.viewer and hasattr(self.viewer, "page"):
+                self.viewer.page().runJavaScript(js_code)
+        except RuntimeError:
+            pass
+
+    def set_html_direct(self, html: str):
+        """直接设置 HTML，绕过打字机效果"""
+        try:
+            if self.viewer:
+                self.viewer._pending_chars = ""
+                self.viewer._markdown_text = html
+                self.viewer.setHtml(html, QUrl(""))
+        except RuntimeError:
+            pass
 
     def add_interactive_option(self, option: Dict[str, Any]):
         """添加交互选项"""
