@@ -27,27 +27,22 @@ class ChatEngine:
         get_model_config: Callable[[], Dict[str, Any]],
         get_context_provider: Any,
         tool_executor: Optional[Any] = None,
+        agent_manager: Any = None,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
         self._get_context_provider = get_context_provider
         self._tool_executor = tool_executor
+        self._agent_manager = agent_manager
 
         self._current_worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
 
         self._callbacks: Dict[str, Callable] = {}
 
-        self._current_agent: Optional[str] = None
-        self._agent_manager = None
+        self._current_agent: Optional[str] = "plan"
 
     def _get_agent_manager(self):
-        if self._agent_manager is None:
-            from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import (
-                create_agent_manager,
-            )
-
-            self._agent_manager = create_agent_manager()
         return self._agent_manager
 
     def set_callback(self, event: str, callback: Callable):
@@ -73,10 +68,10 @@ class ChatEngine:
         """切换智能体"""
         agent_manager = self._get_agent_manager()
 
-        if agent_name is None or agent_name.lower() in ("default", "general", "通用"):
-            self._current_agent = None
-            logger.info("[ChatEngine] Switched to default mode")
-            self._emit("agent_switched", "通用模式")
+        if agent_name is None or agent_name.lower() in ("default", "通用"):
+            self._current_agent = "plan"
+            logger.info("[ChatEngine] Switched to default agent: plan")
+            self._emit("agent_switched", "plan")
             return
 
         agent = agent_manager.get_agent(agent_name)
@@ -117,7 +112,13 @@ class ChatEngine:
         self._emit("user_message_added", user_text)
 
         messages = self._build_messages(session, llm_config)
-        available_tools = get_builtin_tools_schema()
+
+        if self._current_agent:
+            available_tools = self._get_agent_manager().get_agent_tools_schema(
+                self._current_agent
+            )
+        else:
+            available_tools = get_builtin_tools_schema()
 
         self._start_worker(messages, llm_config, available_tools)
         return True
@@ -131,8 +132,7 @@ class ChatEngine:
             )
         else:
             full_system_prompt = self._get_agent_manager().get_unified_system_prompt()
-        print(self._current_agent)
-        print(full_system_prompt)
+
         custom_prompt = llm_config.get("系统提示", "").strip()
         if custom_prompt:
             full_system_prompt += f"\n\n{custom_prompt}"

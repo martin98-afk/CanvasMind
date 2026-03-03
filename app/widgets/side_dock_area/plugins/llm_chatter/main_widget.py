@@ -4,6 +4,63 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+from html import escape
+
+
+def _render_tool_block_compact(
+    tool_name: str,
+    tool_args: dict,
+    result: str = None,
+    success: bool = None,
+    collapsed: bool = False,
+) -> str:
+    """渲染简化版工具块 - 参数截断，结果可折叠
+    collapsed=True: 默认折叠; collapsed=False: 默认展开
+    """
+    max_args_display = 80
+
+    args_preview = json.dumps(tool_args, ensure_ascii=False)
+    if len(args_preview) > max_args_display:
+        args_preview = args_preview[:max_args_display] + "..."
+
+    status_html = ""
+    if success is not None:
+        status_color = "#4CAF50" if success else "#F44336"
+        status_text = "✓" if success else "✗"
+        status_html = f'<span style="color: {status_color}; font-weight: bold; margin-left: 6px;">{status_text}</span>'
+
+    result_html = ""
+    if result is not None:
+        result_str = str(result)
+        result_escaped = escape(result_str[:200])
+        if len(result_str) > 200:
+            result_escaped += "..."
+        result_html = f"""
+        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
+            <div style="color: #888; margin-bottom: 4px;">参数:</div>
+            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
+            <div style="color: #888; margin: 8px 0 4px;">结果:</div>
+            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{result_escaped}</pre>
+        </div>"""
+    else:
+        result_html = f"""
+        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
+            <div style="color: #888; margin-bottom: 4px;">参数:</div>
+            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
+        </div>"""
+
+    open_attr = "" if collapsed else "open"
+
+    return f"""<details class="tool-block" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;" {open_attr}>
+    <summary style="cursor: pointer; padding: 6px 10px; color: #FFA500; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+        <span>⚡</span>
+        <span>{escape(tool_name)}</span>
+        {status_html}
+        <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>
+    </summary>
+    {result_html}
+</details>"""
+
 
 from PyQt5.QtCore import (
     Qt,
@@ -87,6 +144,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core import (
     ToolExecutor,
     MemoryManagerCore,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -97,6 +155,8 @@ class OpenAIChatToolWindow(ToolWindow):
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None
+    _agent_manager: Optional[AgentManager] = None
+    _current_agent: str = "plan"
     _in_history_mode = False
     _current_history_index: Optional[int] = None
     _settings_popup = None
@@ -144,12 +204,14 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._memory_manager = MemoryManagerCore(canvas_name)
         self._tool_executor = ToolExecutor(self.homepage)
+        self._agent_manager = AgentManager()
 
         self._chat_engine = ChatEngine(
             session_manager=self.session_manager,
             get_model_config=self._get_current_model_config,
             get_context_provider=lambda: self.context_selector,
             tool_executor=self._tool_executor,
+            agent_manager=self._agent_manager,
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)
@@ -322,7 +384,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
         self.input_area.clearRequested.connect(self._on_clear_shortcut)
         self.input_area.newSessionRequested.connect(self._create_new_session)
+        self.input_area.agentChanged.connect(self._on_agent_changed)
         layout.addWidget(self.input_area)
+
+        self._load_agent_list()
 
     def _on_model_changed(self, model_name: str):
         if model_name:
@@ -485,6 +550,104 @@ class OpenAIChatToolWindow(ToolWindow):
             else:
                 self.model_combo.addItem(name)
 
+    def _load_agent_list(self):
+        """加载智能体列表到选择器"""
+        if not self._agent_manager or not hasattr(self, "input_area"):
+            return
+        agents = self._agent_manager.list_agents()
+        self.input_area._agent_combo.clear()
+        for agent in agents:
+            self.input_area._agent_combo.addItem(agent.name, agent.description)
+        if self.input_area._agent_combo.count() > 0:
+            self.input_area._agent_combo.setCurrentIndex(0)
+            self._current_agent = self.input_area._agent_combo.currentText()
+
+    def _on_agent_changed(self, agent_name: str):
+        """智能体切换处理"""
+        if not agent_name or not self._chat_engine:
+            return
+        self._current_agent = agent_name
+        self._chat_engine.switch_agent(agent_name)
+        self._update_agent_status(agent_name)
+        InfoBar.success(
+            "已切换智能体", f"当前智能体: {agent_name}", parent=self, duration=1500
+        )
+
+    def _update_agent_status(self, agent_name: str):
+        """更新智能体状态显示"""
+        if not self._agent_manager or not hasattr(self, "input_area"):
+            return
+        agent = self._agent_manager.get_agent(agent_name)
+        if agent:
+            tools_count = len(agent.tools) if agent.tools else 0
+            self.input_area._agent_combo.setToolTip(
+                f"{agent.name}: {agent.description}\n可用工具: {tools_count}个"
+            )
+
+    def _suggest_agent(self, user_text: str) -> Optional[str]:
+        """基于用户输入智能推荐合适的智能体"""
+        if not user_text or not self._agent_manager:
+            return None
+
+        text_lower = user_text.lower()
+
+        agent_keywords = {
+            "web-developer": [
+                "html",
+                "css",
+                "javascript",
+                "react",
+                "vue",
+                "angular",
+                "node",
+                "前端",
+                "后端",
+                "网站",
+                "网页",
+                "http",
+                "api",
+                "npm",
+                "webpack",
+                "vite",
+                "浏览器",
+                "样式",
+                "组件",
+                "前端开发",
+                "后端开发",
+            ],
+            "python-reviewer": [
+                "python",
+                "py",
+                "django",
+                "flask",
+                "fastapi",
+                "爬虫",
+                "数据分析",
+                "机器学习",
+                "ai",
+                "模型",
+                "算法",
+                "函数",
+                "类",
+                "代码审查",
+                "优化",
+                "性能",
+                "bug",
+                "调试",
+                "错误",
+            ],
+        }
+
+        for agent_name, keywords in agent_keywords.items():
+            if not keywords:
+                continue
+            for keyword in keywords:
+                if keyword in text_lower:
+                    if self._agent_manager.get_agent(agent_name):
+                        return agent_name
+
+        return None
+
     def _create_new_session(self):
         session = self.session_manager.create_new_session()
         self._current_history_index = None
@@ -497,6 +660,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
+        self._load_agent_list()
         welcome_card = create_welcome_card(self)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
@@ -572,10 +736,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self, card, tool_calls: list, tool_results: list, final_content: str = ""
     ):
         """渲染合并消息中的工具调用和结果 + 最终回复"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
-            _render_tool_block,
-        )
-
         combined_content = ""
 
         for tc in tool_calls:
@@ -591,15 +751,16 @@ class OpenAIChatToolWindow(ToolWindow):
                     result_content = tr.get("content", "")
                     break
 
-            tool_html = _render_tool_block(
+            tool_html = _render_tool_block_compact(
                 tool_name,
                 json.loads(args_str) if isinstance(args_str, str) else args,
                 result_content,
                 True,
+                collapsed=True,
             )
 
             if combined_content:
-                combined_content += "\n\n---\n\n"
+                combined_content += "\n\n"
             combined_content += tool_html
 
         if final_content:
@@ -991,9 +1152,63 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        if not user_text:
+            user_text = self.input_area.toPlainText().strip()
+
+        if user_text.startswith("/agent "):
+            agent_name = user_text[7:].strip()
+            if agent_name:
+                agents = (
+                    self._agent_manager.list_agents() if self._agent_manager else []
+                )
+                agent_names = [a.name for a in agents]
+                if agent_name in agent_names:
+                    idx = self.input_area._agent_combo.findText(agent_name)
+                    if idx >= 0:
+                        self.input_area._agent_combo.setCurrentIndex(idx)
+                    self.input_area.clear()
+                    return
+                else:
+                    InfoBar.warning(
+                        "智能体不存在",
+                        f"可用智能体: {', '.join(agent_names)}",
+                        parent=self,
+                        duration=2000,
+                    )
+                    return
+            else:
+                agents = (
+                    self._agent_manager.list_agents() if self._agent_manager else []
+                )
+                agent_names = [a.name for a in agents]
+                InfoBar.info(
+                    "可用智能体",
+                    f"{', '.join(agent_names)}",
+                    parent=self,
+                    duration=2000,
+                )
+                return
+
+        if user_text.startswith("/agents"):
+            agents = self._agent_manager.list_agents() if self._agent_manager else []
+            agent_list = "\n".join([f"- {a.name}: {a.description}" for a in agents])
+            self.input_area.clear()
+            card = self._append_assistant_message()
+            card.update_content(
+                f"## 可用智能体\n\n{agent_list}\n\n使用 `/agent <智能体名>` 切换"
+            )
+            card.finish_streaming()
+            self._scroll_to_bottom()
+            return
+
+        suggested_agent = self._suggest_agent(user_text)
+        if suggested_agent and suggested_agent != self._current_agent:
+            self.typing_label.setText(f"💡 建议使用 {suggested_agent} 智能体")
+            self.typing_label.setVisible(True)
+        else:
+            self.typing_label.setVisible(False)
+
         if self._is_shell_mode:
-            if not user_text:
-                user_text = self.input_area.toPlainText().strip()
             if not user_text:
                 return
             self.input_area.clear()
@@ -1001,9 +1216,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         if not user_text:
-            user_text = self.input_area.toPlainText().strip()
-            if not user_text:
-                return
+            return
 
         session = self.session_manager.get_current_session()
         context_params = {k: v for k, v in self.context_selector.context.items()}
@@ -1060,43 +1273,22 @@ class OpenAIChatToolWindow(ToolWindow):
             todos = self._tool_executor.todo_list if self._tool_executor else []
             self._todo_floating_widget.update_todos(todos)
             self._todo_floating_widget.setVisible(True)
-
-    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
-        self._question_tool_call_id = tool_call_id
-        self._question_floating_widget.show_question(question, options)
-
-    def _on_agent_switched(self, agent_name: str):
-        """智能体切换回调"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
-            create_message_card,
-        )
-
-        self.session_manager.create_new_session()
-        self._clear_messages()
-        card = create_message_card(
-            role="system",
-            content=f"[已切换到智能体: {agent_name}]",
-            parent=self,
-        )
-        self.chat_layout.insertWidget(self.chat_layout.count() - 1, card)
+            return
 
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
-        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
-            _render_tool_block,
-        )
-
         content = str(result)
-        tool_html = _render_tool_block(
+        tool_html = _render_tool_block_compact(
             tool_name,
             arguments or {},
             content,
             result.success if hasattr(result, "success") else True,
+            collapsed=True,
         )
 
         if self._current_assistant_card:
-            separator = "\n\n---\n\n"
+            separator = "\n\n"
             self._current_assistant_card.update_content(separator + tool_html)
 
         self._scroll_to_bottom()
@@ -1164,6 +1356,10 @@ class OpenAIChatToolWindow(ToolWindow):
             err_card.finish_streaming()
             self._scroll_to_bottom()
 
+    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
+        self._question_tool_call_id = tool_call_id
+        self._question_floating_widget.show_question(question, options)
+
     def _on_question_answered(self, answer: str):
         if not self._question_tool_call_id:
             return
@@ -1173,6 +1369,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._chat_engine:
             self._chat_engine.provide_question_answer(answer)
+
+    def _on_agent_switched(self, agent_name: str):
+        """智能体切换回调 - 丝滑切换，不清空对话"""
+        pass
 
     def _maybe_generate_topic_summary(self):
         if self._current_history_index is None:
