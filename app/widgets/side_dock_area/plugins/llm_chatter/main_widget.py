@@ -127,43 +127,6 @@ class OpenAIChatToolWindow(ToolWindow):
     userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
     executionResultProduced = pyqtSignal(str)
-    _system_prompt = """# 角色
-你是大模型对话执行型智能体，具备分析、记忆、推理、以及执行能力。你的目标是在专业级别的对话中，既提供高质量的回答，又能通过调用技能、执行命令等方式落地执行用户的需求。
-
-职责与行为准则
-- 以清晰、专业的语言输出，必要时附带可执行的步骤（命令、代码、API 调用等）。
-- 遇到不清晰的需求时，主动提出澄清问题或给出可操作的分步方案。
-- 始终优先使用长期记忆和历史对话上下文来提升回答相关性。
-- 如需扩展能力，优先通过内部技能/工具执行，而非直接输出未验证的信息。
-
-## 可用内置工具
-你可以使用以下内置工具来完成任务：
-
-1. **read(filePath, offset, limit)** - 读取文件内容
-2. **write(filePath, content)** - 创建或覆盖文件
-3. **edit(filePath, oldString, newString, replaceAll)** - 精确字符串替换编辑文件
-4. **grep(pattern, path, include)** - 使用正则表达式搜索文件内容
-5. **glob(pattern, path)** - 通过 glob 模式查找文件
-6. **list(path)** - 列出目录内容
-7. **patch(filePath, patch_content)** - 对文件应用补丁
-8. **bash(command, timeout)** - 执行 shell 命令
-9. **webfetch(url, format)** - 获取网页内容
-10. **websearch(query, num_results)** - 网络搜索
-11. **todowrite(todos)** - 创建和更新待办事项列表
-12. **todoread()** - 读取待办事项列表
-13. **skill(name)** - 加载技能文档
-14. **question(question, options)** - 向用户提问
-
-**工具调用格式**：
-```builtin_tool_call
-{"name": "工具名", "args": {"参数1": "值1", ...}}
-```
-
-## 追问与行动规范
-- 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
-- [问题描述](ask)
-- 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
-"""
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
@@ -181,10 +144,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._memory_manager = MemoryManagerCore(canvas_name)
         self._tool_executor = ToolExecutor(self.homepage)
+
         self._chat_engine = ChatEngine(
             session_manager=self.session_manager,
             get_model_config=self._get_current_model_config,
-            get_system_prompt=lambda: self._system_prompt,
             get_context_provider=lambda: self.context_selector,
             tool_executor=self._tool_executor,
         )
@@ -205,6 +168,7 @@ class OpenAIChatToolWindow(ToolWindow):
             "shell_command_requested", self._on_shell_command_requested
         )
         self._chat_engine.set_callback("question_asked", self._on_question_asked)
+        self._chat_engine.set_callback("agent_switched", self._on_agent_switched)
 
         self._initialize_history_manager()
 
@@ -261,6 +225,7 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.addWidget(self.menu_btn)
 
         right_layout = QHBoxLayout()
+
         model_label = QLabel("模型：", self)
         setFont(model_label, 12, QFont.Bold)
         model_label.setStyleSheet("color: #ffffff;")
@@ -358,9 +323,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.clearRequested.connect(self._on_clear_shortcut)
         self.input_area.newSessionRequested.connect(self._create_new_session)
         layout.addWidget(self.input_area)
-
-    def set_system_prompt(self, prompt):
-        self._system_prompt += prompt
 
     def _on_model_changed(self, model_name: str):
         if model_name:
@@ -552,7 +514,18 @@ class OpenAIChatToolWindow(ToolWindow):
             if title:
                 self.title_edit.setText(title)
 
-        for msg in session.messages:
+        self._message_batch = list(session.messages)
+        self._message_batch_index = 0
+        self._batch_size = 4
+        self._load_message_batch()
+
+    def _load_message_batch(self):
+        """分批加载消息，避免卡顿"""
+        batch = self._message_batch[
+            self._message_batch_index : self._message_batch_index + self._batch_size
+        ]
+
+        for msg in batch:
             role = msg.get("role")
 
             if role == "user":
@@ -587,8 +560,13 @@ class OpenAIChatToolWindow(ToolWindow):
             else:
                 continue
 
-        QTimer.singleShot(10, self._scroll_to_bottom)
-        self._update_node_preview()
+        self._message_batch_index += len(batch)
+
+        if self._message_batch_index < len(self._message_batch):
+            QTimer.singleShot(0, self._load_message_batch)
+        else:
+            QTimer.singleShot(10, self._scroll_to_bottom)
+            self._update_node_preview()
 
     def _render_merged_tool_calls(
         self, card, tool_calls: list, tool_results: list, final_content: str = ""
@@ -904,37 +882,58 @@ class OpenAIChatToolWindow(ToolWindow):
         if card.role != "assistant":
             return
 
-        card_index = -1
-        for i in range(self.chat_layout.count()):
-            if self.chat_layout.itemAt(i).widget() is card:
-                card_index = i
-                break
+        card_uuid = id(card)
 
-        if card_index <= 0:
-            return
-
-        ui_items = []
+        ui_card_map = {}
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
-            if item and item.widget():
-                ui_items.append((i, item.widget()))
+            if item and item.widget() and isinstance(item.widget(), MessageCard):
+                ui_card_map[id(item.widget())] = i
 
+        card_pos = ui_card_map.get(card_uuid, -1)
+        if card_pos < 0:
+            return
+
+        msg_list = session.messages
+        ui_pos = 0
         user_input = None
         user_params = None
 
-        for i in range(card_index - 1, -1, -1):
-            item = self.chat_layout.itemAt(i)
-            if item and item.widget() and isinstance(item.widget(), MessageCard):
-                if item.widget().role == "user":
-                    widget = item.widget()
-                    user_input = (
-                        widget.viewer.get_plain_text()
-                        if hasattr(widget, "viewer")
-                        else ""
-                    )
-                    if hasattr(widget, "context_tags"):
-                        user_params = widget.context_tags
+        for idx, msg in enumerate(msg_list):
+            if msg.get("role") == "user":
+                while ui_pos < self.chat_layout.count():
+                    item = self.chat_layout.itemAt(ui_pos)
+                    if (
+                        item
+                        and item.widget()
+                        and isinstance(item.widget(), MessageCard)
+                    ):
+                        if id(item.widget()) == card_uuid:
+                            break
+                        if item.widget().role == "user":
+                            user_input = msg.get("content", "")
+                            user_params = msg.get("params", {})
+                            break
+                        ui_pos += 1
+                    else:
+                        ui_pos += 1
+                if user_input is not None:
                     break
+
+        if user_input is None:
+            for i in range(card_pos - 1, -1, -1):
+                item = self.chat_layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), MessageCard):
+                    if item.widget().role == "user":
+                        widget = item.widget()
+                        user_input = (
+                            widget.viewer.get_plain_text()
+                            if hasattr(widget, "viewer")
+                            else ""
+                        )
+                        if hasattr(widget, "context_tags"):
+                            user_params = widget.context_tags
+                        break
 
         if user_input is None:
             return
@@ -1024,10 +1023,27 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_stream_started(self):
         self._is_streaming = True
+        self._accumulated_content = ""
 
     def _on_content_received(self, content_piece: str):
         if self._current_assistant_card:
             self._update_assistant_message(self._current_assistant_card, content_piece)
+
+        if not hasattr(self, "_accumulated_content"):
+            self._accumulated_content = ""
+        self._accumulated_content += content_piece
+
+        pattern = r"\[切换智能体:\s*(\w+)\]"
+        match = re.search(pattern, self._accumulated_content)
+        if match:
+            agent_name = match.group(1)
+            logger.info(f"[Agent] Detected switch request: {agent_name}")
+            self._chat_engine.switch_agent(agent_name)
+            self._accumulated_content = ""
+        elif "切换智能体" in self._accumulated_content:
+            logger.info(
+                f"[Agent] Partial match, accumulated: {self._accumulated_content[-50:]}"
+            )
 
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
@@ -1048,6 +1064,21 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_question_asked(self, tool_call_id: str, question: str, options: list):
         self._question_tool_call_id = tool_call_id
         self._question_floating_widget.show_question(question, options)
+
+    def _on_agent_switched(self, agent_name: str):
+        """智能体切换回调"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import (
+            create_message_card,
+        )
+
+        self.session_manager.create_new_session()
+        self._clear_messages()
+        card = create_message_card(
+            role="system",
+            content=f"[已切换到智能体: {agent_name}]",
+            parent=self,
+        )
+        self.chat_layout.insertWidget(self.chat_layout.count() - 1, card)
 
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any

@@ -756,10 +756,10 @@ class PlainTextViewer(QWidget):
     def append_chunk(self, text: str):
         self._text += text
         self.text_edit.setPlainText(self._text)
-        self._update_height()
+        QTimer.singleShot(0, self._update_height)
 
     def finish_streaming(self):
-        pass
+        QTimer.singleShot(0, self._update_height)
 
     def get_plain_text(self) -> str:
         return self._text
@@ -767,7 +767,7 @@ class PlainTextViewer(QWidget):
     def set_text(self, text: str):
         self._text = text
         self.text_edit.setPlainText(text)
-        self._update_height()
+        QTimer.singleShot(0, self._update_height)
 
     def _update_height(self):
         doc_height = self.text_edit.document().size().height()

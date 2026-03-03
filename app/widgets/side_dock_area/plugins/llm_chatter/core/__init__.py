@@ -11,9 +11,17 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.tool_executor import (
 from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
     MemoryManagerCore,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import (
+    Agent,
+    AgentManager,
+    create_agent_manager,
+)
 
 __all__ = [
     "ChatEngine",
     "ToolExecutor",
     "MemoryManagerCore",
+    "Agent",
+    "AgentManager",
+    "create_agent_manager",
 ]

@@ -25,13 +25,11 @@ class ChatEngine:
         self,
         session_manager: SessionManager,
         get_model_config: Callable[[], Dict[str, Any]],
-        get_system_prompt: Callable[[], str],
         get_context_provider: Any,
         tool_executor: Optional[Any] = None,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
-        self._get_system_prompt = get_system_prompt
         self._get_context_provider = get_context_provider
         self._tool_executor = tool_executor
 
@@ -39,6 +37,18 @@ class ChatEngine:
         self._is_streaming = False
 
         self._callbacks: Dict[str, Callable] = {}
+
+        self._current_agent: Optional[str] = None
+        self._agent_manager = None
+
+    def _get_agent_manager(self):
+        if self._agent_manager is None:
+            from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import (
+                create_agent_manager,
+            )
+
+            self._agent_manager = create_agent_manager()
+        return self._agent_manager
 
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
@@ -54,6 +64,28 @@ class ChatEngine:
     @property
     def session_manager(self) -> SessionManager:
         return self._session_manager
+
+    @property
+    def current_agent(self) -> Optional[str]:
+        return self._current_agent
+
+    def switch_agent(self, agent_name: Optional[str]):
+        """切换智能体"""
+        agent_manager = self._get_agent_manager()
+
+        if agent_name is None or agent_name.lower() in ("default", "general", "通用"):
+            self._current_agent = None
+            logger.info("[ChatEngine] Switched to default mode")
+            self._emit("agent_switched", "通用模式")
+            return
+
+        agent = agent_manager.get_agent(agent_name)
+        if agent:
+            self._current_agent = agent_name
+            logger.info(f"[ChatEngine] Switched to agent: {agent_name}")
+            self._emit("agent_switched", agent_name)
+        else:
+            logger.warning(f"[ChatEngine] Agent not found: {agent_name}")
 
     def send_message(
         self,
@@ -93,7 +125,14 @@ class ChatEngine:
     def _build_messages(self, session: ChatSession, llm_config: Dict) -> List[Dict]:
         messages = []
 
-        full_system_prompt = self._get_system_prompt()
+        if self._current_agent:
+            full_system_prompt = self._get_agent_manager().get_agent_system_prompt(
+                self._current_agent
+            )
+        else:
+            full_system_prompt = self._get_agent_manager().get_unified_system_prompt()
+        print(self._current_agent)
+        print(full_system_prompt)
         custom_prompt = llm_config.get("系统提示", "").strip()
         if custom_prompt:
             full_system_prompt += f"\n\n{custom_prompt}"
