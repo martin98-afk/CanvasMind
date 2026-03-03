@@ -194,7 +194,19 @@ def _sanitize_incomplete_markdown(md_text: str) -> str:
 def _render_think_block(content: str, completed: bool = True) -> str:
     status_text = "💡 思考过程" if completed else "🧠 正在思考..."
     open_attr = " open" if not completed else ""
-    return f'<details{open_attr} class="think-block"><summary>{status_text}</summary><div class="think-content">{content}</div></details>'
+
+    max_preview = 40
+    content_preview = content.strip().replace("\n", " ")[:max_preview]
+    if len(content.strip().replace("\n", " ")) > max_preview:
+        content_preview += "..."
+
+    return f"""<details{open_attr} class="think-block">
+    <summary style="display: flex; align-items: center; gap: 6px;">
+        <span style="white-space: nowrap;">{status_text}</span>
+        <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{content_preview}</span>
+    </summary>
+    <div class="think-content">{content}</div>
+</details>"""
 
 
 def _render_tool_block(
