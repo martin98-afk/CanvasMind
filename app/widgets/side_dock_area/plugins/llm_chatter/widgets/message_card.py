@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSizePolicy,
+    QTextEdit,
 )
 from markdown import Markdown
 from pygments import highlight
@@ -721,6 +722,65 @@ class CodeWebViewer(QWebEngineView):
         super().deleteLater()
 
 
+class PlainTextViewer(QWidget):
+    contentHeightChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._text = ""
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(0)
+
+        self.text_edit = QTextEdit(self)
+        self.text_edit.setReadOnly(True)
+        self.text_edit.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.text_edit.setFrameShape(QTextEdit.NoFrame)
+        self.text_edit.setStyleSheet("""
+            QTextEdit {
+                background: transparent;
+                border: none;
+                color: #E0E0E0;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+        """)
+        layout.addWidget(self.text_edit)
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumHeight(40)
+
+    def append_chunk(self, text: str):
+        self._text += text
+        self.text_edit.setPlainText(self._text)
+        self._update_height()
+
+    def finish_streaming(self):
+        pass
+
+    def get_plain_text(self) -> str:
+        return self._text
+
+    def set_text(self, text: str):
+        self._text = text
+        self.text_edit.setPlainText(text)
+        self._update_height()
+
+    def _update_height(self):
+        doc_height = self.text_edit.document().size().height()
+        h = max(40, int(doc_height) + 16)
+        if abs(self.height() - h) > 2:
+            self.setFixedHeight(h)
+            self.contentHeightChanged.emit(h)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_height()
+
+
 # ======== MessageCard ========
 class TagWidget(CardWidget):
     closed = pyqtSignal(str)
@@ -859,10 +919,14 @@ class MessageCard(SimpleCardWidget):
             main.addWidget(tg_c)
             main.addWidget(CardSeparator(self))
 
-        self.viewer = CodeWebViewer(self)
-        self.viewer.codeActionRequested.connect(self.actionRequested.emit)
-        self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
-        self.viewer.contentHeightChanged.connect(self._update_height)
+        if self.role == "user":
+            self.viewer = PlainTextViewer(self)
+            self.viewer.contentHeightChanged.connect(self._update_height)
+        else:
+            self.viewer = CodeWebViewer(self)
+            self.viewer.codeActionRequested.connect(self.actionRequested.emit)
+            self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
+            self.viewer.contentHeightChanged.connect(self._update_height)
         main.addWidget(self.viewer)
 
         self.options_widget = QWidget(self)
@@ -960,7 +1024,8 @@ class MessageCard(SimpleCardWidget):
         self.viewer.finish_streaming()
 
     def closeEvent(self, e):
-        self.viewer.deleteLater()
+        if hasattr(self.viewer, "deleteLater"):
+            self.viewer.deleteLater()
         super().closeEvent(e)
 
 

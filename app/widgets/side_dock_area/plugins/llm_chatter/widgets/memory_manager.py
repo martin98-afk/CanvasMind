@@ -71,7 +71,7 @@ class MemoryManagerDialog(QDialog):
 
     def _init_ui(self):
         self.setWindowTitle("长期记忆管理")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(800, 600)
         self.setStyleSheet("""
             QDialog {
                 background-color: #1e1e1e;
