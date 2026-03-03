@@ -697,7 +697,6 @@ class OpenAIChatToolWindow(ToolWindow):
                     msg.get("content", ""),
                     timestamp=msg.get("timestamp", datetime.now().strftime("%H:%M")),
                     tag_params=msg.get("params", {}),
-                    add_to_session=False,
                 )
 
             elif role == "assistant":
@@ -913,11 +912,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._display_current_session()
 
     def _append_user_message(
-        self,
-        content: str,
-        timestamp: str = None,
-        tag_params: dict = None,
-        add_to_session: bool = True,
+        self, content: str, timestamp: str = None, tag_params: dict = None
     ):
         card = MessageCard(
             parent=self,
@@ -933,18 +928,6 @@ class OpenAIChatToolWindow(ToolWindow):
         card.actionRequested.connect(self._on_code_action)
         self.chat_layout.addWidget(card)
         self._scroll_to_bottom()
-
-        if add_to_session:
-            session = self.session_manager.get_current_session()
-            if session:
-                session.add_user_message(
-                    content=content,
-                    params=tag_params
-                    or {
-                        key: value
-                        for key, value in self.context_selector.context.items()
-                    },
-                )
 
         self._update_node_preview()
         return card

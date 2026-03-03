@@ -110,7 +110,12 @@ class SessionManager(QObject):
         return [s.name for s in self.sessions]
 
     def set_session_from_messages(self, messages: List[Dict]):
-        self.sessions[self.current_index] = ChatSession(messages=messages.copy())
+        if self.current_index < 0:
+            self.current_index = 0
+        if self.current_index >= len(self.sessions):
+            self.sessions.append(ChatSession(messages=messages.copy()))
+        else:
+            self.sessions[self.current_index] = ChatSession(messages=messages.copy())
 
     def delete_session(self, index: int) -> bool:
         if 0 <= index < len(self.sessions):
