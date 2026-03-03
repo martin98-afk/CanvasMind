@@ -1,28 +1,20 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QListWidget,
     QListWidgetItem,
-    QPushButton,
-    QLineEdit,
-    QLabel,
-    QTextEdit,
     QWidget,
 )
-from PyQt5.QtGui import QColor, QPalette
 from qfluentwidgets import (
     BodyLabel,
     LineEdit,
     PrimaryPushButton,
     PushButton,
     SwitchButton,
-    InfoBar,
-    InfoBarPosition,
 )
-from qfluentwidgets.components.widgets.card_widget import CardWidget
 
 
 class MemoryItemWidget(QWidget):
@@ -71,7 +63,7 @@ class MemoryManagerDialog(QDialog):
 
     def _init_ui(self):
         self.setWindowTitle("长期记忆管理")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(800, 600)
         self.setStyleSheet("""
             QDialog {
                 background-color: #1e1e1e;

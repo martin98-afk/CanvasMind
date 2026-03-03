@@ -78,9 +78,11 @@ class QuestionFloatingWidget(CardWidget):
     def _on_cancel(self):
         self.setVisible(False)
 
-    def _on_select(self, option: str):
+    def _on_select(self, option):
         self.setVisible(False)
-        self.answered.emit(option)
+        if isinstance(option, dict):
+            option = option.get("label", str(option))
+        self.answered.emit(str(option))
 
     def show_question(self, question: str, options: list):
         """显示问题让用户选择"""
@@ -98,7 +100,10 @@ class QuestionFloatingWidget(CardWidget):
 
         # 添加新按钮
         for option in options:
-            btn = QPushButton(str(option), self)
+            btn_text = (
+                option.get("label", option) if isinstance(option, dict) else str(option)
+            )
+            btn = QPushButton(btn_text, self)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #404040;

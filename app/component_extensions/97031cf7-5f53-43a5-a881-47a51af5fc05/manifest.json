@@ -6,7 +6,7 @@
   "api_version": "2.0",
   "description": "生成 LTX2 优化的时间步序列（Sigmas），支持偏移拉伸。",
   "category": "comfyui节点/LTX模型适配",
-  "source_file": "D:\\work\\WorkFlowGUI\\app\\components\\comfyui节点\\LTX模型适配\\97031cf7-5f53-43a5-a881-47a51af5fc05.py",
-  "updated_at": "2026-03-02 12:01:21",
+  "source_file": "..\\..\\components\\comfyui节点\\LTX模型适配\\97031cf7-5f53-43a5-a881-47a51af5fc05.py",
+  "updated_at": "2026-03-03 11:24:33",
   "author": "mading"
 }

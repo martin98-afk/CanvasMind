@@ -48,7 +48,7 @@ class BuiltinTools:
             try:
                 from app.utils.utils import resource_path
 
-                self.workdir = Path(resource_path("app"))
+                self.workdir = Path(resource_path("./"))
             except Exception:
                 self.workdir = Path.cwd()
 
@@ -304,6 +304,8 @@ class BuiltinTools:
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=timeout,
                     cwd=str(self.workdir),
                 )
@@ -313,6 +315,8 @@ class BuiltinTools:
                     shell=True,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="ignore",
                     timeout=timeout,
                     cwd=str(self.workdir),
                 )
@@ -368,7 +372,14 @@ class BuiltinTools:
         try:
             import requests
             import os
-            from urllib.parse import urlencode
+
+            api_key = os.environ.get("SERPAPI_KEY") or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+
+            if api_key == "your-serpapi-key-here" or not api_key:
+                return ToolResult(
+                    False,
+                    error="Please set SERPAPI_KEY environment variable or configure in settings",
+                )
 
             proxies = None
             http_proxy = (
@@ -383,50 +394,51 @@ class BuiltinTools:
                     "https": http_proxy,
                 }
 
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Content-Type": "application/x-www-form-urlencoded",
+            params = {
+                "engine": "duckduckgo",
+                "q": query,
+                "kl": "us-en",
+                "api_key": api_key,
             }
 
-            # 使用 POST 请求（与官方 API 一致）
-            data = {"q": query, "b": "", "kl": "wt-wt"}
-
-            response = requests.post(
-                "https://html.duckduckgo.com/html/",
-                headers=headers,
-                data=data,
+            response = requests.get(
+                "https://serpapi.com/search",
+                params=params,
                 proxies=proxies,
                 timeout=30,
             )
+
+            if response.status_code == 401:
+                return ToolResult(False, error="Invalid SerpAPI key")
+            if response.status_code == 403:
+                return ToolResult(False, error="SerpAPI quota exceeded")
+
             response.raise_for_status()
 
-            results = []
-            # 使用与 cheerio 相同的选择器
-            pattern = re.compile(
-                r'<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
-            )
-            for match in pattern.finditer(response.text):
-                href = match.group(1)
-                title = match.group(2)
-                title = re.sub(r"<[^>]+>", "", title)
-                # 提取真实 URL
-                if "uddg=" in href:
-                    from urllib.parse import unquote
-                    import re as re_module
+            data = response.json()
 
-                    match_url = re_module.search(r"uddg=([^&]+)", href)
-                    if match_url:
-                        href = unquote(match_url.group(1))
-                results.append(f"- {title}: {href}")
-                if len(results) >= num_results:
-                    break
+            results = []
+            organic = data.get("organic_results", [])
+
+            for item in organic[:num_results]:
+                title = item.get("title", "")
+                link = item.get("link", "")
+                snippet = item.get("snippet", "")
+
+                if title and link:
+                    results.append(f"- {title}\n  {link}\n  {snippet}")
 
             if not results:
                 return ToolResult(True, content="No results found")
 
-            return ToolResult(True, content="\n".join(results))
+            return ToolResult(True, content="\n\n".join(results))
+
         except ImportError:
             return ToolResult(False, error="requests library not installed")
+        except requests.exceptions.Timeout:
+            return ToolResult(False, error="Search timeout, please try again")
+        except requests.exceptions.RequestException as e:
+            return ToolResult(False, error=f"Search request failed: {str(e)}")
         except Exception as e:
             return ToolResult(False, error=f"Search error: {str(e)}")
 

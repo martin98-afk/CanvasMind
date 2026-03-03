@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSizePolicy,
+    QTextEdit,
 )
 from markdown import Markdown
 from pygments import highlight
@@ -193,7 +194,19 @@ def _sanitize_incomplete_markdown(md_text: str) -> str:
 def _render_think_block(content: str, completed: bool = True) -> str:
     status_text = "💡 思考过程" if completed else "🧠 正在思考..."
     open_attr = " open" if not completed else ""
-    return f'<details{open_attr} class="think-block"><summary>{status_text}</summary><div class="think-content">{content}</div></details>'
+
+    max_preview = 40
+    content_preview = content.strip().replace("\n", " ")[:max_preview]
+    if len(content.strip().replace("\n", " ")) > max_preview:
+        content_preview += "..."
+
+    return f"""<details{open_attr} class="think-block">
+    <summary style="display: flex; align-items: center; gap: 6px;">
+        <span style="white-space: nowrap;">{status_text}</span>
+        <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{content_preview}</span>
+    </summary>
+    <div class="think-content">{content}</div>
+</details>"""
 
 
 def _render_tool_block(
@@ -389,7 +402,10 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            self._schedule_render()
+            if self._pending_chars and not self._typewriter_timer.isActive():
+                self._typewriter_timer.start()
+            else:
+                self._schedule_render()
 
     def _load_skeleton(self):
         # 获取系统字体
@@ -583,44 +599,46 @@ class CodeWebViewer(QWebEngineView):
         if not text:
             return
 
-        # 将新文本加入待显示队列
         self._pending_chars += text
         self._markdown_text += text
 
-        # 如果JavaScript未就绪，直接返回
         if not self._is_js_ready:
             return
 
-        # 启动打字机定时器（如果未启动）
-        if self._streaming and not self._typewriter_timer.isActive():
+        if self._pending_chars and not self._typewriter_timer.isActive():
             self._typewriter_timer.start()
 
     def _typewriter_tick(self):
-        """打字机效果：每次显示一小部分字符"""
         if not self._pending_chars:
             self._typewriter_timer.stop()
             return
 
-        # 每次取出少量字符进行显示（2-4个字符，兼顾速度和体验）
-        chunk_size = min(3, len(self._pending_chars))
+        pending_len = len(self._pending_chars)
+
+        if pending_len > 500:
+            chunk_size = 50
+        elif pending_len > 200:
+            chunk_size = 20
+        elif pending_len > 50:
+            chunk_size = 10
+        else:
+            chunk_size = min(3, pending_len)
+
         display_chars = self._pending_chars[:chunk_size]
         self._pending_chars = self._pending_chars[chunk_size:]
 
-        # 实际显示的文本 = 已显示的全部 + 当前批次
         visible_text = self._markdown_text[
             : len(self._markdown_text) - len(self._pending_chars)
         ]
 
-        # 节流渲染控制
         import time
 
         current_time = time.time() * 1000
-        render_throttle = 50  # 50ms节流
+        render_throttle = 30
         if current_time - self._last_render_time >= render_throttle:
             self._last_render_time = current_time
             self._perform_update_for_text(visible_text)
 
-        # 如果队列处理完了，执行最后一次完整渲染
         if not self._pending_chars and self._streaming:
             self._typewriter_timer.stop()
             self._perform_update()
@@ -719,6 +737,65 @@ class CodeWebViewer(QWebEngineView):
         if self.page():
             self.page().deleteLater()
         super().deleteLater()
+
+
+class PlainTextViewer(QWidget):
+    contentHeightChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._text = ""
+        self._init_ui()
+
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(0)
+
+        self.text_edit = QTextEdit(self)
+        self.text_edit.setReadOnly(True)
+        self.text_edit.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.text_edit.setFrameShape(QTextEdit.NoFrame)
+        self.text_edit.setStyleSheet("""
+            QTextEdit {
+                background: transparent;
+                border: none;
+                color: #E0E0E0;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+        """)
+        layout.addWidget(self.text_edit)
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumHeight(40)
+
+    def append_chunk(self, text: str):
+        self._text += text
+        self.text_edit.setPlainText(self._text)
+        QTimer.singleShot(0, self._update_height)
+
+    def finish_streaming(self):
+        QTimer.singleShot(0, self._update_height)
+
+    def get_plain_text(self) -> str:
+        return self._text
+
+    def set_text(self, text: str):
+        self._text = text
+        self.text_edit.setPlainText(text)
+        QTimer.singleShot(0, self._update_height)
+
+    def _update_height(self):
+        doc_height = self.text_edit.document().size().height()
+        h = max(40, int(doc_height) + 16)
+        if abs(self.height() - h) > 2:
+            self.setFixedHeight(h)
+            self.contentHeightChanged.emit(h)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_height()
 
 
 # ======== MessageCard ========
@@ -859,10 +936,14 @@ class MessageCard(SimpleCardWidget):
             main.addWidget(tg_c)
             main.addWidget(CardSeparator(self))
 
-        self.viewer = CodeWebViewer(self)
-        self.viewer.codeActionRequested.connect(self.actionRequested.emit)
-        self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
-        self.viewer.contentHeightChanged.connect(self._update_height)
+        if self.role == "user":
+            self.viewer = PlainTextViewer(self)
+            self.viewer.contentHeightChanged.connect(self._update_height)
+        else:
+            self.viewer = CodeWebViewer(self)
+            self.viewer.codeActionRequested.connect(self.actionRequested.emit)
+            self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
+            self.viewer.contentHeightChanged.connect(self._update_height)
         main.addWidget(self.viewer)
 
         self.options_widget = QWidget(self)
@@ -960,7 +1041,8 @@ class MessageCard(SimpleCardWidget):
         self.viewer.finish_streaming()
 
     def closeEvent(self, e):
-        self.viewer.deleteLater()
+        if hasattr(self.viewer, "deleteLater"):
+            self.viewer.deleteLater()
         super().closeEvent(e)
 
 

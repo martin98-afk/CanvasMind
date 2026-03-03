@@ -1,8 +1,8 @@
 # 大模型输入框
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QKeyEvent, QKeySequence
 from PyQt5.QtWidgets import QShortcut
-from qfluentwidgets import FluentIcon
+from qfluentwidgets import FluentIcon, ComboBox
 from qfluentwidgets import TextEdit, TransparentToolButton
 from qtpy import QtCore
 
@@ -14,6 +14,7 @@ class SendableTextEdit(TextEdit):
     newSessionRequested = pyqtSignal()
     historyUpRequested = pyqtSignal()
     historyDownRequested = pyqtSignal()
+    agentChanged = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -23,18 +24,54 @@ class SendableTextEdit(TextEdit):
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # 创建内嵌发送按钮
+
+        self._agent_combo = ComboBox(self)
+        self._agent_combo.setFixedSize(110, 24)
+        self._agent_combo.setStyleSheet("""
+            ComboBox {
+                background-color: transparent;
+                color: #e0e0e0;
+                border: none;
+                padding: 2px 8px;
+                font-size: 12px;
+            }
+            ComboBox:hover {
+                background-color: rgba(55, 55, 55, 220);
+                border-color: #555;
+            }
+            ComboBox::drop-down {
+                border: none;
+                width: 16px;
+            }
+            ComboBox::down-arrow {
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #888;
+                margin-right: 2px;
+            }
+            ComboBox AbstractItemView {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                selection-background-color: #404040;
+                border: 1px solid #3d3d3d;
+                padding: 4px;
+            }
+        """)
+        self._agent_combo.currentTextChanged.connect(self._on_agent_changed)
+
+        QTimer.singleShot(0, self._position_elements)
+
         self.send_btn = TransparentToolButton(FluentIcon.SEND, self)
         self.send_btn.setFixedSize(28, 28)
         self.send_btn.setToolTip("发送（Enter）")
         self.send_btn.clicked.connect(self._on_send_click)
-        self._position_send_button()
         self.send_btn.setDisabled(True)
-        # 监听文本变化，控制按钮显隐
         self.textChanged.connect(self._on_text_changed)
-        self._position_send_button()
 
         self._setup_keyboard_shortcuts()
+
+    def _on_agent_changed(self, text: str):
+        self.agentChanged.emit(text)
 
     def _setup_keyboard_shortcuts(self):
         self._shortcut_clear = QShortcut(QKeySequence("Ctrl+L"), self)
@@ -82,16 +119,22 @@ class SendableTextEdit(TextEdit):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._position_send_button()
+        self._position_elements()
 
-    def _position_send_button(self):
-        """将按钮定位到输入框右下角内侧"""
-        if self.send_btn:
+    def _position_elements(self):
+        """定位智能体选择框和发送按钮"""
+        if self._agent_combo and self.send_btn:
             btn_size = self.send_btn.size()
-            # 距离右边界 6px，距离下边界 6px
-            x = self.width() - btn_size.width() - 3
-            y = self.height() - btn_size.height() - 3
-            self.send_btn.move(max(0, x), max(0, y))
+            agent_width = self._agent_combo.width()
+
+            send_btn_x = self.width() - btn_size.width() - 3
+            send_btn_y = self.height() - btn_size.height() - 3
+
+            combo_x = send_btn_x - agent_width - 5
+            combo_y = send_btn_y + (btn_size.height() - self._agent_combo.height()) // 2
+
+            self._agent_combo.move(max(0, combo_x), max(0, combo_y))
+            self.send_btn.move(max(0, send_btn_x), max(0, send_btn_y))
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
