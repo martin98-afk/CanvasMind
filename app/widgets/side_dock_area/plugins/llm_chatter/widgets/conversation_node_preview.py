@@ -11,6 +11,7 @@ class ConversationNodePreview(QWidget):
         self._nodes = []
         self._selected_index = -1
         self._hovered_index = -1
+        self._visible_index = -1
         self._node_radius = 3
         self._spacing = 16
         self.setFixedHeight(8)
@@ -43,6 +44,8 @@ class ConversationNodePreview(QWidget):
                 color = QColor("#FFA500")
             elif i == self._hovered_index:
                 color = QColor("#6BA3FF")
+            elif i == self._visible_index:
+                color = QColor("#00FF7F")
             else:
                 color = QColor("#5A5A5A")
 
@@ -111,3 +114,10 @@ class ConversationNodePreview(QWidget):
         if 0 <= index < len(self._nodes):
             self._selected_index = index
             self.update()
+
+    def set_visible_node(self, index: int):
+        if 0 <= index < len(self._nodes):
+            self._visible_index = index
+        else:
+            self._visible_index = -1
+        self.update()

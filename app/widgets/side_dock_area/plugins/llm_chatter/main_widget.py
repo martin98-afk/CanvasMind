@@ -333,6 +333,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
         layout.addWidget(self.node_preview)
 
+        self.chat_scroll_area.verticalScrollBar().valueChanged.connect(
+            self._on_scroll_changed
+        )
+
         self._question_floating_widget = QuestionFloatingWidget(self)
         self._question_floating_widget.setVisible(False)
         self._question_floating_widget.answered.connect(self._on_question_answered)
@@ -1006,6 +1010,43 @@ class OpenAIChatToolWindow(ToolWindow):
                     return
                 pair_index += 1
 
+    def _on_scroll_changed(self, value):
+        scroll_bar = self.chat_scroll_area.verticalScrollBar()
+        viewport_height = self.chat_scroll_area.viewport().height()
+        visible_top = scroll_bar.value()
+        visible_bottom = visible_top + viewport_height
+
+        user_msg_indices = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if widget.role != "user":
+                continue
+            y = 0
+            for j in range(i):
+                item_j = self.chat_layout.itemAt(j)
+                if item_j and item_j.widget():
+                    y += item_j.widget().height() + 5
+            widget_bottom = y + widget.height()
+            if widget_bottom > visible_top and y < visible_bottom:
+                user_msg_indices.append(i)
+
+        if user_msg_indices:
+            first_visible_idx = user_msg_indices[0]
+            pair_index = 0
+            for i in range(first_visible_idx):
+                item = self.chat_layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), MessageCard):
+                    if item.widget().role == "user":
+                        pair_index += 1
+            self.node_preview.set_visible_node(pair_index)
+        else:
+            self.node_preview.set_visible_node(-1)
+
     def _delete_message(self, card: MessageCard):
         card_index = -1
         for i in range(self.chat_layout.count()):
@@ -1128,12 +1169,19 @@ class OpenAIChatToolWindow(ToolWindow):
             )
 
     def _scroll_to_bottom(self):
-        QTimer.singleShot(
-            10,
-            lambda: self.chat_scroll_area.verticalScrollBar().setValue(
+        def _do_scroll():
+            self.chat_scroll_area.verticalScrollBar().setValue(
                 self.chat_scroll_area.verticalScrollBar().maximum()
-            ),
-        )
+            )
+            session = self.session_manager.get_current_session()
+            if session:
+                user_count = sum(
+                    1 for msg in session.messages if msg.get("role") == "user"
+                )
+                if user_count > 0:
+                    self.node_preview.set_visible_node(user_count - 1)
+
+        QTimer.singleShot(10, _do_scroll)
 
     def handle_recommended_question(self, content: str, action: str):
         if action == "ask":
@@ -1315,6 +1363,7 @@ class OpenAIChatToolWindow(ToolWindow):
             current_title = self._auto_save_current_session()
             self._generate_conversation_title(current_title, session.messages)
         self._maybe_generate_topic_summary()
+        self._update_node_preview()
 
     def _on_engine_error(self, error: str):
         if self._current_assistant_card:
