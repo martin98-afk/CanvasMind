@@ -402,7 +402,10 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            self._schedule_render()
+            if self._pending_chars and not self._typewriter_timer.isActive():
+                self._typewriter_timer.start()
+            else:
+                self._schedule_render()
 
     def _load_skeleton(self):
         # 获取系统字体
@@ -596,44 +599,46 @@ class CodeWebViewer(QWebEngineView):
         if not text:
             return
 
-        # 将新文本加入待显示队列
         self._pending_chars += text
         self._markdown_text += text
 
-        # 如果JavaScript未就绪，直接返回
         if not self._is_js_ready:
             return
 
-        # 只要有待显示字符就启动打字机，支持多轮工具调用后的流式输出
         if self._pending_chars and not self._typewriter_timer.isActive():
             self._typewriter_timer.start()
 
     def _typewriter_tick(self):
-        """打字机效果：每次显示一小部分字符"""
         if not self._pending_chars:
             self._typewriter_timer.stop()
             return
 
-        # 每次取出少量字符进行显示（2-4个字符，兼顾速度和体验）
-        chunk_size = min(3, len(self._pending_chars))
+        pending_len = len(self._pending_chars)
+
+        if pending_len > 500:
+            chunk_size = 50
+        elif pending_len > 200:
+            chunk_size = 20
+        elif pending_len > 50:
+            chunk_size = 10
+        else:
+            chunk_size = min(3, pending_len)
+
         display_chars = self._pending_chars[:chunk_size]
         self._pending_chars = self._pending_chars[chunk_size:]
 
-        # 实际显示的文本 = 已显示的全部 + 当前批次
         visible_text = self._markdown_text[
             : len(self._markdown_text) - len(self._pending_chars)
         ]
 
-        # 节流渲染控制
         import time
 
         current_time = time.time() * 1000
-        render_throttle = 50  # 50ms节流
+        render_throttle = 30
         if current_time - self._last_render_time >= render_throttle:
             self._last_render_time = current_time
             self._perform_update_for_text(visible_text)
 
-        # 如果队列处理完了，执行最后一次完整渲染
         if not self._pending_chars and self._streaming:
             self._typewriter_timer.stop()
             self._perform_update()

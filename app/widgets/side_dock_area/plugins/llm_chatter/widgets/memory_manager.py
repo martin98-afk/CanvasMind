@@ -1,28 +1,20 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QListWidget,
     QListWidgetItem,
-    QPushButton,
-    QLineEdit,
-    QLabel,
-    QTextEdit,
     QWidget,
 )
-from PyQt5.QtGui import QColor, QPalette
 from qfluentwidgets import (
     BodyLabel,
     LineEdit,
     PrimaryPushButton,
     PushButton,
     SwitchButton,
-    InfoBar,
-    InfoBarPosition,
 )
-from qfluentwidgets.components.widgets.card_widget import CardWidget
 
 
 class MemoryItemWidget(QWidget):

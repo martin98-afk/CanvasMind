@@ -2,7 +2,7 @@
 import webbrowser
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication
-from PyQt5.QtGui import QCursor, QFont
+from PyQt5.QtGui import QCursor
 from qfluentwidgets import (
     BodyLabel,
     LineEdit,

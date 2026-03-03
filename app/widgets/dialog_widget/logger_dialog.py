@@ -19,11 +19,17 @@ class LogPopupWidget(QWidget):
         self._min_width = 200
         self._max_width = 600
         self._base_x = 0
+        self._resize_zone_width = 5
+        self._hovering_resize_zone = False
+        self._border_color = "#3c3c3c"
+        self._hover_border_color = "#0078D4"
         self.setup_ui()
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
+
+        self._update_border_style(False)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -46,7 +52,9 @@ class LogPopupWidget(QWidget):
         self.text_logger.document().setDocumentMargin(0)
         self.text_logger.setObjectName("运行日志")
         self.text_logger.setReadOnly(True)
-        self.text_logger.setFont(QFont(Settings.get_instance().canvas_font_type.value, 11))
+        self.text_logger.setFont(
+            QFont(Settings.get_instance().canvas_font_type.value, 11)
+        )
         self.text_logger.setStyleSheet("""
             QPlainTextEdit {
                 background-color: #0e1117;
@@ -79,6 +87,15 @@ class LogPopupWidget(QWidget):
 
         self.resize(400, 600)
 
+    def _update_border_style(self, hover):
+        border_color = self._hover_border_color if hover else self._border_color
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: #1e1e1e;
+                border-right: {self._resize_zone_width}px solid {border_color};
+            }}
+        """)
+
     def set_width(self, width):
         width = max(self._min_width, min(width, self._max_width))
         self.resize(width, self.height())
@@ -91,7 +108,13 @@ class LogPopupWidget(QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if event.pos().x() >= self.width() - 5:
+        is_in_resize_zone = event.pos().x() >= self.width() - self._resize_zone_width
+
+        if is_in_resize_zone != self._hovering_resize_zone:
+            self._hovering_resize_zone = is_in_resize_zone
+            self._update_border_style(is_in_resize_zone)
+
+        if is_in_resize_zone:
             self.setCursor(Qt.SizeHorCursor)
         else:
             self.setCursor(Qt.ArrowCursor)
@@ -105,6 +128,15 @@ class LogPopupWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self._resizing = False
         super().mouseReleaseEvent(event)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._update_border_style(False)
+
+    def leaveEvent(self, event):
+        self._hovering_resize_zone = False
+        self._update_border_style(False)
+        super().leaveEvent(event)
 
     def show_at_left(self, parent_widget, log_button_top_right):
         self._parent_widget = parent_widget
@@ -187,7 +219,9 @@ class QTextEditLogger(QObject):
         self.log_signal.connect(self._safe_append_line, Qt.QueuedConnection)
 
         # 连接滚动条信号
-        self.text_edit.verticalScrollBar().valueChanged.connect(self._on_scroll_value_changed)
+        self.text_edit.verticalScrollBar().valueChanged.connect(
+            self._on_scroll_value_changed
+        )
 
     def write(self, message):
         """安全写入日志（可被任何线程调用）"""
@@ -211,7 +245,7 @@ class QTextEditLogger(QObject):
     def _on_scroll_value_changed(self, value):
         """当用户滚动时更新状态"""
         max_value = self.text_edit.verticalScrollBar().maximum()
-        self.is_scrolling = (value >= max_value - 2)
+        self.is_scrolling = value >= max_value - 2
 
     def _safe_text_cursor(self) -> QTextCursor:
         """安全获取文本游标"""
@@ -268,7 +302,7 @@ class QTextEditLogger(QObject):
         max_scroll = self.text_edit.verticalScrollBar().maximum()
 
         # 如果当前在底部附近，标记为自动滚动
-        at_bottom = (scroll_pos >= max_scroll - 2)
+        at_bottom = scroll_pos >= max_scroll - 2
 
         cursor = QTextCursor(doc)
         cursor.movePosition(QTextCursor.End)
@@ -324,7 +358,7 @@ class QTextEditLogger(QObject):
 
     def _is_widget_valid(self) -> bool:
         """检查文本编辑控件是否有效"""
-        if not hasattr(self, 'text_edit') or self.text_edit is None:
+        if not hasattr(self, "text_edit") or self.text_edit is None:
             return False
         try:
             self.text_edit.isVisible()
@@ -340,7 +374,9 @@ class QTextEditLogger(QObject):
         """安全关闭（清理资源）"""
         try:
             self.log_signal.disconnect()
-            self.text_edit.verticalScrollBar().valueChanged.disconnect(self._on_scroll_value_changed)
+            self.text_edit.verticalScrollBar().valueChanged.disconnect(
+                self._on_scroll_value_changed
+            )
         except:
             pass
         self.text_edit = None
