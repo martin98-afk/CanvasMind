@@ -603,7 +603,14 @@ class OpenAIChatToolWindow(ToolWindow):
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
         self._load_agent_list()
-        welcome_card = create_welcome_card(self)
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
@@ -832,7 +839,14 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             session.clear()
-        welcome_card = create_welcome_card(self)
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))

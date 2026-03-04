@@ -1179,8 +1179,21 @@ class MessageCard(SimpleCardWidget):
         super().closeEvent(e)
 
 
-def create_welcome_card(parent=None) -> MessageCard:
-    welcome_md = """\
+def create_welcome_card(
+    parent=None, agent_name: str = "", agent_description: str = ""
+) -> MessageCard:
+    agent_tendency = ""
+    if agent_name:
+        agent_tendency = f"""
+---
+
+### 🤖 当前智能体：{agent_name}
+
+{agent_description}
+
+"""
+
+    welcome_md = f"""\
 ### 👋 你好！我是你的画布开发智能助手
 
 我已为你准备好以下能力，助你高效构建与调试画布：
@@ -1194,13 +1207,14 @@ def create_welcome_card(parent=None) -> MessageCard:
   - **创建组件**：`[组件名](create)` → 在画布中生成新组件节点  
   - **生成代码**：`[组件名](generate)` → 跳转至组件开发界面并自动生成代码  
 
+{agent_tendency}
 ---
 
 ### 💬 快速开始：点击下方问题直接提问
 
 - [帮我分析当前画布功能是否合理？](ask)  
 - [结合组件库，帮我完善当前画布：列出需新增的组件，如有前置节点需说明具体位置，如何连接，参数如何设置；若组件库缺失，也请说明需生成的新组件。](ask)  
-- [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)
+- [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)  
 - [帮我的代码生成一句话描述，说明代码具体功能、输入形式、输出形式、参数形式, 纯文本，不要有换行和任何特殊字符。](ask)
 
 """
