@@ -499,6 +499,7 @@ class OpenAIChatToolWindow(ToolWindow):
         """加载智能体列表到选择器"""
         if not self._agent_manager or not hasattr(self, "input_area"):
             return
+        self._suppress_agent_intro = True
         agents = self._agent_manager.list_agents()
         self.input_area._agent_combo.clear()
         for agent in agents:
@@ -506,6 +507,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.input_area._agent_combo.count() > 0:
             self.input_area._agent_combo.setCurrentIndex(0)
             self._current_agent = self.input_area._agent_combo.currentText()
+        self._suppress_agent_intro = False
 
     def _on_agent_changed(self, agent_name: str):
         """智能体切换处理"""
@@ -514,6 +516,28 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_agent = agent_name
         self._chat_engine.switch_agent(agent_name)
         self._update_agent_status(agent_name)
+        if not getattr(self, "_suppress_agent_intro", False):
+            self._show_agent_intro(agent_name)
+
+    def _show_agent_intro(self, agent_name: str):
+        """显示智能体介绍卡片"""
+        if not self._agent_manager:
+            return
+        agent = self._agent_manager.get_agent(agent_name)
+        if not agent:
+            return
+
+        intro_md = f"""\
+### 🤖 已切换到智能体：{agent.name}
+
+{agent.description}
+
+"""
+        card = MessageCard(parent=self, role="assistant", timestamp="系统")
+        card.update_content(intro_md)
+        card.finish_streaming()
+        self.chat_layout.addWidget(card)
+        self._scroll_to_bottom()
 
     def _update_agent_status(self, agent_name: str):
         """更新智能体状态显示"""
