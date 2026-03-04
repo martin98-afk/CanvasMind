@@ -107,29 +107,25 @@ class AgentManager:
             if tool["function"]["name"].lower() in tool_names_lower
         ]
 
-    def get_agent_system_prompt(
-        self, agent_name: str, base_prompt: str = "", todo_list: str = ""
-    ) -> str:
+    def get_agent_system_prompt(self, agent_name: str, base_prompt: str = "") -> str:
         """获取智能体的系统提示"""
         agent = self.get_agent(agent_name)
         if not agent:
             return base_prompt
 
         if agent.system_prompt:
-            prompt = agent.system_prompt
-            if todo_list and "{todo_list}" in prompt:
-                prompt = prompt.replace("{todo_list}", todo_list)
-            elif todo_list:
-                prompt += f"\n\n## 待办事项\n{todo_list}"
-            return prompt
+            return agent.system_prompt
 
-        todo_section = f"\n\n## 待办事项\n{todo_list}" if todo_list else ""
         return f"""# {agent.name}
 {agent.description}
 
 ## 可用工具
 你只能使用以下工具：{", ".join(agent.tools)}
-{todo_section}
+
+## 重要规则
+- 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表
+- 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
+- **大型项目开发规范**: 开发大型项目时，先使用 `todoread` 工具查看已有的待办事项。如果已有待办事项，直接接着进度开发，不要重复创建。如果需要创建新的待办事项，使用 `todowrite` 工具。
 
 {base_prompt}"""
 
@@ -184,9 +180,14 @@ class AgentManager:
 {{"name": "工具名", "args": {{"参数1": "值1", ...}}}}
 ```
 
+## 重要规则
+- 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表选项
+- **大型项目开发规范**: 开发大型项目时，先使用 `todoread` 工具查看已有的待办事项。如果已有待办事项，直接接着进度开发，不要重复创建。如果需要创建新的待办事项，使用 `todowrite` 工具。
+
 ## 追问与行动规范
 - 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
 - [问题描述](ask)
+- **重要**: 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表选项
 - 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
 """
 

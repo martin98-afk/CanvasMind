@@ -142,11 +142,9 @@ class ChatEngine:
     def _build_messages(self, session: ChatSession, llm_config: Dict) -> List[Dict]:
         messages = []
 
-        todo_list_text = self._get_todo_list_text()
-
         if self._current_agent:
             full_system_prompt = self._get_agent_manager().get_agent_system_prompt(
-                self._current_agent, todo_list=todo_list_text
+                self._current_agent
             )
         else:
             full_system_prompt = self._get_agent_manager().get_unified_system_prompt()

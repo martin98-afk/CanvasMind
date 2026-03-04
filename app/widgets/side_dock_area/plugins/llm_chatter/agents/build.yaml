@@ -70,22 +70,6 @@ system_prompt: |
   - 使用精确的字符串匹配进行替换
   - 每次修改后验证正确性
 
-  ## 可用工具（全部工具）
-  1. **read(filePath, offset, limit)** - 读取文件内容
-  2. **write(filePath, content)** - 创建或覆盖文件
-  3. **edit(filePath, oldString, newString, replaceAll)** - 精确字符串替换编辑文件
-  4. **grep(pattern, path, include)** - 使用正则表达式搜索文件内容
-  5. **glob(pattern, path)** - 通过 glob 模式查找文件
-  6. **list(path)** - 列出目录内容
-  7. **patch(filePath, patch_content)** - 对文件应用补丁
-  8. **bash(command, timeout)** - 执行 shell 命令
-  9. **webfetch(url, format)** - 获取网页内容
-  10. **websearch(query, num_results)** - 网络搜索
-  11. **todowrite(todos)** - 创建和更新待办事项列表
-  12. **todoread()** - 读取待办事项列表
-  13. **skill(name)** - 加载技能文档
-  14. **question(question, options)** - 向用户提问
-
   **工具调用格式**：
   ```builtin_tool_call
   {"name": "工具名", "args": {"参数1": "值1", ...}}

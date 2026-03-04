@@ -727,7 +727,7 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "question",
-                "description": "向用户提问",
+                "description": "向用户提问并获取回答。当你需要了解用户偏好、需求或让用户做选择时，**必须**使用此工具，不要自行生成问卷或选项。",
                 "parameters": {
                     "type": "object",
                     "properties": {
