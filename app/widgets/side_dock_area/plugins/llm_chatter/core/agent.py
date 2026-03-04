@@ -5,11 +5,55 @@
 """
 
 import os
+import json
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from loguru import logger
+
+
+def get_available_skills() -> List[Dict]:
+    """获取所有可用技能列表"""
+    skills_dir = Path(__file__).parent.parent / "skills"
+    if not skills_dir.exists():
+        return []
+
+    results = []
+    for skill_dir in skills_dir.iterdir():
+        if not skill_dir.is_dir():
+            continue
+        if skill_dir.name.startswith("_") or skill_dir.name.startswith("."):
+            continue
+
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.exists():
+            skill_file = skill_dir / "skill.md"
+        if not skill_file.exists():
+            skill_file = skill_dir / "SKILL.md"
+        if not skill_file.exists():
+            continue
+
+        try:
+            content = skill_file.read_text(encoding="utf-8")
+            name = skill_dir.name
+            description = ""
+
+            if content.startswith("---"):
+                try:
+                    frontmatter, _ = content.split("---", 2)[1].split("---", 1)
+                    meta = yaml.safe_load(frontmatter)
+                    if meta:
+                        name = meta.get("name", skill_dir.name)
+                        description = meta.get("description", "")
+                except Exception:
+                    pass
+
+            results.append({"name": name, "description": description})
+        except Exception:
+            continue
+
+    return results
 
 
 @dataclass
@@ -108,7 +152,7 @@ class AgentManager:
         ]
 
     def get_agent_system_prompt(self, agent_name: str, base_prompt: str = "") -> str:
-        """获取智能体的系统提示"""
+        """获取智能体的系统提示，自动加载相关技能"""
         agent = self.get_agent(agent_name)
         if not agent:
             return base_prompt
@@ -126,70 +170,73 @@ class AgentManager:
 - 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表
 - 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
 - **大型项目开发规范**: 开发大型项目时，先使用 `todoread` 工具查看已有的待办事项。如果已有待办事项，直接接着进度开发，不要重复创建。如果需要创建新的待办事项，使用 `todowrite` 工具。
+- **技能查询**: 当遇到不熟悉的任务领域时（如生成PPT、PDF处理、文档编辑、设计等），使用 `list_skills` 工具查找是否有相关技能，如果有，使用 `skill` 工具加载该技能的专业经验。技能文档中可能包含特定的工作目录（workspace）要求，请在对应的目录下执行相关操作。如果没有找到合适的技能，使用 `skill` 工具加载 `find-skills` 技能来搜索外部技能市场（skills.sh）。
 
 {base_prompt}"""
 
-    def get_unified_system_prompt(self) -> str:
-        """获取统一的系统提示，让大模型自行选择智能体"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-            get_builtin_tools_schema,
-        )
-
-        all_agents = self.list_agents()
-        if not all_agents:
+    def _get_skills_for_agent(self, agent) -> str:
+        """根据智能体描述自动匹配相关技能"""
+        available_skills = get_available_skills()
+        if not available_skills:
             return ""
 
-        agent_descriptions = []
-        for agent in all_agents:
-            desc = f"""### {agent.name}
-- 描述: {agent.description}
-- 工具: {", ".join(agent.tools) if agent.tools else "所有内置工具"}
-"""
-            agent_descriptions.append(desc)
+        agent_desc_lower = agent.description.lower()
+        matched_skills = []
 
-        all_tools = get_builtin_tools_schema()
-        tool_list = "\n".join(
-            [
-                f"- **{t['function']['name']}**: {t['function']['description']}"
-                for t in all_tools
-            ]
-        )
+        keywords_map = {
+            "ppt": ["ppt", "powerpoint", "presentation", "幻灯片"],
+            "doc": ["doc", "word", "文档"],
+            "pdf": ["pdf"],
+            "xlsx": ["xlsx", "excel", "表格"],
+            "design": ["design", "ui", "ux", "设计"],
+            "web": ["web", "前端", "frontend", "html", "css"],
+            "art": ["art", "艺术", "生成艺术"],
+            "testing": ["test", "测试"],
+            "slack": ["slack"],
+            "mcp": ["mcp"],
+            "skill": ["skill", "技能"],
+            "brand": ["brand", "品牌"],
+            "canvas": ["canvas", "画布"],
+            "theme": ["theme", "主题"],
+            "internal": ["internal", "内部"],
+        }
 
-        return f"""# 智能体选择
+        for skill in available_skills:
+            skill_name_lower = skill["name"].lower()
+            skill_desc_lower = (
+                skill["description"].lower() if skill["description"] else ""
+            )
 
-你是一个多智能体协作系统。根据用户任务的不同，你可以选择合适的智能体来执行任务。
+            for keyword, variants in keywords_map.items():
+                if any(
+                    v in skill_name_lower or v in skill_desc_lower for v in variants
+                ):
+                    if any(v in agent_desc_lower for v in variants):
+                        matched_skills.append(skill["name"])
+                        break
 
-## 可用智能体
+        if not matched_skills:
+            return ""
 
-{chr(10).join(agent_descriptions)}
-## 内置工具（所有智能体共享）
+        skills_content = []
+        skills_dir = Path(__file__).parent.parent / "skills"
 
-{tool_list}
+        for skill_name in matched_skills:
+            skill_dir_path = skills_dir / skill_name
+            skill_file = skill_dir_path / "SKILL.md"
+            if not skill_file.exists():
+                skill_file = skill_dir_path / "skill.md"
+            if not skill_file.exists():
+                skill_file = skill_dir_path / "SKILL.md"
 
-## 使用规则
+            if skill_file.exists():
+                content = skill_file.read_text(encoding="utf-8")
+                skills_content.append(f"\n\n## 技能: {skill_name}\n{content}")
 
-1. 分析用户需求，判断是否需要切换智能体
-2. 如果当前任务与当前智能体匹配，继续执行
-3. 如果需要使用特定智能体，在回复中说明要切换的智能体名称，格式：`[切换智能体: {{智能体名称}}]`
-4. 切换后，新智能体将使用其专用的工具集和提示词
+        if skills_content:
+            return "\n\n---\n\n# 相关技能经验\n" + "\n".join(skills_content)
 
-## 工具调用格式
-
-当需要执行工具时，使用以下格式：
-```builtin_tool_call
-{{"name": "工具名", "args": {{"参数1": "值1", ...}}}}
-```
-
-## 重要规则
-- 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表选项
-- **大型项目开发规范**: 开发大型项目时，先使用 `todoread` 工具查看已有的待办事项。如果已有待办事项，直接接着进度开发，不要重复创建。如果需要创建新的待办事项，使用 `todowrite` 工具。
-
-## 追问与行动规范
-- 当你预测到用户接下来可能需要的帮助时，请按以下格式给出追问清单（放在回复末尾）：
-- [问题描述](ask)
-- **重要**: 当需要了解用户偏好、需求或让用户做选择时，**必须**使用 `question` 工具提问，不要自行生成问卷或列表选项
-- 直接执行，不要询问用户确认。如果需要用户确认，使用 question 工具提问。
-"""
+        return ""
 
 
 def create_agent_manager(agents_dir: str = None) -> AgentManager:

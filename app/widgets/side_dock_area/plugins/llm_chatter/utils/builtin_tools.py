@@ -474,23 +474,72 @@ class BuiltinTools:
         """加载技能文档"""
         try:
             search_paths = [
-                Path(__file__).parent.parent / "skills" / f"{name}.md",
-                Path(__file__).parent.parent / f"{name}.md",
-                Path(__file__).parent.parent / name / "skill.md",
+                Path(__file__).parent.parent / "skills" /  name /  f"SKILL.md"
             ]
-
             for path in search_paths:
                 if path.exists():
                     with open(path, "r", encoding="utf-8") as f:
                         content = f.read()
                     self._loaded_skills[name] = content
                     return ToolResult(
-                        True, content=f"Skill loaded: {name}\n\n{content[:2000]}"
+                        True, content=f"Skill loaded: {name}\n\nSkill workspace: {str(path.parent)}\n\n{content}"
                     )
 
             return ToolResult(False, error=f"Skill not found: {name}")
         except Exception as e:
             return ToolResult(False, error=f"Load skill error: {str(e)}")
+
+    def list_skills(self, query: str = "") -> ToolResult:
+        """列出或搜索可用技能"""
+        try:
+            import yaml
+
+            skills_dir = Path(__file__).parent.parent / "skills"
+            results = []
+
+            for skill_dir in skills_dir.iterdir():
+                if not skill_dir.is_dir():
+                    continue
+                if skill_dir.name.startswith("_") or skill_dir.name.startswith("."):
+                    continue
+
+                skill_file = skill_dir / "SKILL.md"
+                if not skill_file.exists():
+                    skill_file = skill_dir / "skill.md"
+
+                if not skill_file.exists():
+                    continue
+
+                content = skill_file.read_text(encoding="utf-8")
+                name = skill_dir.name
+                description = ""
+
+                if content.startswith("---"):
+                    try:
+                        # 直接取 --- 之间的内容，不需要再分割
+                        frontmatter = content.split("---", 2)[1]
+                        meta = yaml.safe_load(frontmatter)
+                        if meta:
+                            name = meta.get("name", skill_dir.name)
+                            description = meta.get("description", "")
+                    except Exception:
+                        pass
+
+                if query:
+                    query_lower = query.lower()
+                    if (
+                        query_lower not in name.lower()
+                        and query_lower not in description.lower()
+                    ):
+                        continue
+
+                results.append({"name": name, "description": description})
+
+            return ToolResult(
+                True, content=json.dumps(results, ensure_ascii=False, indent=2)
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"List skills error: {str(e)}")
 
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
@@ -720,6 +769,22 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "name": {"type": "string", "description": "技能名称"},
                     },
                     "required": ["name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_skills",
+                "description": "列出或搜索可用技能。当用户询问你能做什么，或者询问是否有某个功能的技能时，使用此工具查询。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "搜索关键词（可选），不提供关键词返回所有技能列表。",
+                        },
+                    },
                 },
             },
         },

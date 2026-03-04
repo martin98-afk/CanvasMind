@@ -221,7 +221,7 @@ def _render_think_block(content: str, completed: bool = True) -> str:
         <span style="white-space: nowrap;">{status_text}</span>
         <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{content_preview}</span>
     </summary>
-    <div class="think-content">{content}</div>
+    <div class="think-content" style="white-space: pre-wrap; word-break: break-all;">{content}</div>
 </details>"""
 
 
@@ -229,6 +229,11 @@ def _render_tool_block(
     tool_name: str, tool_args: dict, result: str, success: bool = True
 ) -> str:
     """渲染工具执行折叠框（默认折叠）"""
+    import re
+
+    result = re.sub(r"```[\w]*\n", "", result)
+    result = re.sub(r"```", "", result)
+
     status_icon = "✅" if success else "❌"
     args_str = json.dumps(tool_args, ensure_ascii=False, indent=2) if tool_args else ""
     header = f"{status_icon} 🔧 工具调用: {tool_name}"

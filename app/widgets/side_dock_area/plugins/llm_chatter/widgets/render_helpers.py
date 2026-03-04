@@ -27,10 +27,18 @@ def render_tool_block(
         status_text = "✓" if success else "✗"
         status_html = f'<span style="color: {status_color}; font-weight: bold; margin-left: 6px;">{status_text}</span>'
 
+    def strip_code_blocks(text: str) -> str:
+        import re
+
+        text = re.sub(r"```[\w]*\n", "", text)
+        text = re.sub(r"```", "", text)
+        return text
+
     if result is not None:
         result_str = str(result)
-        result_escaped = escape(result_str[:200])
-        if len(result_str) > 200:
+        result_stripped = strip_code_blocks(result_str[:500])
+        result_escaped = escape(result_stripped)
+        if len(result_str) > 500:
             result_escaped += "..."
         result_html = f"""
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">

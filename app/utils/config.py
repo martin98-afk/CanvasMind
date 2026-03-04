@@ -118,7 +118,7 @@ class Settings(QConfig):
             json.dump(self.toDict(), f, ensure_ascii=False, indent=4)
 
     # 版本信息
-    current_version = "v0.3.9-alpha"
+    current_version = "v0.3.9"
     user_name = ConfigItem("General", "UserName", str(uuid4().hex))
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

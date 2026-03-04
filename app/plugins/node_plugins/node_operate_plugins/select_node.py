@@ -4,7 +4,7 @@ from PyQt5.QtCore import QTimer
 from app.plugins.node_plugins.base import VariableOperatePlugin
 
 
-class AddVariablePlugin(VariableOperatePlugin):
+class SelectNodePlugin(VariableOperatePlugin):
     plugin_id = "select_node"
     plugin_name = "根据uuid选择指定节点"
     plugin_desc = "根据uuid选择指定节点，可以多选，也可以只选一个节点，选择节点后再进行create_next_node"

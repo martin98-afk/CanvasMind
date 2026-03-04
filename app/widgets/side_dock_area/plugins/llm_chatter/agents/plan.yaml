@@ -13,6 +13,7 @@ tools:
   - webfetch
   - websearch
   - skill
+  - list_skills
   - question
   - todowrite
   - todoread
@@ -73,3 +74,4 @@ system_prompt: |
   3. **先问后做** - 先获取信息，再分析代码，最后制定计划
   4. **计划要具体** - 每个步骤都要有明确的文件路径
   5. **只读取不修改** - 如果需要修改文件，切换到 build 智能体
+  6. **技能查询** - 当遇到不熟悉的任务领域时（如生成PPT、PDF处理、文档编辑、设计等），使用 `list_skills` 工具查找是否有相关技能，如果有，使用 `skill` 工具加载该技能的专业经验。技能信息中包含特定的工作目录（workspace）要求，请在对应的目录下执行技能中的相关操作。如果没有找到合适的技能，使用 `skill` 工具加载 `find-skills` 技能来搜索外部技能市场（skills.sh）。
