@@ -2,74 +2,13 @@
 import json
 import re
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, Dict, Any, List
-from html import escape
-
-
-def _render_tool_block_compact(
-    tool_name: str,
-    tool_args: dict,
-    result: str = None,
-    success: bool = None,
-    collapsed: bool = False,
-) -> str:
-    """渲染简化版工具块 - 参数截断，结果可折叠
-    collapsed=True: 默认折叠; collapsed=False: 默认展开
-    """
-    max_args_display = 80
-
-    args_preview = json.dumps(tool_args, ensure_ascii=False)
-    if len(args_preview) > max_args_display:
-        args_preview = args_preview[:max_args_display] + "..."
-
-    status_html = ""
-    if success is not None:
-        status_color = "#4CAF50" if success else "#F44336"
-        status_text = "✓" if success else "✗"
-        status_html = f'<span style="color: {status_color}; font-weight: bold; margin-left: 6px;">{status_text}</span>'
-
-    result_html = ""
-    if result is not None:
-        result_str = str(result)
-        result_escaped = escape(result_str[:200])
-        if len(result_str) > 200:
-            result_escaped += "..."
-        result_html = f"""
-        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-            <div style="color: #888; margin: 8px 0 4px;">结果:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{result_escaped}</pre>
-        </div>"""
-    else:
-        result_html = f"""
-        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-        </div>"""
-
-    open_attr = "" if collapsed else "open"
-
-    return f"""<details class="tool-block" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;" {open_attr}>
-    <summary style="cursor: pointer; padding: 6px 10px; color: #FFA500; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-        <span>⚡</span>
-        <span>{escape(tool_name)}</span>
-        {status_html}
-        <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>
-    </summary>
-    {result_html}
-</details>"""
-
 
 from PyQt5.QtCore import (
     Qt,
     QTimer,
     pyqtSignal,
     QThreadPool,
-    QMetaObject,
-    Q_ARG,
-    pyqtSlot,
 )
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
@@ -94,13 +33,18 @@ from qfluentwidgets import (
     TransparentToggleToolButton,
 )
 
-from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
     FREE_PROVIDERS,
     PROVIDER_ICONS,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core import (
+    ChatEngine,
+    ToolExecutor,
+    MemoryManagerCore,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
 )
@@ -134,17 +78,11 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import 
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
     QuestionFloatingWidget,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import render_tool_block
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-
-from app.widgets.side_dock_area.plugins.llm_chatter.core import (
-    ChatEngine,
-    ToolExecutor,
-    MemoryManagerCore,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -755,7 +693,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     result_content = tr.get("content", "")
                     break
 
-            tool_html = _render_tool_block_compact(
+            tool_html = render_tool_block(
                 tool_name,
                 json.loads(args_str) if isinstance(args_str, str) else args,
                 result_content,
@@ -1328,7 +1266,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
         content = str(result)
-        tool_html = _render_tool_block_compact(
+        tool_html = render_tool_block(
             tool_name,
             arguments or {},
             content,

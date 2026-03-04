@@ -7,8 +7,24 @@ from datetime import datetime
 from html import escape
 from typing import List, Dict, Any
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
-from PyQt5.QtGui import QWheelEvent
+from PyQt5.QtCore import (
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QUrl,
+    QPropertyAnimation,
+    QEasingCurve,
+    pyqtProperty,
+)
+from PyQt5.QtGui import (
+    QWheelEvent,
+    QPainter,
+    QPen,
+    QColor,
+    QBrush,
+    QLinearGradient,
+    QPainterPath,
+)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget,
@@ -861,6 +877,18 @@ class MessageCard(SimpleCardWidget):
         self.timestamp = timestamp or datetime.now().strftime("%H:%M")
         self.error = False
         self._interactive_options: List[dict] = []
+        self._streaming = False
+        self._anim_offset = 0
+        self._anim_timer = QTimer(self)
+        self._anim_timer.timeout.connect(self._update_anim)
+        self._base_bg = "#1E293B"
+        self._base_border = "#334155"
+        if role == "user":
+            self._base_bg = "#2A2A2A"
+            self._base_border = "#4A5568"
+        if error:
+            self._base_border = "#ff4d4d"
+            self._base_bg = "#2a1f1f"
         self._setup_ui()
 
     def _setup_ui(self):
@@ -977,6 +1005,65 @@ class MessageCard(SimpleCardWidget):
             f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
         )
 
+    def start_streaming_anim(self):
+        """启动流式输出光影边框动画"""
+        if self._streaming:
+            return
+        self._streaming = True
+        self._anim_offset = 0
+        self._anim_timer.start(30)
+        self.update()
+
+    def _update_anim(self):
+        self._anim_offset = (self._anim_offset + 2) % 360
+        self.update()
+
+    def stop_streaming_anim(self):
+        """停止流式输出光影边框动画"""
+        self._streaming = False
+        self._anim_timer.stop()
+        self.setStyleSheet(
+            f"CardWidget{{background-color:{self._base_bg};border:1px solid {self._base_border};border-radius:12px;}}"
+        )
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._streaming:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w, h = self.width(), self.height()
+        radius = 12
+
+        path = QPainterPath()
+        path.addRoundedRect(1, 1, w - 2, h - 2, radius, radius)
+        painter.setClipPath(path)
+
+        gradient = QLinearGradient(0, 0, w, h)
+        colors = []
+        for i in range(8):
+            hue = (self._anim_offset + i * 45) % 360
+            c = QColor()
+            c.setHsl(hue, 200, 150)
+            colors.append(c)
+
+        gradient.setColorAt(0, colors[0])
+        gradient.setColorAt(0.14, colors[1])
+        gradient.setColorAt(0.28, colors[2])
+        gradient.setColorAt(0.42, colors[3])
+        gradient.setColorAt(0.56, colors[4])
+        gradient.setColorAt(0.70, colors[5])
+        gradient.setColorAt(0.84, colors[6])
+        gradient.setColorAt(1.0, colors[7])
+
+        pen = QPen(gradient, 2)
+        painter.setPen(pen)
+        painter.setBrush(QBrush(Qt.NoBrush))
+        painter.drawRoundedRect(1, 1, w - 2, h - 2, radius, radius)
+
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:
             try:
@@ -1010,6 +1097,8 @@ class MessageCard(SimpleCardWidget):
         super().wheelEvent(event)
 
     def update_content(self, txt):
+        if self.role == "assistant" and not self._streaming:
+            self.start_streaming_anim()
         self.viewer.append_chunk(txt)
 
     def run_js(self, js_code: str):
@@ -1076,8 +1165,10 @@ class MessageCard(SimpleCardWidget):
 
     def finish_streaming(self):
         self.viewer.finish_streaming()
+        self.stop_streaming_anim()
 
     def closeEvent(self, e):
+        self._anim_timer.stop()
         if hasattr(self.viewer, "deleteLater"):
             self.viewer.deleteLater()
         super().closeEvent(e)
