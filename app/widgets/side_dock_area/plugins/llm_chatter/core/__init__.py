@@ -23,5 +23,5 @@ __all__ = [
     "MemoryManagerCore",
     "Agent",
     "AgentManager",
-    "create_agent_manager",
+    "create_agent_manager"
 ]

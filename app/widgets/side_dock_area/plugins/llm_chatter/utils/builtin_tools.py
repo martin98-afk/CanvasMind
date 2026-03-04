@@ -373,7 +373,10 @@ class BuiltinTools:
             import requests
             import os
 
-            api_key = os.environ.get("SERPAPI_KEY") or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+            api_key = (
+                os.environ.get("SERPAPI_KEY")
+                or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+            )
 
             if api_key == "your-serpapi-key-here" or not api_key:
                 return ToolResult(
@@ -471,31 +474,83 @@ class BuiltinTools:
         """加载技能文档"""
         try:
             search_paths = [
-                self.workdir / "skills" / f"{name}.md",
-                self.workdir / f"{name}.md",
-                self.workdir / "skill.md",
+                Path(__file__).parent.parent / "skills" / name / f"SKILL.md",
+                Path("canvas_files") / "skills" / name / f"SKILL.md",
             ]
-
             for path in search_paths:
                 if path.exists():
                     with open(path, "r", encoding="utf-8") as f:
                         content = f.read()
                     self._loaded_skills[name] = content
                     return ToolResult(
-                        True, content=f"Skill loaded: {name}\n\n{content[:2000]}"
+                        True,
+                        content=f"Skill loaded: {name}\n\nSkill workspace: {str(path.parent.resolve())}\n\n{content}",
                     )
 
             return ToolResult(False, error=f"Skill not found: {name}")
         except Exception as e:
             return ToolResult(False, error=f"Load skill error: {str(e)}")
 
-    def ask_question(self, question: str, options: List[str] = None) -> ToolResult:
+    def list_skills(self) -> ToolResult:
+        """列出所有可用技能"""
+        try:
+            import yaml
+
+            skills_dirs = [
+                Path(__file__).parent.parent / "skills",
+                Path("canvas_files") / "skills",
+                Path.home() / "canvas_skills",
+            ]
+            results = []
+
+            for skills_dir in skills_dirs:
+                if not skills_dir.exists():
+                    continue
+                for skill_dir in skills_dir.iterdir():
+                    if not skill_dir.is_dir():
+                        continue
+                    if skill_dir.name.startswith("_") or skill_dir.name.startswith("."):
+                        continue
+
+                    skill_file = skill_dir / "SKILL.md"
+                    if not skill_file.exists():
+                        skill_file = skill_dir / "skill.md"
+
+                    if not skill_file.exists():
+                        continue
+
+                    content = skill_file.read_text(encoding="utf-8")
+                    name = skill_dir.name
+                    description = ""
+
+                    if content.startswith("---"):
+                        try:
+                            frontmatter = content.split("---", 2)[1]
+                            meta = yaml.safe_load(frontmatter)
+                            if meta:
+                                name = meta.get("name", skill_dir.name)
+                                description = meta.get("description", "")
+                        except Exception:
+                            pass
+
+                    results.append({"name": name, "description": description})
+
+            return ToolResult(
+                True, content=json.dumps(results, ensure_ascii=False, indent=2)
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"List skills error: {str(e)}")
+
+    def ask_question(
+        self, question: str, options: List[str] = None, multiple: bool = False
+    ) -> ToolResult:
         """向用户提问（返回问题定义，由UI处理实际提问）"""
         return ToolResult(
             True,
             content={
                 "question": question,
                 "options": options or [],
+                "multiple": multiple,
                 "type": "question",
             },
         )
@@ -720,13 +775,28 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "list_skills",
+                "description": "列出所有可用技能",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "question",
-                "description": "向用户提问",
+                "description": "向用户提问并获取回答。当你需要了解用户偏好、需求或让用户做选择时，**必须**使用此工具，不要自行生成问卷或选项。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "question": {"type": "string", "description": "问题内容"},
                         "options": {"type": "array", "description": "选项列表"},
+                        "multiple": {
+                            "type": "boolean",
+                            "description": "是否允许多选，默认false",
+                        },
                     },
                     "required": ["question"],
                 },

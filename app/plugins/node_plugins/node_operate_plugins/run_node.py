@@ -4,14 +4,14 @@ from PyQt5.QtCore import QTimer
 from app.plugins.node_plugins.base import VariableOperatePlugin
 
 
-class SelectNodePlugin(VariableOperatePlugin):
-    plugin_id = "select_node"
-    plugin_name = "根据uuid选择指定节点"
-    plugin_desc = "根据uuid选择指定节点，可以多选，也可以只选一个节点，选择节点后再进行create_next_node"
+class RunNodePlugin(VariableOperatePlugin):
+    plugin_id = "run_node"
+    plugin_name = "运行制定名称的节点"
+    plugin_desc = "根据节点名称选择指定节点，可以多选，也可以只选一个节点，选择节点后再进行create_next_node"
     plugin_template = """self.emit_message(
             method="select_node",
             params={
-                "key": ["node_uuid"]
+                "key": “node_name"
             }
         )
     """

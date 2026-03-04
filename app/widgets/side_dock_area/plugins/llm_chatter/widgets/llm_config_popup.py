@@ -294,10 +294,12 @@ class LLMConfigPopup(QWidget):
                 result[actual_key] = widget.text().strip()
             elif isinstance(widget, ComboBox):
                 result[actual_key] = widget.currentText()
-            elif hasattr(
-                widget, "text"
-            ):  # EditableComboBox 或 SearchableEditableComboBox
-                text = widget.text().strip()
+            elif isinstance(widget, SearchableEditableComboBox):
+                text = (
+                    widget.text().strip()
+                    if callable(getattr(widget, "text", None))
+                    else ""
+                )
                 if text:
                     result[actual_key] = text
                 else:

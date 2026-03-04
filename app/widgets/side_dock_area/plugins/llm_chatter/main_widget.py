@@ -2,74 +2,13 @@
 import json
 import re
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, Dict, Any, List
-from html import escape
-
-
-def _render_tool_block_compact(
-    tool_name: str,
-    tool_args: dict,
-    result: str = None,
-    success: bool = None,
-    collapsed: bool = False,
-) -> str:
-    """渲染简化版工具块 - 参数截断，结果可折叠
-    collapsed=True: 默认折叠; collapsed=False: 默认展开
-    """
-    max_args_display = 80
-
-    args_preview = json.dumps(tool_args, ensure_ascii=False)
-    if len(args_preview) > max_args_display:
-        args_preview = args_preview[:max_args_display] + "..."
-
-    status_html = ""
-    if success is not None:
-        status_color = "#4CAF50" if success else "#F44336"
-        status_text = "✓" if success else "✗"
-        status_html = f'<span style="color: {status_color}; font-weight: bold; margin-left: 6px;">{status_text}</span>'
-
-    result_html = ""
-    if result is not None:
-        result_str = str(result)
-        result_escaped = escape(result_str[:200])
-        if len(result_str) > 200:
-            result_escaped += "..."
-        result_html = f"""
-        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-            <div style="color: #888; margin: 8px 0 4px;">结果:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{result_escaped}</pre>
-        </div>"""
-    else:
-        result_html = f"""
-        <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-        </div>"""
-
-    open_attr = "" if collapsed else "open"
-
-    return f"""<details class="tool-block" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;" {open_attr}>
-    <summary style="cursor: pointer; padding: 6px 10px; color: #FFA500; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-        <span>⚡</span>
-        <span>{escape(tool_name)}</span>
-        {status_html}
-        <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>
-    </summary>
-    {result_html}
-</details>"""
-
 
 from PyQt5.QtCore import (
     Qt,
     QTimer,
     pyqtSignal,
     QThreadPool,
-    QMetaObject,
-    Q_ARG,
-    pyqtSlot,
 )
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
@@ -94,13 +33,18 @@ from qfluentwidgets import (
     TransparentToggleToolButton,
 )
 
-from app.server_manager.mcp_server.stdio_server import GlobalMcpServer
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
     FREE_PROVIDERS,
     PROVIDER_ICONS,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core import (
+    ChatEngine,
+    ToolExecutor,
+    MemoryManagerCore,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
 )
@@ -134,17 +78,13 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import 
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
     QuestionFloatingWidget,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
+    render_tool_block,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-
-from app.widgets.side_dock_area.plugins.llm_chatter.core import (
-    ChatEngine,
-    ToolExecutor,
-    MemoryManagerCore,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -340,6 +280,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_floating_widget = QuestionFloatingWidget(self)
         self._question_floating_widget.setVisible(False)
         self._question_floating_widget.answered.connect(self._on_question_answered)
+        self._question_floating_widget.cancelled.connect(self._on_question_cancelled)
         layout.addWidget(self._question_floating_widget)
 
         hlayout = QHBoxLayout()
@@ -558,6 +499,7 @@ class OpenAIChatToolWindow(ToolWindow):
         """加载智能体列表到选择器"""
         if not self._agent_manager or not hasattr(self, "input_area"):
             return
+        self._suppress_agent_intro = True
         agents = self._agent_manager.list_agents()
         self.input_area._agent_combo.clear()
         for agent in agents:
@@ -565,6 +507,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.input_area._agent_combo.count() > 0:
             self.input_area._agent_combo.setCurrentIndex(0)
             self._current_agent = self.input_area._agent_combo.currentText()
+        self._suppress_agent_intro = False
 
     def _on_agent_changed(self, agent_name: str):
         """智能体切换处理"""
@@ -573,9 +516,28 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_agent = agent_name
         self._chat_engine.switch_agent(agent_name)
         self._update_agent_status(agent_name)
-        InfoBar.success(
-            "已切换智能体", f"当前智能体: {agent_name}", parent=self, duration=1500
-        )
+        if not getattr(self, "_suppress_agent_intro", False):
+            self._show_agent_intro(agent_name)
+
+    def _show_agent_intro(self, agent_name: str):
+        """显示智能体介绍卡片"""
+        if not self._agent_manager:
+            return
+        agent = self._agent_manager.get_agent(agent_name)
+        if not agent:
+            return
+
+        intro_md = f"""\
+### 🤖 已切换到智能体：{agent.name}
+
+{agent.description}
+
+"""
+        card = MessageCard(parent=self, role="assistant", timestamp="系统")
+        card.update_content(intro_md)
+        card.finish_streaming()
+        self.chat_layout.addWidget(card)
+        self._scroll_to_bottom()
 
     def _update_agent_status(self, agent_name: str):
         """更新智能体状态显示"""
@@ -665,7 +627,14 @@ class OpenAIChatToolWindow(ToolWindow):
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
         self._load_agent_list()
-        welcome_card = create_welcome_card(self)
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
@@ -755,7 +724,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     result_content = tr.get("content", "")
                     break
 
-            tool_html = _render_tool_block_compact(
+            tool_html = render_tool_block(
                 tool_name,
                 json.loads(args_str) if isinstance(args_str, str) else args,
                 result_content,
@@ -894,7 +863,14 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             session.clear()
-        welcome_card = create_welcome_card(self)
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
@@ -1313,9 +1289,12 @@ class OpenAIChatToolWindow(ToolWindow):
         if tool_name == "question":
             question_text = arguments.get("question", "")
             options = arguments.get("options", [])
+            multiple = arguments.get("multiple", False)
             if question_text:
                 self._question_tool_call_id = tool_call_id
-                self._question_floating_widget.show_question(question_text, options)
+                self._question_floating_widget.show_question(
+                    question_text, options, multiple
+                )
             return
 
         if tool_name in ("todowrite", "todoread"):
@@ -1328,7 +1307,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
         content = str(result)
-        tool_html = _render_tool_block_compact(
+        tool_html = render_tool_block(
             tool_name,
             arguments or {},
             content,
@@ -1406,9 +1385,11 @@ class OpenAIChatToolWindow(ToolWindow):
             err_card.finish_streaming()
             self._scroll_to_bottom()
 
-    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
+    def _on_question_asked(
+        self, tool_call_id: str, question: str, options: list, multiple: bool = False
+    ):
         self._question_tool_call_id = tool_call_id
-        self._question_floating_widget.show_question(question, options)
+        self._question_floating_widget.show_question(question, options, multiple)
 
     def _on_question_answered(self, answer: str):
         if not self._question_tool_call_id:
@@ -1419,6 +1400,16 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._chat_engine:
             self._chat_engine.provide_question_answer(answer)
+
+    def _on_question_cancelled(self):
+        """用户关闭问题窗口时，返回空答案让大模型继续"""
+        if not self._question_tool_call_id:
+            return
+
+        self._question_tool_call_id = None
+
+        if self._chat_engine:
+            self._chat_engine.provide_question_answer("")
 
     def _on_agent_switched(self, agent_name: str):
         """智能体切换回调 - 丝滑切换，不清空对话"""

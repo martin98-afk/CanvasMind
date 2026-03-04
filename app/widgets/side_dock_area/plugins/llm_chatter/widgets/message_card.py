@@ -7,8 +7,24 @@ from datetime import datetime
 from html import escape
 from typing import List, Dict, Any
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
-from PyQt5.QtGui import QWheelEvent
+from PyQt5.QtCore import (
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QUrl,
+    QPropertyAnimation,
+    QEasingCurve,
+    pyqtProperty,
+)
+from PyQt5.QtGui import (
+    QWheelEvent,
+    QPainter,
+    QPen,
+    QColor,
+    QBrush,
+    QLinearGradient,
+    QPainterPath,
+)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget,
@@ -205,7 +221,7 @@ def _render_think_block(content: str, completed: bool = True) -> str:
         <span style="white-space: nowrap;">{status_text}</span>
         <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{content_preview}</span>
     </summary>
-    <div class="think-content">{content}</div>
+    <div class="think-content" style="white-space: pre-wrap; word-break: break-all;">{content}</div>
 </details>"""
 
 
@@ -213,6 +229,11 @@ def _render_tool_block(
     tool_name: str, tool_args: dict, result: str, success: bool = True
 ) -> str:
     """渲染工具执行折叠框（默认折叠）"""
+    import re
+
+    result = re.sub(r"```[\w]*\n", "", result)
+    result = re.sub(r"```", "", result)
+
     status_icon = "✅" if success else "❌"
     args_str = json.dumps(tool_args, ensure_ascii=False, indent=2) if tool_args else ""
     header = f"{status_icon} 🔧 工具调用: {tool_name}"
@@ -402,7 +423,12 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            if self._pending_chars and not self._typewriter_timer.isActive():
+            if (
+                hasattr(self, "_typewriter_timer")
+                and self._typewriter_timer
+                and self._pending_chars
+                and not self._typewriter_timer.isActive()
+            ):
                 self._typewriter_timer.start()
             else:
                 self._schedule_render()
@@ -605,12 +631,21 @@ class CodeWebViewer(QWebEngineView):
         if not self._is_js_ready:
             return
 
-        if self._pending_chars and not self._typewriter_timer.isActive():
+        if (
+            hasattr(self, "_typewriter_timer")
+            and self._typewriter_timer
+            and self._pending_chars
+            and not self._typewriter_timer.isActive()
+        ):
             self._typewriter_timer.start()
 
     def _typewriter_tick(self):
         if not self._pending_chars:
-            self._typewriter_timer.stop()
+            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
+                self._typewriter_timer.stop()
+            return
+
+        if not hasattr(self, "_typewriter_timer") or not self._typewriter_timer:
             return
 
         pending_len = len(self._pending_chars)
@@ -640,7 +675,8 @@ class CodeWebViewer(QWebEngineView):
             self._perform_update_for_text(visible_text)
 
         if not self._pending_chars and self._streaming:
-            self._typewriter_timer.stop()
+            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
+                self._typewriter_timer.stop()
             self._perform_update()
 
     def _perform_update_for_text(self, visible_text: str):
@@ -700,7 +736,11 @@ class CodeWebViewer(QWebEngineView):
     def finish_streaming(self):
         self._streaming = False
         # 停止打字机定时器
-        if self._typewriter_timer.isActive():
+        if (
+            hasattr(self, "_typewriter_timer")
+            and self._typewriter_timer
+            and self._typewriter_timer.isActive()
+        ):
             self._typewriter_timer.stop()
         # 清空待显示队列，直接显示全部内容
         self._pending_chars = ""
@@ -842,6 +882,18 @@ class MessageCard(SimpleCardWidget):
         self.timestamp = timestamp or datetime.now().strftime("%H:%M")
         self.error = False
         self._interactive_options: List[dict] = []
+        self._streaming = False
+        self._anim_offset = 0
+        self._anim_timer = QTimer(self)
+        self._anim_timer.timeout.connect(self._update_anim)
+        self._base_bg = "#1E293B"
+        self._base_border = "#334155"
+        if role == "user":
+            self._base_bg = "#2A2A2A"
+            self._base_border = "#4A5568"
+        if error:
+            self._base_border = "#ff4d4d"
+            self._base_bg = "#2a1f1f"
         self._setup_ui()
 
     def _setup_ui(self):
@@ -958,6 +1010,65 @@ class MessageCard(SimpleCardWidget):
             f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
         )
 
+    def start_streaming_anim(self):
+        """启动流式输出光影边框动画"""
+        if self._streaming:
+            return
+        self._streaming = True
+        self._anim_offset = 0
+        self._anim_timer.start(30)
+        self.update()
+
+    def _update_anim(self):
+        self._anim_offset = (self._anim_offset + 2) % 360
+        self.update()
+
+    def stop_streaming_anim(self):
+        """停止流式输出光影边框动画"""
+        self._streaming = False
+        self._anim_timer.stop()
+        self.setStyleSheet(
+            f"CardWidget{{background-color:{self._base_bg};border:1px solid {self._base_border};border-radius:12px;}}"
+        )
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._streaming:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w, h = self.width(), self.height()
+        radius = 12
+
+        path = QPainterPath()
+        path.addRoundedRect(1, 1, w - 2, h - 2, radius, radius)
+        painter.setClipPath(path)
+
+        gradient = QLinearGradient(0, 0, w, h)
+        colors = []
+        for i in range(8):
+            hue = (self._anim_offset + i * 45) % 360
+            c = QColor()
+            c.setHsl(hue, 200, 150)
+            colors.append(c)
+
+        gradient.setColorAt(0, colors[0])
+        gradient.setColorAt(0.14, colors[1])
+        gradient.setColorAt(0.28, colors[2])
+        gradient.setColorAt(0.42, colors[3])
+        gradient.setColorAt(0.56, colors[4])
+        gradient.setColorAt(0.70, colors[5])
+        gradient.setColorAt(0.84, colors[6])
+        gradient.setColorAt(1.0, colors[7])
+
+        pen = QPen(gradient, 2)
+        painter.setPen(pen)
+        painter.setBrush(QBrush(Qt.NoBrush))
+        painter.drawRoundedRect(1, 1, w - 2, h - 2, radius, radius)
+
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:
             try:
@@ -991,7 +1102,27 @@ class MessageCard(SimpleCardWidget):
         super().wheelEvent(event)
 
     def update_content(self, txt):
+        if self.role == "assistant" and not self._streaming:
+            self.start_streaming_anim()
         self.viewer.append_chunk(txt)
+
+    def run_js(self, js_code: str):
+        """运行 JavaScript 代码"""
+        try:
+            if self.viewer and hasattr(self.viewer, "page"):
+                self.viewer.page().runJavaScript(js_code)
+        except RuntimeError:
+            pass
+
+    def set_html_direct(self, html: str):
+        """直接设置 HTML，绕过打字机效果"""
+        try:
+            if self.viewer:
+                self.viewer._pending_chars = ""
+                self.viewer._markdown_text = html
+                self.viewer.setHtml(html, QUrl(""))
+        except RuntimeError:
+            pass
 
     def add_interactive_option(self, option: Dict[str, Any]):
         """添加交互选项"""
@@ -1039,15 +1170,30 @@ class MessageCard(SimpleCardWidget):
 
     def finish_streaming(self):
         self.viewer.finish_streaming()
+        self.stop_streaming_anim()
 
     def closeEvent(self, e):
+        self._anim_timer.stop()
         if hasattr(self.viewer, "deleteLater"):
             self.viewer.deleteLater()
         super().closeEvent(e)
 
 
-def create_welcome_card(parent=None) -> MessageCard:
-    welcome_md = """\
+def create_welcome_card(
+    parent=None, agent_name: str = "", agent_description: str = ""
+) -> MessageCard:
+    agent_tendency = ""
+    if agent_name:
+        agent_tendency = f"""
+---
+
+### 🤖 当前智能体：{agent_name}
+
+{agent_description}
+
+"""
+
+    welcome_md = f"""\
 ### 👋 你好！我是你的画布开发智能助手
 
 我已为你准备好以下能力，助你高效构建与调试画布：
@@ -1062,12 +1208,17 @@ def create_welcome_card(parent=None) -> MessageCard:
   - **生成代码**：`[组件名](generate)` → 跳转至组件开发界面并自动生成代码  
 
 ---
+*如需切换智能体，请在输入框右下角下拉菜单中选择。*
+
+{agent_tendency}
+
+---
 
 ### 💬 快速开始：点击下方问题直接提问
 
 - [帮我分析当前画布功能是否合理？](ask)  
 - [结合组件库，帮我完善当前画布：列出需新增的组件，如有前置节点需说明具体位置，如何连接，参数如何设置；若组件库缺失，也请说明需生成的新组件。](ask)  
-- [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)
+- [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)  
 - [帮我的代码生成一句话描述，说明代码具体功能、输入形式、输出形式、参数形式, 纯文本，不要有换行和任何特殊字符。](ask)
 
 """
