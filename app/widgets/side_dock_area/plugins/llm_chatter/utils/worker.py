@@ -217,7 +217,7 @@ class OpenAIChatWorker(QThread):
     finished_with_content = pyqtSignal(str)
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
-    question_asked = pyqtSignal(str, str, list)
+    question_asked = pyqtSignal(str, str, list, bool)
 
     def __init__(
         self,
@@ -510,11 +510,13 @@ class OpenAIChatWorker(QThread):
             if tool_name == "question":
                 question_text = arguments.get("question", "")
                 options = arguments.get("options", [])
-                self.question_asked.emit(tool_call_id, question_text, options)
+                multiple = arguments.get("multiple", False)
+                self.question_asked.emit(tool_call_id, question_text, options, multiple)
                 self._question_pending = {
                     "tool_call_id": tool_call_id,
                     "question": question_text,
                     "options": options,
+                    "multiple": multiple,
                 }
                 return None
 

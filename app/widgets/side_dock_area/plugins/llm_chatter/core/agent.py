@@ -107,20 +107,29 @@ class AgentManager:
             if tool["function"]["name"].lower() in tool_names_lower
         ]
 
-    def get_agent_system_prompt(self, agent_name: str, base_prompt: str = "") -> str:
+    def get_agent_system_prompt(
+        self, agent_name: str, base_prompt: str = "", todo_list: str = ""
+    ) -> str:
         """获取智能体的系统提示"""
         agent = self.get_agent(agent_name)
         if not agent:
             return base_prompt
 
         if agent.system_prompt:
-            return agent.system_prompt
+            prompt = agent.system_prompt
+            if todo_list and "{todo_list}" in prompt:
+                prompt = prompt.replace("{todo_list}", todo_list)
+            elif todo_list:
+                prompt += f"\n\n## 待办事项\n{todo_list}"
+            return prompt
 
+        todo_section = f"\n\n## 待办事项\n{todo_list}" if todo_list else ""
         return f"""# {agent.name}
 {agent.description}
 
 ## 可用工具
 你只能使用以下工具：{", ".join(agent.tools)}
+{todo_section}
 
 {base_prompt}"""
 

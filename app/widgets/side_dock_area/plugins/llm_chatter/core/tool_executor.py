@@ -135,7 +135,9 @@ class ToolExecutor:
             "todoread": lambda: self._builtin_tools.todo_read(),
             "skill": lambda: self._builtin_tools.load_skill(args.get("name", "")),
             "question": lambda: self._builtin_tools.ask_question(
-                args.get("question", ""), args.get("options")
+                args.get("question", ""),
+                args.get("options"),
+                args.get("multiple", False),
             ),
         }
 

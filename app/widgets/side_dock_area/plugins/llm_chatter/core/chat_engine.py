@@ -45,6 +45,22 @@ class ChatEngine:
     def _get_agent_manager(self):
         return self._agent_manager
 
+    def _get_todo_list_text(self) -> str:
+        """获取当前待办事项列表的文本"""
+        if not self._tool_executor or not self._tool_executor.builtin_tools:
+            return ""
+        todo_list = self._tool_executor.builtin_tools._todo_list
+        if not todo_list:
+            return ""
+
+        lines = []
+        for i, todo in enumerate(todo_list, 1):
+            status = "✓" if todo.get("status") == "completed" else "○"
+            content = todo.get("content", "")
+            priority = todo.get("priority", "medium")
+            lines.append(f"{i}. [{priority}] {status} {content}")
+        return "\n".join(lines)
+
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
 
@@ -126,9 +142,11 @@ class ChatEngine:
     def _build_messages(self, session: ChatSession, llm_config: Dict) -> List[Dict]:
         messages = []
 
+        todo_list_text = self._get_todo_list_text()
+
         if self._current_agent:
             full_system_prompt = self._get_agent_manager().get_agent_system_prompt(
-                self._current_agent
+                self._current_agent, todo_list=todo_list_text
             )
         else:
             full_system_prompt = self._get_agent_manager().get_unified_system_prompt()
@@ -223,8 +241,10 @@ class ChatEngine:
     ):
         self._emit("tool_call_started", tool_call_id, tool_name, arguments, round_id)
 
-    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
-        self._emit("question_asked", tool_call_id, question, options)
+    def _on_question_asked(
+        self, tool_call_id: str, question: str, options: list, multiple: bool
+    ):
+        self._emit("question_asked", tool_call_id, question, options, multiple)
 
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any

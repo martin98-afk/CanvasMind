@@ -78,7 +78,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import 
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
     QuestionFloatingWidget,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import render_tool_block
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
+    render_tool_block,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
 )
@@ -278,6 +280,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_floating_widget = QuestionFloatingWidget(self)
         self._question_floating_widget.setVisible(False)
         self._question_floating_widget.answered.connect(self._on_question_answered)
+        self._question_floating_widget.cancelled.connect(self._on_question_cancelled)
         layout.addWidget(self._question_floating_widget)
 
         hlayout = QHBoxLayout()
@@ -511,9 +514,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_agent = agent_name
         self._chat_engine.switch_agent(agent_name)
         self._update_agent_status(agent_name)
-        InfoBar.success(
-            "已切换智能体", f"当前智能体: {agent_name}", parent=self, duration=1500
-        )
 
     def _update_agent_status(self, agent_name: str):
         """更新智能体状态显示"""
@@ -1251,9 +1251,12 @@ class OpenAIChatToolWindow(ToolWindow):
         if tool_name == "question":
             question_text = arguments.get("question", "")
             options = arguments.get("options", [])
+            multiple = arguments.get("multiple", False)
             if question_text:
                 self._question_tool_call_id = tool_call_id
-                self._question_floating_widget.show_question(question_text, options)
+                self._question_floating_widget.show_question(
+                    question_text, options, multiple
+                )
             return
 
         if tool_name in ("todowrite", "todoread"):
@@ -1344,9 +1347,11 @@ class OpenAIChatToolWindow(ToolWindow):
             err_card.finish_streaming()
             self._scroll_to_bottom()
 
-    def _on_question_asked(self, tool_call_id: str, question: str, options: list):
+    def _on_question_asked(
+        self, tool_call_id: str, question: str, options: list, multiple: bool = False
+    ):
         self._question_tool_call_id = tool_call_id
-        self._question_floating_widget.show_question(question, options)
+        self._question_floating_widget.show_question(question, options, multiple)
 
     def _on_question_answered(self, answer: str):
         if not self._question_tool_call_id:
@@ -1357,6 +1362,16 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._chat_engine:
             self._chat_engine.provide_question_answer(answer)
+
+    def _on_question_cancelled(self):
+        """用户关闭问题窗口时，返回空答案让大模型继续"""
+        if not self._question_tool_call_id:
+            return
+
+        self._question_tool_call_id = None
+
+        if self._chat_engine:
+            self._chat_engine.provide_question_answer("")
 
     def _on_agent_switched(self, agent_name: str):
         """智能体切换回调 - 丝滑切换，不清空对话"""

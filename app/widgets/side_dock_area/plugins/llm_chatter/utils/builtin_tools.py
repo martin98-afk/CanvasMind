@@ -373,7 +373,10 @@ class BuiltinTools:
             import requests
             import os
 
-            api_key = os.environ.get("SERPAPI_KEY") or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+            api_key = (
+                os.environ.get("SERPAPI_KEY")
+                or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+            )
 
             if api_key == "your-serpapi-key-here" or not api_key:
                 return ToolResult(
@@ -471,9 +474,9 @@ class BuiltinTools:
         """加载技能文档"""
         try:
             search_paths = [
-                self.workdir / "skills" / f"{name}.md",
-                self.workdir / f"{name}.md",
-                self.workdir / "skill.md",
+                Path(__file__).parent.parent / "skills" / f"{name}.md",
+                Path(__file__).parent.parent / f"{name}.md",
+                Path(__file__).parent.parent / name / "skill.md",
             ]
 
             for path in search_paths:
@@ -489,13 +492,16 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Load skill error: {str(e)}")
 
-    def ask_question(self, question: str, options: List[str] = None) -> ToolResult:
+    def ask_question(
+        self, question: str, options: List[str] = None, multiple: bool = False
+    ) -> ToolResult:
         """向用户提问（返回问题定义，由UI处理实际提问）"""
         return ToolResult(
             True,
             content={
                 "question": question,
                 "options": options or [],
+                "multiple": multiple,
                 "type": "question",
             },
         )
@@ -727,6 +733,10 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "properties": {
                         "question": {"type": "string", "description": "问题内容"},
                         "options": {"type": "array", "description": "选项列表"},
+                        "multiple": {
+                            "type": "boolean",
+                            "description": "是否允许多选，默认false",
+                        },
                     },
                     "required": ["question"],
                 },
