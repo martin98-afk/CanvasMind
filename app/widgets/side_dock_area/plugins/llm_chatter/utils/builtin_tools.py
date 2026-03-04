@@ -476,6 +476,7 @@ class BuiltinTools:
             search_paths = [
                 Path(__file__).parent.parent / "skills" / name / f"SKILL.md",
                 Path("canvas_files") / "skills" / name / f"SKILL.md",
+                Path.home() / ".agents" / "skills" / name / f"SKILL.md",
             ]
             for path in search_paths:
                 if path.exists():
@@ -499,7 +500,7 @@ class BuiltinTools:
             skills_dirs = [
                 Path(__file__).parent.parent / "skills",
                 Path("canvas_files") / "skills",
-                Path.home() / "canvas_skills",
+                Path.home() / ".agents" / "skills",
             ]
             results = []
 
