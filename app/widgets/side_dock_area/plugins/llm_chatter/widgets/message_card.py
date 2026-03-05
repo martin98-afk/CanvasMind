@@ -277,24 +277,22 @@ def _render_tool_block_content(content: str) -> str:
     tool_result = ""
     tool_success = True
 
-    current_key = None
     for line in lines:
         if line.startswith("name: "):
             tool_name = line[6:].strip()
-            current_key = "name"
         elif line.startswith("args: "):
             tool_args = line[6:].strip()
-            current_key = "args"
         elif line.startswith("success: "):
             tool_success = line[9:].strip().lower() == "true"
-            current_key = None
-        elif current_key == "args":
-            tool_args += "\n" + line
-        elif current_key == "result":
-            tool_result += "\n" + line
-        elif line.startswith("result: "):
-            tool_result = line[8:].strip()
-            current_key = "result"
+
+    result_match = content.find("result: ")
+    if result_match != -1:
+        result_start = result_match + len("result: ")
+        success_match = content.find("\nsuccess: ", result_start)
+        if success_match != -1:
+            tool_result = content[result_start:success_match].strip()
+        else:
+            tool_result = content[result_start:].strip()
 
     try:
         args_dict = json.loads(tool_args) if tool_args else {}
