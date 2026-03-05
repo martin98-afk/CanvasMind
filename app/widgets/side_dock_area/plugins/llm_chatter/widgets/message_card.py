@@ -394,7 +394,8 @@ class CodeWebViewer(QWebEngineView):
                         break
                     parent = parent.parent()
                 # 同时将弹窗提升到最顶层
-                obj.raise_()
+                if hasattr(obj, "raise_"):
+                    obj.raise_()
         return super().eventFilter(obj, event)
 
     def lower_for_popup(self):

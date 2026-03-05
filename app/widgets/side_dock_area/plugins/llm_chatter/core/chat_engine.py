@@ -45,22 +45,6 @@ class ChatEngine:
     def _get_agent_manager(self):
         return self._agent_manager
 
-    def _get_todo_list_text(self) -> str:
-        """获取当前待办事项列表的文本"""
-        if not self._tool_executor or not self._tool_executor.builtin_tools:
-            return ""
-        todo_list = self._tool_executor.builtin_tools._todo_list
-        if not todo_list:
-            return ""
-
-        lines = []
-        for i, todo in enumerate(todo_list, 1):
-            status = "✓" if todo.get("status") == "completed" else "○"
-            content = todo.get("content", "")
-            priority = todo.get("priority", "medium")
-            lines.append(f"{i}. [{priority}] {status} {content}")
-        return "\n".join(lines)
-
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
 

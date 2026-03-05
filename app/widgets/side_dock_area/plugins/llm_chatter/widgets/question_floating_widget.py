@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QCheckBox,
     QSizePolicy,
+    QTextEdit,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
@@ -15,7 +16,7 @@ from qfluentwidgets import CardWidget, PrimaryPushButton
 
 
 class QuestionFloatingWidget(CardWidget):
-    """Question 悬浮框组件 - 让用户选择答案"""
+    """Question 悬浮框组件 - 让用户选择答案或输入文本"""
 
     answered = pyqtSignal(str)  # 用户选择答案后发射信号（多选时用逗号分隔）
     cancelled = pyqtSignal()  # 用户取消选择
@@ -25,6 +26,7 @@ class QuestionFloatingWidget(CardWidget):
         self._question = ""
         self._options = []
         self._multiple = False
+        self._text_input_mode = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -76,6 +78,21 @@ class QuestionFloatingWidget(CardWidget):
         self.question_label.setWordWrap(True)
         self.question_label.setMaximumHeight(60)
 
+        self.text_input = QTextEdit(self)
+        self.text_input.setPlaceholderText("请输入您的回答...")
+        self.text_input.setFont(QFont("Microsoft YaHei", 10))
+        self.text_input.setStyleSheet("""
+            QTextEdit {
+                background-color: #2a2a2a;
+                color: #ffffff;
+                border: 1px solid #505050;
+                border-radius: 4px;
+                padding: 8px;
+            }
+        """)
+        self.text_input.setMaximumHeight(80)
+        self.text_input.setVisible(False)
+
         self.options_container = QWidget()
         self.options_layout = QGridLayout(self.options_container)
         self.options_layout.setSpacing(8)
@@ -104,6 +121,7 @@ class QuestionFloatingWidget(CardWidget):
 
         main_layout.addLayout(header)
         main_layout.addWidget(self.question_label)
+        main_layout.addWidget(self.text_input)
         main_layout.addWidget(self.options_container, 1)
         main_layout.addLayout(self.button_area)
 
@@ -112,6 +130,15 @@ class QuestionFloatingWidget(CardWidget):
         self.cancelled.emit()
 
     def _on_confirm(self):
+        # 文本输入模式
+        if self._text_input_mode:
+            text = self.text_input.toPlainText().strip()
+            if text:
+                self.setVisible(False)
+                self.answered.emit(text)
+            return
+
+        # 选项模式
         selected = []
         for i in range(self.options_layout.count()):
             widget = self.options_layout.itemAt(i).widget()
@@ -140,7 +167,7 @@ class QuestionFloatingWidget(CardWidget):
                 self.confirm_btn.setText(f"确认 ({selected_count})")
 
     def show_question(self, question: str, options: list, multiple: bool = False):
-        """显示问题让用户选择"""
+        """显示问题让用户选择或输入文本"""
         self._question = question
         self._options = options
         self._multiple = multiple
@@ -149,6 +176,7 @@ class QuestionFloatingWidget(CardWidget):
         self.setVisible(True)
         self.confirm_btn.setVisible(False)
         self.confirm_btn.setText("确认")
+        self.text_input.clear()
 
         # 清除旧控件
         while self.options_layout.count():
@@ -156,8 +184,18 @@ class QuestionFloatingWidget(CardWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        if not options:
+        # 如果没有选项，显示文本输入模式
+        if not options or len(options) == 0:
+            self._text_input_mode = True
+            self.text_input.setVisible(True)
+            self.options_container.setVisible(False)
+            self.confirm_btn.setVisible(True)
+            self.confirm_btn.setText("提交")
             return
+
+        self._text_input_mode = False
+        self.text_input.setVisible(False)
+        self.options_container.setVisible(True)
 
         total = len(options)
         if total <= 3:
@@ -245,4 +283,6 @@ class QuestionFloatingWidget(CardWidget):
         self._question = ""
         self._options = []
         self._multiple = False
+        self._text_input_mode = False
+        self.text_input.clear()
         self.setVisible(False)
