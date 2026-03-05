@@ -49,7 +49,17 @@ class TopicSummaryTask(QRunnable):
             recent_msgs = (
                 self.messages[-6:] if len(self.messages) > 6 else self.messages
             )
-            for msg in recent_msgs:
+            user_only_msgs = [msg for msg in recent_msgs if msg.get("role") == "user"]
+            if not user_only_msgs:
+                self.callback(
+                    {
+                        "topic_summary": "",
+                        "should_update_memory": False,
+                        "memory_content": "",
+                    }
+                )
+                return
+            for msg in user_only_msgs:
                 content = msg.get("content", "")
                 if isinstance(content, list):
                     texts = [
@@ -61,8 +71,7 @@ class TopicSummaryTask(QRunnable):
 
                 content = self._extract_content_without_think(content)
 
-                role = "用户" if msg.get("role") == "user" else "助手"
-                summary_text += f"{role}：{content[:500]}\n"
+                summary_text += f"用户：{content[:500]}\n"
 
             memory_context = ""
             if self.long_term_memory:
@@ -70,56 +79,42 @@ class TopicSummaryTask(QRunnable):
 
             if self.previous_summary:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。\n"
-                    "你的任务有两个：\n"
-                    "1. 为当前对话生成一个简短的主题摘要（概括用户正在做什么任务）\n"
-                    "2. 判断是否需要将用户偏好或关键信息更新到长期记忆\n\n"
-                    "【主题摘要】应该描述：用户当前正在进行的任务或讨论的主题（如：编写Python脚本、调试Bug、咨询法律问题等）\n\n"
-                    "【长期记忆】应该记录：\n"
-                    "- 用户的偏好（如：喜欢简洁回复、详细解释、使用中文等）\n"
-                    "- 用户的特定需求（如：需要代码示例、学术风格、创意写作等）\n"
-                    "- 用户导向型内容（如：工作领域、技术栈、关注的问题等）\n"
-                    "- 重要的事实和信息（如：项目名称、使用框架等）\n\n"
-                    "【不应当记录的】：\n"
-                    "- 普通的闲聊内容\n"
-                    "- 临时性的问题\n"
-                    "- 通用技术知识\n\n"
-                    f"之前的主题摘要：{self.previous_summary}\n\n"
-                    f"最新对话内容：\n{summary_text}\n"
+                    "你是一个对话标题生成助手。\n"
+                    "请为用户对话生成一个简短标题。\n\n"
+                    "【标题要求】\n"
+                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
+                    "- 体现用户意图，不要描述过程\n"
+                    "- 不超过20字\n\n"
+                    "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
+                    f"之前的标题：{self.previous_summary}\n\n"
+                    f"最新对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "简短主题摘要，描述用户当前正在做什么任务（不超过50字）",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
-                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
+                    '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "用户偏好或特定需求"\n'
                     "}\n"
                     "```"
                 )
             else:
                 prompt = (
-                    "你是一个专业的对话主题分析助手。\n"
-                    "你的任务有两个：\n"
-                    "1. 为当前对话生成一个简短的主题摘要（概括用户正在做什么任务）\n"
-                    "2. 判断是否需要将用户偏好或关键信息更新到长期记忆\n\n"
-                    "【主题摘要】应该描述：用户当前正在进行的任务或讨论的主题（如：编写Python脚本、调试Bug、咨询法律问题等）\n\n"
-                    "【长期记忆】应该记录：\n"
-                    "- 用户的偏好（如：喜欢简洁回复、详细解释、使用中文等）\n"
-                    "- 用户的特定需求（如：需要代码示例、学术风格、创意写作等）\n"
-                    "- 用户导向型内容（如：工作领域、技术栈、关注的问题等）\n"
-                    "- 重要的事实和信息（如：项目名称、使用框架等）\n\n"
-                    "【不应当记录的】：\n"
-                    "- 普通的闲聊内容\n"
-                    "- 临时性的问题\n"
-                    "- 通用技术知识\n\n"
-                    f"对话内容：\n{summary_text}\n"
+                    "你是一个对话标题生成助手。\n"
+                    "请为用户对话生成一个简短标题。\n\n"
+                    "【标题要求】\n"
+                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
+                    "- 体现用户意图，不要描述过程\n"
+                    "- 不超过20字\n\n"
+                    "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
+                    f"对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "简短主题摘要，描述用户当前正在做什么任务（不超过50字）",\n'
-                    '  "should_update_memory": true/false,  // 判断是否值得记录到用户偏好记忆\n'
-                    '  "memory_content": "如果should_update_memory为true，提取用户偏好或特定需求（不超过100字）"\n'
+                    '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "用户偏好或特定需求"\n'
                     "}\n"
                     "```"
                 )
@@ -135,10 +130,6 @@ class TopicSummaryTask(QRunnable):
                 max_tokens=1000,
             )
             raw_response = resp.choices[0].message.content.strip()
-
-            import json
-            import re
-
             json_match = re.search(r"\{[^{}]*\}", raw_response, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())

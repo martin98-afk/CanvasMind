@@ -167,13 +167,14 @@ class UpdateChecker(QWidget):
             self._run_installer()
 
     def _run_installer(self):
-        """启动 Inno Setup 安装包"""
+        """启动 Inno Setup 安装:
+            # /VERYSILENT: 静默安装，使用默认选项（包括"安装后启动"如果勾选了的话）
+            # /SUPPRESSMSGBOXES: 抑制消息框
+            # /RESTART: 安装完成后自动重启应用
+        """
         try:
-            # /SILENT: 显示安装进度但不需要点击
-            # /SP-: 屏蔽“你确定要安装吗”提示
-            # 使用 shell=True 和 DETACHED_PROCESS 确保安装进程在主程序退出后依然运行
             subprocess.Popen(
-                [self.installer_path, "/SILENT", "/SP-"],
+                [self.installer_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/RESTART"],
                 shell=True,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
                 | subprocess.DETACHED_PROCESS,

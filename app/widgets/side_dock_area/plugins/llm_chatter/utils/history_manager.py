@@ -92,13 +92,11 @@ class HistoryManager:
                     data = deserialize_from_json(json.load(f))
                     for item in data:
                         if "title" not in item:
-                            item["title"] = "未命名对话"
+                            item["title"] = item.get("topic_summary", "新对话")
                         if "last_time" not in item:
                             item["last_time"] = item.get("messages", [{}])[-1].get(
                                 "timestamp", "未知"
                             )
-                        if "topic_summary" not in item:
-                            item["topic_summary"] = ""
                         if "message_count" not in item:
                             item["message_count"] = len(item.get("messages", []))
                     return data
@@ -138,7 +136,6 @@ class HistoryManager:
                 "title": title,
                 "last_time": last_msg_time,
                 "messages": merged_messages,
-                "topic_summary": "",
                 "message_count": self._count_conversation_pairs(merged_messages),
             },
         )
@@ -155,24 +152,17 @@ class HistoryManager:
             self._save_to_disk()
 
     def update_topic_summary(self, index: int, summary: str):
-        if 0 <= index < len(self._history_sessions):
-            self._history_sessions[index]["topic_summary"] = summary
-            self._history_sessions[index]["message_count"] = len(
-                self._history_sessions[index].get("messages", [])
-            )
-            self._save_to_disk()
+        self.update_session_title(index, summary)
 
     def get_topic_summary(self, index: int) -> str:
-        if 0 <= index < len(self._history_sessions):
-            return self._history_sessions[index].get("topic_summary", "")
-        return ""
+        return self.get_current_title(index)
 
     def should_generate_summary(self, index: int) -> bool:
         if 0 <= index < len(self._history_sessions):
             session = self._history_sessions[index]
-            msg_count = session.get("message_count", len(session.get("messages", [])))
-            current_summary = session.get("topic_summary", "")
-            return msg_count >= 2 and not current_summary
+            messages = session.get("messages", [])
+            user_count = sum(1 for msg in messages if msg.get("role") == "user")
+            return user_count >= 1
         return False
 
     def _count_conversation_pairs(self, messages: List[Dict]) -> int:
