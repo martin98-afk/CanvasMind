@@ -14,20 +14,66 @@ Note: The "Force/Set CLIP Device" is **NOT** part of this node pack. Do not inst
 > [!IMPORTANT]  
 > Make sure your ComfyUI is on a recent-enough version to support custom ops when loading the UNET-only.
 
-To install the custom node normally, git clone this repository into your custom nodes folder (`ComfyUI/custom_nodes`) and install the only dependency for inference (`pip install --upgrade gguf`)
+---
 
-```
+### 中文安装指南
+
+#### 前置要求
+
+- ComfyUI 最新版本（需要支持自定义 ops）
+- Python 环境
+- GGUF 依赖库
+
+#### 安装步骤
+
+**方法一：常规安装（推荐）**
+
+将仓库克隆到 ComfyUI 的 custom_nodes 文件夹中：
+
+```bash
 git clone https://github.com/city96/ComfyUI-GGUF
 ```
 
-To install the custom node on a standalone ComfyUI release, open a CMD inside the "ComfyUI_windows_portable" folder (where your `run_nvidia_gpu.bat` file is) and use the following commands:
+安装依赖：
 
+```bash
+pip install --upgrade gguf
 ```
+
+**方法二：Windows 便携版安装**
+
+1. 进入 `ComfyUI_windows_portable` 文件夹（包含 `run_nvidia_gpu.bat` 的目录）
+2. 执行以下命令：
+
+```bash
 git clone https://github.com/city96/ComfyUI-GGUF ComfyUI/custom_nodes/ComfyUI-GGUF
 .\python_embeded\python.exe -s -m pip install -r .\ComfyUI\custom_nodes\ComfyUI-GGUF\requirements.txt
 ```
 
-On MacOS sequoia, torch 2.4.1 seems to be required, as 2.6.X nightly versions cause a "M1 buffer is not large enough" error. See [this issue](https://github.com/city96/ComfyUI-GGUF/issues/107) for more information/workarounds.
+**方法三：ComfyUI-Manager 安装**
+
+1. 打开 ComfyUI-Manager
+2. 点击 "Install Custom Nodes"
+3. 搜索 "ComfyUI-GGUF"
+4. 点击安装
+
+#### 模型放置
+
+将 `.gguf` 模型文件放入以下目录：
+
+```
+ComfyUI/models/unet/
+```
+
+---
+
+#### 注意事项
+
+⚠️ **不要**在只有一块 GPU 的情况下使用 "Force/Set CLIP Device" 功能，否则可能导致 OOM 错误。
+
+⚠️ MacOS Sequoia 系统需要使用 torch 2.4.1 版本，2.6.X 夜间版本会导致 "M1 buffer is not large enough" 错误。
+
+---
 
 ## Usage
 

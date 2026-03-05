@@ -199,6 +199,13 @@ class SSHExecutor(BaseExecutor):
                 if new_data:
                     ctx.node._log_message(ctx.node.persistent_id, new_data)
 
+            error_info = self.read_error(ctx)
+            if error_info:
+                ctx.node._log_message(
+                    ctx.node.persistent_id, error_info.get("traceback", "")
+                )
+                raise Exception(error_info.get("traceback", "未知错误"))
+
             ctx.node._log_message(
                 ctx.node.persistent_id, "✅ 节点在ssh远程环境执行完成"
             )
