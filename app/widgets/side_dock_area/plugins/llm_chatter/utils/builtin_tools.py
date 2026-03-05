@@ -504,6 +504,13 @@ class BuiltinTools:
             ]
             results = []
 
+            skills_intro = ""
+            main_skills_dir = Path(__file__).parent.parent / "skills"
+            skills_readme = main_skills_dir / "SKILLS.md"
+            if skills_readme.exists():
+                content = skills_readme.read_text(encoding="utf-8")
+                skills_intro = content + "\n\n"
+
             for skills_dir in skills_dirs:
                 if not skills_dir.exists():
                     continue
@@ -536,9 +543,11 @@ class BuiltinTools:
 
                     results.append({"name": name, "description": description})
 
-            return ToolResult(
-                True, content=json.dumps(results, ensure_ascii=False, indent=2)
-            )
+            skills_xml = "<available_skills>\n"
+            for skill in results:
+                skills_xml += f"  <skill>\n    <name>{skill['name']}</name>\n    <description>{skill['description']}</description>\n  </skill>\n"
+            skills_xml += "</available_skills>"
+            return ToolResult(True, content=skills_intro + skills_xml)
         except Exception as e:
             return ToolResult(False, error=f"List skills error: {str(e)}")
 

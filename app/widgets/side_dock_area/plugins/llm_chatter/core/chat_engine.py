@@ -28,12 +28,14 @@ class ChatEngine:
         get_context_provider: Any,
         tool_executor: Optional[Any] = None,
         agent_manager: Any = None,
+        get_chat_cards: Callable[[], List[Any]] = None,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
         self._get_context_provider = get_context_provider
         self._tool_executor = tool_executor
         self._agent_manager = agent_manager
+        self._get_chat_cards = get_chat_cards
 
         self._current_worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
@@ -139,35 +141,28 @@ class ChatEngine:
 
         messages.append({"role": "system", "content": full_system_prompt})
 
-        for msg in session.messages[:-1]:
-            role = msg.get("role")
-            content = msg.get("content", "")
+        cards = self._get_chat_cards() if self._get_chat_cards else []
 
-            if "tool_calls" in msg:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": msg.get("content", ""),
-                        "tool_calls": msg.get("tool_calls", []),
-                    }
-                )
-            elif role == "tool":
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": msg.get("tool_call_id"),
-                        "content": content,
-                    }
-                )
-            else:
-                if isinstance(content, list):
-                    content = "\n".join(
-                        [item["text"] for item in content if item.get("type") == "text"]
-                    )
-                messages.append({"role": role, "content": content})
+        for card in cards:
+            role = getattr(card, "role", None)
+            if not role or role == "system":
+                continue
+
+            content = ""
+            if hasattr(card, "viewer") and hasattr(card.viewer, "get_plain_text"):
+                content = card.viewer.get_plain_text()
+
+            if not content:
+                continue
+
+            if role == "user":
+                messages.append({"role": "user", "content": content})
+            elif role == "assistant":
+                messages.append({"role": "assistant", "content": content})
 
         context_provider = self._get_context_provider()
-        user_text = session.messages[-1].get("content", "")
+
+        user_text = session.messages[-1].get("content", "") if session.messages else ""
 
         model_name = str(llm_config.get("模型名称", "")).lower()
         supports_vision = any(
@@ -235,12 +230,10 @@ class ChatEngine:
 
     def _on_worker_finished(self, response: str):
         self._is_streaming = False
-
-        session = self._session_manager.get_current_session()
-        if session:
-            session.add_assistant_message(content=response)
-
         self._emit("stream_finished", response)
+
+    def _on_worker_messages_updated(self, messages: List[Dict]):
+        self._emit("messages_updated", messages)
 
     def _on_error(self, error: str):
         self._is_streaming = False
