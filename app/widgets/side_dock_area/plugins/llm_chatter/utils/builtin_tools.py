@@ -16,6 +16,8 @@ import fnmatch
 
 from loguru import logger
 
+from app.utils.config import Settings
+
 
 class ToolResult:
     def __init__(self, success: bool, content: Any = None, error: str = None):
@@ -375,7 +377,7 @@ class BuiltinTools:
 
             api_key = (
                 os.environ.get("SERPAPI_KEY")
-                or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+                or Settings.get_instance().SERPAPI_KEY.value
             )
 
             if api_key == "your-serpapi-key-here" or not api_key:
