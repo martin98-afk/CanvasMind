@@ -7,6 +7,19 @@ import json
 from html import escape
 
 
+def format_tool_block(
+    tool_name: str,
+    tool_args: dict,
+    result: str = None,
+    success: bool = True,
+) -> str:
+    """格式化工具块为纯文本标记，用于存储"""
+    args_json = json.dumps(tool_args, ensure_ascii=False)
+    result_str = str(result) if result else ""
+
+    return f"<tool>\nname: {tool_name}\nargs: {args_json}\nresult: {result_str}\nsuccess: {success}\n</tool>"
+
+
 def render_tool_block(
     tool_name: str,
     tool_args: dict,
@@ -38,14 +51,12 @@ def render_tool_block(
         result_str = str(result)
         result_stripped = strip_code_blocks(result_str[:500])
         result_escaped = escape(result_stripped)
-        if len(result_str) > 500:
-            result_escaped += "..."
         result_html = f"""
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
             <div style="color: #888; margin-bottom: 4px;">参数:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
             <div style="color: #888; margin: 8px 0 4px;">结果:</div>
-            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{result_escaped}</pre>
+            <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px; max-height: 400px; overflow-y: auto;">{result_escaped}</pre>
         </div>"""
     else:
         result_html = f"""

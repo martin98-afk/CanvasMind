@@ -265,11 +265,7 @@ class ContextSelector(QWidget):
         context = ("===== 画布上下文信息开始 =====\n\n" +
                    "\n".join([context[1] for context in self._context_cache.values() if not context[3]]) +
                    "\n===== 上下文信息结束 =====\n\n") if self._context_cache else ""
-        return f"""{context}
-
-理解上下文信息，遵守上下文交互规范，并给出下面用户问题一个完整、调理清晰的语言进行回复，使用规范的markdown语法。\n\n
-
-# 用户问题\n\n"""
+        return context
 
     def get_context_by_key(self, key: str) -> str:
         """获取格式化后的上下文文本"""

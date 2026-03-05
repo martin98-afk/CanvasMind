@@ -7,6 +7,10 @@ from datetime import datetime
 from html import escape
 from typing import List, Dict, Any
 
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
+    render_tool_block,
+)
+
 from PyQt5.QtCore import (
     Qt,
     QTimer,
@@ -261,6 +265,66 @@ def _inject_think_cards(md_text: str, completed: bool = True) -> str:
         else:
             content = md_text[start_idx + len("<think>") :]
             parts.append(_render_think_block(content, completed=False))
+            i = len(md_text)
+    return "".join(parts)
+
+
+def _render_tool_block_content(content: str) -> str:
+    """渲染工具块内容为HTML"""
+    lines = content.strip().split("\n")
+    tool_name = ""
+    tool_args = ""
+    tool_result = ""
+    tool_success = True
+
+    for line in lines:
+        if line.startswith("name: "):
+            tool_name = line[6:].strip()
+        elif line.startswith("args: "):
+            tool_args = line[6:].strip()
+        elif line.startswith("success: "):
+            tool_success = line[9:].strip().lower() == "true"
+
+    result_match = content.find("result: ")
+    if result_match != -1:
+        result_start = result_match + len("result: ")
+        success_match = content.find("\nsuccess: ", result_start)
+        if success_match != -1:
+            tool_result = content[result_start:success_match].strip()
+        else:
+            tool_result = content[result_start:].strip()
+
+    try:
+        args_dict = json.loads(tool_args) if tool_args else {}
+    except:
+        args_dict = {}
+
+    return render_tool_block(
+        tool_name, args_dict, tool_result, tool_success, collapsed=True
+    )
+
+
+def _inject_tool_blocks(md_text: str, completed: bool = True) -> str:
+    """注入工具块HTML，类似think块"""
+    if not md_text:
+        return md_text
+
+    parts = []
+    i = 0
+    while i < len(md_text):
+        start_idx = md_text.find("<tool>", i)
+        if start_idx == -1:
+            parts.append(md_text[i:])
+            break
+        parts.append(md_text[i:start_idx])
+        end_idx = md_text.find("</tool>", start_idx + len("<tool>"))
+        if end_idx != -1:
+            content = md_text[start_idx + len("<tool>") : end_idx]
+            parts.append(_render_tool_block_content(content))
+            i = end_idx + len("</tool>")
+        else:
+            content = md_text[start_idx + len("<tool>") :]
+            parts.append(_render_tool_block_content(content))
             i = len(md_text)
     return "".join(parts)
 
@@ -691,6 +755,7 @@ class CodeWebViewer(QWebEngineView):
             safe_md = _unwrap_code_blocks_with_context_links(safe_md)
             safe_md = _inject_context_links(safe_md)
             processed_md = _inject_think_cards(safe_md, False)
+            processed_md = _inject_tool_blocks(processed_md, self._streaming == False)
             try:
                 md = get_markdown_instance()
                 md.reset()
@@ -721,6 +786,7 @@ class CodeWebViewer(QWebEngineView):
             safe_md = _unwrap_code_blocks_with_context_links(safe_md)
             safe_md = _inject_context_links(safe_md)
             processed_md = _inject_think_cards(safe_md, self._streaming == False)
+            processed_md = _inject_tool_blocks(processed_md, self._streaming == False)
             try:
                 md = get_markdown_instance()
                 md.reset()
@@ -748,6 +814,9 @@ class CodeWebViewer(QWebEngineView):
         self._perform_update()
 
     def get_plain_text(self) -> str:
+        return self._markdown_text
+
+    def get_html(self) -> str:
         return self._markdown_text
 
     def resizeEvent(self, event):
@@ -1121,7 +1190,8 @@ class MessageCard(SimpleCardWidget):
             if self.viewer:
                 self.viewer._pending_chars = ""
                 self.viewer._markdown_text = html
-                self.viewer.setHtml(html, QUrl(""))
+                self.viewer._streaming = False
+                self.viewer._perform_update()
         except RuntimeError:
             pass
 
