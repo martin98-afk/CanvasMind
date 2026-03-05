@@ -236,6 +236,7 @@ class NodeLayoutHandler:
             def get_level(n):
                 if n in node_to_level: return node_to_level[n]
                 inputs = []
+                if n.inputs() is None: return 0
                 for port in n.inputs().values():
                     # 仅关注当前组内的连接
                     inputs.extend([p.node() for p in port.connected_ports() if p.node() in group])

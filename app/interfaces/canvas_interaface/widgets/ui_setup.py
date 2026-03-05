@@ -3,8 +3,16 @@ import os
 
 from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame
-from qfluentwidgets import (TransparentToolButton, FluentIcon, RoundMenu, Action,
-                            ComboBox, setFont, IconWidget, InfoBar)
+from qfluentwidgets import (
+    TransparentToolButton,
+    FluentIcon,
+    RoundMenu,
+    Action,
+    ComboBox,
+    setFont,
+    IconWidget,
+    InfoBar,
+)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 from qtpy import QtGui
 
@@ -16,8 +24,13 @@ from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from .canvas_left_panel import LeftPanel
 from .canvas_setting_popup import CanvasSettingPopup
 from .workflow_graph_manager import WorkflowCanvasManager
-from ..constants import (DEFAULT_SPLITTER_SIZES, MAX_VISIBLE_QUICK_BUTTONS, GRID_STYLE, PIPELINE_STYLE,
-                         PIPELINE_DIRECTION)
+from ..constants import (
+    DEFAULT_SPLITTER_SIZES,
+    MAX_VISIBLE_QUICK_BUTTONS,
+    GRID_STYLE,
+    PIPELINE_STYLE,
+    PIPELINE_DIRECTION,
+)
 
 
 class CanvasUISetUp:
@@ -109,40 +122,71 @@ class CanvasUISetUp:
             self.btn_toggle_nav.clicked.connect(self._toggle_nav_panel)
 
         # --- 基础控制信号 ---
-        self.close_btn.clicked.connect(lambda: (
-            QTimer.singleShot(0, self.parent.close_current_canvas),
-            self.parent.switch_to_parent()
-        ))
+        self.close_btn.clicked.connect(
+            lambda: (
+                QTimer.singleShot(0, self.parent.close_current_canvas),
+                self.parent.switch_to_parent(),
+            )
+        )
 
         # --- 左侧功能按钮 ---
         self.iterate_node.clicked.connect(
-            lambda: self.parent.create_backdrop_node("control_flow.ControlFlowIterateNode"))
-        self.loop_node.clicked.connect(lambda: self.parent.create_backdrop_node("control_flow.ControlFlowLoopNode"))
-        self.branch_node.clicked.connect(lambda: self.parent.create_next_node("control_flow.ControlFlowBranchNode"))
-        self.echart_node.clicked.connect(lambda: self.parent.create_next_node("visualize.MediaNode"))
-        self.code_node.clicked.connect(lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE"))
-        self.note_node.clicked.connect(lambda: self.parent.create_backdrop_node("general.StickyNote", init_io=False))
-        self.trigger_node.clicked.connect(lambda: self.parent.create_next_node("general.trigger"))
+            lambda: self.parent.create_backdrop_node(
+                "control_flow.ControlFlowIterateNode"
+            )
+        )
+        self.loop_node.clicked.connect(
+            lambda: self.parent.create_backdrop_node("control_flow.ControlFlowLoopNode")
+        )
+        self.branch_node.clicked.connect(
+            lambda: self.parent.create_next_node("control_flow.ControlFlowBranchNode")
+        )
+        self.echart_node.clicked.connect(
+            lambda: self.parent.create_next_node("visualize.MediaNode")
+        )
+        self.code_node.clicked.connect(
+            lambda: self.parent.create_next_node("dynamic.DYNAMIC_CODE")
+        )
+        self.note_node.clicked.connect(
+            lambda: self.parent.create_backdrop_node(
+                "general.StickyNote", init_io=False
+            )
+        )
+        self.trigger_node.clicked.connect(
+            lambda: self.parent.create_next_node("general.trigger")
+        )
 
-        if hasattr(self.parent, 'quick_manager'):
-            self.add_quick_btn.clicked.connect(lambda: self.parent.quick_manager.open_add_dialog(self.add_quick_btn))
+        if hasattr(self.parent, "quick_manager"):
+            self.add_quick_btn.clicked.connect(
+                lambda: self.parent.quick_manager.open_add_dialog(self.add_quick_btn)
+            )
             self.more_quick_button.clicked.connect(self._show_more_quick_menu)
             self._refresh_quick_buttons()
 
         self.btn_mode_toggle.clicked.connect(self._toggle_viewer_mode)
         # 画布控制菜单
-        view_split_right_action = Action(get_icon("向右拆分"), "向右拆分视角", parent=self.canvas_manager)
+        view_split_right_action = Action(
+            get_icon("向右拆分"), "向右拆分视角", parent=self.canvas_manager
+        )
         view_split_right_action.triggered.connect(self._on_view_split_right)
         self.more_canvas_settings_menu.addAction(view_split_right_action)
-        view_split_down_action = Action(get_icon("向下拆分"), "向下拆分视角", parent=self.canvas_manager)
+        view_split_down_action = Action(
+            get_icon("向下拆分"), "向下拆分视角", parent=self.canvas_manager
+        )
         view_split_down_action.triggered.connect(self._on_view_split_down)
         self.more_canvas_settings_menu.addAction(view_split_down_action)
-        view_remove_action = Action(FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager)
-        view_remove_action.triggered.connect(lambda: self.canvas_manager.graph_splitter.remove_viewer())
+        view_remove_action = Action(
+            FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager
+        )
+        view_remove_action.triggered.connect(
+            lambda: self.canvas_manager.graph_splitter.remove_viewer()
+        )
         self.more_canvas_settings_menu.addAction(view_remove_action)
         self.more_canvas_settings_button.clicked.connect(self._show_canvas_more_menu)
         self.btn_zoom_fit.clicked.connect(
-            lambda: self.graph.viewer().zoom_to_nodes([n.view for n in self.graph.all_nodes()])
+            lambda: self.graph.viewer().zoom_to_nodes(
+                [n.view for n in self.graph.all_nodes()]
+            )
         )
         self.btn_zen_mode.clicked.connect(self.toggle_zen_mode)
         self.btn_canvas_setting.clicked.connect(self._show_canvas_settings)
@@ -210,7 +254,8 @@ class CanvasUISetUp:
         """
 
     def create_name_label(self):
-        if self.name_container: return
+        if self.name_container:
+            return
         self.name_container = QFrame(self.canvas_manager)  # Parent 设为 canvas_manager
         self.name_container.setObjectName("FrostedPanel")
         self.name_container.setStyleSheet(self._get_frosted_style())
@@ -271,7 +316,14 @@ class CanvasUISetUp:
         self.export_model_btn = self._build_tool_btn(FluentIcon.SHARE, "导出")
         self.close_btn = self._build_tool_btn(FluentIcon.CLOSE, "关闭")
 
-        for btn in [self.run_btn, self.pause_btn, self.stop_btn, self.save_btn, self.export_model_btn, self.close_btn]:
+        for btn in [
+            self.run_btn,
+            self.pause_btn,
+            self.stop_btn,
+            self.save_btn,
+            self.export_model_btn,
+            self.close_btn,
+        ]:
             layout.addWidget(btn)
 
         self.pause_btn.hide()
@@ -299,8 +351,15 @@ class CanvasUISetUp:
         self.code_node = self._build_tool_btn(get_icon("代码执行"), "代码节点")
         self.note_node = self._build_tool_btn(get_icon("文本注释"), "注释节点")
 
-        for btn in [self.iterate_node, self.loop_node, self.branch_node, self.echart_node,
-                    self.code_node, self.trigger_node, self.note_node]:
+        for btn in [
+            self.iterate_node,
+            self.loop_node,
+            self.branch_node,
+            self.echart_node,
+            self.code_node,
+            self.trigger_node,
+            self.note_node,
+        ]:
             self.node_layout.addWidget(btn)
 
         self.node_layout.addWidget(CardSeparator(self.nodes_container))
@@ -337,7 +396,9 @@ class CanvasUISetUp:
 
         # --- 新增：视角控制按钮 ---
         # 使用 ADD 和 REMOVE 图标，或者你可以换成 Layout 相关的图标
-        self.more_canvas_settings_button = self._build_tool_btn(FluentIcon.MORE, "更多画布控制功能")
+        self.more_canvas_settings_button = self._build_tool_btn(
+            FluentIcon.MORE, "更多画布控制功能"
+        )
         self.more_canvas_settings_menu = RoundMenu(parent=self.canvas_manager)
         # ------------------------
 
@@ -351,7 +412,7 @@ class CanvasUISetUp:
             self.btn_zoom_fit,
             self.btn_zen_mode,
             self.more_canvas_settings_button,
-            self.btn_canvas_setting
+            self.btn_canvas_setting,
         ]
 
         for btn in widgets:
@@ -369,8 +430,11 @@ class CanvasUISetUp:
     def _show_quick_button_menu(self, button, full_path, pos):
         menu = RoundMenu()
         menu.addAction(
-            Action("从快捷栏移除", triggered=lambda: self.parent.quick_manager.remove_component(full_path),
-                   parent=self.parent.canvas_widget)
+            Action(
+                "从快捷栏移除",
+                triggered=lambda: self.parent.quick_manager.remove_component(full_path),
+                parent=self.parent.canvas_widget,
+            )
         )
         menu.exec_(button.mapToGlobal(pos))
 
@@ -418,29 +482,40 @@ class CanvasUISetUp:
 
         # 1. 左上角 (名称)
         if self.name_container:
-            if recalculate_size: self.name_container.adjustSize()
+            if recalculate_size:
+                self.name_container.adjustSize()
             self.name_container.move(padding, padding)
 
         # 2. 右上角 (环境 & 按钮) -> 必须实时计算 X
         if self.buttons_container:
-            if recalculate_size: self.buttons_container.adjustSize()
-            self.buttons_container.move(w - self.buttons_container.width() - padding, padding)
+            if recalculate_size:
+                self.buttons_container.adjustSize()
+            self.buttons_container.move(
+                w - self.buttons_container.width() - padding, padding
+            )
         # 环境紧靠 按钮左边
         if self.envs_container:
-            if recalculate_size: self.envs_container.adjustSize()
-            self.envs_container.move(self.buttons_container.x() - self.envs_container.width() - padding,
-                                     self.buttons_container.y())
+            if recalculate_size:
+                self.envs_container.adjustSize()
+            self.envs_container.move(
+                self.buttons_container.x() - self.envs_container.width() - padding,
+                self.buttons_container.y(),
+            )
 
         # 3. 左侧 (节点栏) -> 垂直居中
         if self.nodes_container:
-            if recalculate_size: self.nodes_container.adjustSize()
+            if recalculate_size:
+                self.nodes_container.adjustSize()
             self.nodes_container.move(padding, (h - self.nodes_container.height()) // 2)
 
         # 4. 右下角 (画布控制) -> 必须实时计算 X, Y
         if self.canvas_controls_container:
-            if recalculate_size: self.canvas_controls_container.adjustSize()
-            self.canvas_controls_container.move(w - self.canvas_controls_container.width() - padding,
-                                                h - self.canvas_controls_container.height() - padding)
+            if recalculate_size:
+                self.canvas_controls_container.adjustSize()
+            self.canvas_controls_container.move(
+                w - self.canvas_controls_container.width() - padding,
+                h - self.canvas_controls_container.height() - padding,
+            )
 
     def _toggle_nav_panel(self):
         visible = self.nav_panel.isVisible()
@@ -456,7 +531,8 @@ class CanvasUISetUp:
 
     def hide_splitter(self):
         sizes = self.splitter.sizes()
-        if sizes[2] > 0: self.last_right_width = sizes[2]
+        if sizes[2] > 0:
+            self.last_right_width = sizes[2]
         sizes[2] = 0
         self.splitter.setSizes(sizes)
         self.side_dock_area.hide()
@@ -475,7 +551,9 @@ class CanvasUISetUp:
         new_viewer = self.canvas_manager.graph_splitter.split_right()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
-        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
+        new_viewer.zoom_to_nodes(
+            [n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()]
+        )
         self.parent.node_operations.setup_graph_menu(new_viewer)
 
     def _on_view_split_down(self):
@@ -483,7 +561,9 @@ class CanvasUISetUp:
         new_viewer = self.canvas_manager.graph_splitter.split_down()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
-        new_viewer.zoom_to_nodes([n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()])
+        new_viewer.zoom_to_nodes(
+            [n.view for n in self.graph.selected_nodes() or self.graph.all_nodes()]
+        )
         self.parent.node_operations.setup_graph_menu(new_viewer)
 
     def toggle_zen_mode(self):
@@ -503,11 +583,13 @@ class CanvasUISetUp:
         self.view.show_at_button(self.btn_canvas_setting)
 
     def _refresh_quick_buttons(self):
-        if not hasattr(self.parent, 'quick_manager') or not self.parent.quick_manager: return
+        if not hasattr(self.parent, "quick_manager") or not self.parent.quick_manager:
+            return
         all_quick_components = self.parent.quick_manager.get_quick_components()
         while self.visible_quick_layout.count():
             child = self.visible_quick_layout.takeAt(0)
-            if child.widget(): child.widget().deleteLater()
+            if child.widget():
+                child.widget().deleteLater()
         self.more_quick_menu.clear()
         self._hidden_quick_components = []
         for i, qc in enumerate(all_quick_components):
@@ -516,14 +598,19 @@ class CanvasUISetUp:
                 self._hidden_quick_components.append((fp, idat))
                 self.more_quick_button.show()
                 continue
-            btn = self._build_tool_btn(self._get_qc_icon(idat), f"创建 {os.path.basename(fp)}")
-            btn.clicked.connect(lambda _, f=fp, d=idat: self.parent.create_next_node(f, d))
+            btn = self._build_tool_btn(
+                self._get_qc_icon(idat), f"创建 {os.path.basename(fp)}"
+            )
+            btn.clicked.connect(
+                lambda _, f=fp, d=idat: self.parent.create_next_node(f, d)
+            )
             btn.setContextMenuPolicy(Qt.CustomContextMenu)
             btn.customContextMenuRequested.connect(
                 lambda pos, b=btn, fp=fp: self._show_quick_button_menu(b, fp, pos)
             )
             self.visible_quick_layout.addWidget(btn)
-        if not self._hidden_quick_components: self.more_quick_button.hide()
+        if not self._hidden_quick_components:
+            self.more_quick_button.hide()
         QTimer.singleShot(0, lambda: self.update_position(True))
 
     def _get_qc_icon(self, icon_path):
@@ -536,11 +623,20 @@ class CanvasUISetUp:
     def _show_more_quick_menu(self):
         self.more_quick_menu.clear()
         for fp, ip in self._hidden_quick_components:
-            action = Action(self._get_qc_icon(ip), os.path.basename(fp).replace('.py', ''),
-                            parent=self.canvas_manager)
-            action.triggered.connect(lambda _, p=fp, i=ip: self.parent.create_next_node(p, i))
+            action = Action(
+                self._get_qc_icon(ip),
+                os.path.basename(fp).replace(".py", ""),
+                parent=self.canvas_manager,
+            )
+            action.triggered.connect(
+                lambda _, p=fp, i=ip: self.parent.create_next_node(p, i)
+            )
             self.more_quick_menu.addAction(action)
-        self.more_quick_menu.exec_(self.more_quick_button.mapToGlobal(QPoint(0, self.more_quick_button.height())))
+        self.more_quick_menu.exec_(
+            self.more_quick_button.mapToGlobal(
+                QPoint(0, self.more_quick_button.height())
+            )
+        )
 
     def _show_canvas_more_menu(self):
         # 获取按钮左上角的全局坐标
@@ -560,19 +656,35 @@ class CanvasUISetUp:
     def _setup_pipeline_style(self):
         # 仅用于初始化，后续由 Manager 接管
         config = Settings.get_instance()
-        if self.graph:
-            self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
-            self.graph.set_pipe_style(PIPELINE_STYLE.get(config.canvas_pipelayout.value))
-            self.graph.set_layout_direction(PIPELINE_DIRECTION.get(config.canvas_direction.value))
+        try:
+            if self.graph:
+                self.graph.set_grid_mode(GRID_STYLE.get(config.canvas_grid_mode.value))
+                self.graph.set_pipe_style(
+                    PIPELINE_STYLE.get(config.canvas_pipelayout.value)
+                )
+                self.graph.set_layout_direction(
+                    PIPELINE_DIRECTION.get(config.canvas_direction.value)
+                )
+        except (RuntimeError, AttributeError):
+            pass
 
     def _init_unified_font(self):
-        font_name = getattr(self.parent.config.canvas_font_type, 'value', "Microsoft YaHei")
+        font_name = getattr(
+            self.parent.config.canvas_font_type, "value", "Microsoft YaHei"
+        )
         self.parent.setStyleSheet(f'QWidget {{ font-family: "{font_name}"; }}')
 
     def destroy_all(self):
         try:
-            for attr in ['splitter', 'envs_container', 'buttons_container', 'nodes_container', 'name_container',
-                         'canvas_controls_container', 'side_dock_area']:
+            for attr in [
+                "splitter",
+                "envs_container",
+                "buttons_container",
+                "nodes_container",
+                "name_container",
+                "canvas_controls_container",
+                "side_dock_area",
+            ]:
                 obj = getattr(self, attr, None)
                 if obj:
                     obj.setParent(None)

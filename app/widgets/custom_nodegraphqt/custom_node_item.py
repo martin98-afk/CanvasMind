@@ -612,11 +612,6 @@ class CustomNodeItem(NodeItem):
             self._widget_height = widget_height
             self._widget_width = w_width
 
-        # 缓存非 proxy 模式下的尺寸（用于切换到 proxy 模式时保持尺寸）
-        if not self._proxy_mode:
-            self._last_normal_width = self._width
-            self._last_normal_height = self._height
-
         # 2. 确定最小宽高边界
         text_item_height = self._text_item.boundingRect().height()
         text_item_width = self._text_item.boundingRect().width()
@@ -898,6 +893,14 @@ class CustomNodeItem(NodeItem):
     def set_proxy_mode(self, mode):
         if mode is self._proxy_mode:
             return
+        # 切换到proxy模式时，保存当前普通模式下的尺寸
+        if mode and not self._proxy_mode:
+            self._last_normal_width = (
+                self._user_width if self._user_width > 0 else self._width
+            )
+            self._last_normal_height = (
+                self._user_height if self._user_height > 0 else self._height
+            )
         self._proxy_mode = mode
         self._update_elements_visibility()
         if hasattr(self, "_x_item"):

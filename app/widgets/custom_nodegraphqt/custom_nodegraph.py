@@ -2246,6 +2246,7 @@ class CustomNodeGraph(NodeGraph):
                             {
                                 "name": p.name(),
                                 "multi_connection": p.model.multi_connection,
+                                "display_name": p.model.display_name,
                             }
                             for p in n.input_ports()
                         ],
@@ -2253,6 +2254,7 @@ class CustomNodeGraph(NodeGraph):
                             {
                                 "name": p.name(),
                                 "multi_connection": p.model.multi_connection,
+                                "display_name": p.model.display_name,
                             }
                             for p in n.output_ports()
                         ],
@@ -2424,6 +2426,7 @@ class CustomNodeGraph(NodeGraph):
             # 处理 backdrop 节点（放到最后）
             for n_id, n_data in backdrop_nodes_data.items():
                 identifier = n_data["type_"]
+                node_width, node_height = n_data.get("width"), n_data.get("height")
                 node = self._node_factory.create_node_instance(identifier)
                 if node:
                     node.NODE_NAME = n_data.get("name", node.NODE_NAME)
@@ -2435,10 +2438,18 @@ class CustomNodeGraph(NodeGraph):
                         node, n_data.get("pos"), inherite_graph_style=adjust_graph_style
                     )
                     if n_data.get("port_deletion_allowed", None):
+                        input_ports = n_data["input_ports"]
+                        output_ports = n_data["output_ports"]
+                        for port in input_ports:
+                            if "display_name" not in port:
+                                port["display_name"] = True
+                        for port in output_ports:
+                            if "display_name" not in port:
+                                port["display_name"] = True
                         node.set_ports(
                             {
-                                "input_ports": n_data["input_ports"],
-                                "output_ports": n_data["output_ports"],
+                                "input_ports": input_ports,
+                                "output_ports": output_ports,
                             }
                         )
                     # set custom properties.

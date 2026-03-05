@@ -1073,48 +1073,39 @@ class OpenAIChatToolWindow(ToolWindow):
         if card_pos < 0:
             return
 
-        msg_list = session.messages
-        ui_pos = 0
-        user_input = None
-        user_params = None
-
-        for idx, msg in enumerate(msg_list):
-            if msg.get("role") == "user":
-                while ui_pos < self.chat_layout.count():
-                    item = self.chat_layout.itemAt(ui_pos)
-                    if (
-                        item
-                        and item.widget()
-                        and isinstance(item.widget(), MessageCard)
-                    ):
-                        if id(item.widget()) == card_uuid:
-                            break
-                        if item.widget().role == "user":
-                            user_input = msg.get("content", "")
-                            user_params = msg.get("params", {})
-                            break
-                        ui_pos += 1
-                    else:
-                        ui_pos += 1
-                if user_input is not None:
+        user_card_pos = -1
+        for i in range(card_pos - 1, -1, -1):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), MessageCard):
+                if item.widget().role == "user":
+                    user_card_pos = i
                     break
 
-        if user_input is None:
-            for i in range(card_pos - 1, -1, -1):
+        if user_card_pos >= 0:
+            user_card = self.chat_layout.itemAt(user_card_pos).widget()
+            if hasattr(user_card, "viewer"):
+                user_input = user_card.viewer.get_plain_text()
+            else:
+                user_input = ""
+            if hasattr(user_card, "context_tags"):
+                user_params = user_card.context_tags
+            else:
+                user_params = None
+
+            self.chat_layout.removeWidget(user_card)
+            user_card.deleteLater()
+            if user_card_pos < len(session.messages):
+                session.messages.pop(user_card_pos)
+            card_pos -= 1
+
+            card_uuid = id(card)
+            ui_card_map = {}
+            for i in range(self.chat_layout.count()):
                 item = self.chat_layout.itemAt(i)
                 if item and item.widget() and isinstance(item.widget(), MessageCard):
-                    if item.widget().role == "user":
-                        widget = item.widget()
-                        user_input = (
-                            widget.viewer.get_plain_text()
-                            if hasattr(widget, "viewer")
-                            else ""
-                        )
-                        if hasattr(widget, "context_tags"):
-                            user_params = widget.context_tags
-                        break
-
-        if user_input is None:
+                    ui_card_map[id(item.widget())] = i
+            card_pos = ui_card_map.get(card_uuid, card_pos)
+        else:
             return
 
         if user_params:
@@ -1254,10 +1245,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._is_streaming = True
         self._toggle_send_stop(True)
-
         self._chat_engine.send_message(user_text, context_params)
-
         self._current_assistant_card = assistant_card
+        self._maybe_generate_topic_summary()
 
     def _on_stream_started(self):
         self._is_streaming = True
@@ -1339,9 +1329,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         session = self.session_manager.get_current_session()
         if session:
-            current_title = self._auto_save_current_session()
-            self._generate_conversation_title(current_title, session.messages)
-        self._maybe_generate_topic_summary()
+            self._auto_save_current_session()
         self._update_node_preview()
 
     def _on_engine_error(self, error: str):
@@ -1416,12 +1404,6 @@ class OpenAIChatToolWindow(ToolWindow):
         pass
 
     def _maybe_generate_topic_summary(self):
-        if self._current_history_index is None:
-            return
-        if not self.history_manager.should_generate_summary(
-            self._current_history_index
-        ):
-            return
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
@@ -1430,6 +1412,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
+        user_messages = [m for m in session.messages if m.get("role") == "user"]
+        if not user_messages:
+            return
         previous_summary = ""
         if self._current_history_index is not None:
             previous_summary = self.history_manager.get_topic_summary(
@@ -1467,17 +1452,27 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         clean_summary = summary.strip()
-        if len(clean_summary) > 60:
-            clean_summary = clean_summary[:60] + "..."
+        if len(clean_summary) > 20:
+            clean_summary = clean_summary[:20] + "..."
 
-        if self._current_history_index is not None:
-            self.history_manager.update_topic_summary(
-                self._current_history_index, clean_summary
+        if self._current_history_index is None:
+            self.history_manager.save_session(
+                self.session_manager.get_current_session().messages
             )
-            self._update_title_display(clean_summary)
+            self._current_history_index = 0
 
-            if should_update_memory and memory_content and self._memory_manager:
-                self._memory_manager.add_user_memory(memory_content)
+        self.history_manager.update_topic_summary(
+            self._current_history_index, clean_summary
+        )
+
+        session = self.session_manager.get_current_session()
+        if session:
+            session.set_topic_summary(clean_summary)
+
+        self._update_title_display(clean_summary)
+
+        if should_update_memory and memory_content and self._memory_manager:
+            self._memory_manager.add_user_memory(memory_content)
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)
@@ -1544,6 +1539,8 @@ class OpenAIChatToolWindow(ToolWindow):
             self._chat_engine.stop()
         self._is_streaming = False
         self._toggle_send_stop(False)
+        if self._current_assistant_card:
+            self._current_assistant_card.stop_streaming_anim()
         InfoBar.warning(
             title="已中止",
             content="问答请求已被手动中止。",

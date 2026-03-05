@@ -24,18 +24,23 @@ class AutoSaver:
 
         # 绑定配置信号
         self.config.canvas_auto_save.valueChanged.connect(self._on_config_changed)
-        self.config.canvas_auto_save_interval.valueChanged.connect(self._on_config_changed)
+        self.config.canvas_auto_save_interval.valueChanged.connect(
+            self._on_config_changed
+        )
 
         # 初始化启动
         self._apply_settings()
 
     def _on_config_changed(self, _=None):
         """配置变动时，不立即操作，而是启动防抖计时器"""
-        # 停止主计时器，防止在调整过程中突然触发保存
-        if self._timer.isActive():
+        # 检查timer是否有效
+        if self._timer is None or not self._timer.isActive():
+            pass
+        else:
             self._timer.stop()
         # 300ms 后再应用新设置（等待用户停止拖动滑块）
-        self._debounce_timer.start(300)
+        if self._debounce_timer:
+            self._debounce_timer.start(300)
 
     def _apply_settings(self):
         """真正应用设置逻辑"""
