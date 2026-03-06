@@ -5,10 +5,10 @@
       "acyclic": true,
       "pipe_collision": false,
       "pipe_slicing": true,
-      "pipe_style": 1
+      "pipe_style": 2
     },
     "nodes": {
-      "0x198c4875d30": {
+      "0x1f79aa7fa80": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
@@ -63,7 +63,7 @@
           "file": "canvas_files\\workflows\\目标检测训练\\workspace\\e5b76cdd-be1a-4f44-8454-f6deae1731db\\upload\\detection.zip"
         }
       },
-      "0x198c1127ed0": {
+      "0x1f79aa7efd0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 1",
@@ -116,7 +116,7 @@
         ],
         "output_values": {}
       },
-      "0x198b4c782d0": {
+      "0x1f79aa7f820": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 1",
@@ -141,8 +141,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 518.59375,
-        "height": 246.0,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
           1426.6554310179906,
           2.5911838650820105
@@ -192,7 +192,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112b5c0": {
+      "0x1f79aa7eea0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 2",
@@ -247,7 +247,7 @@
           "file": "canvas_files\\workflows\\目标检测训练\\workspace\\378d2171-0148-4da4-9816-67f70f31a753\\upload\\yolo11s.pt"
         }
       },
-      "0x198c112b360": {
+      "0x1f79aa7d5b0": {
         "type_": "dynamic.StatusDynamicNode_d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
         "icon": null,
         "name": "图片转base64编码",
@@ -308,7 +308,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112b490": {
+      "0x1f79aa7e650": {
         "type_": "dynamic.StatusDynamicNode_8b652ae6-dd8e-490a-bd84-6f69662f7a9e",
         "icon": null,
         "name": "Base64 转图片",
@@ -366,7 +366,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112b230": {
+      "0x1f79aa7df30": {
         "type_": "dynamic.StatusDynamicNode_b9732471-0d7d-4343-847c-9f1edec19eed",
         "icon": null,
         "name": "图像4通道转3通道 1",
@@ -391,8 +391,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 280.015625,
-        "height": 83.0,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
           -353.0989688881748,
           2.5911838650820087
@@ -424,7 +424,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112b100": {
+      "0x1f79aa7e780": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": null,
         "name": "图像resize 1",
@@ -486,7 +486,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112afd0": {
+      "0x1f79aa7e8b0": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 2",
@@ -511,8 +511,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 518.59375,
-        "height": 246.0,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
           1996.925829700861,
           -896.82654085576
@@ -562,7 +562,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112aea0": {
+      "0x1f79aa7e9e0": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点",
@@ -614,7 +614,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x198c112ad70": {
+      "0x1f79aa7eb10": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 1",
@@ -666,7 +666,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x198c112ac40": {
+      "0x1f79aa7f230": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传",
@@ -719,7 +719,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112ab10": {
+      "0x1f79aa7f100": {
         "type_": "dynamic.StatusDynamicNode_71ce653e-57e2-4db5-b836-09668516537e",
         "icon": ":/icons/同心圆.svg",
         "name": "视频读取",
@@ -744,8 +744,8 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 587.71875,
-        "height": 172.0,
+        "width": 0.0,
+        "height": 0.0,
         "pos": [
           692.029838126816,
           -1048.0402855886696
@@ -784,7 +784,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112a9e0": {
+      "0x1f79aa7ed70": {
         "type_": "dynamic.StatusDynamicNode_f74cf049-6a53-4bf2-aae1-4f2037d923c2",
         "icon": ":/icons/同心圆.svg",
         "name": "YOLO 关键点检测训练",
@@ -807,12 +807,12 @@
           180
         ],
         "disabled": false,
-        "selected": true,
+        "selected": false,
         "visible": true,
-        "width": 555.7187375958576,
-        "height": 0.0,
+        "width": 827.7993785382627,
+        "height": 666.553329393509,
         "pos": [
-          624.495556334111,
+          467.61149206497964,
           474.50291962804096
         ],
         "layout_direction": 0,
@@ -860,7 +860,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112a8b0": {
+      "0x1f79aa7ec40": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -908,7 +908,7 @@
         ],
         "output_values": {}
       },
-      "0x198c112a780": {
+      "0x1f79aa7f360": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -956,7 +956,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x198c112a650": {
+      "0x1f79aa7f490": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": ":/icons/更新.svg",
         "name": "迭代控制流区域",
@@ -1025,141 +1025,141 @@
     "connections": [
       {
         "out": [
-          "0x198c4875d30",
+          "0x1f79aa7fa80",
           "file"
         ],
         "in": [
-          "0x198c112a9e0",
+          "0x1f79aa7ed70",
           "dataset_dir"
         ]
       },
       {
         "out": [
-          "0x198c1127ed0",
+          "0x1f79aa7efd0",
           "file"
         ],
         "in": [
-          "0x198c112b230",
+          "0x1f79aa7df30",
           "input"
         ]
       },
       {
         "in": [
-          "0x198b4c782d0",
+          "0x1f79aa7f820",
           "input_image"
         ],
         "out": [
-          "0x198c112b490",
+          "0x1f79aa7e650",
           "output1"
         ]
       },
       {
         "in": [
-          "0x198b4c782d0",
+          "0x1f79aa7f820",
           "model"
         ],
         "out": [
-          "0x198c112a9e0",
+          "0x1f79aa7ed70",
           "model.pt"
         ]
       },
       {
         "out": [
-          "0x198b4c782d0",
+          "0x1f79aa7f820",
           "output_image"
         ],
         "in": [
-          "0x198c112b100",
+          "0x1f79aa7e780",
           "image"
         ]
       },
       {
         "out": [
-          "0x198c112b5c0",
+          "0x1f79aa7eea0",
           "file"
         ],
         "in": [
-          "0x198c112a9e0",
+          "0x1f79aa7ed70",
           "pre_model"
         ]
       },
       {
         "in": [
-          "0x198c112b360",
+          "0x1f79aa7d5b0",
           "input1"
         ],
         "out": [
-          "0x198c112b230",
+          "0x1f79aa7df30",
           "output"
         ]
       },
       {
         "out": [
-          "0x198c112b360",
+          "0x1f79aa7d5b0",
           "output1"
         ],
         "in": [
-          "0x198c112b490",
+          "0x1f79aa7e650",
           "input1"
         ]
       },
       {
         "out": [
-          "0x198c112b100",
+          "0x1f79aa7e780",
           "resized_image"
         ],
         "in": [
-          "0x198c112aea0",
+          "0x1f79aa7e9e0",
           "data"
         ]
       },
       {
         "in": [
-          "0x198c112afd0",
+          "0x1f79aa7e8b0",
           "input_image"
         ],
         "out": [
-          "0x198c112a8b0",
+          "0x1f79aa7ec40",
           "output"
         ]
       },
       {
         "out": [
-          "0x198c112afd0",
+          "0x1f79aa7e8b0",
           "detections"
         ],
         "in": [
-          "0x198c112a780",
+          "0x1f79aa7f360",
           "input"
         ]
       },
       {
         "out": [
-          "0x198c112afd0",
+          "0x1f79aa7e8b0",
           "output_image"
         ],
         "in": [
-          "0x198c112ad70",
+          "0x1f79aa7eb10",
           "data"
         ]
       },
       {
         "out": [
-          "0x198c112ac40",
+          "0x1f79aa7f230",
           "file"
         ],
         "in": [
-          "0x198c112ab10",
+          "0x1f79aa7f100",
           "video_path"
         ]
       },
       {
         "out": [
-          "0x198c112ab10",
+          "0x1f79aa7f100",
           "frames"
         ],
         "in": [
-          "0x198c112a650",
+          "0x1f79aa7f490",
           "inputs"
         ]
       }
@@ -1193,13 +1193,9 @@
   },
   "runtime": {
     "environment": {
-      "name": "py311",
-      "host": "168.168.10.110",
-      "port": 22022,
-      "user": "root",
-      "pwd": "Sushine#K7e1g9C_",
-      "path": "/data-1/miniconda3/envs/py311/bin/python3.11",
-      "type": "ssh"
+      "name": "3.13",
+      "type": "local",
+      "path": "D:\\work\\CanvasMind\\envs\\miniconda\\envs\\3.13\\python.exe"
     }
   }
 }

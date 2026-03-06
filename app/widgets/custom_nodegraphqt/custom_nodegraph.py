@@ -2410,6 +2410,8 @@ class CustomNodeGraph(NodeGraph):
                     if node_resize_memory and hasattr(
                         node.view, "_sync_size_from_model"
                     ):
+                        # 先重置 _size_initialized，确保能正确同步保存的尺寸
+                        node.view._size_initialized = False
                         node.view._sync_size_from_model(node_width, node_height)
                     # 改变节点状态，成功状态改为上次成功状态进行区分
                     if (
@@ -2466,6 +2468,8 @@ class CustomNodeGraph(NodeGraph):
                     if node_resize_memory and hasattr(
                         node.view, "_sync_size_from_model"
                     ):
+                        # 先重置 _size_initialized，确保能正确同步保存的尺寸
+                        node.view._size_initialized = False
                         node.view._sync_size_from_model(node_width, node_height)
                     nodes[n_id] = node
 
