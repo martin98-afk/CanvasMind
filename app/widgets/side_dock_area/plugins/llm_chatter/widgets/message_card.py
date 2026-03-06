@@ -949,7 +949,7 @@ class MessageCard(SimpleCardWidget):
         self.parent = parent
         self.role = role
         self.context_tags = tag_params or {}
-        self.timestamp = timestamp or datetime.now().strftime("%H:%M")
+        self.timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M")
         self.error = False
         self._interactive_options: List[dict] = []
         self._streaming = False

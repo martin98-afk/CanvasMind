@@ -287,6 +287,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._tool_floating_widget = ToolFloatingWidget(self)
         self._tool_floating_widget.setVisible(False)
+        self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
         layout.addWidget(self._tool_floating_widget)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
@@ -705,7 +706,9 @@ class OpenAIChatToolWindow(ToolWindow):
             if role == "user":
                 self._append_user_message(
                     msg.get("content", ""),
-                    timestamp=msg.get("timestamp", datetime.now().strftime("%H:%M")),
+                    timestamp=msg.get(
+                        "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+                    ),
                     tag_params=msg.get("params", {}),
                 )
 
@@ -804,7 +807,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self.title_edit.setText("新对话")
 
     def _execute_shell_command(self, cmd: str):
-        self._append_user_message(cmd, timestamp=datetime.now().strftime("%H:%M"))
+        self._append_user_message(
+            cmd, timestamp=datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
         self._is_streaming = True
         self._toggle_send_stop(True)
 
@@ -1318,7 +1323,9 @@ class OpenAIChatToolWindow(ToolWindow):
         import time
 
         self._current_tool_start_time = time.time()
-        self._tool_floating_widget.start_tool(tool_name, arguments)
+        self._current_tool_call_id = tool_call_id
+        self._current_tool_name = tool_name
+        self._current_tool_args = arguments
 
         if tool_name == "question":
             question_text = arguments.get("question", "")
@@ -1387,6 +1394,33 @@ class OpenAIChatToolWindow(ToolWindow):
                             executor.finished_with_result.connect(on_finished)
             return
 
+        self._tool_floating_widget.start_tool(tool_name, arguments)
+
+    def _on_tool_cancelled(self):
+        """工具执行被用户中止"""
+        logger.info("[ToolFloatingWidget] Tool execution cancelled by user")
+        self._tool_floating_widget.finish_tool("用户中止", success=False)
+
+        tool_call_id = getattr(self, "_current_tool_call_id", None)
+        tool_name = getattr(self, "_current_tool_name", "unknown")
+        tool_args = getattr(self, "_current_tool_args", {})
+
+        if tool_call_id and self._current_assistant_card:
+            separator = "\n\n"
+            tool_block = format_tool_block(
+                tool_name,
+                tool_args,
+                "[工具执行已被用户中止]",
+                False,
+            )
+            self._current_assistant_card.update_content(separator + tool_block)
+            self._scroll_to_bottom()
+
+        if hasattr(self, "_chat_engine") and self._chat_engine:
+            worker = getattr(self._chat_engine, "_current_worker", None)
+            if worker:
+                worker.cancel()
+
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
@@ -1400,8 +1434,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         success = result.success if hasattr(result, "success") else True
 
-        self._tool_floating_widget.show_if_needed(elapsed)
-        self._tool_floating_widget.finish_tool(str(result)[:200], success)
+        if tool_name not in ("question", "task", "todowrite", "todoread"):
+            self._tool_floating_widget.show_if_needed(elapsed)
+            self._tool_floating_widget.finish_tool(str(result)[:200], success)
 
         content = str(result)
         tool_block = format_tool_block(

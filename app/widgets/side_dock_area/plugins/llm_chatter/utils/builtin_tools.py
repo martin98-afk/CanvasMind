@@ -57,6 +57,7 @@ class BuiltinTools:
 
         self._todo_list: List[Dict] = []
         self._loaded_skills: Dict[str, str] = {}
+        self._skill_workspaces: Dict[str, str] = {}
         self._sub_agent_manager = None
 
         logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
@@ -536,22 +537,38 @@ class BuiltinTools:
     def load_skill(self, name: str) -> ToolResult:
         """加载技能文档"""
         try:
+            if name in self._loaded_skills:
+                existing_content = self._loaded_skills[name]
+                workspace = self._skill_workspaces.get(name, "N/A")
+                return ToolResult(
+                    True,
+                    content=f"Skill already loaded: {name}\n\nSkill workspace: {workspace}\n\n{existing_content[:500]}...\n\n(已加载，内容如上)",
+                )
+
             search_paths = [
                 Path(__file__).parent.parent / "skills" / name / f"SKILL.md",
                 Path("canvas_files") / "skills" / name / f"SKILL.md",
                 Path.home() / ".agents" / "skills" / name / f"SKILL.md",
             ]
+            found_path = None
             for path in search_paths:
                 if path.exists():
-                    with open(path, "r", encoding="utf-8") as f:
-                        content = f.read()
-                    self._loaded_skills[name] = content
-                    return ToolResult(
-                        True,
-                        content=f"Skill loaded: {name}\n\nSkill workspace: {str(path.parent.resolve())}\n\n{content}",
-                    )
+                    found_path = path
+                    break
 
-            return ToolResult(False, error=f"Skill not found: {name}")
+            if not found_path:
+                return ToolResult(False, error=f"Skill not found: {name}")
+
+            with open(found_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            self._loaded_skills[name] = content
+            self._skill_workspaces[name] = str(found_path.parent.resolve())
+
+            return ToolResult(
+                True,
+                content=f"Skill loaded: {name}\n\nSkill workspace: {str(found_path.parent.resolve())}\n\n{content}",
+            )
         except Exception as e:
             return ToolResult(False, error=f"Load skill error: {str(e)}")
 

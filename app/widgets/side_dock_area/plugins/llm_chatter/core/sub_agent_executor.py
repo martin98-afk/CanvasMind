@@ -322,12 +322,14 @@ class SubAgentExecutor(QThread):
                 return None
 
             self.tool_call_started.emit(tool_name, arguments)
+            QCoreApplication.processEvents()
 
             result = self.tool_executor.execute(tool_name, arguments)
             result_content = str(result) if result else ""
             success = getattr(result, "success", True) if result else False
 
             self.tool_result_received.emit(tool_name, result_content, success)
+            QCoreApplication.processEvents()
 
             results.append(
                 {
@@ -341,7 +343,10 @@ class SubAgentExecutor(QThread):
 
     def _summarize_result(self, result: str) -> str:
         """总结子智能体执行结果"""
-        if not result or len(result) < 500:
+        if not result:
+            return "无执行结果"
+
+        if len(result) < 2000:
             return result
 
         try:
@@ -349,42 +354,55 @@ class SubAgentExecutor(QThread):
             base_url = self.llm_config.get("API_URL") or None
             model = str(self.llm_config.get("模型名称", "gpt-4o"))
 
-            prompt = f"""你是一个结果总结助手。请将以下子智能体的执行结果压缩成简洁的摘要，返回给主智能体继续任务。
+            prompt = f"""你是一个结果整理助手。请将以下子智能体的执行结果整理成结构化但详细的内容，返回给主智能体继续任务。
 
 ## 要求
-1. 保留关键信息、结论、修改的文件路径
-2. 忽略调试过程和无效输出
-3. 返回JSON格式: {{"summary": "摘要内容", "key_files": ["文件1", "文件2"], "status": "completed/failed"}}
+1. 完整保留关键信息、结论、发现的内容
+2. 保留重要的文件路径、代码片段、数据详情
+3. 保持信息的完整性和实用性，不要过度压缩
+4. 使用清晰的格式组织内容，便于主智能体理解和使用
 
 ## 执行结果
-{result[:8000]}
+{result[:15000]}
 
-请直接输出JSON，不要有其他内容："""
+请直接输出整理后的内容，格式示例：
+
+## 任务完成情况
+[总结任务完成情况]
+
+## 关键发现
+- 发现1: 具体内容
+- 发现2: 具体内容
+- ...
+
+## 重要细节
+- 文件: xxx
+- 关键代码: xxx
+- 数据: xxx
+
+## 建议
+[如果有必要，可以给出后续建议]
+
+直接输出内容，不要输出JSON格式："""
 
             client = OpenAI(
                 api_key=api_key if api_key else "dummy",
                 base_url=base_url,
-                timeout=30.0,
+                timeout=60.0,
             )
 
             resp = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=1000,
+                max_tokens=4000,
             )
 
-            raw = resp.choices[0].message.content.strip()
-            json_match = re.search(r"\{[^{}]*\}", raw, re.DOTALL)
-            if json_match:
-                summary_data = json.loads(json_match.group())
-                return json.dumps(summary_data, ensure_ascii=False)
-
-            return result[:1000]
+            return resp.choices[0].message.content.strip()
 
         except Exception as e:
             logger.warning(f"Summary failed: {e}")
-            return result[:1000]
+            return result[:3000]
 
 
 class SubAgentManager:
