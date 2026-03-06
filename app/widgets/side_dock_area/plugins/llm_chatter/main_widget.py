@@ -80,6 +80,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_wi
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
     render_tool_block,
+    format_tool_block,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
@@ -152,6 +153,7 @@ class OpenAIChatToolWindow(ToolWindow):
             get_context_provider=lambda: self.context_selector,
             tool_executor=self._tool_executor,
             agent_manager=self._agent_manager,
+            get_chat_cards=self._get_chat_cards_for_engine,
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)
@@ -173,6 +175,16 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback("agent_switched", self._on_agent_switched)
 
         self._initialize_history_manager()
+
+    def _get_chat_cards_for_engine(self):
+        cards = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if isinstance(widget, MessageCard):
+                    cards.append(widget)
+        return cards
 
     def _get_current_model_config(self) -> Dict[str, Any]:
         """获取当前选中的模型配置"""
@@ -716,7 +728,7 @@ class OpenAIChatToolWindow(ToolWindow):
             tool_name = func.get("name", "unknown")
             args = func.get("arguments", {})
 
-            args_str = json.dumps(args) if isinstance(args, dict) else str(args)
+            args_dict = json.loads(args) if isinstance(args, str) else args
 
             result_content = ""
             for tr in tool_results:
@@ -724,22 +736,24 @@ class OpenAIChatToolWindow(ToolWindow):
                     result_content = tr.get("content", "")
                     break
 
-            tool_html = render_tool_block(
+            tool_block = format_tool_block(
                 tool_name,
-                json.loads(args_str) if isinstance(args_str, str) else args,
+                args_dict,
                 result_content,
                 True,
-                collapsed=True,
             )
 
             if combined_content:
                 combined_content += "\n\n"
-            combined_content += tool_html
+            combined_content += tool_block
 
         if final_content:
             if combined_content:
                 combined_content += "\n\n---\n\n"
             combined_content += final_content
+
+        if combined_content:
+            card.update_content(combined_content)
 
     def _initialize_history_manager(self):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
@@ -1282,6 +1296,8 @@ class OpenAIChatToolWindow(ToolWindow):
             multiple = arguments.get("multiple", False)
             if question_text:
                 self._question_tool_call_id = tool_call_id
+                if not isinstance(options, list):
+                    options = []
                 self._question_floating_widget.show_question(
                     question_text, options, multiple
                 )
@@ -1297,17 +1313,16 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
         content = str(result)
-        tool_html = render_tool_block(
+        tool_block = format_tool_block(
             tool_name,
             arguments or {},
             content,
             result.success if hasattr(result, "success") else True,
-            collapsed=True,
         )
 
         if self._current_assistant_card:
             separator = "\n\n"
-            self._current_assistant_card.update_content(separator + tool_html)
+            self._current_assistant_card.update_content(separator + tool_block)
 
         self._scroll_to_bottom()
 
@@ -1327,9 +1342,40 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
 
-        session = self.session_manager.get_current_session()
-        if session:
-            self._auto_save_current_session()
+        if self.history_manager:
+            self._save_current_session_to_history()
+
+    def _save_current_session_to_history(self):
+        saved_messages = []
+
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if isinstance(widget, MessageCard):
+                    role = widget.role
+                    content = ""
+                    if hasattr(widget, "viewer") and hasattr(
+                        widget.viewer, "get_plain_text"
+                    ):
+                        content = widget.viewer.get_plain_text()
+                    if content:
+                        saved_messages.append(
+                            {
+                                "role": role,
+                                "content": content,
+                                "timestamp": widget.timestamp,
+                            }
+                        )
+
+        if saved_messages:
+            if self._current_history_index is not None:
+                self.history_manager.update_session(
+                    self._current_history_index, saved_messages
+                )
+            else:
+                self.history_manager.save_session(saved_messages)
+                self._current_history_index = 0
         self._update_node_preview()
 
     def _on_engine_error(self, error: str):
@@ -1377,6 +1423,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, question: str, options: list, multiple: bool = False
     ):
         self._question_tool_call_id = tool_call_id
+        if not isinstance(options, list):
+            options = []
         self._question_floating_widget.show_question(question, options, multiple)
 
     def _on_question_answered(self, answer: str):
@@ -1434,9 +1482,11 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._gen_thread_pool.start(task)
 
-    def _on_topic_summary_generated(self, result, error_msg: str = None):
-        if not result or error_msg:
-            logger.error(f"[Topic Summary] Failed to generate: {error_msg}")
+    def _on_topic_summary_generated(self, result, error: str = None):
+        if error:
+            logger.error(f"[Topic Summary] Failed to generate: {error}")
+            return
+        if not result:
             return
 
         if isinstance(result, dict):

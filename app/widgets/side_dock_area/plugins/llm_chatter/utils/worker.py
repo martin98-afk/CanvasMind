@@ -206,6 +206,7 @@ class OpenAIChatWorker(QThread):
     content_received = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
+    finished_with_messages = pyqtSignal(list)
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
     question_asked = pyqtSignal(str, str, list, bool)
@@ -293,11 +294,13 @@ class OpenAIChatWorker(QThread):
                 time.sleep(0.2)
 
             self.finished_with_content.emit(self.full_response)
+            self.finished_with_messages.emit(current_messages)
 
         except Exception as e:
             self._handle_error(e)
 
     def _make_api_call(self, messages: List[Dict]):
+        print(messages)
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
