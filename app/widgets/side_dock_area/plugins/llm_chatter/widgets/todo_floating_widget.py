@@ -16,57 +16,60 @@ class TodoFloatingWidget(CardWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setSizePolicy(1, 0)  # 水平扩展
+        self.setSizePolicy(1, 0)
         self.setStyleSheet("""
             CardWidget {
-                background-color: rgba(30, 30, 30, 240);
-                border: 1px solid #404040;
-                border-radius: 6px;
+                background-color: rgba(40, 40, 45, 252);
+                border: 1px solid #6366f1;
+                border-radius: 10px;
             }
         """)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 8, 12, 8)
-        main_layout.setSpacing(4)
+        main_layout.setContentsMargins(14, 10, 14, 10)
+        main_layout.setSpacing(6)
 
-        # 标题栏
         header = QHBoxLayout()
-        header.setSpacing(8)
+        header.setSpacing(10)
 
-        title = QLabel("📋 待办", self)
+        title_icon = QLabel("📋", self)
+        title_icon.setFont(QFont("", 14))
+
+        title = QLabel("待办事项", self)
         title.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
-        title.setStyleSheet("color: #ffffff;")
+        title.setStyleSheet("color: #f0f0f0;")
 
         self.progress_label = QLabel("", self)
-        self.progress_label.setFont(QFont("Microsoft YaHei", 10))
-        self.progress_label.setStyleSheet("color: #64b5f6;")
+        self.progress_label.setFont(QFont("Microsoft YaHei", 10, QFont.Bold))
+        self.progress_label.setStyleSheet("color: #818cf8;")
 
+        header.addWidget(title_icon)
         header.addWidget(title)
         header.addWidget(self.progress_label)
         header.addStretch()
 
         close_btn = QPushButton("✕", self)
-        close_btn.setFixedSize(20, 20)
+        close_btn.setFixedSize(22, 22)
+        close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
-                color: #757575;
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #a0a0a0;
                 border: none;
-                font-size: 12px;
+                border-radius: 4px;
+                font-size: 11px;
             }
             QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.2);
                 color: #ffffff;
-                background-color: #404040;
-                border-radius: 3px;
             }
         """)
         close_btn.clicked.connect(self._on_close)
         header.addWidget(close_btn)
 
-        # 内容区域
         self.content_label = QLabel("暂无待办", self)
         self.content_label.setFont(QFont("Microsoft YaHei", 10))
-        self.content_label.setStyleSheet("color: #ffffff;")
+        self.content_label.setStyleSheet("color: #b0b0b0;")
         self.content_label.setWordWrap(True)
         self.content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.content_label.setAlignment(Qt.AlignTop)
@@ -97,23 +100,34 @@ class TodoFloatingWidget(CardWidget):
 
             if status == "completed":
                 completed += 1
-                status_icon = "✅"
+                status_icon = "✓"
             else:
-                status_icon = "⬜"
+                status_icon = "○"
 
-            priority_colors = {"high": "#ef5350", "medium": "#ffb74d", "low": "#81c784"}
-            priority_color = priority_colors.get(priority, "#ffb74d")
+            priority_colors = {"high": "#f87171", "medium": "#fbbf24", "low": "#34d399"}
+            priority_color = priority_colors.get(priority, "#fbbf24")
+
+            priority_labels = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+            priority_icon = priority_labels.get(priority, "🟡")
+
+            if status == "completed":
+                content_style = "color: #808080; text-decoration: line-through;"
+            else:
+                content_style = "color: #e0e0e0;"
 
             lines.append(
-                f'{status_icon} <span style="color: {priority_color};">●</span> <span style="color: #ffffff;">{content}</span>'
+                f'<span style="color: #818cf8; font-weight: bold;">{status_icon}</span> '
+                f'<span style="color: {priority_color};">{priority_icon}</span> '
+                f'<span style="{content_style}">{content}</span>'
             )
 
-        if completed == len(self._todo_list) and completed > 0:
-            progress_text = f"🎉 全部完成 ({completed})"
-            self.progress_label.setStyleSheet("color: #66bb6a; font-weight: bold;")
+        total = len(self._todo_list)
+        if completed == total and completed > 0:
+            progress_text = f"🎉 {completed}/{total} 全部完成"
+            self.progress_label.setStyleSheet("color: #34d399; font-weight: bold;")
         else:
-            progress_text = f"{completed}/{len(self._todo_list)}"
-            self.progress_label.setStyleSheet("color: #64b5f6;")
+            progress_text = f"{completed}/{total}"
+            self.progress_label.setStyleSheet("color: #818cf8; font-weight: bold;")
 
         self.progress_label.setText(progress_text)
         self.content_label.setText("<br>".join(lines))

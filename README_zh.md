@@ -27,6 +27,7 @@
 
 <img src="images/宣传图3.png" width="100%" height="100%"><br>
 
+<img src="images/大模型对话框.png" width="100%" height="100%"><br>
 
 ---
 
