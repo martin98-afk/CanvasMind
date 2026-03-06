@@ -19,6 +19,8 @@ class SubAgentExecutor(QThread):
     finished_with_result = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     progress_updated = pyqtSignal(str)
+    tool_call_started = pyqtSignal(str, dict)
+    tool_result_received = pyqtSignal(str, str, bool)
 
     def __init__(
         self,
@@ -83,9 +85,10 @@ class SubAgentExecutor(QThread):
     def _execute_agent_loop(self, messages: List[Dict], tools: List[Dict]) -> str:
         """执行子智能体对话循环"""
         iteration = 0
-        max_iterations = 10
+        max_iterations = 50
         current_messages = messages.copy()
         response_content = ""
+        has_tool_calls = True
 
         while iteration < max_iterations:
             if self._is_cancelled:
@@ -93,14 +96,18 @@ class SubAgentExecutor(QThread):
 
             iteration += 1
 
-            response_content, tool_calls = self._make_api_call(current_messages)
+            response_content, tool_calls = self._make_api_call(current_messages, tools)
 
             if self._is_cancelled:
                 return ""
 
             if not tool_calls:
-                return response_content
+                if iteration > 1 and response_content:
+                    return response_content
+                has_tool_calls = False
+                continue
 
+            has_tool_calls = True
             current_messages.append(
                 {
                     "role": "assistant",
@@ -132,9 +139,50 @@ class SubAgentExecutor(QThread):
             QCoreApplication.processEvents()
             time.sleep(0.2)
 
+        if has_tool_calls:
+            return self._generate_final_summary(current_messages)
+
         return response_content
 
-    def _make_api_call(self, messages: List[Dict]) -> tuple:
+    def _generate_final_summary(self, messages: List[Dict]) -> str:
+        """生成最终总结"""
+        try:
+            summary_prompt = """请基于之前的探索和分析，生成一个项目分析总结报告。
+
+要求：
+1. 任务目标 - 你完成了什么
+2. 探索发现 - 发现的关键信息  
+3. 项目概况 - 结构、技术栈、主要模块
+4. 重要细节 - 文件路径、关键类/函数、依赖关系等
+
+请直接输出总结报告，不要包含思考过程。"""
+
+            summary_messages = messages + [{"role": "user", "content": summary_prompt}]
+
+            api_key = self.llm_config.get("API_KEY", "").strip()
+            base_url = self.llm_config.get("API_URL") or None
+            model = str(self.llm_config.get("模型名称", "gpt-4o"))
+
+            client = OpenAI(
+                api_key=api_key if api_key else "dummy",
+                base_url=base_url,
+                timeout=30.0,
+            )
+
+            resp = client.chat.completions.create(
+                model=model,
+                messages=summary_messages,
+                temperature=0.3,
+                max_tokens=4000,
+            )
+
+            return resp.choices[0].message.content.strip()
+
+        except Exception as e:
+            logger.warning(f"Summary generation failed: {e}")
+            return messages[-1].get("content", "") if messages else ""
+
+    def _make_api_call(self, messages: List[Dict], tools: List[Dict] = None) -> tuple:
         """调用 LLM API"""
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
@@ -179,15 +227,13 @@ class SubAgentExecutor(QThread):
         if extra_body:
             req_kwargs["extra_body"] = extra_body
 
-        tools_to_use = req_kwargs.pop("tools", None)
-
         client = OpenAI(
             api_key=api_key if api_key else "dummy",
             base_url=base_url,
             timeout=120.0,
         )
 
-        response = client.chat.completions.create(**req_kwargs, tools=tools_to_use)
+        response = client.chat.completions.create(**req_kwargs, tools=tools)
 
         full_response = ""
         tool_calls_found = []
@@ -275,8 +321,13 @@ class SubAgentExecutor(QThread):
                 }
                 return None
 
+            self.tool_call_started.emit(tool_name, arguments)
+
             result = self.tool_executor.execute(tool_name, arguments)
             result_content = str(result) if result else ""
+            success = getattr(result, "success", True) if result else False
+
+            self.tool_result_received.emit(tool_name, result_content, success)
 
             results.append(
                 {

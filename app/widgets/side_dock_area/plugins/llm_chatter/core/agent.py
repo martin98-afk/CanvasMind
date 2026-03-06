@@ -100,8 +100,12 @@ class AgentManager:
         else:
             self.agents_dir = Path(__file__).parent.parent / "agents"
 
+        self.sub_agents_dir = Path(__file__).parent.parent / "sub_agents"
+
         self._agents: Dict[str, Agent] = {}
+        self._sub_agents: Dict[str, Agent] = {}
         self._load_agents()
+        self._load_sub_agents()
 
     def _load_agents(self):
         """从 agents 目录加载所有智能体定义"""
@@ -122,13 +126,40 @@ class AgentManager:
             except Exception as e:
                 logger.error(f"[AgentManager] Failed to load {yaml_file}: {e}")
 
+    def _load_sub_agents(self):
+        """从 sub_agents 目录加载子智能体定义"""
+        if not self.sub_agents_dir.exists():
+            logger.info(
+                f"[AgentManager] Sub-agents directory not found: {self.sub_agents_dir}"
+            )
+            return
+
+        for yaml_file in self.sub_agents_dir.glob("*.yaml"):
+            try:
+                with open(yaml_file, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                    if data:
+                        agent = Agent.from_dict(data)
+                        self._sub_agents[agent.name] = agent
+                        logger.info(f"[AgentManager] Loaded sub-agent: {agent.name}")
+            except Exception as e:
+                logger.error(f"[AgentManager] Failed to load {yaml_file}: {e}")
+
     def get_agent(self, name: str) -> Optional[Agent]:
-        """获取智能体"""
-        return self._agents.get(name)
+        """获取智能体（包括主智能体和子智能体）"""
+        return self._agents.get(name) or self._sub_agents.get(name)
+
+    def get_sub_agent(self, name: str) -> Optional[Agent]:
+        """获取子智能体"""
+        return self._sub_agents.get(name)
 
     def list_agents(self) -> List[Agent]:
         """列出所有智能体"""
         return list(self._agents.values())
+
+    def list_sub_agents(self) -> List[Agent]:
+        """列出所有子智能体"""
+        return list(self._sub_agents.values())
 
     def get_agent_tools_schema(self, agent_name: str) -> List[Dict]:
         """获取智能体的工具 schema"""

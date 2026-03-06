@@ -482,7 +482,7 @@ class BuiltinTools:
             if not hasattr(self, "_sub_agent_manager") or not self._sub_agent_manager:
                 return ToolResult(False, error="子智能体管理器未初始化")
 
-            import threading
+            from PyQt5.QtCore import QEventLoop, QTimer
             import uuid
 
             task_id = str(uuid.uuid4())
@@ -496,9 +496,6 @@ class BuiltinTools:
                 result_container["error"] = error
                 result_container["done"] = True
 
-            def on_progress(msg: str):
-                logger.info(f"[Task] {msg}")
-
             self._sub_agent_manager.execute_task(
                 task_id=task_id,
                 agent_name=agent,
@@ -506,15 +503,25 @@ class BuiltinTools:
                 parent_context=context or "",
                 on_finished=on_finished,
                 on_error=on_error,
-                on_progress=on_progress,
             )
 
-            max_wait = 300
-            waited = 0
-            while not result_container["done"] and waited < max_wait:
-                time.sleep(0.5)
-                waited += 0.5
+            loop = QEventLoop()
+            timeout_timer = QTimer()
+            timeout_timer.setSingleShot(True)
+            timeout_timer.timeout.connect(loop.quit)
+            timeout_timer.start(1800000)
 
+            check_timer = QTimer()
+            check_timer.setSingleShot(False)
+            check_timer.timeout.connect(
+                lambda: loop.quit() if result_container["done"] else None
+            )
+            check_timer.start(100)
+
+            loop.exec()
+            check_timer.stop()
+            timeout_timer.stop()
+            print(result_container)
             if result_container["error"]:
                 return ToolResult(False, error=result_container["error"])
 
@@ -834,7 +841,8 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "properties": {
                         "agent": {
                             "type": "string",
-                            "description": "子智能体名称，如 build, plan, skillful",
+                            "description": "子智能体名称",
+                            "enum": ["build", "plan", "skillful", "explore"],
                         },
                         "description": {
                             "type": "string",
