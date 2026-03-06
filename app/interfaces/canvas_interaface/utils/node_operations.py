@@ -223,6 +223,12 @@ class NodeOperations:
                 node_type=special_node,
                 icon=get_icon("从此处运行"),
             )
+            nodes_menu.add_command(
+                "运行所在子图",
+                lambda graph, node: self.parent.run_subgraph(node),
+                node_type=special_node,
+                icon=get_icon("运行所在子图")
+            )
             nodes_menu.add_separator(node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
                 nodes_menu.add_command(
@@ -264,6 +270,12 @@ class NodeOperations:
                     "func": lambda graph, node: self.parent.run_from(node),
                     "node_type": f"dynamic.StatusDynamicNode_*",
                     "icon": get_icon("从此处运行"),
+                },
+                {
+                    "name": "运行所在子图",
+                    "func": lambda graph, node: self.parent.run_subgraph(node),
+                    "node_type": f"dynamic.StatusDynamicNode_*",
+                    "icon": get_icon("运行所在子图"),
                 },
                 {"node_type": f"dynamic.StatusDynamicNode_*"},
                 {

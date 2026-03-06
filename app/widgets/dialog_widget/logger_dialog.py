@@ -3,7 +3,7 @@ from loguru import logger
 from collections import deque
 
 from PyQt5.QtCore import QObject, pyqtSignal, Qt, QPoint
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QFont
+from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QFont, QCursor
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QPlainTextEdit, QApplication
 from qfluentwidgets import StrongBodyLabel
 
@@ -19,7 +19,7 @@ class LogPopupWidget(QWidget):
         self._min_width = 200
         self._max_width = 600
         self._base_x = 0
-        self._resize_zone_width = 5
+        self._resize_zone_width = 12
         self._hovering_resize_zone = False
         self._border_color = "#3c3c3c"
         self._hover_border_color = "#0078D4"
@@ -66,11 +66,11 @@ class LogPopupWidget(QWidget):
             }
             QPlainTextEdit QScrollBar:vertical { 
                 background: transparent; 
-                width: 8px; 
+                width: 10px; 
             }
             QPlainTextEdit QScrollBar::handle:vertical { 
                 background: #555555; 
-                border-radius: 4px; 
+                border-radius: 5px; 
             }
         """)
 
@@ -101,7 +101,10 @@ class LogPopupWidget(QWidget):
         self.resize(width, self.height())
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and event.pos().x() >= self.width() - 5:
+        if (
+            event.button() == Qt.LeftButton
+            and event.pos().x() >= self.width() - self._resize_zone_width
+        ):
             self._resizing = True
             self._start_pos = event.globalPos()
             self._start_width = self.width()
@@ -131,7 +134,10 @@ class LogPopupWidget(QWidget):
 
     def enterEvent(self, event):
         super().enterEvent(event)
-        self._update_border_style(False)
+        mouse_pos = self.mapFromGlobal(QCursor.pos())
+        if mouse_pos.x() >= self.width() - self._resize_zone_width:
+            self._hovering_resize_zone = True
+            self._update_border_style(True)
 
     def leaveEvent(self, event):
         self._hovering_resize_zone = False

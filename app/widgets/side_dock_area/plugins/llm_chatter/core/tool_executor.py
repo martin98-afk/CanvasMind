@@ -133,6 +133,11 @@ class ToolExecutor:
             ),
             "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
             "todoread": lambda: self._builtin_tools.todo_read(),
+            "task": lambda: self._builtin_tools.task_execute(
+                args.get("agent", ""),
+                args.get("description", ""),
+                args.get("context", ""),
+            ),
             "skill": lambda: self._builtin_tools.load_skill(args.get("name", "")),
             "list_skills": lambda: self._builtin_tools.list_skills(),
             "question": lambda: self._builtin_tools.ask_question(
@@ -165,3 +170,9 @@ class ToolExecutor:
         """重新加载工作目录"""
         self._workdir = workdir
         self._initialize_builtin_tools()
+
+    def set_sub_agent_manager(self, sub_agent_manager):
+        """设置子智能体管理器"""
+        if self._builtin_tools:
+            self._builtin_tools._sub_agent_manager = sub_agent_manager
+            logger.info("[ToolExecutor] SubAgentManager attached to BuiltinTools")

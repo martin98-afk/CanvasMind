@@ -300,7 +300,6 @@ class OpenAIChatWorker(QThread):
             self._handle_error(e)
 
     def _make_api_call(self, messages: List[Dict]):
-        print(messages)
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))

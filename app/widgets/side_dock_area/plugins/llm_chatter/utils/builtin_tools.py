@@ -9,12 +9,15 @@ import re
 import os
 import subprocess
 import shutil
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable
 from datetime import datetime
 import fnmatch
 
 from loguru import logger
+
+from app.utils.config import Settings
 
 
 class ToolResult:
@@ -54,6 +57,7 @@ class BuiltinTools:
 
         self._todo_list: List[Dict] = []
         self._loaded_skills: Dict[str, str] = {}
+        self._sub_agent_manager = None
 
         logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
 
@@ -375,7 +379,7 @@ class BuiltinTools:
 
             api_key = (
                 os.environ.get("SERPAPI_KEY")
-                or "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27"
+                or Settings.get_instance().SERPAPI_KEY.value
             )
 
             if api_key == "your-serpapi-key-here" or not api_key:
@@ -469,6 +473,65 @@ class BuiltinTools:
             return ToolResult(True, content="\n".join(lines))
         except Exception as e:
             return ToolResult(False, error=f"Todo read error: {str(e)}")
+
+    def task_execute(
+        self, agent: str, description: str, context: str = ""
+    ) -> ToolResult:
+        """分发任务给子智能体"""
+        try:
+            if not hasattr(self, "_sub_agent_manager") or not self._sub_agent_manager:
+                return ToolResult(False, error="子智能体管理器未初始化")
+
+            from PyQt5.QtCore import QEventLoop, QTimer
+            import uuid
+
+            task_id = str(uuid.uuid4())
+            result_container = {"result": None, "error": None, "done": False}
+
+            def on_finished(result: str):
+                result_container["result"] = result
+                result_container["done"] = True
+
+            def on_error(error: str):
+                result_container["error"] = error
+                result_container["done"] = True
+
+            self._sub_agent_manager.execute_task(
+                task_id=task_id,
+                agent_name=agent,
+                task_description=description,
+                parent_context=context or "",
+                on_finished=on_finished,
+                on_error=on_error,
+            )
+
+            loop = QEventLoop()
+            timeout_timer = QTimer()
+            timeout_timer.setSingleShot(True)
+            timeout_timer.timeout.connect(loop.quit)
+            timeout_timer.start(1800000)
+
+            check_timer = QTimer()
+            check_timer.setSingleShot(False)
+            check_timer.timeout.connect(
+                lambda: loop.quit() if result_container["done"] else None
+            )
+            check_timer.start(100)
+
+            loop.exec()
+            check_timer.stop()
+            timeout_timer.stop()
+            print(result_container)
+            if result_container["error"]:
+                return ToolResult(False, error=result_container["error"])
+
+            if result_container["result"]:
+                return ToolResult(True, content=result_container["result"])
+
+            return ToolResult(False, error="Task execution timeout")
+
+        except Exception as e:
+            return ToolResult(False, error=f"Task execution error: {str(e)}")
 
     def load_skill(self, name: str) -> ToolResult:
         """加载技能文档"""
@@ -766,6 +829,32 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "name": "todoread",
                 "description": "读取待办事项列表",
                 "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "task",
+                "description": "分发任务给子智能体执行。子智能体有独立上下文，不继承主智能体的超长上下文。适用于复杂任务分解、并行处理、隔离上下文等场景。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {
+                            "type": "string",
+                            "description": "子智能体名称",
+                            "enum": ["build", "plan", "skillful", "explore"],
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "任务描述，详细说明需要子智能体完成的工作",
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "传递给子智能体的上下文信息（可选）",
+                        },
+                    },
+                    "required": ["agent", "description"],
+                },
             },
         },
         {

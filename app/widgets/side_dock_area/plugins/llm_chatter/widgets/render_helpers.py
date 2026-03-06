@@ -40,6 +40,17 @@ def render_tool_block(
         status_text = "✓" if success else "✗"
         status_html = f'<span style="color: {status_color}; font-weight: bold; margin-left: 6px;">{status_text}</span>'
 
+    is_sub_agent_task = tool_name == "task"
+    icon = "🤖" if is_sub_agent_task else "⚡"
+    title_color = "#9C27B0" if is_sub_agent_task else "#FFA500"
+
+    if is_sub_agent_task:
+        agent_name = tool_args.get("agent", "unknown")
+        task_desc = tool_args.get("description", "")[:50]
+        if len(tool_args.get("description", "")) > 50:
+            task_desc += "..."
+        args_preview = f"[{agent_name}] {task_desc}"
+
     def strip_code_blocks(text: str) -> str:
         import re
 
@@ -53,23 +64,23 @@ def render_tool_block(
         result_escaped = escape(result_stripped)
         result_html = f"""
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
+            <div style="color: #888; margin-bottom: 4px;">{"调用子智能体" if is_sub_agent_task else "参数"}:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-            <div style="color: #888; margin: 8px 0 4px;">结果:</div>
+            <div style="color: #888; margin: 8px 0 4px;">{"子智能体结果" if is_sub_agent_task else "结果"}:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px; max-height: 400px; overflow-y: auto;">{result_escaped}</pre>
         </div>"""
     else:
         result_html = f"""
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
-            <div style="color: #888; margin-bottom: 4px;">参数:</div>
+            <div style="color: #888; margin-bottom: 4px;">{"调用子智能体" if is_sub_agent_task else "参数"}:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
         </div>"""
 
     open_attr = "" if collapsed else "open"
 
     return f"""<details class="tool-block" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;" {open_attr}>
-    <summary style="cursor: pointer; padding: 6px 10px; color: #FFA500; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-        <span>⚡</span>
+    <summary style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+        <span>{icon}</span>
         <span>{escape(tool_name)}</span>
         {status_html}
         <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>

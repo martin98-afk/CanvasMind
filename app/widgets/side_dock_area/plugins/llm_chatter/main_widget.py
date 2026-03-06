@@ -85,6 +85,12 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers impor
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.sub_agent_floating_widget import (
+    SubAgentFloatingWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget import (
+    ToolFloatingWidget,
+)
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
@@ -146,6 +152,17 @@ class OpenAIChatToolWindow(ToolWindow):
         self._memory_manager = MemoryManagerCore(canvas_name)
         self._tool_executor = ToolExecutor(self.homepage)
         self._agent_manager = AgentManager()
+
+        from app.widgets.side_dock_area.plugins.llm_chatter.core.sub_agent_executor import (
+            SubAgentManager,
+        )
+
+        self._sub_agent_manager = SubAgentManager(
+            agent_manager=self._agent_manager,
+            tool_executor=self._tool_executor,
+            get_llm_config=self._get_current_model_config,
+        )
+        self._tool_executor.set_sub_agent_manager(self._sub_agent_manager)
 
         self._chat_engine = ChatEngine(
             session_manager=self.session_manager,
@@ -263,6 +280,14 @@ class OpenAIChatToolWindow(ToolWindow):
         self._todo_floating_widget = TodoFloatingWidget(self)
         self._todo_floating_widget.setVisible(False)
         layout.addWidget(self._todo_floating_widget)
+
+        self._sub_agent_floating_widget = SubAgentFloatingWidget(self)
+        self._sub_agent_floating_widget.setVisible(False)
+        layout.addWidget(self._sub_agent_floating_widget)
+
+        self._tool_floating_widget = ToolFloatingWidget(self)
+        self._tool_floating_widget.setVisible(False)
+        layout.addWidget(self._tool_floating_widget)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -1290,6 +1315,11 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
     ):
+        import time
+
+        self._current_tool_start_time = time.time()
+        self._tool_floating_widget.start_tool(tool_name, arguments)
+
         if tool_name == "question":
             question_text = arguments.get("question", "")
             options = arguments.get("options", [])
@@ -1309,15 +1339,76 @@ class OpenAIChatToolWindow(ToolWindow):
             self._todo_floating_widget.setVisible(True)
             return
 
+        if tool_name == "task":
+            agent_name = arguments.get("agent", "unknown")
+            task_desc = arguments.get("description", "")
+
+            self._sub_agent_floating_widget.start_task(agent_name, task_desc)
+
+            if hasattr(self._tool_executor, "_builtin_tools") and hasattr(
+                self._tool_executor._builtin_tools, "_sub_agent_manager"
+            ):
+                sub_agent_mgr = self._tool_executor._builtin_tools._sub_agent_manager
+                if sub_agent_mgr and sub_agent_mgr._running_tasks:
+                    last_task_id = list(sub_agent_mgr._running_tasks.keys())[-1]
+                    if last_task_id:
+                        executor = sub_agent_mgr._running_tasks.get(last_task_id)
+                        if executor:
+
+                            def on_progress(msg):
+                                self._sub_agent_floating_widget.update_progress(msg)
+
+                            def on_tool_call(tool_name, args):
+                                self._sub_agent_floating_widget.add_tool_call(
+                                    tool_name, args
+                                )
+
+                            def on_tool_result(tool_name, result, success):
+                                self._sub_agent_floating_widget.add_tool_result(
+                                    tool_name, result, success
+                                )
+
+                            def on_finished(result):
+                                success = not (
+                                    result
+                                    and (
+                                        "error" in result.lower()
+                                        or "失败" in result
+                                        or "timeout" in result.lower()
+                                    )
+                                )
+                                self._sub_agent_floating_widget.finish_task(
+                                    result, success
+                                )
+
+                            executor.progress_updated.connect(on_progress)
+                            executor.tool_call_started.connect(on_tool_call)
+                            executor.tool_result_received.connect(on_tool_result)
+                            executor.finished_with_result.connect(on_finished)
+            return
+
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
+        import time
+
+        elapsed = (
+            time.time() - self._current_tool_start_time
+            if hasattr(self, "_current_tool_start_time")
+            else 0
+        )
+
+        success = result.success if hasattr(result, "success") else True
+
+        self._tool_floating_widget.show_if_needed(elapsed)
+        self._tool_floating_widget.finish_tool(str(result)[:200], success)
+
         content = str(result)
         tool_block = format_tool_block(
             tool_name,
             arguments or {},
             content,
-            result.success if hasattr(result, "success") else True,
+            success,
         )
 
         if self._current_assistant_card:

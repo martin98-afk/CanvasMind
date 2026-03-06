@@ -8,7 +8,7 @@
       "pipe_style": 1
     },
     "nodes": {
-      "0x24d83189d30": {
+      "0x198c4875d30": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传",
@@ -63,7 +63,7 @@
           "file": "canvas_files\\workflows\\目标检测训练\\workspace\\e5b76cdd-be1a-4f44-8454-f6deae1731db\\upload\\detection.zip"
         }
       },
-      "0x24d8cbec190": {
+      "0x198c1127ed0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 1",
@@ -116,7 +116,7 @@
         ],
         "output_values": {}
       },
-      "0x24d8cbec550": {
+      "0x198b4c782d0": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 1",
@@ -192,7 +192,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2b490": {
+      "0x198c112b5c0": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": null,
         "name": "文档上传 2",
@@ -247,7 +247,7 @@
           "file": "canvas_files\\workflows\\目标检测训练\\workspace\\378d2171-0148-4da4-9816-67f70f31a753\\upload\\yolo11s.pt"
         }
       },
-      "0x24dfdf2b5c0": {
+      "0x198c112b360": {
         "type_": "dynamic.StatusDynamicNode_d0d5d987-67d5-4aa3-833f-a7a3fa7a794b",
         "icon": null,
         "name": "图片转base64编码",
@@ -308,7 +308,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2b360": {
+      "0x198c112b490": {
         "type_": "dynamic.StatusDynamicNode_8b652ae6-dd8e-490a-bd84-6f69662f7a9e",
         "icon": null,
         "name": "Base64 转图片",
@@ -366,7 +366,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2b230": {
+      "0x198c112b230": {
         "type_": "dynamic.StatusDynamicNode_b9732471-0d7d-4343-847c-9f1edec19eed",
         "icon": null,
         "name": "图像4通道转3通道 1",
@@ -424,7 +424,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2b100": {
+      "0x198c112b100": {
         "type_": "dynamic.StatusDynamicNode_55e89122-98ec-431c-b539-d39b13c0e039",
         "icon": null,
         "name": "图像resize 1",
@@ -486,7 +486,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2afd0": {
+      "0x198c112afd0": {
         "type_": "dynamic.StatusDynamicNode_b6e2e5cb-3167-4360-bb3c-238f1ad267f5",
         "icon": null,
         "name": "YOLO目标检测及关键点检测 2",
@@ -562,7 +562,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2aea0": {
+      "0x198c112aea0": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点",
@@ -614,7 +614,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x24dfdf2ad70": {
+      "0x198c112ad70": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点 1",
@@ -666,7 +666,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x24dfdf2ac40": {
+      "0x198c112ac40": {
         "type_": "dynamic.StatusDynamicNode_27927d6d-5b76-48f1-95a6-ea5a5d0f85b7",
         "icon": ":/icons/同心圆.svg",
         "name": "文件上传",
@@ -719,7 +719,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2ab10": {
+      "0x198c112ab10": {
         "type_": "dynamic.StatusDynamicNode_71ce653e-57e2-4db5-b836-09668516537e",
         "icon": ":/icons/同心圆.svg",
         "name": "视频读取",
@@ -784,14 +784,14 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2a9e0": {
+      "0x198c112a9e0": {
         "type_": "dynamic.StatusDynamicNode_f74cf049-6a53-4bf2-aae1-4f2037d923c2",
         "icon": ":/icons/同心圆.svg",
         "name": "YOLO 关键点检测训练",
         "color": [
-          13,
-          18,
-          23,
+          41,
+          128,
+          185,
           255
         ],
         "border_color": [
@@ -807,12 +807,12 @@
           180
         ],
         "disabled": false,
-        "selected": false,
+        "selected": true,
         "visible": true,
-        "width": 514.03125,
-        "height": 481.0,
+        "width": 555.7187375958576,
+        "height": 0.0,
         "pos": [
-          628.6033971800306,
+          624.495556334111,
           474.50291962804096
         ],
         "layout_direction": 0,
@@ -824,14 +824,15 @@
           "_exec_mode": "subprocess",
           "_data_select": {},
           "version": "latest",
-          "model_name": "yolov8n-pose.pt",
-          "epochs": 100,
+          "model_name": "yolov8n.pt",
+          "epochs": 1,
           "batch_size": 9,
           "img_size": 640,
           "device": "cpu",
-          "task_name": "pose",
-          "dataset_name": "dataset",
-          "FULL_PATH": "目标检测/YOLO 关键点检测训练"
+          "task_name": "detect",
+          "dataset_name": "detection",
+          "FULL_PATH": "目标检测/YOLO 关键点检测训练",
+          "_status": "running"
         },
         "input_ports": [
           {
@@ -859,7 +860,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2a8b0": {
+      "0x198c112a8b0": {
         "type_": "control_flow.ControlFlowInputPort",
         "icon": null,
         "name": "输入端口",
@@ -907,7 +908,7 @@
         ],
         "output_values": {}
       },
-      "0x24dfdf2a780": {
+      "0x198c112a780": {
         "type_": "control_flow.ControlFlowOutputPort",
         "icon": null,
         "name": "输出端口",
@@ -955,7 +956,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x24dfdf2a650": {
+      "0x198c112a650": {
         "type_": "control_flow.ControlFlowIterateNode",
         "icon": ":/icons/更新.svg",
         "name": "迭代控制流区域",
@@ -1024,141 +1025,141 @@
     "connections": [
       {
         "out": [
-          "0x24d83189d30",
+          "0x198c4875d30",
           "file"
         ],
         "in": [
-          "0x24dfdf2a9e0",
+          "0x198c112a9e0",
           "dataset_dir"
         ]
       },
       {
         "out": [
-          "0x24d8cbec190",
+          "0x198c1127ed0",
           "file"
         ],
         "in": [
-          "0x24dfdf2b230",
+          "0x198c112b230",
           "input"
         ]
       },
       {
         "in": [
-          "0x24d8cbec550",
+          "0x198b4c782d0",
           "input_image"
         ],
         "out": [
-          "0x24dfdf2b360",
+          "0x198c112b490",
           "output1"
         ]
       },
       {
         "in": [
-          "0x24d8cbec550",
+          "0x198b4c782d0",
           "model"
         ],
         "out": [
-          "0x24dfdf2a9e0",
+          "0x198c112a9e0",
           "model.pt"
         ]
       },
       {
         "out": [
-          "0x24d8cbec550",
+          "0x198b4c782d0",
           "output_image"
         ],
         "in": [
-          "0x24dfdf2b100",
+          "0x198c112b100",
           "image"
         ]
       },
       {
         "out": [
-          "0x24dfdf2b490",
+          "0x198c112b5c0",
           "file"
         ],
         "in": [
-          "0x24dfdf2a9e0",
+          "0x198c112a9e0",
           "pre_model"
         ]
       },
       {
         "in": [
-          "0x24dfdf2b5c0",
+          "0x198c112b360",
           "input1"
         ],
         "out": [
-          "0x24dfdf2b230",
+          "0x198c112b230",
           "output"
         ]
       },
       {
         "out": [
-          "0x24dfdf2b5c0",
+          "0x198c112b360",
           "output1"
         ],
         "in": [
-          "0x24dfdf2b360",
+          "0x198c112b490",
           "input1"
         ]
       },
       {
         "out": [
-          "0x24dfdf2b100",
+          "0x198c112b100",
           "resized_image"
         ],
         "in": [
-          "0x24dfdf2aea0",
+          "0x198c112aea0",
           "data"
         ]
       },
       {
         "in": [
-          "0x24dfdf2afd0",
+          "0x198c112afd0",
           "input_image"
         ],
         "out": [
-          "0x24dfdf2a8b0",
+          "0x198c112a8b0",
           "output"
         ]
       },
       {
         "out": [
-          "0x24dfdf2afd0",
+          "0x198c112afd0",
           "detections"
         ],
         "in": [
-          "0x24dfdf2a780",
+          "0x198c112a780",
           "input"
         ]
       },
       {
         "out": [
-          "0x24dfdf2afd0",
+          "0x198c112afd0",
           "output_image"
         ],
         "in": [
-          "0x24dfdf2ad70",
+          "0x198c112ad70",
           "data"
         ]
       },
       {
         "out": [
-          "0x24dfdf2ac40",
+          "0x198c112ac40",
           "file"
         ],
         "in": [
-          "0x24dfdf2ab10",
+          "0x198c112ab10",
           "video_path"
         ]
       },
       {
         "out": [
-          "0x24dfdf2ab10",
+          "0x198c112ab10",
           "frames"
         ],
         "in": [
-          "0x24dfdf2a650",
+          "0x198c112a650",
           "inputs"
         ]
       }

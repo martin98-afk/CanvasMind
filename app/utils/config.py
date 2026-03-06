@@ -313,3 +313,4 @@ class Settings(QConfig):
     GITEE_REPO = ConfigItem("Patch", "Gitee/Repo", "canvas-mind-components")
     GITEE_TOKEN = ConfigItem("Patch", "Gitee/Token", "a5dcb6e2e7776143b7a7e7685a1f33a3")
     GITEE_OWNER = ConfigItem("Patch", "Gitee/Owner", "dingmama123141")
+    SERPAPI_KEY = ConfigItem("CloudAPI", "SerpAPI", "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27")

@@ -2572,3 +2572,16 @@ class CustomNodeGraph(NodeGraph):
                 continue
             if node.persistent_id == uuid:
                 return node
+
+    def get_node_by_name(self, name):
+        """
+        Returns node that matches the name.
+
+        Args:
+            name (str): name of the node.
+        Returns:
+            NodeGraphQt.NodeObject: node object.
+        """
+        for node_id, node in self._model.nodes.items():
+            if node.name() == name:
+                return node
