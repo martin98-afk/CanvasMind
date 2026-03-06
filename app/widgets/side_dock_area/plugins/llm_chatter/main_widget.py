@@ -147,6 +147,17 @@ class OpenAIChatToolWindow(ToolWindow):
         self._tool_executor = ToolExecutor(self.homepage)
         self._agent_manager = AgentManager()
 
+        from app.widgets.side_dock_area.plugins.llm_chatter.core.sub_agent_executor import (
+            SubAgentManager,
+        )
+
+        self._sub_agent_manager = SubAgentManager(
+            agent_manager=self._agent_manager,
+            tool_executor=self._tool_executor,
+            get_llm_config=self._get_current_model_config,
+        )
+        self._tool_executor.set_sub_agent_manager(self._sub_agent_manager)
+
         self._chat_engine = ChatEngine(
             session_manager=self.session_manager,
             get_model_config=self._get_current_model_config,

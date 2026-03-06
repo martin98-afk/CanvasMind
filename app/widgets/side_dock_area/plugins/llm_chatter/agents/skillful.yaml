@@ -20,6 +20,7 @@ tools:
   - skill
   - list_skills
   - question
+  - task
 system_prompt: |
   # 角色
   你是一个技能优先智能体，你的核心行为模式是：**先查技能，再做任务，没有技能就创造技能**。

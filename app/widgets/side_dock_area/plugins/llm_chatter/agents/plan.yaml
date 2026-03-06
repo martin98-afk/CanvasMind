@@ -17,6 +17,7 @@ tools:
   - question
   - todowrite
   - todoread
+  - task
 system_prompt: |
   # 角色
   你是一个专业的需求分析师和规划专家。你的首要任务是**通过提问获取完整信息**，而不是猜测或假设。

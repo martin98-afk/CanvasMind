@@ -9,6 +9,7 @@ import re
 import os
 import subprocess
 import shutil
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable
 from datetime import datetime
@@ -56,6 +57,7 @@ class BuiltinTools:
 
         self._todo_list: List[Dict] = []
         self._loaded_skills: Dict[str, str] = {}
+        self._sub_agent_manager = None
 
         logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
 
@@ -472,6 +474,58 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Todo read error: {str(e)}")
 
+    def task_execute(
+        self, agent: str, description: str, context: str = ""
+    ) -> ToolResult:
+        """分发任务给子智能体"""
+        try:
+            if not hasattr(self, "_sub_agent_manager") or not self._sub_agent_manager:
+                return ToolResult(False, error="子智能体管理器未初始化")
+
+            import threading
+            import uuid
+
+            task_id = str(uuid.uuid4())
+            result_container = {"result": None, "error": None, "done": False}
+
+            def on_finished(result: str):
+                result_container["result"] = result
+                result_container["done"] = True
+
+            def on_error(error: str):
+                result_container["error"] = error
+                result_container["done"] = True
+
+            def on_progress(msg: str):
+                logger.info(f"[Task] {msg}")
+
+            self._sub_agent_manager.execute_task(
+                task_id=task_id,
+                agent_name=agent,
+                task_description=description,
+                parent_context=context or "",
+                on_finished=on_finished,
+                on_error=on_error,
+                on_progress=on_progress,
+            )
+
+            max_wait = 300
+            waited = 0
+            while not result_container["done"] and waited < max_wait:
+                time.sleep(0.5)
+                waited += 0.5
+
+            if result_container["error"]:
+                return ToolResult(False, error=result_container["error"])
+
+            if result_container["result"]:
+                return ToolResult(True, content=result_container["result"])
+
+            return ToolResult(False, error="Task execution timeout")
+
+        except Exception as e:
+            return ToolResult(False, error=f"Task execution error: {str(e)}")
+
     def load_skill(self, name: str) -> ToolResult:
         """加载技能文档"""
         try:
@@ -768,6 +822,31 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "name": "todoread",
                 "description": "读取待办事项列表",
                 "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "task",
+                "description": "分发任务给子智能体执行。子智能体有独立上下文，不继承主智能体的超长上下文。适用于复杂任务分解、并行处理、隔离上下文等场景。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {
+                            "type": "string",
+                            "description": "子智能体名称，如 build, plan, skillful",
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "任务描述，详细说明需要子智能体完成的工作",
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "传递给子智能体的上下文信息（可选）",
+                        },
+                    },
+                    "required": ["agent", "description"],
+                },
             },
         },
         {
