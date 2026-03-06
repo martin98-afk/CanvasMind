@@ -19,7 +19,7 @@ class LogPopupWidget(QWidget):
         self._min_width = 200
         self._max_width = 600
         self._base_x = 0
-        self._resize_zone_width = 5
+        self._resize_zone_width = 12
         self._hovering_resize_zone = False
         self._border_color = "#3c3c3c"
         self._hover_border_color = "#0078D4"
@@ -112,7 +112,6 @@ class LogPopupWidget(QWidget):
 
         if is_in_resize_zone != self._hovering_resize_zone:
             self._hovering_resize_zone = is_in_resize_zone
-            self._update_border_style(is_in_resize_zone)
 
         if is_in_resize_zone:
             self.setCursor(Qt.SizeHorCursor)
@@ -120,9 +119,12 @@ class LogPopupWidget(QWidget):
             self.setCursor(Qt.ArrowCursor)
 
         if self._resizing:
+            self._update_border_style(True)
             delta = event.globalPos() - self._start_pos
             new_width = self._start_width + delta.x()
             self.set_width(new_width)
+        else:
+            self._update_border_style(False)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -131,11 +133,9 @@ class LogPopupWidget(QWidget):
 
     def enterEvent(self, event):
         super().enterEvent(event)
-        self._update_border_style(False)
 
     def leaveEvent(self, event):
         self._hovering_resize_zone = False
-        self._update_border_style(False)
         super().leaveEvent(event)
 
     def show_at_left(self, parent_widget, log_button_top_right):
