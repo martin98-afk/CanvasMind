@@ -47,21 +47,20 @@ class ToolFloatingWidget(CardWidget):
         self.icon_label = QLabel("⚙️", self)
         self.icon_label.setFont(QFont("", 14))
 
-        self.title_label = QLabel("正在执行工具", self)
-        self.title_label.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
-        self.title_label.setStyleSheet("color: #f59e0b;")
-
-        header.addWidget(self.icon_label)
-        header.addWidget(self.title_label)
-        header.addStretch()
-
         self.tool_name_label = QLabel("", self)
         self.tool_name_label.setFont(QFont("Consolas", 10))
         self.tool_name_label.setStyleSheet(
             "color: #64b5f6; background-color: rgba(100, 181, 246, 0.1); padding: 2px 8px; border-radius: 4px;"
         )
 
+        self.title_label = QLabel("正在执行工具", self)
+        self.title_label.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        self.title_label.setStyleSheet("color: #f59e0b;")
+
+        header.addWidget(self.icon_label)
         header.addWidget(self.tool_name_label)
+        header.addWidget(self.title_label)
+        header.addStretch()
 
         self.cancel_btn = QPushButton("中止", self)
         self.cancel_btn.setFixedSize(50, 24)

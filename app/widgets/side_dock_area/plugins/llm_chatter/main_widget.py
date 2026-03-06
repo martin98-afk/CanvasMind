@@ -1326,7 +1326,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_tool_call_id = tool_call_id
         self._current_tool_name = tool_name
         self._current_tool_args = arguments
-        self._tool_floating_widget.start_tool(tool_name, arguments)
 
         if tool_name == "question":
             question_text = arguments.get("question", "")
@@ -1395,6 +1394,8 @@ class OpenAIChatToolWindow(ToolWindow):
                             executor.finished_with_result.connect(on_finished)
             return
 
+        self._tool_floating_widget.start_tool(tool_name, arguments)
+
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
         logger.info("[ToolFloatingWidget] Tool execution cancelled by user")
@@ -1433,8 +1434,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         success = result.success if hasattr(result, "success") else True
 
-        self._tool_floating_widget.show_if_needed(elapsed)
-        self._tool_floating_widget.finish_tool(str(result)[:200], success)
+        if tool_name not in ("question", "task", "todowrite", "todoread"):
+            self._tool_floating_widget.show_if_needed(elapsed)
+            self._tool_floating_widget.finish_tool(str(result)[:200], success)
 
         content = str(result)
         tool_block = format_tool_block(

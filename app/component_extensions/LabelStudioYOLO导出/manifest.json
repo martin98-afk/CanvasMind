@@ -7,6 +7,6 @@
   "description": "从 Label Studio 指定项目导出 YOLO 格式数据集（包含图像和标签）",
   "category": "LableStudio",
   "source_file": "..\\..\\components\\LableStudio\\LabelStudioYOLO导出.py",
-  "updated_at": "2026-03-06 17:11:07",
+  "updated_at": "2026-03-06 22:12:15",
   "author": "mading"
 }

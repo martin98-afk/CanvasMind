@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
-import time
-import re
 import json
-from typing import Dict, List, Any, Optional
-import openai
+import re
+import time
+from typing import Dict, List
+
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
 from openai import (
     OpenAI,
-    APIError,
-    APIConnectionError,
-    RateLimitError,
-    BadRequestError,
-    APITimeoutError,
 )
-from loguru import logger
 
 
 class TopicSummaryTask(QRunnable):
@@ -484,6 +478,8 @@ class OpenAIChatWorker(QThread):
         if not self._current_tool_calls or not self.tool_executor:
             return []
 
+        from PyQt5.QtWidgets import QApplication
+
         results = []
         for tc in self._current_tool_calls:
             tool_name = tc["function"]["name"]
@@ -499,6 +495,7 @@ class OpenAIChatWorker(QThread):
 
             round_id = f"round_{id(tc)}"
             self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
+            QApplication.processEvents()
 
             if tool_name == "question":
                 question_text = arguments.get("question", "")
@@ -517,6 +514,7 @@ class OpenAIChatWorker(QThread):
             result_content = str(result) if result else ""
 
             self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
+            QApplication.processEvents()
             results.append(
                 {
                     "role": "tool",
