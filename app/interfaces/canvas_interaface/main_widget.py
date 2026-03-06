@@ -317,6 +317,9 @@ class CanvasPage(QWidget):
     def run_node(self, node):
         self.canvas_runner.run_node(node)
 
+    def run_subgraph(self, node):
+        self.canvas_runner.run_subgraph(node)
+
     def delete_node(self, node):
         self.node_operations.delete_node(node)
 
