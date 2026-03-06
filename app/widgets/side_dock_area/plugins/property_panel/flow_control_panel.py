@@ -4,14 +4,29 @@ import re
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame
-from qfluentwidgets import (CardWidget, BodyLabel, ProgressBar, TransparentToolButton,
-                            StrongBodyLabel, ComboBox, SpinBox, SmoothScrollArea,
-                            IconWidget, FluentIcon, CaptionLabel, Slider)
+from qfluentwidgets import (
+    CardWidget,
+    BodyLabel,
+    ProgressBar,
+    TransparentToolButton,
+    StrongBodyLabel,
+    ComboBox,
+    SpinBox,
+    SmoothScrollArea,
+    IconWidget,
+    FluentIcon,
+    CaptionLabel,
+    Slider,
+)
 
 from app.utils.utils import get_icon, get_port_node
 from app.widgets.basic_widget.variable_complete_widget import VariableCompletionTextEdit
-from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextEditorDialog
-from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import InternalNodeList
+from app.widgets.node_widget.propeprty_widgets.longtext_dialog import (
+    LongTextEditorDialog,
+)
+from app.widgets.side_dock_area.plugins.property_panel.internal_node_list import (
+    InternalNodeList,
+)
 from app.widgets.side_dock_area.plugins.property_panel.port_widget import PortWidget
 
 
@@ -29,7 +44,7 @@ class FlowControlPanelWidget(QWidget):
         self.main_window = main_window
         self.parent_panel = parent_panel
         self.current_node = node
-        self.current_segment = 'input'
+        self.current_segment = "input"
 
         # 状态记录
         self._is_nodes_expanded = False
@@ -124,7 +139,9 @@ class FlowControlPanelWidget(QWidget):
 
         layout.addWidget(BodyLabel(self.tr("循环模式:")))
         self.mode_combo = ComboBox(self)
-        self.mode_combo.addItems([self.tr('固定次数'), self.tr('条件循环'), self.tr('While循环')])
+        self.mode_combo.addItems(
+            [self.tr("固定次数"), self.tr("条件循环"), self.tr("While循环")]
+        )
         self.mode_combo.currentTextChanged.connect(self._on_mode_ui_changed)
         layout.addWidget(self.mode_combo)
 
@@ -141,7 +158,9 @@ class FlowControlPanelWidget(QWidget):
         self.max_iter_spin = SpinBox(self)
         self.max_iter_spin.setRange(1, 10000)
         self.max_iter_spin.setMinimumWidth(120)
-        self.max_iter_spin.valueChanged.connect(lambda v: self._set_node_prop('loop_nums', v))
+        self.max_iter_spin.valueChanged.connect(
+            lambda v: self._set_node_prop("loop_nums", v)
+        )
         count_lay.addWidget(self.max_iter_spin)
         layout.addWidget(self.container_count)
 
@@ -160,12 +179,13 @@ class FlowControlPanelWidget(QWidget):
         cond_lay.addLayout(expr_head)
 
         self.condition_edit = VariableCompletionTextEdit(
-            get_variable_list_func=self._get_variable_autocomplete_list,
-            parent=self
+            get_variable_list_func=self._get_variable_autocomplete_list, parent=self
         )
         self.condition_edit.setMaximumHeight(80)
         self.condition_edit.textChanged.connect(
-            lambda: self._set_node_prop('loop_condition', self.condition_edit.toPlainText())
+            lambda: self._set_node_prop(
+                "loop_condition", self.condition_edit.toPlainText()
+            )
         )
         cond_lay.addWidget(self.condition_edit)
 
@@ -173,7 +193,9 @@ class FlowControlPanelWidget(QWidget):
         cond_lay.addWidget(CaptionLabel(self.tr("最大循环次数 (安全退出)")))
         self.cond_max_spin = SpinBox(self)
         self.cond_max_spin.setRange(1, 10000)
-        self.cond_max_spin.valueChanged.connect(lambda v: self._set_node_prop('max_iterations', v))
+        self.cond_max_spin.valueChanged.connect(
+            lambda v: self._set_node_prop("max_iterations", v)
+        )
         cond_lay.addWidget(self.cond_max_spin)
         layout.addWidget(self.container_condition)
 
@@ -196,7 +218,9 @@ class FlowControlPanelWidget(QWidget):
         layout.addLayout(title_lay)
 
         self._backdrop_internal_nodes_list = InternalNodeList([], [], self)
-        self._backdrop_internal_nodes_list.itemDoubleClicked.connect(self._on_internal_node_clicked)
+        self._backdrop_internal_nodes_list.itemDoubleClicked.connect(
+            self._on_internal_node_clicked
+        )
         layout.addWidget(self._backdrop_internal_nodes_list)
 
         # 初始高度计算
@@ -224,7 +248,11 @@ class FlowControlPanelWidget(QWidget):
         self.parallel_slider = Slider(Qt.Horizontal, self)
         self.parallel_slider.setRange(1, 16)  # 根据需求设置最大并发数
         self.parallel_slider.valueChanged.connect(self._on_parallel_changed)
-        reminder = CaptionLabel(self.tr("注意：1.总并行数受设置影响; 2.并行模式下节点间的数据竞争需自行处理"))
+        reminder = CaptionLabel(
+            self.tr(
+                "注意：1.总并行数受设置影响; 2.并行模式下节点间的数据竞争需自行处理"
+            )
+        )
         reminder.setWordWrap(True)
         layout.addWidget(reminder)
         layout.addWidget(self.parallel_slider)
@@ -235,19 +263,21 @@ class FlowControlPanelWidget(QWidget):
         """并行度改变回调"""
         self.parallel_val_label.setText(str(value))
         if self.current_node:
-            self.current_node.model.set_property('parallel_count', value)
+            self.current_node.model.set_property("parallel_count", value)
 
     def update_data(self, node):
         """增量刷新逻辑"""
         self.current_node = node
         # 获取节点类型 (假设迭代组件的 TYPE 是 'iteration'，循环是 'loop')
-        flow_type = getattr(node, 'TYPE', 'unknown')
+        flow_type = getattr(node, "TYPE", "unknown")
 
         # 1. 刷新 Dashboard (运行状态)
-        current = node.model.get_property('current_index') or 0
+        current = node.model.get_property("current_index") or 0
         total = self._calculate_total(node, flow_type)
         self.progress_label.setText(f"{current} / {total}")
-        self.progress_bar.setValue(int(current / max(1, total) * 100) if total > 0 else 0)
+        self.progress_bar.setValue(
+            int(current / max(1, total) * 100) if total > 0 else 0
+        )
 
         # 2. 刷新【循环配置】卡片显隐 (仅 loop 类型显示)
         self.config_card.setVisible(flow_type == "loop")
@@ -255,7 +285,7 @@ class FlowControlPanelWidget(QWidget):
             self._update_loop_config_ui(node)
 
         # 3. 刷新【并行配置】卡片显隐 (仅 iteration 类型显示)
-        is_iteration = (flow_type != "loop")
+        is_iteration = flow_type != "loop"
         self.parallel_card.setVisible(is_iteration)
         if is_iteration:
             p_count = node.model.get_property("parallel_count") or 1
@@ -267,7 +297,9 @@ class FlowControlPanelWidget(QWidget):
         # 4. 内部列表更新 (保持不变)
         _, _, self._current_internal_nodes = node.get_nodes()
         if self._backdrop_internal_nodes_list:
-            status_list = [n.get_property("_status") for n in self._current_internal_nodes]
+            status_list = [
+                n.get_property("_status") for n in self._current_internal_nodes
+            ]
             name_list = [n.name() for n in self._current_internal_nodes]
             self._backdrop_internal_nodes_list.update_content(status_list, name_list)
             self._update_nodes_card_height()
@@ -297,13 +329,15 @@ class FlowControlPanelWidget(QWidget):
     def _init_port_section(self, node):
         """端口区：增加权重防止被挤压"""
         self._port_widget = PortWidget(
-            main_window=self.main_window, parent_panel=self.parent_panel, node=node,
+            main_window=self.main_window,
+            parent_panel=self.parent_panel,
+            node=node,
             port_info_func=self.parent_panel.get_port_info,
             copy_as_expression_func=self.parent_panel._copy_as_expression,
             add_func=self.parent_panel._add_output_to_global_variable,
             delete_func=self.parent_panel._delete_output_from_global_variable,
             is_in_func=self.parent_panel._is_output_in_global_variable,
-            parent=self
+            parent=self,
         )
         # 设置最小高度确保可见，并将 stretch 设为 1
         self._port_widget.setMinimumHeight(350)
@@ -312,13 +346,17 @@ class FlowControlPanelWidget(QWidget):
 
     def _update_loop_config_ui(self, node):
         mode = node.model.get_property("loop_mode")
-        mode_text = {'count': self.tr('固定次数'), 'condition': self.tr('条件循环'), 'while': self.tr('While循环')}.get(mode, self.tr('固定次数'))
+        mode_text = {
+            "count": self.tr("固定次数"),
+            "condition": self.tr("条件循环"),
+            "while": self.tr("While循环"),
+        }.get(mode, self.tr("固定次数"))
 
         self.mode_combo.blockSignals(True)
         self.mode_combo.setCurrentText(mode_text)
         self.mode_combo.blockSignals(False)
 
-        if mode == 'count':
+        if mode == "count":
             self.container_count.setVisible(True)
             self.container_condition.setVisible(False)
             self.max_iter_spin.blockSignals(True)
@@ -328,7 +366,9 @@ class FlowControlPanelWidget(QWidget):
             self.container_count.setVisible(False)
             self.container_condition.setVisible(True)
             self.condition_edit.blockSignals(True)
-            self.condition_edit.setPlainText(node.model.get_property("loop_condition") or "")
+            self.condition_edit.setPlainText(
+                node.model.get_property("loop_condition") or ""
+            )
             self.condition_edit.blockSignals(False)
             self.cond_max_spin.blockSignals(True)
             self.cond_max_spin.setValue(node.model.get_property("max_iterations"))
@@ -341,34 +381,43 @@ class FlowControlPanelWidget(QWidget):
 
     # --- 辅助逻辑 ---
     def _get_variable_autocomplete_list(self):
-        if not self.current_node: return []
-        global_vars = getattr(self.main_window, 'global_variables', None)
-        if not global_vars: return []
-        extra_keys = ['current_index', 'max_iterations', 'loop_mode']
+        if not self.current_node:
+            return []
+        global_vars = getattr(self.main_window, "global_variables", None)
+        if not global_vars:
+            return []
+        extra_keys = ["current_index", "max_iterations", "loop_mode"]
         try:
             _, _, internal_nodes = self.current_node.get_nodes()
             for n in internal_nodes:
-                name = re.sub(r'\s+', '_', n.name())
-                for port in n.output_ports(): extra_keys.append(f"node_vars.{name}__{port.name()}")
+                name = re.sub(r"\s+", "_", n.name())
+                for port in n.output_ports():
+                    extra_keys.append(f"node_vars.{name}__{port.name()}")
         except:
             pass
         return global_vars.get_vars(extra_keys)
 
     def _on_mode_ui_changed(self, text):
-        mode_map = {self.tr('固定次数'): 'count', self.tr('条件循环'): 'condition', self.tr('While循环'): 'while'}
+        mode_map = {
+            self.tr("固定次数"): "count",
+            self.tr("条件循环"): "condition",
+            self.tr("While循环"): "while",
+        }
         if self.current_node:
-            self.current_node.model.set_property("loop_mode", mode_map.get(text, "count"))
+            self.current_node.model.set_property(
+                "loop_mode", mode_map.get(text, "count")
+            )
             self.update_properties_trigger()
 
     def update_properties_trigger(self):
         # 触发父面板重新布局（由于配置容器切换了显隐）
-        if hasattr(self.parent_panel, 'update_properties'):
+        if hasattr(self.parent_panel, "update_properties"):
             self.parent_panel.update_properties(self.current_node, node_changed=True)
 
     def _set_node_prop(self, key, value):
         if self.current_node:
             self.current_node.model.set_property(key, value)
-            if key in ['loop_nums', 'max_iterations']:
+            if key in ["loop_nums", "max_iterations"]:
                 self.update_data(self.current_node)
 
     def _get_input_data(self, backdrop):
@@ -376,27 +425,41 @@ class FlowControlPanelWidget(QWidget):
         for input_port in backdrop.input_ports():
             for out_port in input_port.connected_ports():
                 upstream = get_port_node(out_port)
-                if upstream and hasattr(upstream, '_output_values'):
+                if upstream and hasattr(upstream, "_output_values"):
                     data.append(upstream._output_values.get(out_port.name(), None))
         return data if len(data) != 1 else data[0]
 
     def _calculate_total(self, node, flow_type):
         if flow_type == "loop":
             mode = node.model.get_property("loop_mode")
-            return node.model.get_property("loop_nums") if mode == 'count' else node.model.get_property(
-                "max_iterations")
-        return len(self._get_input_data(node)) or 0
+            return (
+                node.model.get_property("loop_nums")
+                if mode == "count"
+                else node.model.get_property("max_iterations")
+            )
+        input_data = self._get_input_data(node)
+        if input_data is None:
+            return 0
+        if isinstance(input_data, list):
+            return len(input_data)
+        return 1  # Single item case
 
     def _on_internal_node_clicked(self, item):
         row = self._backdrop_internal_nodes_list.row(item)
-        if hasattr(self, '_current_internal_nodes') and 0 <= row < len(self._current_internal_nodes):
-            self.main_window.canvas_widget.zoom_to_nodes([self._current_internal_nodes[row]._view])
+        if hasattr(self, "_current_internal_nodes") and 0 <= row < len(
+            self._current_internal_nodes
+        ):
+            self.main_window.canvas_widget.zoom_to_nodes(
+                [self._current_internal_nodes[row]._view]
+            )
 
     def _open_long_text_editor(self):
         keys = self._get_variable_autocomplete_list()
         dialog = LongTextEditorDialog(
-            content=self.condition_edit.toPlainText(), extra_keys=keys,
-            parent=self.window(), main_window=self.main_window
+            content=self.condition_edit.toPlainText(),
+            extra_keys=keys,
+            parent=self.window(),
+            main_window=self.main_window,
         )
         if dialog.exec():
             self.condition_edit.setPlainText(dialog.text_edit.toPlainText().strip())

@@ -118,13 +118,11 @@ class ToolFloatingWidget(CardWidget):
         self._is_running = True
         self._current_tool = tool_name
         self._current_process = None
-        self.setVisible(True)
 
         self.title_label.setText("正在执行工具")
         self.title_label.setStyleSheet("color: #f59e0b;")
 
         self.icon_label.setText("⚙️")
-        self.icon_label.setMovie(self._create_spinner())
 
         self.tool_name_label.setText(f" {tool_name} ")
 
@@ -141,6 +139,9 @@ class ToolFloatingWidget(CardWidget):
         self.cancel_btn.setEnabled(True)
         self.cancel_btn.setText("中止")
 
+        self.setVisible(True)
+        self.raise_()
+        QApplication.processEvents()
         QApplication.processEvents()
 
     def _create_spinner(self):
@@ -200,6 +201,9 @@ class ToolFloatingWidget(CardWidget):
             self.task_label.setText(f"✗ {error_msg[:50]}")
 
         self.cancel_btn.setVisible(False)
+
+        self.setVisible(True)
+        self.raise_()
 
         QTimer.singleShot(2000, self.hide)
 

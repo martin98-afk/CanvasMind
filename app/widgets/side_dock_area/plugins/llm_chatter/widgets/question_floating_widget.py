@@ -528,7 +528,6 @@ class QuestionFloatingWidget(CardWidget):
         checkbox.setMinimumHeight(36)
         checkbox.setMaximumWidth(300)
         checkbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        checkbox.setWordWrap(True)
         checkbox.stateChanged.connect(self._on_checkbox_toggled)
         return checkbox
 

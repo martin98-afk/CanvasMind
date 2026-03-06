@@ -9,14 +9,10 @@ tools:
   - Grep
   - Glob
   - list
-  - Bash
   - webfetch
   - websearch
-  - skill
-  - list_skills
   - question
   - todowrite
-  - todoread
   - task
 system_prompt: |
   # 角色
