@@ -175,6 +175,9 @@ class OpenAIChatToolWindow(ToolWindow):
             tool_executor=self._tool_executor,
             agent_manager=self._agent_manager,
             get_chat_cards=self._get_chat_cards_for_engine,
+            get_memory_context=lambda: self._memory_manager.get_context_string()
+            if self._memory_manager
+            else "",
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)

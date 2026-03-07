@@ -14,8 +14,9 @@ from qfluentwidgets import (
     LineEdit,
     PrimaryPushButton,
     PushButton,
-    SwitchButton, ToggleToolButton, FluentIcon,
+    SwitchButton, ToggleToolButton, FluentIcon, TransparentToolButton, ListWidget,
 )
+from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 
 class MemoryItemWidget(QWidget):
@@ -39,32 +40,19 @@ class MemoryItemWidget(QWidget):
         self.label.setWordWrap(True)
         self.label.setStyleSheet("padding: 5px 10px;")
         main_layout.addWidget(self.label, 1)
-
-        separator1 = QFrame(self)
-        separator1.setFrameShape(QFrame.VLine)
-        separator1.setStyleSheet("background-color: #3e3e42;")
-        separator1.setFixedWidth(1)
-        main_layout.addWidget(separator1)
+        main_layout.addWidget(CardSeparator())
 
         self.switch = SwitchButton(self)
         self.switch.setChecked(enabled)
         self.switch.setOnText("")
         self.switch.setOffText("")
-        self.switch.setFixedWidth(80)
-        self.switch.setStyleSheet("margin: 0 10px;")
         self.switch.checkedChanged.connect(
             lambda checked: self.toggled.emit(self.item_id, checked)
         )
         main_layout.addWidget(self.switch)
 
-        separator2 = QFrame(self)
-        separator2.setFrameShape(QFrame.VLine)
-        separator2.setStyleSheet("background-color: #3e3e42;")
-        separator2.setFixedWidth(1)
-        main_layout.addWidget(separator2)
-
-        self.delete_btn = ToggleToolButton(FluentIcon.DELETE, self)
-        self.delete_btn.setStyleSheet("margin: 0 10px;")
+        main_layout.addWidget(CardSeparator())
+        self.delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
         self.delete_btn.clicked.connect(lambda: self.deleted.emit(self.item_id))
         main_layout.addWidget(self.delete_btn)
 
@@ -138,7 +126,7 @@ class MemoryManagerDialog(QDialog):
 
         layout.addWidget(BodyLabel("记忆列表（勾选启用）:", self))
 
-        self.list_widget = QListWidget(self)
+        self.list_widget = ListWidget(self)
         self.list_widget.setSelectionMode(QListWidget.ExtendedSelection)
         layout.addWidget(self.list_widget)
 
@@ -155,13 +143,13 @@ class MemoryManagerDialog(QDialog):
 
         btn_layout = QHBoxLayout()
 
-        select_all_btn = PushButton("全选", self)
+        select_all_btn = PushButton("全部启用", self)
         select_all_btn.clicked.connect(self._select_all)
 
-        deselect_all_btn = PushButton("取消全选", self)
+        deselect_all_btn = PushButton("全部关闭", self)
         deselect_all_btn.clicked.connect(self._deselect_all)
 
-        clear_disabled_btn = PushButton("删除未选中", self)
+        clear_disabled_btn = PushButton("删除未启用", self)
         clear_disabled_btn.clicked.connect(self._clear_disabled)
 
         btn_layout.addWidget(select_all_btn)

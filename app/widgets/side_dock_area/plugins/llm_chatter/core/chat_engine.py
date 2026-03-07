@@ -31,6 +31,7 @@ class ChatEngine:
         tool_executor: Optional[Any] = None,
         agent_manager: Any = None,
         get_chat_cards: Callable[[], List[Any]] = None,
+        get_memory_context: Optional[Callable[[], str]] = None,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
@@ -38,6 +39,7 @@ class ChatEngine:
         self._tool_executor = tool_executor
         self._agent_manager = agent_manager
         self._get_chat_cards = get_chat_cards
+        self._get_memory_context = get_memory_context
 
         self._current_worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
@@ -148,21 +150,30 @@ class ChatEngine:
 
         prompt_parts = [
             full_system_prompt,
-            self._build_stage_prompt(task_state.stage),
             task_state.build_context_block(),
+            self._build_stage_prompt(task_state.stage),
             task_state.build_event_digest(),
         ]
 
-        custom_prompt = llm_config.get("绯荤粺鎻愮ず", "").strip()
+        if self._get_memory_context:
+            memory_context = self._get_memory_context()
+            if memory_context:
+                prompt_parts.append(memory_context)
+
+        custom_prompt = llm_config.get("系统提示", "").strip()
         if custom_prompt:
             prompt_parts.append(custom_prompt)
 
         messages.append(
-            {"role": "system", "content": "\n\n".join(part for part in prompt_parts if part)}
+            {
+                "role": "system",
+                "content": "\n\n".join(part for part in prompt_parts if part),
+            }
         )
 
         cards = self._get_chat_cards() if self._get_chat_cards else []
-        for card in cards[-8:]:
+        cards_to_include = cards[-8:-1] if len(cards) > 1 else []
+        for card in cards_to_include:
             role = getattr(card, "role", None)
             if not role or role == "system":
                 continue
@@ -177,10 +188,10 @@ class ChatEngine:
                 messages.append({"role": role, "content": content})
 
         context_provider = self._get_context_provider()
-        user_text = session.messages[-1].get("content", "") if session.messages else ""
+        user_text = messages.pop(-1).get("content", "")
         task_prelude = self._build_user_task_prelude(task_state)
 
-        model_name = str(llm_config.get("妯″瀷鍚嶇О", "")).lower()
+        model_name = str(llm_config.get("模型名称", "")).lower()
         supports_vision = any(
             marker in model_name
             for marker in ["4o", "vision", "vl", "gemini", "claude-3"]
@@ -282,7 +293,9 @@ class ChatEngine:
                 )
             elif tool_name == "bash":
                 command = (arguments or {}).get("command", "")
-                if any(token in command.lower() for token in ["pytest", "test", "compile"]):
+                if any(
+                    token in command.lower() for token in ["pytest", "test", "compile"]
+                ):
                     session.task_state.update_verification(
                         "passed" if success else "failed", str(result)
                     )

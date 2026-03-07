@@ -194,7 +194,7 @@ class MemoryManagerCore:
                 enabled_memories.append(m)
 
         if enabled_memories:
-            lines.append("【用户偏好】（以下信息请务必记住并在对话中体现）：")
+            lines.append("【用户偏好】：")
             for i, mem in enumerate(enabled_memories[-10:], 1):
                 lines.append(f"{i}. {mem}")
             lines.append("")

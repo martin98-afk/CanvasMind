@@ -266,6 +266,7 @@ class OpenAIChatWorker(QThread):
                     return
 
                 iteration += 1
+                print(current_messages)
                 tool_results = self._make_api_call(current_messages)
 
                 if self._is_cancelled:
