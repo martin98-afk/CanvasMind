@@ -204,6 +204,7 @@ class OpenAIChatWorker(QThread):
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
     question_asked = pyqtSignal(str, str, list, bool)
+    _DEFERRED_PREVIEW_TOOLS = {"question", "task", "todowrite", "todoread"}
 
     def __init__(
         self,
@@ -212,6 +213,7 @@ class OpenAIChatWorker(QThread):
         tools: List[Dict] = None,
         stream: bool = True,
         tool_executor=None,
+        tool_start_callback=None,
     ):
         super().__init__()
         self.messages = messages
@@ -219,10 +221,12 @@ class OpenAIChatWorker(QThread):
         self.tools = tools or []
         self.stream = stream
         self.tool_executor = tool_executor
+        self.tool_start_callback = tool_start_callback
         self.full_response = ""
         self._is_cancelled = False
         self._question_pending = None
         self._pending_answer = None
+        self._previewed_tool_call_ids = set()
 
     def cancel(self):
         self._is_cancelled = True
@@ -431,6 +435,19 @@ class OpenAIChatWorker(QThread):
                     buffer = self._tool_calls_buffer[tc_id]
                     if tc.function and tc.function.name:
                         buffer["function"]["name"] = tc.function.name
+                        tool_name = buffer["function"]["name"]
+                        if (
+                            tool_name
+                            and tool_name not in self._DEFERRED_PREVIEW_TOOLS
+                            and tc_id not in self._previewed_tool_call_ids
+                        ):
+                            self._previewed_tool_call_ids.add(tc_id)
+                            if self.tool_start_callback:
+                                self.tool_start_callback(tc_id, tool_name, {}, "preview")
+                            else:
+                                self.tool_call_started.emit(
+                                    tc_id, tool_name, {}, "preview"
+                                )
                     if tc.function and tc.function.arguments:
                         buffer["function"]["arguments"] += tc.function.arguments
 
@@ -494,8 +511,11 @@ class OpenAIChatWorker(QThread):
             tool_call_id = tc["id"]
 
             round_id = f"round_{id(tc)}"
-            self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
-            QApplication.processEvents()
+            if self.tool_start_callback:
+                self.tool_start_callback(tool_call_id, tool_name, arguments, round_id)
+            else:
+                self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
+                QApplication.processEvents()
 
             if tool_name == "question":
                 question_text = arguments.get("question", "")

@@ -134,10 +134,14 @@ class OpenAIChatToolWindow(ToolWindow):
     userInterventionRequested = pyqtSignal(dict)
     _gen_thread_pool = QThreadPool()
     executionResultProduced = pyqtSignal(str)
+    toolStartUiSyncRequested = pyqtSignal(str, str, object, str)
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
         self._gen_thread_pool.setMaxThreadCount(2)
+        self.toolStartUiSyncRequested.connect(
+            self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
+        )
         self.homepage = homepage
         self._is_streaming = False
         self.session_manager.create_new_session()
@@ -176,6 +180,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback("content_received", self._on_content_received)
         self._chat_engine.set_callback("tool_call_started", self._on_tool_call_started)
         self._chat_engine.set_callback(
+            "tool_call_sync_requested", self._request_tool_start_ui_sync
+        )
+        self._chat_engine.set_callback(
             "tool_result_received", self._on_tool_result_received
         )
         self._chat_engine.set_callback("stream_started", self._on_stream_started)
@@ -193,6 +200,23 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback("task_state_changed", self._on_task_state_changed)
 
         self._initialize_history_manager()
+
+    def _request_tool_start_ui_sync(
+        self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
+    ):
+        self.toolStartUiSyncRequested.emit(
+            tool_call_id, tool_name, arguments or {}, round_id or ""
+        )
+
+    def _handle_tool_start_ui_sync(
+        self, tool_call_id: str, tool_name: str, arguments: object, round_id: str
+    ):
+        self._on_tool_call_started(tool_call_id, tool_name, arguments or {}, round_id)
+        QApplication.sendPostedEvents()
+        if self._tool_floating_widget:
+            self._tool_floating_widget.repaint()
+        self.repaint()
+        QApplication.processEvents()
 
     def _get_chat_cards_for_engine(self):
         cards = []

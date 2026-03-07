@@ -238,6 +238,7 @@ class ChatEngine:
             llm_config=llm_config,
             tools=tools,
             tool_executor=self._tool_executor,
+            tool_start_callback=self._callbacks.get("tool_call_sync_requested"),
         )
 
         self._current_worker.content_received.connect(self._on_content_received)
