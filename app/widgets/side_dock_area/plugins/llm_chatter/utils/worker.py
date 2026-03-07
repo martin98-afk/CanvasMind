@@ -5,6 +5,7 @@ import time
 from typing import Dict, List
 
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
+from PyQt5.QtWidgets import QApplication
 from openai import (
     OpenAI,
 )
@@ -277,8 +278,6 @@ class OpenAIChatWorker(QThread):
 
                 if tool_results is None:
                     while self._pending_answer is None and not self._is_cancelled:
-                        from PyQt5.QtWidgets import QApplication
-
                         QApplication.processEvents()
                         time.sleep(0.1)
 

@@ -1244,21 +1244,21 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
-        {
-            "type": "function",
-            "function": {
-                "name": "summarize_changes",
-                "description": "压缩长工具输出或变更说明，便于继续回灌上下文",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "text": {"type": "string", "description": "需要压缩的文本"},
-                        "limit": {"type": "integer", "description": "摘要最大长度"},
-                    },
-                    "required": ["text"],
-                },
-            },
-        },
+        # {
+        #     "type": "function",
+        #     "function": {
+        #         "name": "summarize_changes",
+        #         "description": "压缩长工具输出或变更说明，便于继续回灌上下文",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {
+        #                 "text": {"type": "string", "description": "需要压缩的文本"},
+        #                 "limit": {"type": "integer", "description": "摘要最大长度"},
+        #             },
+        #             "required": ["text"],
+        #         },
+        #     },
+        # },
         {
             "type": "function",
             "function": {
