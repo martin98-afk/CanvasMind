@@ -151,7 +151,6 @@ class ChatEngine:
         prompt_parts = [
             full_system_prompt,
             task_state.build_context_block(),
-            self._build_stage_prompt(task_state.stage),
             task_state.build_event_digest(),
         ]
 
@@ -222,12 +221,30 @@ class ChatEngine:
             stage = "discover"
 
         prompts = {
-            "discover": "## Active Stage: Discover\nFocus on understanding project structure, constraints, and the smallest relevant context first.",
-            "plan": "## Active Stage: Plan\nProduce an implementation path with concrete files, risks, and validation steps.",
-            "edit": "## Active Stage: Edit\nMake focused changes, preserve local patterns, and keep edits easy to verify.",
-            "verify": "## Active Stage: Verify\nPrefer targeted validation commands and explain failures concretely.",
-            "review": "## Active Stage: Review\nInspect for regressions, missing tests, and weak assumptions before declaring completion.",
-            "summarize": "## Active Stage: Summarize\nCompress the latest work into a concise handoff that supports the next coding step.",
+            "discover": "## Active Stage: Discover\n"
+            "Goal: Understand project structure, constraints, and relevant context.\n"
+            "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
+            "→ When context is sufficient, respond with [STAGE: plan] to transition.",
+            "plan": "## Active Stage: Plan\n"
+            "Goal: Produce implementation path with files, risks, validation steps.\n"
+            "Expected tools: Write a concrete plan using todo tool or analysis.\n"
+            "→ When plan is solid, respond with [STAGE: edit] to transition.",
+            "edit": "## Active Stage: Edit\n"
+            "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
+            "Expected tools: write, edit.\n"
+            "→ When changes are complete, respond with [STAGE: verify] to transition.",
+            "verify": "## Active Stage: Verify\n"
+            "Goal: Run validation commands, explain failures concretely.\n"
+            "Expected tools: Bash (pytest, test, compile, lint).\n"
+            "→ When verification passes, respond with [STAGE: review] to transition.",
+            "review": "## Active Stage: Review\n"
+            "Goal: Check for regressions, missing tests, weak assumptions.\n"
+            "Expected tools: Read, Grep for inspection.\n"
+            "→ When review is done, respond with [STAGE: summarize] to transition.",
+            "summarize": "## Active Stage: Summarize\n"
+            "Goal: Compress work into concise handoff for next step.\n"
+            "Expected tools: Final summary output.\n"
+            "→ Task complete.",
         }
         return prompts[stage]
 
@@ -244,12 +261,26 @@ class ChatEngine:
         llm_config: Dict,
         tools: List[Dict],
     ):
+        def get_stage_prompt():
+            session = self._session_manager.get_current_session()
+            if session:
+                return self._build_stage_prompt(session.task_state.stage)
+            return self._build_stage_prompt("discover")
+
+        def on_stage_changed(new_stage: str):
+            session = self._session_manager.get_current_session()
+            if session and new_stage in CODING_STAGES:
+                session.task_state.set_stage(new_stage, "model-requested")
+                self._emit("task_state_changed", session.task_state)
+
         self._current_worker = OpenAIChatWorker(
             messages=messages,
             llm_config=llm_config,
             tools=tools,
             tool_executor=self._tool_executor,
             tool_start_callback=self._callbacks.get("tool_call_sync_requested"),
+            get_stage_prompt=get_stage_prompt,
+            stage_changed_callback=on_stage_changed,
         )
 
         self._current_worker.content_received.connect(self._on_content_received)
@@ -287,6 +318,7 @@ class ChatEngine:
             session.task_state.update_tool_result(
                 tool_name, arguments or {}, str(result), success
             )
+
             if tool_name == "run_verify":
                 session.task_state.update_verification(
                     "passed" if success else "failed", str(result)

@@ -235,6 +235,8 @@ class OpenAIChatWorker(QThread):
         stream: bool = True,
         tool_executor=None,
         tool_start_callback=None,
+        get_stage_prompt=None,
+        stage_changed_callback=None,
     ):
         super().__init__()
         self.messages = messages
@@ -243,6 +245,8 @@ class OpenAIChatWorker(QThread):
         self.stream = stream
         self.tool_executor = tool_executor
         self.tool_start_callback = tool_start_callback
+        self.get_stage_prompt = get_stage_prompt
+        self.stage_changed_callback = stage_changed_callback
         self.full_response = ""
         self._is_cancelled = False
         self._question_pending = None
@@ -266,7 +270,6 @@ class OpenAIChatWorker(QThread):
                     return
 
                 iteration += 1
-                print(current_messages)
                 tool_results = self._make_api_call(current_messages)
 
                 if self._is_cancelled:
@@ -312,6 +315,15 @@ class OpenAIChatWorker(QThread):
                     }
                 )
                 current_messages.extend(tool_results)
+
+                if self.get_stage_prompt:
+                    stage_prompt = self.get_stage_prompt()
+                    if stage_prompt:
+                        current_messages.append(
+                            {"role": "system", "content": stage_prompt}
+                        )
+
+                self._check_and_notify_stage_change()
 
                 QCoreApplication.processEvents()
                 time.sleep(0.2)
@@ -574,6 +586,19 @@ class OpenAIChatWorker(QThread):
             )
 
         return results
+
+    def _check_and_notify_stage_change(self):
+        if not self.stage_changed_callback:
+            return
+
+        import re
+
+        pattern = re.compile(r"\[STAGE:\s*(\w+)\]", re.IGNORECASE)
+        matches = pattern.findall(self.full_response)
+
+        if matches:
+            new_stage = matches[-1].lower()
+            self.stage_changed_callback(new_stage)
 
     def _handle_error(self, error):
         from openai import (
