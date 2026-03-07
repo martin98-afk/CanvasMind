@@ -273,6 +273,9 @@ class OpenAIChatWorker(QThread):
 
                 if tool_results is None:
                     while self._pending_answer is None and not self._is_cancelled:
+                        from PyQt5.QtWidgets import QApplication
+
+                        QApplication.processEvents()
                         time.sleep(0.1)
 
                     if self._is_cancelled:

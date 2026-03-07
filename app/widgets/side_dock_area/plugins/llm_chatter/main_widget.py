@@ -1378,8 +1378,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         if tool_name in ("todowrite", "todoread"):
-            todos = self._tool_executor.todo_list if self._tool_executor else []
-            self._todo_floating_widget.update_todos(todos)
             self._todo_floating_widget.setVisible(True)
             return
 
@@ -1474,6 +1472,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if tool_name not in ("question", "task", "todowrite", "todoread"):
             self._tool_floating_widget.show_if_needed(elapsed)
             self._tool_floating_widget.finish_tool(str(result)[:200], success)
+
+        if tool_name in ("todowrite", "todoread"):
+            todos = self._tool_executor.todo_list if self._tool_executor else []
+            self._todo_floating_widget.update_todos(todos)
+            self._todo_floating_widget.setVisible(True)
 
         content = str(result)
         tool_block = format_tool_block(

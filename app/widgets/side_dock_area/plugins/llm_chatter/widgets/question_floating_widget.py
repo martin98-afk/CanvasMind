@@ -12,6 +12,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from functools import partial
+
 from qfluentwidgets import CardWidget, PrimaryPushButton
 
 
@@ -503,8 +505,6 @@ class QuestionFloatingWidget(CardWidget):
         sender = self.sender()
         if isinstance(sender, WrappedOptionButton):
             sender.set_selected(True)
-            QTimer.singleShot(110, lambda: self._emit_single_answer(str(answer)))
-            return
         self._emit_single_answer(str(answer))
 
     def _emit_single_answer(self, answer: str):
@@ -521,7 +521,7 @@ class QuestionFloatingWidget(CardWidget):
 
     def _create_button(self, option):
         btn = WrappedOptionButton(self._option_label(option), self)
-        btn.clicked.connect(lambda opt=option: self._on_select(opt))
+        btn.clicked.connect(partial(self._on_select, option))
         return btn
 
     def show_question(self, question: str, options: list, multiple: bool = False):
