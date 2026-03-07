@@ -3,9 +3,36 @@
 聊天引擎模块 - 处理 LLM 对话的核心逻辑
 """
 
+import re
 from typing import Dict, List, Optional, Any, Callable
 
 from loguru import logger
+
+
+TOKEN_ESTIMATION_RATIO = 0.25
+
+
+def estimate_tokens(text: str) -> int:
+    if not text:
+        return 0
+    return int(len(text) * TOKEN_ESTIMATION_RATIO) + len(re.findall(r"\w+", text))
+
+
+def estimate_tokens_from_messages(messages: List[Dict]) -> int:
+    total = 0
+    for msg in messages:
+        total += 4
+        if "role" in msg:
+            total += len(msg["role"])
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict):
+                    total += len(item.get("text", ""))
+        elif isinstance(content, str):
+            total += estimate_tokens(content)
+    return total
+
 
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
     CODING_STAGES,
@@ -48,6 +75,49 @@ class ChatEngine:
 
     def _get_agent_manager(self):
         return self._agent_manager
+
+    def _get_token_budget(self, llm_config: Dict) -> int:
+        max_tokens = llm_config.get("最大Token", 4096)
+        model_name = str(llm_config.get("模型名称", "")).lower()
+        reserved = 800
+        if "o1" in model_name or "o3" in model_name:
+            reserved = 32000
+        return max(500, max_tokens - reserved)
+
+    def _smart_trim_messages(self, cards: List[Any], max_tokens: int) -> List[Any]:
+        if not cards:
+            return []
+        system_tokens = 0
+        for part in [
+            self._session_manager.get_current_session().task_state.build_context_block(),
+            self._session_manager.get_current_session().task_state.build_event_digest(),
+        ]:
+            system_tokens += estimate_tokens(part) if part else 0
+        available_tokens = max_tokens - system_tokens - 200
+        if available_tokens <= 0:
+            return []
+        selected = []
+        total_tokens = 0
+        recent_cards = list(cards[-20:])
+        for i, card in enumerate(recent_cards):
+            role = getattr(card, "role", None)
+            if not role or role == "system":
+                continue
+            content = ""
+            if hasattr(card, "viewer") and hasattr(card.viewer, "get_plain_text"):
+                content = card.viewer.get_plain_text()
+            if not content:
+                continue
+            card_tokens = estimate_tokens(content) + 20
+            if total_tokens + card_tokens <= available_tokens:
+                selected.append(card)
+                total_tokens += card_tokens
+            elif i < 3:
+                truncated = content[: available_tokens - total_tokens * 4]
+                if truncated:
+                    selected.append(card)
+                    break
+        return selected
 
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
@@ -170,8 +240,10 @@ class ChatEngine:
             }
         )
 
+        max_context_tokens = self._get_token_budget(llm_config)
+
         cards = self._get_chat_cards() if self._get_chat_cards else []
-        cards_to_include = cards[-8:-1] if len(cards) > 1 else []
+        cards_to_include = self._smart_trim_messages(cards, max_context_tokens)
         for card in cards_to_include:
             role = getattr(card, "role", None)
             if not role or role == "system":
@@ -341,11 +413,6 @@ class ChatEngine:
 
     def _on_worker_finished(self, response: str):
         self._is_streaming = False
-        session = self._session_manager.get_current_session()
-        if session:
-            if session.task_state.stage in ("edit", "verify", "review"):
-                session.task_state.set_stage("summarize", "turn-finished")
-            self._emit("task_state_changed", session.task_state)
         self._emit("stream_finished", response)
 
     def _on_worker_messages_updated(self, messages: List[Dict]):

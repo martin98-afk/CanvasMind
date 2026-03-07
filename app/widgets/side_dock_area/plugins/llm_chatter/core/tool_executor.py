@@ -117,6 +117,10 @@ class ToolExecutor:
                 args.get("newString", ""),
                 args.get("replaceAll", False),
             ),
+            "multiedit": lambda: self._builtin_tools.multi_edit(
+                args.get("filePath"),
+                args.get("edits", []),
+            ),
             "grep": lambda: self._builtin_tools.grep_files(
                 args.get("pattern"), args.get("path"), args.get("include")
             ),
@@ -126,6 +130,18 @@ class ToolExecutor:
             "list": lambda: self._builtin_tools.list_directory(args.get("path")),
             "patch": lambda: self._builtin_tools.apply_patch(
                 args.get("filePath"), args.get("patch_content", "")
+            ),
+            "diff": lambda: self._builtin_tools.diff_files(
+                args.get("file1", ""),
+                args.get("file2"),
+                args.get("use_git", False),
+            ),
+            "git_status": lambda: self._builtin_tools.git_status(args.get("path")),
+            "git_log": lambda: self._builtin_tools.git_log(
+                args.get("path"), args.get("max_count", 10)
+            ),
+            "git_diff": lambda: self._builtin_tools.git_diff(
+                args.get("ref1"), args.get("ref2"), args.get("path")
             ),
             "bash": lambda: self._builtin_tools.execute_bash(
                 args.get("command", ""), args.get("timeout", 120)

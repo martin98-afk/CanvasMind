@@ -358,11 +358,6 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
 
-        self.typing_label = CaptionLabel("", self)
-        self.typing_label.setStyleSheet("color: #888; font-size: 12px;")
-        self.typing_label.setVisible(False)
-        hlayout.addWidget(self.typing_label)
-
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setFixedSize(26, 26)
         self.new_session_btn.setToolTip("新建对话")
@@ -1255,59 +1250,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
 
-        if user_text.startswith("/agent "):
-            agent_name = user_text[7:].strip()
-            if agent_name:
-                agents = (
-                    self._agent_manager.list_agents() if self._agent_manager else []
-                )
-                agent_names = [a.name for a in agents]
-                if agent_name in agent_names:
-                    idx = self.input_area._agent_combo.findText(agent_name)
-                    if idx >= 0:
-                        self.input_area._agent_combo.setCurrentIndex(idx)
-                    self.input_area.clear()
-                    return
-                else:
-                    InfoBar.warning(
-                        "智能体不存在",
-                        f"可用智能体: {', '.join(agent_names)}",
-                        parent=self,
-                        duration=2000,
-                    )
-                    return
-            else:
-                agents = (
-                    self._agent_manager.list_agents() if self._agent_manager else []
-                )
-                agent_names = [a.name for a in agents]
-                InfoBar.info(
-                    "可用智能体",
-                    f"{', '.join(agent_names)}",
-                    parent=self,
-                    duration=2000,
-                )
-                return
-
-        if user_text.startswith("/agents"):
-            agents = self._agent_manager.list_agents() if self._agent_manager else []
-            agent_list = "\n".join([f"- {a.name}: {a.description}" for a in agents])
-            self.input_area.clear()
-            card = self._append_assistant_message()
-            card.update_content(
-                f"## 可用智能体\n\n{agent_list}\n\n使用 `/agent <智能体名>` 切换"
-            )
-            card.finish_streaming()
-            self._scroll_to_bottom()
-            return
-
-        suggested_agent = self._suggest_agent(user_text)
-        if suggested_agent and suggested_agent != self._current_agent:
-            self.typing_label.setText(f"💡 建议使用 {suggested_agent} 智能体")
-            self.typing_label.setVisible(True)
-        else:
-            self.typing_label.setVisible(False)
-
         if self._is_shell_mode:
             if not user_text:
                 return
@@ -1318,7 +1260,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not user_text:
             return
 
-        session = self.session_manager.get_current_session()
         context_params = {k: v for k, v in self.context_selector.context.items()}
 
         self.input_area.clear()
@@ -1344,18 +1285,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not hasattr(self, "_accumulated_content"):
             self._accumulated_content = ""
         self._accumulated_content += content_piece
-
-        pattern = r"\[切换智能体:\s*(\w+)\]"
-        match = re.search(pattern, self._accumulated_content)
-        if match:
-            agent_name = match.group(1)
-            logger.info(f"[Agent] Detected switch request: {agent_name}")
-            self._chat_engine.switch_agent(agent_name)
-            self._accumulated_content = ""
-        elif "切换智能体" in self._accumulated_content:
-            logger.info(
-                f"[Agent] Partial match, accumulated: {self._accumulated_content[-50:]}"
-            )
 
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None

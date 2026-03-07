@@ -299,6 +299,121 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Patch error: {str(e)}")
 
+    def diff_files(
+        self, file1: str, file2: str = None, use_git: bool = False
+    ) -> ToolResult:
+        """对比两个文件或文件与git版本的差异"""
+        try:
+            path1 = self._resolve_path(file1)
+            if not path1.exists():
+                return ToolResult(False, error=f"File not found: {file1}")
+
+            if use_git:
+                result = subprocess.run(
+                    ["git", "diff", str(path1)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                    cwd=str(self.workdir),
+                )
+                if result.returncode != 0 and "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                diff_output = result.stdout or result.stderr
+                if not diff_output:
+                    return ToolResult(
+                        True, content=f"No changes in {file1} (compared to git)"
+                    )
+                return ToolResult(True, content=diff_output)
+
+            if file2:
+                path2 = self._resolve_path(file2)
+                if not path2.exists():
+                    return ToolResult(False, error=f"File not found: {file2}")
+                result = subprocess.run(
+                    ["diff", "-u", str(path1), str(path2)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                )
+            else:
+                result = subprocess.run(
+                    ["git", "diff", "HEAD", str(path1)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                    cwd=str(self.workdir),
+                )
+                if result.returncode != 0 and "not a git repository" in result.stderr:
+                    return ToolResult(
+                        False, error="Not a git repository and no second file provided"
+                    )
+                return ToolResult(
+                    True,
+                    content=result.stdout
+                    if result.stdout
+                    else f"No changes in {file1} (compared to git HEAD)",
+                )
+
+            if not result.stdout:
+                return ToolResult(True, content="Files are identical")
+            return ToolResult(True, content=result.stdout)
+        except Exception as e:
+            return ToolResult(False, error=f"Diff error: {str(e)}")
+
+    def multi_edit(self, filePath: str, edits: List[Dict]) -> ToolResult:
+        """一次性执行多个编辑操作"""
+        try:
+            if not filePath:
+                return ToolResult(False, error="Missing required parameter: filePath")
+            if not edits:
+                return ToolResult(False, error="Missing required parameter: edits")
+
+            path = self._resolve_path(filePath)
+            if not path.exists():
+                return ToolResult(False, error=f"File not found: {filePath}")
+
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            original_content = content
+            applied_edits = []
+            errors = []
+
+            for idx, edit in enumerate(edits):
+                old_string = edit.get("oldString", "")
+                new_string = edit.get("newString", "")
+                replace_all = edit.get("replaceAll", False)
+
+                if not old_string:
+                    errors.append(f"Edit {idx + 1}: missing oldString")
+                    continue
+
+                if old_string not in content:
+                    errors.append(f"Edit {idx + 1}: string not found")
+                    continue
+
+                if replace_all:
+                    content = content.replace(old_string, new_string)
+                else:
+                    content = content.replace(old_string, new_string, 1)
+                applied_edits.append(idx + 1)
+
+            if not applied_edits:
+                return ToolResult(False, error=f"No edits applied: {'; '.join(errors)}")
+
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            msg = f"Applied {len(applied_edits)} edits to {path}"
+            if errors:
+                msg += f"\nWarnings: {'; '.join(errors)}"
+            return ToolResult(True, content=msg)
+        except Exception as e:
+            return ToolResult(False, error=f"Multi-edit error: {str(e)}")
+
     def execute_bash(self, command: str, timeout: int = 120) -> ToolResult:
         """执行 shell 命令"""
         try:
@@ -337,6 +452,101 @@ class BuiltinTools:
             return ToolResult(False, error="Command execution timeout")
         except Exception as e:
             return ToolResult(False, error=f"Execution error: {str(e)}")
+
+    def git_status(self, path: str = None) -> ToolResult:
+        """查看 Git 仓库状态"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="Working tree clean")
+            lines = output.split("\n")
+            formatted = []
+            for line in lines:
+                if line.startswith("M "):
+                    formatted.append(f"[修改] {line[3:]}")
+                elif line.startswith("A "):
+                    formatted.append(f"[新增] {line[3:]}")
+                elif line.startswith("D "):
+                    formatted.append(f"[删除] {line[3:]}")
+                elif line.startswith("? "):
+                    formatted.append(f"[未跟踪] {line[2:]}")
+                elif line.startswith("!! "):
+                    formatted.append(f"[忽略] {line[3:]}")
+                else:
+                    formatted.append(line)
+            return ToolResult(True, content="Git Status:\n" + "\n".join(formatted))
+        except Exception as e:
+            return ToolResult(False, error=f"Git status error: {str(e)}")
+
+    def git_log(self, path: str = None, max_count: int = 10) -> ToolResult:
+        """查看 Git 提交历史"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            result = subprocess.run(
+                ["git", "log", f"--max-count={max_count}", "--oneline", "--decorate"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="No commit history")
+            return ToolResult(
+                True, content=f"Git Log (last {max_count} commits):\n{output}"
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"Git log error: {str(e)}")
+
+    def git_diff(
+        self, ref1: str = None, ref2: str = None, path: str = None
+    ) -> ToolResult:
+        """对比 Git 提交或分支差异"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            cmd = ["git", "diff", "--no-color"]
+            if ref1:
+                cmd.append(ref1)
+            if ref2:
+                cmd.append(ref2)
+            elif ref1 and not ref2:
+                cmd[2] = f"{ref1}..HEAD"
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="No differences")
+            return ToolResult(True, content=output)
+        except Exception as e:
+            return ToolResult(False, error=f"Git diff error: {str(e)}")
 
     def fetch_web(self, url: str, format: str = "markdown") -> ToolResult:
         """获取网页内容"""
@@ -873,6 +1083,42 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "multiedit",
+                "description": "一次性执行多个编辑操作，适用于批量修改",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "filePath": {"type": "string", "description": "文件路径"},
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "oldString": {
+                                        "type": "string",
+                                        "description": "要替换的文本",
+                                    },
+                                    "newString": {
+                                        "type": "string",
+                                        "description": "替换后的文本",
+                                    },
+                                    "replaceAll": {
+                                        "type": "boolean",
+                                        "description": "是否替换所有",
+                                    },
+                                },
+                                "required": ["oldString", "newString"],
+                            },
+                            "description": "编辑操作列表",
+                        },
+                    },
+                    "required": ["filePath", "edits"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "patch",
                 "description": "对文件应用补丁",
                 "parameters": {
@@ -882,6 +1128,28 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "patch_content": {"type": "string", "description": "补丁内容"},
                     },
                     "required": ["filePath", "patch_content"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "diff",
+                "description": "对比两个文件或文件与git版本的差异",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file1": {"type": "string", "description": "第一个文件路径"},
+                        "file2": {
+                            "type": "string",
+                            "description": "第二个文件路径（可选）",
+                        },
+                        "use_git": {
+                            "type": "boolean",
+                            "description": "是否与git版本对比",
+                        },
+                    },
+                    "required": ["file1"],
                 },
             },
         },
