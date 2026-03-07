@@ -24,7 +24,7 @@ def find_workflow_json(canvas_path):
 
 
 def get_canvas(canvas_path):
-    """获取画布信息"""
+    """获取画布信息 - 精简格式"""
     workflow_path = find_workflow_json(canvas_path)
     if not workflow_path.exists():
         return {"error": f"Canvas not found: {canvas_path}"}
@@ -32,27 +32,24 @@ def get_canvas(canvas_path):
     with open(workflow_path, "r", encoding="utf-8") as f:
         workflow = json.load(f)
 
-    nodes_info = []
+    nodes = []
     for node_id, node_data in workflow["graph"]["nodes"].items():
-        nodes_info.append(
+        custom = node_data.get("custom", {})
+        nodes.append(
             {
-                "node_id": node_id,
+                "id": node_id,
                 "name": node_data["name"],
-                "component": node_data.get("custom", {}).get("FULL_PATH", ""),
-                "position": node_data["pos"],
-                "inputs": list(
-                    node_data.get("custom", {}).get("input_values", {}).keys()
-                ),
-                "outputs": node_data.get("output_ports", []),
+                "path": custom.get("FULL_PATH", ""),
+                "pos": node_data["pos"],
+                "in": [p["name"] for p in node_data.get("input_ports", [])],
+                "out": [p["name"] for p in node_data.get("output_ports", [])],
             }
         )
 
     return {
-        "canvas_path": canvas_path,
-        "workflow_path": str(workflow_path),
-        "node_count": len(nodes_info),
-        "nodes": nodes_info,
-        "connections": workflow["graph"]["connections"],
+        "path": str(workflow_path),
+        "nodes": nodes,
+        "conns": workflow["graph"]["connections"],
     }
 
 

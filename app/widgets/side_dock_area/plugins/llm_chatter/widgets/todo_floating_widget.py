@@ -93,6 +93,7 @@ class TodoFloatingWidget(CardWidget):
 
         lines = []
         completed = 0
+        in_progress = 0
         for todo in self._todo_list:
             status = todo.get("status", "")
             content = todo.get("content", "")
@@ -101,6 +102,9 @@ class TodoFloatingWidget(CardWidget):
             if status == "completed":
                 completed += 1
                 status_icon = "✓"
+            elif status == "in_progress":
+                in_progress += 1
+                status_icon = "▶"
             else:
                 status_icon = "○"
 
@@ -112,6 +116,8 @@ class TodoFloatingWidget(CardWidget):
 
             if status == "completed":
                 content_style = "color: #808080; text-decoration: line-through;"
+            elif status == "in_progress":
+                content_style = "color: #60a5fa; font-weight: bold;"
             else:
                 content_style = "color: #e0e0e0;"
 
@@ -122,11 +128,16 @@ class TodoFloatingWidget(CardWidget):
             )
 
         total = len(self._todo_list)
-        if completed == total and completed > 0:
-            progress_text = f"🎉 {completed}/{total} 全部完成"
-            self.progress_label.setStyleSheet("color: #34d399; font-weight: bold;")
+        done_count = completed + in_progress
+        if done_count == total and done_count > 0:
+            if in_progress > 0:
+                progress_text = f"⏳ {in_progress}进行中 + {completed}完成"
+                self.progress_label.setStyleSheet("color: #60a5fa; font-weight: bold;")
+            else:
+                progress_text = f"🎉 {completed}/{total} 全部完成"
+                self.progress_label.setStyleSheet("color: #34d399; font-weight: bold;")
         else:
-            progress_text = f"{completed}/{total}"
+            progress_text = f"{completed}完成/{in_progress}进行中/{total}"
             self.progress_label.setStyleSheet("color: #818cf8; font-weight: bold;")
 
         self.progress_label.setText(progress_text)

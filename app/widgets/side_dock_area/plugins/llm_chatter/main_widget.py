@@ -197,7 +197,9 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._chat_engine.set_callback("question_asked", self._on_question_asked)
         self._chat_engine.set_callback("agent_switched", self._on_agent_switched)
-        self._chat_engine.set_callback("task_state_changed", self._on_task_state_changed)
+        self._chat_engine.set_callback(
+            "task_state_changed", self._on_task_state_changed
+        )
 
         self._initialize_history_manager()
 
@@ -314,7 +316,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._tool_floating_widget.setVisible(False)
         self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
         layout.addWidget(self._tool_floating_widget)
-
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -1635,12 +1636,17 @@ class OpenAIChatToolWindow(ToolWindow):
             self._memory_manager.get_context_string() if self._memory_manager else ""
         )
 
+        existing_memories = (
+            self._memory_manager.get_user_memories() if self._memory_manager else []
+        )
+
         task = TopicSummaryTask(
             messages=session.messages,
             llm_config=llm_config,
             callback=self._on_topic_summary_generated,
             previous_summary=previous_summary if previous_summary else None,
             long_term_memory=long_term_memory,
+            existing_memories=existing_memories,
         )
         self._gen_thread_pool.start(task)
 

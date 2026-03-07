@@ -470,10 +470,16 @@ class BuiltinTools:
 
             lines = []
             for i, todo in enumerate(self._todo_list, 1):
-                status = "✓" if todo.get("status") == "completed" else "○"
+                status = todo.get("status", "")
+                if status == "completed":
+                    status_icon = "✓"
+                elif status == "in_progress":
+                    status_icon = "▶"
+                else:
+                    status_icon = "○"
                 content = todo.get("content", "")
                 priority = todo.get("priority", "medium")
-                lines.append(f"{i}. [{priority}] {status} {content}")
+                lines.append(f"{i}. [{priority}] {status_icon} {content}")
 
             return ToolResult(True, content="\n".join(lines))
         except Exception as e:

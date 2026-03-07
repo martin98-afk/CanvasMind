@@ -20,6 +20,7 @@ class TopicSummaryTask(QRunnable):
         callback,
         previous_summary: str = None,
         long_term_memory: str = "",
+        existing_memories: list = None,
     ):
         super().__init__()
         self.messages = messages
@@ -27,6 +28,7 @@ class TopicSummaryTask(QRunnable):
         self.callback = callback
         self.previous_summary = previous_summary
         self.long_term_memory = long_term_memory
+        self.existing_memories = existing_memories or []
         self.setAutoDelete(True)
 
     def _extract_content_without_think(self, content: str) -> str:
@@ -71,6 +73,23 @@ class TopicSummaryTask(QRunnable):
             if self.long_term_memory:
                 memory_context = f"\n\n## 用户偏好和长期记忆\n{self.long_term_memory}\n"
 
+            existing_memories_text = ""
+            if self.existing_memories:
+                mem_lines = []
+                for mem in self.existing_memories:
+                    if isinstance(mem, dict):
+                        content = mem.get("content", "")
+                        enabled = mem.get("enabled", True)
+                        if enabled:
+                            mem_lines.append(f"- {content}")
+                    elif isinstance(mem, str) and mem:
+                        mem_lines.append(f"- {mem}")
+                if mem_lines:
+                    existing_memories_text = (
+                        "\n【已有记忆】（请勿生成重复或相似内容）:\n"
+                        + "\n".join(mem_lines)
+                    )
+
             if self.previous_summary:
                 prompt = (
                     "你是一个对话标题生成助手。\n"
@@ -79,6 +98,7 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
@@ -88,7 +108,7 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
                     "}\n"
                     "```"
                 )
@@ -100,6 +120,7 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
@@ -108,7 +129,7 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
                     "}\n"
                     "```"
                 )
@@ -443,7 +464,9 @@ class OpenAIChatWorker(QThread):
                         ):
                             self._previewed_tool_call_ids.add(tc_id)
                             if self.tool_start_callback:
-                                self.tool_start_callback(tc_id, tool_name, {}, "preview")
+                                self.tool_start_callback(
+                                    tc_id, tool_name, {}, "preview"
+                                )
                             else:
                                 self.tool_call_started.emit(
                                     tc_id, tool_name, {}, "preview"
@@ -514,7 +537,9 @@ class OpenAIChatWorker(QThread):
             if self.tool_start_callback:
                 self.tool_start_callback(tool_call_id, tool_name, arguments, round_id)
             else:
-                self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
+                self.tool_call_started.emit(
+                    tool_call_id, tool_name, arguments, round_id
+                )
                 QApplication.processEvents()
 
             if tool_name == "question":

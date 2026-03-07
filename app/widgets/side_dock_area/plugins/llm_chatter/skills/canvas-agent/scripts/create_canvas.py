@@ -78,10 +78,9 @@ def create_canvas(name, description=""):
         json.dump(workflow_json, f, ensure_ascii=False, indent=2)
 
     return {
-        "canvas_name": name,
-        "canvas_path": str(canvas_folder),
-        "workflow_path": str(workflow_path),
-        "description": description,
+        "name": name,
+        "path": str(canvas_folder),
+        "workflow": str(workflow_path),
     }
 
 

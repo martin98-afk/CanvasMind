@@ -50,7 +50,7 @@ def set_property(canvas_path, node_id, property_name, value):
     with open(workflow_path, "w", encoding="utf-8") as f:
         json.dump(workflow, f, ensure_ascii=False, indent=2)
 
-    return {"node_id": node_id, "property": property_name, "value": value}
+    return {"id": node_id, "prop": property_name, "val": value}
 
 
 if __name__ == "__main__":

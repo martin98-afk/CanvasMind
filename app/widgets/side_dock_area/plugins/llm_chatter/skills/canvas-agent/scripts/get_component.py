@@ -76,14 +76,14 @@ def get_component_details(full_path):
         )
 
     return {
-        "full_path": full_path,
-        "category": category,
+        "path": full_path,
+        "cat": category,
         "name": name,
-        "description": getattr(component_class, "description", ""),
-        "requirements": getattr(component_class, "requirements", ""),
-        "inputs": inputs,
-        "outputs": outputs,
-        "properties": properties,
+        "desc": getattr(component_class, "description", ""),
+        "req": getattr(component_class, "requirements", ""),
+        "in": inputs,
+        "out": outputs,
+        "props": properties,
     }
 
 

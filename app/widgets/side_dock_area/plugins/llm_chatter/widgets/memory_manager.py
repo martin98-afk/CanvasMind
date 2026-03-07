@@ -7,13 +7,14 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QWidget,
+    QFrame,
 )
 from qfluentwidgets import (
     BodyLabel,
     LineEdit,
     PrimaryPushButton,
     PushButton,
-    SwitchButton,
+    SwitchButton, ToggleToolButton, FluentIcon,
 )
 
 
@@ -30,27 +31,42 @@ class MemoryItemWidget(QWidget):
         self._init_ui(enabled)
 
     def _init_ui(self, enabled):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 5, 10, 5)
-
-        self.switch = SwitchButton(self)
-        self.switch.setChecked(enabled)
-        self.switch.setOnText("启用")
-        self.switch.setOffText("禁用")
-        self.switch.checkedChanged.connect(
-            lambda checked: self.toggled.emit(self.item_id, checked)
-        )
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(5, 8, 5, 8)
+        main_layout.setSpacing(0)
 
         self.label = BodyLabel(self.content, self)
         self.label.setWordWrap(True)
+        self.label.setStyleSheet("padding: 5px 10px;")
+        main_layout.addWidget(self.label, 1)
 
-        self.delete_btn = PushButton("删除", self)
-        self.delete_btn.setFixedWidth(60)
+        separator1 = QFrame(self)
+        separator1.setFrameShape(QFrame.VLine)
+        separator1.setStyleSheet("background-color: #3e3e42;")
+        separator1.setFixedWidth(1)
+        main_layout.addWidget(separator1)
+
+        self.switch = SwitchButton(self)
+        self.switch.setChecked(enabled)
+        self.switch.setOnText("")
+        self.switch.setOffText("")
+        self.switch.setFixedWidth(80)
+        self.switch.setStyleSheet("margin: 0 10px;")
+        self.switch.checkedChanged.connect(
+            lambda checked: self.toggled.emit(self.item_id, checked)
+        )
+        main_layout.addWidget(self.switch)
+
+        separator2 = QFrame(self)
+        separator2.setFrameShape(QFrame.VLine)
+        separator2.setStyleSheet("background-color: #3e3e42;")
+        separator2.setFixedWidth(1)
+        main_layout.addWidget(separator2)
+
+        self.delete_btn = ToggleToolButton(FluentIcon.DELETE, self)
+        self.delete_btn.setStyleSheet("margin: 0 10px;")
         self.delete_btn.clicked.connect(lambda: self.deleted.emit(self.item_id))
-
-        layout.addWidget(self.switch, 0)
-        layout.addWidget(self.label, 1)
-        layout.addWidget(self.delete_btn, 0)
+        main_layout.addWidget(self.delete_btn)
 
 
 class MemoryManagerDialog(QDialog):

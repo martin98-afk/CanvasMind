@@ -179,33 +179,47 @@ class MemoryManagerCore:
         lines = []
         lines.append("## 长期记忆摘要")
 
-        if topics:
-            recent_topics = topics[-3:]
-            lines.append(
-                "最近讨论主题: "
-                + ", ".join(
-                    [
-                        t.get("topic", "") if isinstance(t, dict) else str(t)
-                        for t in recent_topics
-                    ]
-                )
-            )
+        enabled_memories = []
+        disabled_memories = []
+        for m in user_memories:
+            if isinstance(m, dict):
+                content = m.get("content", "")
+                enabled = m.get("enabled", True)
+                if content:
+                    if enabled:
+                        enabled_memories.append(content)
+                    else:
+                        disabled_memories.append(content)
+            elif isinstance(m, str) and m:
+                enabled_memories.append(m)
 
-        if user_memories:
-            mem_lines = []
-            for m in user_memories[-5:]:
-                if isinstance(m, dict):
-                    mem_lines.append(m.get("content", ""))
-                else:
-                    mem_lines.append(str(m))
-            mem_lines = [s for s in mem_lines if s]
-            if mem_lines:
-                lines.append("用户记忆片段: " + " | ".join(mem_lines))
+        if enabled_memories:
+            lines.append("【用户偏好】（以下信息请务必记住并在对话中体现）：")
+            for i, mem in enumerate(enabled_memories[-10:], 1):
+                lines.append(f"{i}. {mem}")
+            lines.append("")
+
+        if disabled_memories:
+            lines.append(f"【历史记忆】（已禁用，供参考）：")
+            for mem in disabled_memories[-5:]:
+                lines.append(f"- {mem}")
+            lines.append("")
+
+        if topics:
+            recent_topics = topics[-5:]
+            topic_names = [
+                t.get("topic", "") if isinstance(t, dict) else str(t)
+                for t in recent_topics
+            ]
+            topic_names = [t for t in topic_names if t]
+            if topic_names:
+                lines.append(f"【最近讨论主题】{', '.join(topic_names)}")
 
         if not topics and not user_memories:
             lines.append("暂无长期记忆，系统将逐步积累用户偏好与会话要点。")
 
-        lines.append("请根据以上信息在未来对话中保持一致性与个性化。")
+        lines.append("")
+        lines.append("请根据以上用户偏好和记忆信息，在回复中保持一致性并体现个性化。")
         return "\n".join(lines)
 
     def set_canvas_name(self, canvas_name: str):

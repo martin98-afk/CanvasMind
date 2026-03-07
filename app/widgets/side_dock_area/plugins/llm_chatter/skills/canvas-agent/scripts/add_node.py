@@ -111,12 +111,14 @@ def add_node(canvas_path, component_full_path, node_name=None, x=None, y=None):
         json.dump(workflow, f, ensure_ascii=False, indent=2)
 
     return {
-        "node_id": node_id,
-        "node_name": node_name,
-        "component": component_full_path,
-        "position": position,
-        "input_ports": [p["name"] for p in input_ports],
-        "output_ports": [p["name"] for p in output_ports],
+        "id": node_id,
+        "name": node_name,
+        "path": component_full_path,
+        "pos": position,
+        "ports": {
+            "in": [p["name"] for p in input_ports],
+            "out": [p["name"] for p in output_ports],
+        },
     }
 
 
