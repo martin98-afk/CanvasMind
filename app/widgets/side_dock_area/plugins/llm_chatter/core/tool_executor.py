@@ -74,6 +74,11 @@ class ToolExecutor:
             return self._builtin_tools._todo_list
         return []
 
+    def clear_todo_list(self):
+        """清空待办事项列表"""
+        if self._builtin_tools:
+            self._builtin_tools.todo_clear()
+
     def register_custom_tool(self, name: str, handler: Callable):
         """注册自定义工具"""
         self._custom_tools[name] = handler

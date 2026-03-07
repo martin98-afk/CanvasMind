@@ -458,6 +458,10 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Todo write error: {str(e)}")
 
+    def todo_clear(self) -> None:
+        """清空待办事项列表"""
+        self._todo_list = []
+
     def todo_read(self) -> ToolResult:
         """读取当前待办事项列表"""
         try:

@@ -661,6 +661,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.clear_nodes()
         if self._todo_floating_widget:
             self._todo_floating_widget.clear()
+        if self._tool_executor:
+            self._tool_executor.clear_todo_list()
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
