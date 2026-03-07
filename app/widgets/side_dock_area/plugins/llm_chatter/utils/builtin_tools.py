@@ -635,6 +635,100 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"List skills error: {str(e)}")
 
+    def scan_repo(self, path: str = None, max_depth: int = 2) -> ToolResult:
+        """扫描仓库结构并返回紧凑摘要。"""
+        try:
+            target_path = self._resolve_path(path) if path else self.workdir
+            if not target_path.exists():
+                return ToolResult(False, error=f"Path not found: {target_path}")
+
+            lines = [f"Repository scan: {target_path}"]
+            root_depth = len(target_path.parts)
+
+            for root, dirs, files in os.walk(target_path):
+                rel_depth = len(Path(root).parts) - root_depth
+                if rel_depth > max_depth:
+                    dirs[:] = []
+                    continue
+
+                dirs[:] = [
+                    d
+                    for d in dirs
+                    if d not in {".git", "__pycache__", "env", "venv", "envs"}
+                ]
+                rel_root = Path(root).relative_to(target_path)
+                display_root = "." if str(rel_root) == "." else str(rel_root)
+                lines.append(f"\n[{display_root}]")
+
+                sample_dirs = sorted(dirs)[:8]
+                sample_files = sorted(files)[:12]
+                if sample_dirs:
+                    lines.append("dirs: " + ", ".join(sample_dirs))
+                if sample_files:
+                    lines.append("files: " + ", ".join(sample_files))
+
+            return ToolResult(True, content="\n".join(lines[:200]))
+        except Exception as e:
+            return ToolResult(False, error=f"scan_repo error: {str(e)}")
+
+    def stage_files(self, files: List[str]) -> ToolResult:
+        """记录当前任务相关文件集合。"""
+        try:
+            staged = []
+            for file_path in files or []:
+                if not file_path:
+                    continue
+                resolved = self._resolve_path(file_path)
+                staged.append(str(resolved))
+            if not staged:
+                return ToolResult(True, content="No files staged")
+            return ToolResult(True, content="Staged files:\n" + "\n".join(staged))
+        except Exception as e:
+            return ToolResult(False, error=f"stage_files error: {str(e)}")
+
+    def run_verify(self, command: str = "", timeout: int = 120) -> ToolResult:
+        """运行验证命令，默认尝试项目测试。"""
+        try:
+            verify_command = (command or "").strip()
+            if not verify_command:
+                if (self.workdir / "pytest.ini").exists() or list(
+                    self.workdir.glob("test_*.py")
+                ):
+                    verify_command = "pytest -q"
+                elif (self.workdir / "main.py").exists():
+                    verify_command = "python -m py_compile main.py"
+                else:
+                    verify_command = "python -m py_compile ."
+
+            result = self.execute_bash(verify_command, timeout=timeout)
+            if result.success:
+                return ToolResult(
+                    True,
+                    content=f"[verify] command: {verify_command}\n{result.content}",
+                )
+            return ToolResult(
+                False,
+                error=f"[verify] command: {verify_command}\n{result.error}",
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"run_verify error: {str(e)}")
+
+    def summarize_changes(self, text: str, limit: int = 1200) -> ToolResult:
+        """压缩工具输出，便于继续回灌上下文。"""
+        try:
+            raw = (text or "").strip()
+            if not raw:
+                return ToolResult(True, content="No summary content")
+            normalized = re.sub(r"\n{3,}", "\n\n", raw)
+            if len(normalized) <= limit:
+                return ToolResult(True, content=normalized)
+            head = normalized[: limit // 2]
+            tail = normalized[-limit // 2 :]
+            summary = head.rstrip() + "\n...\n" + tail.lstrip()
+            return ToolResult(True, content=summary)
+        except Exception as e:
+            return ToolResult(False, error=f"summarize_changes error: {str(e)}")
+
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
     ) -> ToolResult:
@@ -827,6 +921,67 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "num_results": {"type": "integer", "description": "结果数量"},
                     },
                     "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "scan_repo",
+                "description": "扫描仓库目录并返回结构化摘要，适合编码任务前快速建模上下文",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "扫描路径"},
+                        "max_depth": {"type": "integer", "description": "最大扫描深度"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "stage_files",
+                "description": "标记当前任务相关文件，帮助后续聚焦编辑和验证",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "文件路径列表",
+                        },
+                    },
+                    "required": ["files"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "run_verify",
+                "description": "运行针对当前任务的验证命令，默认尝试项目测试或语法检查",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "验证命令"},
+                        "timeout": {"type": "integer", "description": "超时时间"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "summarize_changes",
+                "description": "压缩长工具输出或变更说明，便于继续回灌上下文",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "需要压缩的文本"},
+                        "limit": {"type": "integer", "description": "摘要最大长度"},
+                    },
+                    "required": ["text"],
                 },
             },
         },

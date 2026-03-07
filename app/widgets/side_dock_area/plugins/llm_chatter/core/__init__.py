@@ -16,6 +16,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import (
     AgentManager,
     create_agent_manager,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
+    TaskSessionState,
+)
 
 __all__ = [
     "ChatEngine",
@@ -23,5 +26,6 @@ __all__ = [
     "MemoryManagerCore",
     "Agent",
     "AgentManager",
-    "create_agent_manager"
+    "create_agent_manager",
+    "TaskSessionState",
 ]

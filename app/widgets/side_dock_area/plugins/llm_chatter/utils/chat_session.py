@@ -2,6 +2,10 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from PyQt5.QtCore import QObject
 
+from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
+    TaskSessionState,
+)
+
 
 class ChatSession:
     def __init__(self, name: str = None, messages: Optional[List[Dict]] = None):
@@ -13,6 +17,7 @@ class ChatSession:
         self.created_at: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_updated: str = self.created_at
         self.message_count: int = len(self.messages)
+        self.task_state = TaskSessionState()
 
     def get_context_messages(self) -> List[Dict[str, str]]:
         return self.messages.copy()
@@ -71,6 +76,20 @@ class ChatSession:
             "created_at": self.created_at,
             "last_updated": self.last_updated,
             "message_count": self.message_count,
+            "task_state": {
+                "current_agent": self.task_state.current_agent,
+                "current_goal": self.task_state.current_goal,
+                "stage": self.task_state.stage,
+                "related_files": self.task_state.related_files,
+                "todo_items": self.task_state.todo_items,
+                "last_tool_name": self.task_state.last_tool_name,
+                "last_tool_args": self.task_state.last_tool_args,
+                "last_tool_result": self.task_state.last_tool_result,
+                "last_tool_success": self.task_state.last_tool_success,
+                "last_error": self.task_state.last_error,
+                "verification_status": self.task_state.verification_status,
+                "verification_summary": self.task_state.verification_summary,
+            },
         }
 
     @classmethod
@@ -82,6 +101,10 @@ class ChatSession:
         )
         session.last_updated = data.get("last_updated", session.created_at)
         session.message_count = len(session.messages)
+        task_state_data = data.get("task_state", {})
+        for field_name, value in task_state_data.items():
+            if hasattr(session.task_state, field_name):
+                setattr(session.task_state, field_name, value)
         return session
 
 

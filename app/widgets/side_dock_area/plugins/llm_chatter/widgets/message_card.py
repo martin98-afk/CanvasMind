@@ -1086,7 +1086,10 @@ class MessageCard(SimpleCardWidget):
             return
         self._streaming = True
         self._anim_offset = 0
-        self._anim_timer.start(30)
+        try:
+            self._anim_timer.start(30)
+        except RuntimeError:
+            return
         self.update()
 
     def _update_anim(self):
@@ -1096,7 +1099,10 @@ class MessageCard(SimpleCardWidget):
     def stop_streaming_anim(self):
         """停止流式输出光影边框动画"""
         self._streaming = False
-        self._anim_timer.stop()
+        try:
+            self._anim_timer.stop()
+        except RuntimeError:
+            return
         self.setStyleSheet(
             f"CardWidget{{background-color:{self._base_bg};border:1px solid {self._base_border};border-radius:12px;}}"
         )
@@ -1240,13 +1246,22 @@ class MessageCard(SimpleCardWidget):
             )
 
     def finish_streaming(self):
-        self.viewer.finish_streaming()
+        try:
+            self.viewer.finish_streaming()
+        except RuntimeError:
+            pass
         self.stop_streaming_anim()
 
     def closeEvent(self, e):
-        self._anim_timer.stop()
+        try:
+            self._anim_timer.stop()
+        except RuntimeError:
+            pass
         if hasattr(self.viewer, "deleteLater"):
-            self.viewer.deleteLater()
+            try:
+                self.viewer.deleteLater()
+            except RuntimeError:
+                pass
         super().closeEvent(e)
 
 

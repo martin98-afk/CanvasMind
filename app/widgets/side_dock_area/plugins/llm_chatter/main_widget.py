@@ -190,6 +190,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._chat_engine.set_callback("question_asked", self._on_question_asked)
         self._chat_engine.set_callback("agent_switched", self._on_agent_switched)
+        self._chat_engine.set_callback("task_state_changed", self._on_task_state_changed)
 
         self._initialize_history_manager()
 
@@ -289,6 +290,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._tool_floating_widget.setVisible(False)
         self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
         layout.addWidget(self._tool_floating_widget)
+
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -588,6 +590,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 f"{agent.name}: {agent.description}\n可用工具: {tools_count}个"
             )
 
+    def _on_task_state_changed(self, task_state):
+        if not task_state:
+            return
+        self._latest_task_state = task_state
+
     def _suggest_agent(self, user_text: str) -> Optional[str]:
         """基于用户输入智能推荐合适的智能体"""
         if not user_text or not self._agent_manager:
@@ -667,6 +674,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
         self._load_agent_list()
+        self._on_task_state_changed(session.task_state)
         agent = (
             self._agent_manager.get_agent(self._current_agent)
             if self._agent_manager
@@ -685,6 +693,7 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if not session:
             return
+        self._on_task_state_changed(session.task_state)
 
         if self._current_history_index is not None:
             title = self.history_manager.get_current_title(self._current_history_index)
@@ -909,6 +918,7 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             session.clear()
+            self._on_task_state_changed(session.task_state)
         agent = (
             self._agent_manager.get_agent(self._current_agent)
             if self._agent_manager

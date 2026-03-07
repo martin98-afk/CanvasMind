@@ -136,6 +136,18 @@ class ToolExecutor:
             "websearch": lambda: self._builtin_tools.search_web(
                 args.get("query", ""), args.get("num_results", 10)
             ),
+            "scan_repo": lambda: self._builtin_tools.scan_repo(
+                args.get("path"), args.get("max_depth", 2)
+            ),
+            "stage_files": lambda: self._builtin_tools.stage_files(
+                args.get("files", [])
+            ),
+            "run_verify": lambda: self._builtin_tools.run_verify(
+                args.get("command", ""), args.get("timeout", 120)
+            ),
+            "summarize_changes": lambda: self._builtin_tools.summarize_changes(
+                args.get("text", ""), args.get("limit", 1200)
+            ),
             "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
             "todoread": lambda: self._builtin_tools.todo_read(),
             "task": lambda: self._builtin_tools.task_execute(
