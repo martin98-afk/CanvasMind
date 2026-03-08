@@ -10,11 +10,13 @@ import os
 import subprocess
 import shutil
 import time
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable
 from datetime import datetime
 import fnmatch
 
+from PyQt5.QtCore import QEventLoop, QTimer
 from loguru import logger
 
 from app.utils.config import Settings
@@ -230,7 +232,10 @@ class BuiltinTools:
             if not matches:
                 return ToolResult(True, content="No matches found")
 
-            results = [str(m.relative_to(self.workdir)) for m in matches[:100]]
+            try:
+                results = [str(m.relative_to(search_path)) for m in matches[:100]]
+            except ValueError:
+                results = [str(m) for m in matches[:100]]
             return ToolResult(True, content="\n".join(results))
         except TypeError as e:
             return ToolResult(
@@ -703,55 +708,50 @@ class BuiltinTools:
             if not hasattr(self, "_sub_agent_manager") or not self._sub_agent_manager:
                 return ToolResult(False, error="子智能体管理器未初始化")
 
-            from PyQt5.QtCore import QEventLoop, QTimer
             import uuid
 
             task_id = str(uuid.uuid4())
-            result_container = {"result": None, "error": None, "done": False}
+            result_container = {"result": None, "error": None}
+            executor_ref = {"executor": None}
 
-            def on_finished(result: str):
-                result_container["result"] = result
-                result_container["done"] = True
-
-            def on_error(error: str):
-                result_container["error"] = error
-                result_container["done"] = True
-
-            self._sub_agent_manager.execute_task(
+            logger.info(f"[Task] Starting task {task_id}, agent={agent}")
+            success = self._sub_agent_manager.execute_task(
                 task_id=task_id,
                 agent_name=agent,
                 task_description=description,
                 parent_context=context or "",
-                on_finished=on_finished,
-                on_error=on_error,
+                on_finished=None,
+                on_error=None,
+                executor_ref=executor_ref,
             )
 
-            loop = QEventLoop()
-            timeout_timer = QTimer()
-            timeout_timer.setSingleShot(True)
-            timeout_timer.timeout.connect(loop.quit)
-            timeout_timer.start(1800000)
+            if not success:
+                return ToolResult(False, error="Failed to start sub-agent task")
 
-            check_timer = QTimer()
-            check_timer.setSingleShot(False)
-            check_timer.timeout.connect(
-                lambda: loop.quit() if result_container["done"] else None
-            )
-            check_timer.start(100)
+            executor = executor_ref.get("executor")
+            if not executor:
+                return ToolResult(False, error="Failed to get executor")
 
-            loop.exec()
-            check_timer.stop()
-            timeout_timer.stop()
-            print(result_container)
-            if result_container["error"]:
-                return ToolResult(False, error=result_container["error"])
+            logger.info(f"[Task] Waiting for task {task_id} to complete...")
+            timeout = 1800
+            start_time = time.time()
+            while not executor.isFinished():
+                if time.time() - start_time > timeout:
+                    logger.warning(f"[Task] Wait timeout after {timeout}s")
+                    executor.cancel()
+                    return ToolResult(False, error="Task execution timeout")
+                time.sleep(0.1)
 
-            if result_container["result"]:
-                return ToolResult(True, content=result_container["result"])
+            result = executor._last_result if hasattr(executor, "_last_result") else ""
+            logger.info(f"[Task] Task completed, result: {str(result)[:200]}...")
 
-            return ToolResult(False, error="Task execution timeout")
+            if hasattr(executor, "_execution_error") and executor._execution_error:
+                return ToolResult(False, error=executor._execution_error)
+
+            return ToolResult(True, content=result)
 
         except Exception as e:
+            logger.error(f"[Task] Exception: {e}")
             return ToolResult(False, error=f"Task execution error: {str(e)}")
 
     def load_skill(self, name: str) -> ToolResult:

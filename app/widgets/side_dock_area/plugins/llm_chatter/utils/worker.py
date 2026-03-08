@@ -3,6 +3,7 @@ import json
 import re
 import time
 from typing import Dict, List
+from loguru import logger
 
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
 from PyQt5.QtWidgets import QApplication
@@ -303,9 +304,6 @@ class OpenAIChatWorker(QThread):
                     self._pending_answer = None
                     continue
 
-                if not tool_results:
-                    break
-
                 current_messages.append(
                     {
                         "role": "assistant",
@@ -532,8 +530,6 @@ class OpenAIChatWorker(QThread):
     def _execute_all_tools(self):
         if not self._current_tool_calls or not self.tool_executor:
             return []
-
-        from PyQt5.QtWidgets import QApplication
 
         results = []
         for tc in self._current_tool_calls:

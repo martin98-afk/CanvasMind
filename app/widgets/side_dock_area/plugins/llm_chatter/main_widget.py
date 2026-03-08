@@ -1327,8 +1327,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _connect_sub_agent_signals(self, arguments: dict):
         """连接子智能体信号，支持延迟检查"""
-        from PyQt5.QtCore import QTimer
-
         def try_connect():
             if not hasattr(self._tool_executor, "_builtin_tools"):
                 return
@@ -1743,44 +1741,6 @@ class OpenAIChatToolWindow(ToolWindow):
             duration=2000,
             parent=self,
         )
-
-    def _generate_conversation_title(self, current_title: str, messages: List[Dict]):
-        if len(messages) < 2:
-            return
-
-        selected_name = self.model_combo.currentText()
-        llm_config = self._valid_configs.get(selected_name)
-        if not llm_config:
-            return
-
-        task = TitleGenerationTask(
-            current_title=current_title,
-            messages_for_summary=messages,
-            llm_config=llm_config,
-            callback=self._on_title_generated,
-        )
-        self._gen_thread_pool.start(task)
-
-    def _on_title_generated(self, raw_output: str = None, error_msg: str = None):
-        if error_msg:
-            logger.error(f"[Title Gen] Error: {error_msg}")
-            return
-        if not raw_output:
-            return
-
-        match = re.search(r"```title\s*(.+?)\s*```", raw_output, re.DOTALL)
-        if match:
-            title = match.group(1).strip()
-            title = title.strip("\"''' \n\t")
-            if 1 <= len(title) <= 15:
-                if self._current_history_index is not None:
-                    self.history_manager.update_session_title(
-                        self._current_history_index, title
-                    )
-                self.title_edit.setText(title)
-                return
-
-        logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")
 
     def _create_context_menu(self):
         self._context_menu_actions = {}

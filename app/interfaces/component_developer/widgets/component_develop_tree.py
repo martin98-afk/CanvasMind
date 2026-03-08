@@ -222,19 +222,19 @@ class ComponentTreeWidget(TreeWidget):
             return
 
         file_path = self._file_map.get(full_path)
-        component_rel_path = ""
-        extension_path = ""
+        component_abs_path = ""
+        extension_abs_path = ""
         if file_path:
             uuid = Path(file_path).stem
-            component_rel_path = str(file_path)
-            if component_rel_path.startswith("app/"):
-                component_rel_path = component_rel_path[4:]
-            extension_path = f"component_extensions/{uuid}"
+            component_abs_path = str(Path(resource_path("app")) / file_path)
+            extension_abs_path = str(
+                Path(resource_path("app/component_extensions")) / uuid
+            )
 
         drag_data = (
-            f"{component_rel_path}\n{extension_path}"
-            if extension_path
-            else component_rel_path
+            f"{component_abs_path}\n{extension_abs_path}"
+            if extension_abs_path
+            else component_abs_path
         )
 
         drag = QDrag(self)
