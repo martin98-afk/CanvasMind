@@ -220,6 +220,8 @@ def _render_think_block(content: str, completed: bool = True) -> str:
     if len(content.strip().replace("\n", " ")) > max_preview:
         content_preview += "..."
 
+    content = escape(content)
+
     return f"""<details{open_attr} class="think-block">
     <summary style="display: flex; align-items: center; gap: 6px;">
         <span style="white-space: nowrap;">{status_text}</span>
@@ -1144,6 +1146,20 @@ class MessageCard(SimpleCardWidget):
         painter.setPen(pen)
         painter.setBrush(QBrush(Qt.NoBrush))
         painter.drawRoundedRect(1, 1, w - 2, h - 2, radius, radius)
+
+    def set_error_state(self, is_error: bool):
+        """设置错误状态，卡片边框变红"""
+        self.error = is_error
+        if is_error:
+            bd, bg = "#ff4d4d", "#2a1f1f"
+        else:
+            if self.role == "user":
+                bd, bg = "#4A5568", "#2A2A2A"
+            else:
+                bd, bg = self._base_border, self._base_bg
+        self.setStyleSheet(
+            f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
+        )
 
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:

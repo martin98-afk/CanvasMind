@@ -1327,6 +1327,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _connect_sub_agent_signals(self, arguments: dict):
         """连接子智能体信号，支持延迟检查"""
+
         def try_connect():
             if not hasattr(self._tool_executor, "_builtin_tools"):
                 return
@@ -1506,6 +1507,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_engine_error(self, error: str):
         if self._current_assistant_card:
+            self._current_assistant_card.stop_streaming_anim()
+            self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
         self._is_streaming = False
         self._toggle_send_stop(False)
