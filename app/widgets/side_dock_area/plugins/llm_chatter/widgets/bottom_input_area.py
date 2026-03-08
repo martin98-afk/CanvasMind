@@ -1,6 +1,6 @@
 # 大模型输入框
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QKeyEvent, QKeySequence
+from PyQt5.QtGui import QKeyEvent, QKeySequence, QDragEnterEvent, QDropEvent
 from PyQt5.QtWidgets import QShortcut
 from qfluentwidgets import FluentIcon, ComboBox
 from qfluentwidgets import TextEdit, TransparentToolButton
@@ -24,6 +24,7 @@ class SendableTextEdit(TextEdit):
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setAcceptDrops(True)
 
         self._agent_combo = ComboBox(self)
         self._agent_combo.setFixedSize(110, 24)
@@ -157,3 +158,27 @@ class SendableTextEdit(TextEdit):
                 super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event: QDropEvent):
+        text = event.mimeData().text()
+        if text:
+            lines = text.split("\n")
+            component_path = lines[0] if lines else ""
+            extension_path = lines[1] if len(lines) > 1 else ""
+
+            insert_text = f"组件路径: {component_path}"
+            if extension_path:
+                insert_text += f"\n扩展资源路径: {extension_path}"
+
+            cursor = self.textCursor()
+            cursor.insertText(insert_text)
+            self._on_text_changed()
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)

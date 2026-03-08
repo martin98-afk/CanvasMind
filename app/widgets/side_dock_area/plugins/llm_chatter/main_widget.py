@@ -132,12 +132,12 @@ class OpenAIChatToolWindow(ToolWindow):
     contextActionRequested = pyqtSignal(str, str)
     skillExecutionRequested = pyqtSignal(str, dict)
     userInterventionRequested = pyqtSignal(dict)
-    _gen_thread_pool = QThreadPool()
     executionResultProduced = pyqtSignal(str)
     toolStartUiSyncRequested = pyqtSignal(str, str, object, str)
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
+        self._gen_thread_pool = QThreadPool()
         self._gen_thread_pool.setMaxThreadCount(2)
         self.toolStartUiSyncRequested.connect(
             self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
@@ -1319,49 +1319,79 @@ class OpenAIChatToolWindow(ToolWindow):
 
             self._sub_agent_floating_widget.start_task(agent_name, task_desc)
 
-            if hasattr(self._tool_executor, "_builtin_tools") and hasattr(
-                self._tool_executor._builtin_tools, "_sub_agent_manager"
-            ):
-                sub_agent_mgr = self._tool_executor._builtin_tools._sub_agent_manager
-                if sub_agent_mgr and sub_agent_mgr._running_tasks:
-                    last_task_id = list(sub_agent_mgr._running_tasks.keys())[-1]
-                    if last_task_id:
-                        executor = sub_agent_mgr._running_tasks.get(last_task_id)
-                        if executor:
+            self._connect_sub_agent_signals(arguments)
 
-                            def on_progress(msg):
-                                self._sub_agent_floating_widget.update_progress(msg)
-
-                            def on_tool_call(tool_name, args):
-                                self._sub_agent_floating_widget.add_tool_call(
-                                    tool_name, args
-                                )
-
-                            def on_tool_result(tool_name, result, success):
-                                self._sub_agent_floating_widget.add_tool_result(
-                                    tool_name, result, success
-                                )
-
-                            def on_finished(result):
-                                success = not (
-                                    result
-                                    and (
-                                        "error" in result.lower()
-                                        or "失败" in result
-                                        or "timeout" in result.lower()
-                                    )
-                                )
-                                self._sub_agent_floating_widget.finish_task(
-                                    result, success
-                                )
-
-                            executor.progress_updated.connect(on_progress)
-                            executor.tool_call_started.connect(on_tool_call)
-                            executor.tool_result_received.connect(on_tool_result)
-                            executor.finished_with_result.connect(on_finished)
             return
 
         self._tool_floating_widget.start_tool(tool_name, arguments)
+
+    def _connect_sub_agent_signals(self, arguments: dict):
+        """连接子智能体信号，支持延迟检查"""
+        from PyQt5.QtCore import QTimer
+
+        def try_connect():
+            if not hasattr(self._tool_executor, "_builtin_tools"):
+                return
+            if not hasattr(self._tool_executor._builtin_tools, "_sub_agent_manager"):
+                return
+
+            sub_agent_mgr = self._tool_executor._builtin_tools._sub_agent_manager
+            if not sub_agent_mgr or not sub_agent_mgr._running_tasks:
+                return
+
+            last_task_id = list(sub_agent_mgr._running_tasks.keys())[-1]
+            if not last_task_id:
+                return
+
+            executor = sub_agent_mgr._running_tasks.get(last_task_id)
+            if not executor:
+                return
+
+            def on_progress(msg):
+                self._sub_agent_floating_widget.update_progress(msg)
+
+            def on_tool_call(tool_name, args):
+                self._sub_agent_floating_widget.add_tool_call(tool_name, args)
+
+            def on_tool_result(tool_name, result, success):
+                self._sub_agent_floating_widget.add_tool_result(
+                    tool_name, result, success
+                )
+
+            def on_finished(result):
+                success = not (
+                    result
+                    and (
+                        "error" in result.lower()
+                        or "失败" in result
+                        or "timeout" in result.lower()
+                    )
+                )
+                self._sub_agent_floating_widget.finish_task(result, success)
+
+            try:
+                executor.progress_updated.disconnect()
+            except:
+                pass
+            try:
+                executor.tool_call_started.disconnect()
+            except:
+                pass
+            try:
+                executor.tool_result_received.disconnect()
+            except:
+                pass
+            try:
+                executor.finished_with_result.disconnect()
+            except:
+                pass
+
+            executor.progress_updated.connect(on_progress)
+            executor.tool_call_started.connect(on_tool_call)
+            executor.tool_result_received.connect(on_tool_result)
+            executor.finished_with_result.connect(on_finished)
+
+        QTimer.singleShot(100, try_connect)
 
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
@@ -1553,13 +1583,16 @@ class OpenAIChatToolWindow(ToolWindow):
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
+            logger.warning("[Topic Summary] No LLM config found, skipping")
             return
         session = self.session_manager.get_current_session()
         if not session:
+            logger.warning("[Topic Summary] No session found, skipping")
             return
 
         user_messages = [m for m in session.messages if m.get("role") == "user"]
         if not user_messages:
+            logger.warning("[Topic Summary] No user messages found, skipping")
             return
         previous_summary = ""
         if self._current_history_index is not None:
@@ -1626,6 +1659,13 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if should_update_memory and memory_content and self._memory_manager:
             self._memory_manager.add_user_memory(memory_content)
+            logger.info(
+                f"[Topic Summary] Added to long-term memory: {memory_content[:50]}..."
+            )
+        else:
+            logger.info(
+                f"[Topic Summary] Memory update skipped (should_update={should_update_memory}, content={bool(memory_content)})"
+            )
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)
