@@ -19,7 +19,7 @@ class LogPopupWidget(QWidget):
         self._min_width = 200
         self._max_width = 600
         self._base_x = 0
-        self._resize_zone_width = 12
+        self._resize_zone_width = 4
         self._hovering_resize_zone = False
         self._border_color = "#3c3c3c"
         self._hover_border_color = "#0078D4"

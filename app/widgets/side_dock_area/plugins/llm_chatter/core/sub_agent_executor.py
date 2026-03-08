@@ -40,6 +40,8 @@ class SubAgentExecutor(QThread):
         self.parent_context = parent_context
         self._is_cancelled = False
         self._pending_answer = None
+        self._last_result = None
+        self._execution_error = None
 
     def cancel(self):
         self._is_cancelled = True
@@ -71,15 +73,34 @@ class SubAgentExecutor(QThread):
 
             self.progress_updated.emit(f"开始执行子任务: {self.agent_name}")
 
-            result = self._execute_agent_loop(messages, tools)
+            try:
+                result = self._execute_agent_loop(messages, tools)
+                logger.info(
+                    f"[SubAgentExecutor] _execute_agent_loop returned: {str(result)[:100]}..."
+                )
+            except Exception as e:
+                logger.error(f"[SubAgentExecutor] _execute_agent_loop error: {e}")
+                result = f"执行出错: {str(e)}"
 
             if self._is_cancelled:
                 return
 
-            summary = self._summarize_result(result)
+            try:
+                summary = self._summarize_result(result)
+                logger.info(
+                    f"[SubAgentExecutor] _summarize_result returned: {str(summary)[:100]}..."
+                )
+                self._last_result = summary
+            except Exception as e:
+                logger.error(f"[SubAgentExecutor] _summarize_result error: {e}")
+                summary = result if result else "执行出错"
+                self._last_result = summary
+
             self.finished_with_result.emit(summary)
 
         except Exception as e:
+            logger.error(f"[SubAgentExecutor] run() error: {e}")
+            self._execution_error = str(e)
             self.error_occurred.emit(f"SubAgent execution error: {str(e)}")
 
     def _execute_agent_loop(self, messages: List[Dict], tools: List[Dict]) -> str:
@@ -89,10 +110,18 @@ class SubAgentExecutor(QThread):
         current_messages = messages.copy()
         response_content = ""
         has_tool_calls = True
+        loop_start_time = time.time()
+        max_loop_time = 600
 
         while iteration < max_iterations:
             if self._is_cancelled:
                 return ""
+
+            if time.time() - loop_start_time > max_loop_time:
+                logger.warning(
+                    f"[SubAgentExecutor] Loop timeout after {max_loop_time}s, returning current result"
+                )
+                return response_content if response_content else "任务执行超时"
 
             iteration += 1
 
@@ -423,6 +452,7 @@ class SubAgentManager:
         on_finished: Callable[[str], None] = None,
         on_error: Callable[[str], None] = None,
         on_progress: Callable[[str], None] = None,
+        executor_ref: Dict = None,
     ) -> bool:
         """执行子智能体任务"""
         try:
@@ -440,6 +470,9 @@ class SubAgentManager:
                 tool_executor=self._tool_executor,
                 parent_context=parent_context,
             )
+
+            if executor_ref is not None:
+                executor_ref["executor"] = executor
 
             if on_finished:
                 executor.finished_with_result.connect(on_finished)

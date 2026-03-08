@@ -49,7 +49,7 @@ def set_input(canvas_path, node_id, input_name, value):
     with open(workflow_path, "w", encoding="utf-8") as f:
         json.dump(workflow, f, ensure_ascii=False, indent=2)
 
-    return {"node_id": node_id, "input": input_name, "value": value}
+    return {"id": node_id, "input": input_name, "val": value}
 
 
 if __name__ == "__main__":

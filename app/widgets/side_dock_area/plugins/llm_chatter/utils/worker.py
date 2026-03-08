@@ -3,8 +3,10 @@ import json
 import re
 import time
 from typing import Dict, List
+from loguru import logger
 
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
+from PyQt5.QtWidgets import QApplication
 from openai import (
     OpenAI,
 )
@@ -20,6 +22,7 @@ class TopicSummaryTask(QRunnable):
         callback,
         previous_summary: str = None,
         long_term_memory: str = "",
+        existing_memories: list = None,
     ):
         super().__init__()
         self.messages = messages
@@ -27,6 +30,7 @@ class TopicSummaryTask(QRunnable):
         self.callback = callback
         self.previous_summary = previous_summary
         self.long_term_memory = long_term_memory
+        self.existing_memories = existing_memories or []
         self.setAutoDelete(True)
 
     def _extract_content_without_think(self, content: str) -> str:
@@ -71,6 +75,23 @@ class TopicSummaryTask(QRunnable):
             if self.long_term_memory:
                 memory_context = f"\n\n## 用户偏好和长期记忆\n{self.long_term_memory}\n"
 
+            existing_memories_text = ""
+            if self.existing_memories:
+                mem_lines = []
+                for mem in self.existing_memories:
+                    if isinstance(mem, dict):
+                        content = mem.get("content", "")
+                        enabled = mem.get("enabled", True)
+                        if enabled:
+                            mem_lines.append(f"- {content}")
+                    elif isinstance(mem, str) and mem:
+                        mem_lines.append(f"- {mem}")
+                if mem_lines:
+                    existing_memories_text = (
+                        "\n【已有记忆】（请勿生成重复或相似内容）:\n"
+                        + "\n".join(mem_lines)
+                    )
+
             if self.previous_summary:
                 prompt = (
                     "你是一个对话标题生成助手。\n"
@@ -79,6 +100,7 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
@@ -88,7 +110,7 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
                     "}\n"
                     "```"
                 )
@@ -100,6 +122,7 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
@@ -108,7 +131,7 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
                     "}\n"
                     "```"
                 )
@@ -204,6 +227,7 @@ class OpenAIChatWorker(QThread):
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
     question_asked = pyqtSignal(str, str, list, bool)
+    _DEFERRED_PREVIEW_TOOLS = {"question", "task", "todowrite", "todoread"}
 
     def __init__(
         self,
@@ -212,6 +236,9 @@ class OpenAIChatWorker(QThread):
         tools: List[Dict] = None,
         stream: bool = True,
         tool_executor=None,
+        tool_start_callback=None,
+        get_stage_prompt=None,
+        stage_changed_callback=None,
     ):
         super().__init__()
         self.messages = messages
@@ -219,10 +246,14 @@ class OpenAIChatWorker(QThread):
         self.tools = tools or []
         self.stream = stream
         self.tool_executor = tool_executor
+        self.tool_start_callback = tool_start_callback
+        self.get_stage_prompt = get_stage_prompt
+        self.stage_changed_callback = stage_changed_callback
         self.full_response = ""
         self._is_cancelled = False
         self._question_pending = None
         self._pending_answer = None
+        self._previewed_tool_call_ids = set()
 
     def cancel(self):
         self._is_cancelled = True
@@ -248,6 +279,7 @@ class OpenAIChatWorker(QThread):
 
                 if tool_results is None:
                     while self._pending_answer is None and not self._is_cancelled:
+                        QApplication.processEvents()
                         time.sleep(0.1)
 
                     if self._is_cancelled:
@@ -272,9 +304,6 @@ class OpenAIChatWorker(QThread):
                     self._pending_answer = None
                     continue
 
-                if not tool_results:
-                    break
-
                 current_messages.append(
                     {
                         "role": "assistant",
@@ -283,6 +312,15 @@ class OpenAIChatWorker(QThread):
                     }
                 )
                 current_messages.extend(tool_results)
+
+                if self.get_stage_prompt:
+                    stage_prompt = self.get_stage_prompt()
+                    if stage_prompt:
+                        current_messages.append(
+                            {"role": "system", "content": stage_prompt}
+                        )
+
+                self._check_and_notify_stage_change()
 
                 QCoreApplication.processEvents()
                 time.sleep(0.2)
@@ -431,6 +469,21 @@ class OpenAIChatWorker(QThread):
                     buffer = self._tool_calls_buffer[tc_id]
                     if tc.function and tc.function.name:
                         buffer["function"]["name"] = tc.function.name
+                        tool_name = buffer["function"]["name"]
+                        if (
+                            tool_name
+                            and tool_name not in self._DEFERRED_PREVIEW_TOOLS
+                            and tc_id not in self._previewed_tool_call_ids
+                        ):
+                            self._previewed_tool_call_ids.add(tc_id)
+                            if self.tool_start_callback:
+                                self.tool_start_callback(
+                                    tc_id, tool_name, {}, "preview"
+                                )
+                            else:
+                                self.tool_call_started.emit(
+                                    tc_id, tool_name, {}, "preview"
+                                )
                     if tc.function and tc.function.arguments:
                         buffer["function"]["arguments"] += tc.function.arguments
 
@@ -478,8 +531,6 @@ class OpenAIChatWorker(QThread):
         if not self._current_tool_calls or not self.tool_executor:
             return []
 
-        from PyQt5.QtWidgets import QApplication
-
         results = []
         for tc in self._current_tool_calls:
             tool_name = tc["function"]["name"]
@@ -494,8 +545,13 @@ class OpenAIChatWorker(QThread):
             tool_call_id = tc["id"]
 
             round_id = f"round_{id(tc)}"
-            self.tool_call_started.emit(tool_call_id, tool_name, arguments, round_id)
-            QApplication.processEvents()
+            if self.tool_start_callback:
+                self.tool_start_callback(tool_call_id, tool_name, arguments, round_id)
+            else:
+                self.tool_call_started.emit(
+                    tool_call_id, tool_name, arguments, round_id
+                )
+                QApplication.processEvents()
 
             if tool_name == "question":
                 question_text = arguments.get("question", "")
@@ -525,6 +581,19 @@ class OpenAIChatWorker(QThread):
             )
 
         return results
+
+    def _check_and_notify_stage_change(self):
+        if not self.stage_changed_callback:
+            return
+
+        import re
+
+        pattern = re.compile(r"\[STAGE:\s*(\w+)\]", re.IGNORECASE)
+        matches = pattern.findall(self.full_response)
+
+        if matches:
+            new_stage = matches[-1].lower()
+            self.stage_changed_callback(new_stage)
 
     def _handle_error(self, error):
         from openai import (

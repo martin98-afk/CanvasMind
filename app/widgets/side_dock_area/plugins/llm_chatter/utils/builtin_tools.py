@@ -10,11 +10,13 @@ import os
 import subprocess
 import shutil
 import time
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Callable
 from datetime import datetime
 import fnmatch
 
+from PyQt5.QtCore import QEventLoop, QTimer
 from loguru import logger
 
 from app.utils.config import Settings
@@ -230,7 +232,10 @@ class BuiltinTools:
             if not matches:
                 return ToolResult(True, content="No matches found")
 
-            results = [str(m.relative_to(self.workdir)) for m in matches[:100]]
+            try:
+                results = [str(m.relative_to(search_path)) for m in matches[:100]]
+            except ValueError:
+                results = [str(m) for m in matches[:100]]
             return ToolResult(True, content="\n".join(results))
         except TypeError as e:
             return ToolResult(
@@ -299,6 +304,121 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Patch error: {str(e)}")
 
+    def diff_files(
+        self, file1: str, file2: str = None, use_git: bool = False
+    ) -> ToolResult:
+        """对比两个文件或文件与git版本的差异"""
+        try:
+            path1 = self._resolve_path(file1)
+            if not path1.exists():
+                return ToolResult(False, error=f"File not found: {file1}")
+
+            if use_git:
+                result = subprocess.run(
+                    ["git", "diff", str(path1)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                    cwd=str(self.workdir),
+                )
+                if result.returncode != 0 and "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                diff_output = result.stdout or result.stderr
+                if not diff_output:
+                    return ToolResult(
+                        True, content=f"No changes in {file1} (compared to git)"
+                    )
+                return ToolResult(True, content=diff_output)
+
+            if file2:
+                path2 = self._resolve_path(file2)
+                if not path2.exists():
+                    return ToolResult(False, error=f"File not found: {file2}")
+                result = subprocess.run(
+                    ["diff", "-u", str(path1), str(path2)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                )
+            else:
+                result = subprocess.run(
+                    ["git", "diff", "HEAD", str(path1)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="ignore",
+                    cwd=str(self.workdir),
+                )
+                if result.returncode != 0 and "not a git repository" in result.stderr:
+                    return ToolResult(
+                        False, error="Not a git repository and no second file provided"
+                    )
+                return ToolResult(
+                    True,
+                    content=result.stdout
+                    if result.stdout
+                    else f"No changes in {file1} (compared to git HEAD)",
+                )
+
+            if not result.stdout:
+                return ToolResult(True, content="Files are identical")
+            return ToolResult(True, content=result.stdout)
+        except Exception as e:
+            return ToolResult(False, error=f"Diff error: {str(e)}")
+
+    def multi_edit(self, filePath: str, edits: List[Dict]) -> ToolResult:
+        """一次性执行多个编辑操作"""
+        try:
+            if not filePath:
+                return ToolResult(False, error="Missing required parameter: filePath")
+            if not edits:
+                return ToolResult(False, error="Missing required parameter: edits")
+
+            path = self._resolve_path(filePath)
+            if not path.exists():
+                return ToolResult(False, error=f"File not found: {filePath}")
+
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            original_content = content
+            applied_edits = []
+            errors = []
+
+            for idx, edit in enumerate(edits):
+                old_string = edit.get("oldString", "")
+                new_string = edit.get("newString", "")
+                replace_all = edit.get("replaceAll", False)
+
+                if not old_string:
+                    errors.append(f"Edit {idx + 1}: missing oldString")
+                    continue
+
+                if old_string not in content:
+                    errors.append(f"Edit {idx + 1}: string not found")
+                    continue
+
+                if replace_all:
+                    content = content.replace(old_string, new_string)
+                else:
+                    content = content.replace(old_string, new_string, 1)
+                applied_edits.append(idx + 1)
+
+            if not applied_edits:
+                return ToolResult(False, error=f"No edits applied: {'; '.join(errors)}")
+
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            msg = f"Applied {len(applied_edits)} edits to {path}"
+            if errors:
+                msg += f"\nWarnings: {'; '.join(errors)}"
+            return ToolResult(True, content=msg)
+        except Exception as e:
+            return ToolResult(False, error=f"Multi-edit error: {str(e)}")
+
     def execute_bash(self, command: str, timeout: int = 120) -> ToolResult:
         """执行 shell 命令"""
         try:
@@ -337,6 +457,101 @@ class BuiltinTools:
             return ToolResult(False, error="Command execution timeout")
         except Exception as e:
             return ToolResult(False, error=f"Execution error: {str(e)}")
+
+    def git_status(self, path: str = None) -> ToolResult:
+        """查看 Git 仓库状态"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="Working tree clean")
+            lines = output.split("\n")
+            formatted = []
+            for line in lines:
+                if line.startswith("M "):
+                    formatted.append(f"[修改] {line[3:]}")
+                elif line.startswith("A "):
+                    formatted.append(f"[新增] {line[3:]}")
+                elif line.startswith("D "):
+                    formatted.append(f"[删除] {line[3:]}")
+                elif line.startswith("? "):
+                    formatted.append(f"[未跟踪] {line[2:]}")
+                elif line.startswith("!! "):
+                    formatted.append(f"[忽略] {line[3:]}")
+                else:
+                    formatted.append(line)
+            return ToolResult(True, content="Git Status:\n" + "\n".join(formatted))
+        except Exception as e:
+            return ToolResult(False, error=f"Git status error: {str(e)}")
+
+    def git_log(self, path: str = None, max_count: int = 10) -> ToolResult:
+        """查看 Git 提交历史"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            result = subprocess.run(
+                ["git", "log", f"--max-count={max_count}", "--oneline", "--decorate"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="No commit history")
+            return ToolResult(
+                True, content=f"Git Log (last {max_count} commits):\n{output}"
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"Git log error: {str(e)}")
+
+    def git_diff(
+        self, ref1: str = None, ref2: str = None, path: str = None
+    ) -> ToolResult:
+        """对比 Git 提交或分支差异"""
+        try:
+            target = self._resolve_path(path) if path else self.workdir
+            cmd = ["git", "diff", "--no-color"]
+            if ref1:
+                cmd.append(ref1)
+            if ref2:
+                cmd.append(ref2)
+            elif ref1 and not ref2:
+                cmd[2] = f"{ref1}..HEAD"
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                cwd=str(target),
+            )
+            if result.returncode != 0:
+                if "not a git repository" in result.stderr:
+                    return ToolResult(False, error="Not a git repository")
+                return ToolResult(False, error=result.stderr)
+            output = result.stdout.strip()
+            if not output:
+                return ToolResult(True, content="No differences")
+            return ToolResult(True, content=output)
+        except Exception as e:
+            return ToolResult(False, error=f"Git diff error: {str(e)}")
 
     def fetch_web(self, url: str, format: str = "markdown") -> ToolResult:
         """获取网页内容"""
@@ -458,6 +673,10 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"Todo write error: {str(e)}")
 
+    def todo_clear(self) -> None:
+        """清空待办事项列表"""
+        self._todo_list = []
+
     def todo_read(self) -> ToolResult:
         """读取当前待办事项列表"""
         try:
@@ -466,10 +685,16 @@ class BuiltinTools:
 
             lines = []
             for i, todo in enumerate(self._todo_list, 1):
-                status = "✓" if todo.get("status") == "completed" else "○"
+                status = todo.get("status", "")
+                if status == "completed":
+                    status_icon = "✓"
+                elif status == "in_progress":
+                    status_icon = "▶"
+                else:
+                    status_icon = "○"
                 content = todo.get("content", "")
                 priority = todo.get("priority", "medium")
-                lines.append(f"{i}. [{priority}] {status} {content}")
+                lines.append(f"{i}. [{priority}] {status_icon} {content}")
 
             return ToolResult(True, content="\n".join(lines))
         except Exception as e:
@@ -483,55 +708,50 @@ class BuiltinTools:
             if not hasattr(self, "_sub_agent_manager") or not self._sub_agent_manager:
                 return ToolResult(False, error="子智能体管理器未初始化")
 
-            from PyQt5.QtCore import QEventLoop, QTimer
             import uuid
 
             task_id = str(uuid.uuid4())
-            result_container = {"result": None, "error": None, "done": False}
+            result_container = {"result": None, "error": None}
+            executor_ref = {"executor": None}
 
-            def on_finished(result: str):
-                result_container["result"] = result
-                result_container["done"] = True
-
-            def on_error(error: str):
-                result_container["error"] = error
-                result_container["done"] = True
-
-            self._sub_agent_manager.execute_task(
+            logger.info(f"[Task] Starting task {task_id}, agent={agent}")
+            success = self._sub_agent_manager.execute_task(
                 task_id=task_id,
                 agent_name=agent,
                 task_description=description,
                 parent_context=context or "",
-                on_finished=on_finished,
-                on_error=on_error,
+                on_finished=None,
+                on_error=None,
+                executor_ref=executor_ref,
             )
 
-            loop = QEventLoop()
-            timeout_timer = QTimer()
-            timeout_timer.setSingleShot(True)
-            timeout_timer.timeout.connect(loop.quit)
-            timeout_timer.start(1800000)
+            if not success:
+                return ToolResult(False, error="Failed to start sub-agent task")
 
-            check_timer = QTimer()
-            check_timer.setSingleShot(False)
-            check_timer.timeout.connect(
-                lambda: loop.quit() if result_container["done"] else None
-            )
-            check_timer.start(100)
+            executor = executor_ref.get("executor")
+            if not executor:
+                return ToolResult(False, error="Failed to get executor")
 
-            loop.exec()
-            check_timer.stop()
-            timeout_timer.stop()
-            print(result_container)
-            if result_container["error"]:
-                return ToolResult(False, error=result_container["error"])
+            logger.info(f"[Task] Waiting for task {task_id} to complete...")
+            timeout = 1800
+            start_time = time.time()
+            while not executor.isFinished():
+                if time.time() - start_time > timeout:
+                    logger.warning(f"[Task] Wait timeout after {timeout}s")
+                    executor.cancel()
+                    return ToolResult(False, error="Task execution timeout")
+                time.sleep(0.1)
 
-            if result_container["result"]:
-                return ToolResult(True, content=result_container["result"])
+            result = executor._last_result if hasattr(executor, "_last_result") else ""
+            logger.info(f"[Task] Task completed, result: {str(result)[:200]}...")
 
-            return ToolResult(False, error="Task execution timeout")
+            if hasattr(executor, "_execution_error") and executor._execution_error:
+                return ToolResult(False, error=executor._execution_error)
+
+            return ToolResult(True, content=result)
 
         except Exception as e:
+            logger.error(f"[Task] Exception: {e}")
             return ToolResult(False, error=f"Task execution error: {str(e)}")
 
     def load_skill(self, name: str) -> ToolResult:
@@ -630,6 +850,100 @@ class BuiltinTools:
             return ToolResult(True, content=skills_intro + skills_xml)
         except Exception as e:
             return ToolResult(False, error=f"List skills error: {str(e)}")
+
+    def scan_repo(self, path: str = None, max_depth: int = 2) -> ToolResult:
+        """扫描仓库结构并返回紧凑摘要。"""
+        try:
+            target_path = self._resolve_path(path) if path else self.workdir
+            if not target_path.exists():
+                return ToolResult(False, error=f"Path not found: {target_path}")
+
+            lines = [f"Repository scan: {target_path}"]
+            root_depth = len(target_path.parts)
+
+            for root, dirs, files in os.walk(target_path):
+                rel_depth = len(Path(root).parts) - root_depth
+                if rel_depth > max_depth:
+                    dirs[:] = []
+                    continue
+
+                dirs[:] = [
+                    d
+                    for d in dirs
+                    if d not in {".git", "__pycache__", "env", "venv", "envs"}
+                ]
+                rel_root = Path(root).relative_to(target_path)
+                display_root = "." if str(rel_root) == "." else str(rel_root)
+                lines.append(f"\n[{display_root}]")
+
+                sample_dirs = sorted(dirs)[:8]
+                sample_files = sorted(files)[:12]
+                if sample_dirs:
+                    lines.append("dirs: " + ", ".join(sample_dirs))
+                if sample_files:
+                    lines.append("files: " + ", ".join(sample_files))
+
+            return ToolResult(True, content="\n".join(lines[:200]))
+        except Exception as e:
+            return ToolResult(False, error=f"scan_repo error: {str(e)}")
+
+    def stage_files(self, files: List[str]) -> ToolResult:
+        """记录当前任务相关文件集合。"""
+        try:
+            staged = []
+            for file_path in files or []:
+                if not file_path:
+                    continue
+                resolved = self._resolve_path(file_path)
+                staged.append(str(resolved))
+            if not staged:
+                return ToolResult(True, content="No files staged")
+            return ToolResult(True, content="Staged files:\n" + "\n".join(staged))
+        except Exception as e:
+            return ToolResult(False, error=f"stage_files error: {str(e)}")
+
+    def run_verify(self, command: str = "", timeout: int = 120) -> ToolResult:
+        """运行验证命令，默认尝试项目测试。"""
+        try:
+            verify_command = (command or "").strip()
+            if not verify_command:
+                if (self.workdir / "pytest.ini").exists() or list(
+                    self.workdir.glob("test_*.py")
+                ):
+                    verify_command = "pytest -q"
+                elif (self.workdir / "main.py").exists():
+                    verify_command = "python -m py_compile main.py"
+                else:
+                    verify_command = "python -m py_compile ."
+
+            result = self.execute_bash(verify_command, timeout=timeout)
+            if result.success:
+                return ToolResult(
+                    True,
+                    content=f"[verify] command: {verify_command}\n{result.content}",
+                )
+            return ToolResult(
+                False,
+                error=f"[verify] command: {verify_command}\n{result.error}",
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"run_verify error: {str(e)}")
+
+    def summarize_changes(self, text: str, limit: int = 1200) -> ToolResult:
+        """压缩工具输出，便于继续回灌上下文。"""
+        try:
+            raw = (text or "").strip()
+            if not raw:
+                return ToolResult(True, content="No summary content")
+            normalized = re.sub(r"\n{3,}", "\n\n", raw)
+            if len(normalized) <= limit:
+                return ToolResult(True, content=normalized)
+            head = normalized[: limit // 2]
+            tail = normalized[-limit // 2 :]
+            summary = head.rstrip() + "\n...\n" + tail.lstrip()
+            return ToolResult(True, content=summary)
+        except Exception as e:
+            return ToolResult(False, error=f"summarize_changes error: {str(e)}")
 
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
@@ -769,6 +1083,42 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "multiedit",
+                "description": "一次性执行多个编辑操作，适用于批量修改",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "filePath": {"type": "string", "description": "文件路径"},
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "oldString": {
+                                        "type": "string",
+                                        "description": "要替换的文本",
+                                    },
+                                    "newString": {
+                                        "type": "string",
+                                        "description": "替换后的文本",
+                                    },
+                                    "replaceAll": {
+                                        "type": "boolean",
+                                        "description": "是否替换所有",
+                                    },
+                                },
+                                "required": ["oldString", "newString"],
+                            },
+                            "description": "编辑操作列表",
+                        },
+                    },
+                    "required": ["filePath", "edits"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "patch",
                 "description": "对文件应用补丁",
                 "parameters": {
@@ -778,6 +1128,28 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "patch_content": {"type": "string", "description": "补丁内容"},
                     },
                     "required": ["filePath", "patch_content"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "diff",
+                "description": "对比两个文件或文件与git版本的差异",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file1": {"type": "string", "description": "第一个文件路径"},
+                        "file2": {
+                            "type": "string",
+                            "description": "第二个文件路径（可选）",
+                        },
+                        "use_git": {
+                            "type": "boolean",
+                            "description": "是否与git版本对比",
+                        },
+                    },
+                    "required": ["file1"],
                 },
             },
         },
@@ -826,6 +1198,67 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "scan_repo",
+                "description": "扫描仓库目录并返回结构化摘要，适合编码任务前快速建模上下文",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "扫描路径"},
+                        "max_depth": {"type": "integer", "description": "最大扫描深度"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "stage_files",
+                "description": "标记当前任务相关文件，帮助后续聚焦编辑和验证",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "文件路径列表",
+                        },
+                    },
+                    "required": ["files"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "run_verify",
+                "description": "运行针对当前任务的验证命令，默认尝试项目测试或语法检查",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "验证命令"},
+                        "timeout": {"type": "integer", "description": "超时时间"},
+                    },
+                },
+            },
+        },
+        # {
+        #     "type": "function",
+        #     "function": {
+        #         "name": "summarize_changes",
+        #         "description": "压缩长工具输出或变更说明，便于继续回灌上下文",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {
+        #                 "text": {"type": "string", "description": "需要压缩的文本"},
+        #                 "limit": {"type": "integer", "description": "摘要最大长度"},
+        #             },
+        #             "required": ["text"],
+        #         },
+        #     },
+        # },
         {
             "type": "function",
             "function": {

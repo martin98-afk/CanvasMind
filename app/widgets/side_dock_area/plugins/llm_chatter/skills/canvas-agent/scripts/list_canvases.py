@@ -20,22 +20,16 @@ def list_canvases():
     """列出所有画布"""
     workflows_dir = PROJECT_DIR / "canvas_files" / "workflows"
     if not workflows_dir.exists():
-        return {"canvases": []}
+        return {"items": []}
 
-    canvases = []
+    items = []
     for folder in workflows_dir.iterdir():
         if folder.is_dir():
             wf_files = list(folder.glob("*.workflow.json"))
             if wf_files:
-                canvases.append(
-                    {
-                        "name": folder.name,
-                        "path": str(folder),
-                        "workflow_path": str(wf_files[0]),
-                    }
-                )
+                items.append({"name": folder.name, "path": str(folder)})
 
-    return {"canvases": canvases}
+    return {"total": len(items), "items": items}
 
 
 if __name__ == "__main__":

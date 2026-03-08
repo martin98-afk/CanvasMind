@@ -132,12 +132,16 @@ class OpenAIChatToolWindow(ToolWindow):
     contextActionRequested = pyqtSignal(str, str)
     skillExecutionRequested = pyqtSignal(str, dict)
     userInterventionRequested = pyqtSignal(dict)
-    _gen_thread_pool = QThreadPool()
     executionResultProduced = pyqtSignal(str)
+    toolStartUiSyncRequested = pyqtSignal(str, str, object, str)
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
+        self._gen_thread_pool = QThreadPool()
         self._gen_thread_pool.setMaxThreadCount(2)
+        self.toolStartUiSyncRequested.connect(
+            self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
+        )
         self.homepage = homepage
         self._is_streaming = False
         self.session_manager.create_new_session()
@@ -171,10 +175,16 @@ class OpenAIChatToolWindow(ToolWindow):
             tool_executor=self._tool_executor,
             agent_manager=self._agent_manager,
             get_chat_cards=self._get_chat_cards_for_engine,
+            get_memory_context=lambda: self._memory_manager.get_context_string()
+            if self._memory_manager
+            else "",
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)
         self._chat_engine.set_callback("tool_call_started", self._on_tool_call_started)
+        self._chat_engine.set_callback(
+            "tool_call_sync_requested", self._request_tool_start_ui_sync
+        )
         self._chat_engine.set_callback(
             "tool_result_received", self._on_tool_result_received
         )
@@ -190,8 +200,28 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._chat_engine.set_callback("question_asked", self._on_question_asked)
         self._chat_engine.set_callback("agent_switched", self._on_agent_switched)
+        self._chat_engine.set_callback(
+            "task_state_changed", self._on_task_state_changed
+        )
 
         self._initialize_history_manager()
+
+    def _request_tool_start_ui_sync(
+        self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
+    ):
+        self.toolStartUiSyncRequested.emit(
+            tool_call_id, tool_name, arguments or {}, round_id or ""
+        )
+
+    def _handle_tool_start_ui_sync(
+        self, tool_call_id: str, tool_name: str, arguments: object, round_id: str
+    ):
+        self._on_tool_call_started(tool_call_id, tool_name, arguments or {}, round_id)
+        QApplication.sendPostedEvents()
+        if self._tool_floating_widget:
+            self._tool_floating_widget.repaint()
+        self.repaint()
+        QApplication.processEvents()
 
     def _get_chat_cards_for_engine(self):
         cards = []
@@ -327,11 +357,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.context_selector = ContextSelector(self)
         hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
-
-        self.typing_label = CaptionLabel("", self)
-        self.typing_label.setStyleSheet("color: #888; font-size: 12px;")
-        self.typing_label.setVisible(False)
-        hlayout.addWidget(self.typing_label)
 
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setFixedSize(26, 26)
@@ -588,6 +613,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 f"{agent.name}: {agent.description}\n可用工具: {tools_count}个"
             )
 
+    def _on_task_state_changed(self, task_state):
+        if not task_state:
+            return
+        self._latest_task_state = task_state
+
     def _suggest_agent(self, user_text: str) -> Optional[str]:
         """基于用户输入智能推荐合适的智能体"""
         if not user_text or not self._agent_manager:
@@ -661,10 +691,13 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.clear_nodes()
         if self._todo_floating_widget:
             self._todo_floating_widget.clear()
+        if self._tool_executor:
+            self._tool_executor.clear_todo_list()
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
         self._load_agent_list()
+        self._on_task_state_changed(session.task_state)
         agent = (
             self._agent_manager.get_agent(self._current_agent)
             if self._agent_manager
@@ -683,6 +716,7 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if not session:
             return
+        self._on_task_state_changed(session.task_state)
 
         if self._current_history_index is not None:
             title = self.history_manager.get_current_title(self._current_history_index)
@@ -907,6 +941,7 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             session.clear()
+            self._on_task_state_changed(session.task_state)
         agent = (
             self._agent_manager.get_agent(self._current_agent)
             if self._agent_manager
@@ -1215,59 +1250,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not user_text:
             user_text = self.input_area.toPlainText().strip()
 
-        if user_text.startswith("/agent "):
-            agent_name = user_text[7:].strip()
-            if agent_name:
-                agents = (
-                    self._agent_manager.list_agents() if self._agent_manager else []
-                )
-                agent_names = [a.name for a in agents]
-                if agent_name in agent_names:
-                    idx = self.input_area._agent_combo.findText(agent_name)
-                    if idx >= 0:
-                        self.input_area._agent_combo.setCurrentIndex(idx)
-                    self.input_area.clear()
-                    return
-                else:
-                    InfoBar.warning(
-                        "智能体不存在",
-                        f"可用智能体: {', '.join(agent_names)}",
-                        parent=self,
-                        duration=2000,
-                    )
-                    return
-            else:
-                agents = (
-                    self._agent_manager.list_agents() if self._agent_manager else []
-                )
-                agent_names = [a.name for a in agents]
-                InfoBar.info(
-                    "可用智能体",
-                    f"{', '.join(agent_names)}",
-                    parent=self,
-                    duration=2000,
-                )
-                return
-
-        if user_text.startswith("/agents"):
-            agents = self._agent_manager.list_agents() if self._agent_manager else []
-            agent_list = "\n".join([f"- {a.name}: {a.description}" for a in agents])
-            self.input_area.clear()
-            card = self._append_assistant_message()
-            card.update_content(
-                f"## 可用智能体\n\n{agent_list}\n\n使用 `/agent <智能体名>` 切换"
-            )
-            card.finish_streaming()
-            self._scroll_to_bottom()
-            return
-
-        suggested_agent = self._suggest_agent(user_text)
-        if suggested_agent and suggested_agent != self._current_agent:
-            self.typing_label.setText(f"💡 建议使用 {suggested_agent} 智能体")
-            self.typing_label.setVisible(True)
-        else:
-            self.typing_label.setVisible(False)
-
         if self._is_shell_mode:
             if not user_text:
                 return
@@ -1278,7 +1260,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not user_text:
             return
 
-        session = self.session_manager.get_current_session()
         context_params = {k: v for k, v in self.context_selector.context.items()}
 
         self.input_area.clear()
@@ -1305,18 +1286,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._accumulated_content = ""
         self._accumulated_content += content_piece
 
-        pattern = r"\[切换智能体:\s*(\w+)\]"
-        match = re.search(pattern, self._accumulated_content)
-        if match:
-            agent_name = match.group(1)
-            logger.info(f"[Agent] Detected switch request: {agent_name}")
-            self._chat_engine.switch_agent(agent_name)
-            self._accumulated_content = ""
-        elif "切换智能体" in self._accumulated_content:
-            logger.info(
-                f"[Agent] Partial match, accumulated: {self._accumulated_content[-50:]}"
-            )
-
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
     ):
@@ -1341,8 +1310,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         if tool_name in ("todowrite", "todoread"):
-            todos = self._tool_executor.todo_list if self._tool_executor else []
-            self._todo_floating_widget.update_todos(todos)
             self._todo_floating_widget.setVisible(True)
             return
 
@@ -1352,49 +1319,77 @@ class OpenAIChatToolWindow(ToolWindow):
 
             self._sub_agent_floating_widget.start_task(agent_name, task_desc)
 
-            if hasattr(self._tool_executor, "_builtin_tools") and hasattr(
-                self._tool_executor._builtin_tools, "_sub_agent_manager"
-            ):
-                sub_agent_mgr = self._tool_executor._builtin_tools._sub_agent_manager
-                if sub_agent_mgr and sub_agent_mgr._running_tasks:
-                    last_task_id = list(sub_agent_mgr._running_tasks.keys())[-1]
-                    if last_task_id:
-                        executor = sub_agent_mgr._running_tasks.get(last_task_id)
-                        if executor:
+            self._connect_sub_agent_signals(arguments)
 
-                            def on_progress(msg):
-                                self._sub_agent_floating_widget.update_progress(msg)
-
-                            def on_tool_call(tool_name, args):
-                                self._sub_agent_floating_widget.add_tool_call(
-                                    tool_name, args
-                                )
-
-                            def on_tool_result(tool_name, result, success):
-                                self._sub_agent_floating_widget.add_tool_result(
-                                    tool_name, result, success
-                                )
-
-                            def on_finished(result):
-                                success = not (
-                                    result
-                                    and (
-                                        "error" in result.lower()
-                                        or "失败" in result
-                                        or "timeout" in result.lower()
-                                    )
-                                )
-                                self._sub_agent_floating_widget.finish_task(
-                                    result, success
-                                )
-
-                            executor.progress_updated.connect(on_progress)
-                            executor.tool_call_started.connect(on_tool_call)
-                            executor.tool_result_received.connect(on_tool_result)
-                            executor.finished_with_result.connect(on_finished)
             return
 
         self._tool_floating_widget.start_tool(tool_name, arguments)
+
+    def _connect_sub_agent_signals(self, arguments: dict):
+        """连接子智能体信号，支持延迟检查"""
+        def try_connect():
+            if not hasattr(self._tool_executor, "_builtin_tools"):
+                return
+            if not hasattr(self._tool_executor._builtin_tools, "_sub_agent_manager"):
+                return
+
+            sub_agent_mgr = self._tool_executor._builtin_tools._sub_agent_manager
+            if not sub_agent_mgr or not sub_agent_mgr._running_tasks:
+                return
+
+            last_task_id = list(sub_agent_mgr._running_tasks.keys())[-1]
+            if not last_task_id:
+                return
+
+            executor = sub_agent_mgr._running_tasks.get(last_task_id)
+            if not executor:
+                return
+
+            def on_progress(msg):
+                self._sub_agent_floating_widget.update_progress(msg)
+
+            def on_tool_call(tool_name, args):
+                self._sub_agent_floating_widget.add_tool_call(tool_name, args)
+
+            def on_tool_result(tool_name, result, success):
+                self._sub_agent_floating_widget.add_tool_result(
+                    tool_name, result, success
+                )
+
+            def on_finished(result):
+                success = not (
+                    result
+                    and (
+                        "error" in result.lower()
+                        or "失败" in result
+                        or "timeout" in result.lower()
+                    )
+                )
+                self._sub_agent_floating_widget.finish_task(result, success)
+
+            try:
+                executor.progress_updated.disconnect()
+            except:
+                pass
+            try:
+                executor.tool_call_started.disconnect()
+            except:
+                pass
+            try:
+                executor.tool_result_received.disconnect()
+            except:
+                pass
+            try:
+                executor.finished_with_result.disconnect()
+            except:
+                pass
+
+            executor.progress_updated.connect(on_progress)
+            executor.tool_call_started.connect(on_tool_call)
+            executor.tool_result_received.connect(on_tool_result)
+            executor.finished_with_result.connect(on_finished)
+
+        QTimer.singleShot(100, try_connect)
 
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
@@ -1437,6 +1432,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if tool_name not in ("question", "task", "todowrite", "todoread"):
             self._tool_floating_widget.show_if_needed(elapsed)
             self._tool_floating_widget.finish_tool(str(result)[:200], success)
+
+        if tool_name in ("todowrite", "todoread"):
+            todos = self._tool_executor.todo_list if self._tool_executor else []
+            self._todo_floating_widget.update_todos(todos)
+            self._todo_floating_widget.setVisible(True)
 
         content = str(result)
         tool_block = format_tool_block(
@@ -1581,13 +1581,16 @@ class OpenAIChatToolWindow(ToolWindow):
         selected_name = self.model_combo.currentText()
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
+            logger.warning("[Topic Summary] No LLM config found, skipping")
             return
         session = self.session_manager.get_current_session()
         if not session:
+            logger.warning("[Topic Summary] No session found, skipping")
             return
 
         user_messages = [m for m in session.messages if m.get("role") == "user"]
         if not user_messages:
+            logger.warning("[Topic Summary] No user messages found, skipping")
             return
         previous_summary = ""
         if self._current_history_index is not None:
@@ -1599,12 +1602,17 @@ class OpenAIChatToolWindow(ToolWindow):
             self._memory_manager.get_context_string() if self._memory_manager else ""
         )
 
+        existing_memories = (
+            self._memory_manager.get_user_memories() if self._memory_manager else []
+        )
+
         task = TopicSummaryTask(
             messages=session.messages,
             llm_config=llm_config,
             callback=self._on_topic_summary_generated,
             previous_summary=previous_summary if previous_summary else None,
             long_term_memory=long_term_memory,
+            existing_memories=existing_memories,
         )
         self._gen_thread_pool.start(task)
 
@@ -1649,6 +1657,13 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if should_update_memory and memory_content and self._memory_manager:
             self._memory_manager.add_user_memory(memory_content)
+            logger.info(
+                f"[Topic Summary] Added to long-term memory: {memory_content[:50]}..."
+            )
+        else:
+            logger.info(
+                f"[Topic Summary] Memory update skipped (should_update={should_update_memory}, content={bool(memory_content)})"
+            )
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)
@@ -1726,44 +1741,6 @@ class OpenAIChatToolWindow(ToolWindow):
             duration=2000,
             parent=self,
         )
-
-    def _generate_conversation_title(self, current_title: str, messages: List[Dict]):
-        if len(messages) < 2:
-            return
-
-        selected_name = self.model_combo.currentText()
-        llm_config = self._valid_configs.get(selected_name)
-        if not llm_config:
-            return
-
-        task = TitleGenerationTask(
-            current_title=current_title,
-            messages_for_summary=messages,
-            llm_config=llm_config,
-            callback=self._on_title_generated,
-        )
-        self._gen_thread_pool.start(task)
-
-    def _on_title_generated(self, raw_output: str = None, error_msg: str = None):
-        if error_msg:
-            logger.error(f"[Title Gen] Error: {error_msg}")
-            return
-        if not raw_output:
-            return
-
-        match = re.search(r"```title\s*(.+?)\s*```", raw_output, re.DOTALL)
-        if match:
-            title = match.group(1).strip()
-            title = title.strip("\"''' \n\t")
-            if 1 <= len(title) <= 15:
-                if self._current_history_index is not None:
-                    self.history_manager.update_session_title(
-                        self._current_history_index, title
-                    )
-                self.title_edit.setText(title)
-                return
-
-        logger.error(f"[Title Gen] 未能从以下输出中提取标题:\n{raw_output}")
 
     def _create_context_menu(self):
         self._context_menu_actions = {}

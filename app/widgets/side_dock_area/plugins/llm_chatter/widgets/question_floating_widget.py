@@ -1,22 +1,196 @@
 # -*- coding: utf-8 -*-
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QCheckBox,
+    QGridLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
-    QHBoxLayout,
-    QCheckBox,
     QSizePolicy,
     QTextEdit,
-    QGridLayout,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from functools import partial
+
 from qfluentwidgets import CardWidget, PrimaryPushButton
 
 
+class WrappedOptionButton(QPushButton):
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self._selected = False
+        self._setup_ui(text)
+
+    def _setup_ui(self, text: str):
+        self.setCursor(Qt.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.setText("")
+        self.setMinimumHeight(44)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(10)
+
+        self.label = QLabel(text, self)
+        self.label.setWordWrap(True)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.label.setFont(QFont("Microsoft YaHei", 10))
+        self.label.setStyleSheet("color: #f4f7fb; background: transparent;")
+        self.label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+        layout.addWidget(self.label)
+
+        self.hint_label = QLabel("点击选择", self)
+        self.hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.hint_label.setStyleSheet("color: #7dd3fc; background: transparent;")
+        self.hint_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.hint_label, 0, Qt.AlignRight | Qt.AlignVCenter)
+
+        self._apply_state_style()
+
+    def text(self):
+        return self.label.text()
+
+    def _apply_state_style(self):
+        border = "#607089"
+        background = "rgba(255, 255, 255, 0.05)"
+        text_color = "#f4f7fb"
+        hint_color = "#7dd3fc"
+        if self._selected:
+            border = "#38bdf8"
+            background = "rgba(14, 165, 233, 0.20)"
+            text_color = "#ffffff"
+        self.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {background};
+                border: 1px solid #607089;
+                border-radius: 8px;
+                text-align: left;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(125, 211, 252, 0.12);
+                border: 1px solid #7dd3fc;
+            }}
+            QPushButton:pressed {{
+                background-color: rgba(14, 165, 233, 0.20);
+                border: 1px solid #38bdf8;
+            }}
+            """
+        )
+        self.label.setStyleSheet(f"color: {text_color}; background: transparent;")
+        self.hint_label.setStyleSheet(
+            f"color: {hint_color}; background: transparent; font-size: 9pt;"
+        )
+
+    def set_selected(self, selected: bool):
+        self._selected = selected
+        self._apply_state_style()
+
+
+class WrappedCheckOption(QWidget):
+    toggled = pyqtSignal(bool)
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self._hovered = False
+        self._setup_ui(text)
+
+    def _setup_ui(self, text: str):
+        self.setCursor(Qt.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(10)
+
+        self.checkbox = QCheckBox("", self)
+        self.checkbox.setCursor(Qt.PointingHandCursor)
+        self.checkbox.setStyleSheet(
+            """
+            QCheckBox {
+                background: transparent;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 4px;
+                border: 1px solid #72839c;
+                background-color: #141922;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #0ea5e9;
+                border-color: #0ea5e9;
+            }
+            """
+        )
+
+        self.label = QLabel(text, self)
+        self.label.setWordWrap(True)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.label.setFont(QFont("Microsoft YaHei", 10))
+        self.label.setStyleSheet("color: #f4f7fb; background: transparent;")
+        self.label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+        layout.addWidget(self.checkbox, 0, Qt.AlignTop)
+        layout.addWidget(self.label, 1)
+
+        self.checkbox.toggled.connect(self.toggled.emit)
+        self.checkbox.toggled.connect(lambda _checked: self._apply_state_style())
+        self._apply_state_style()
+
+    def text(self):
+        return self.label.text()
+
+    def isChecked(self):
+        return self.checkbox.isChecked()
+
+    def setChecked(self, checked: bool):
+        self.checkbox.setChecked(checked)
+
+    def _apply_state_style(self):
+        border = "#425067"
+        background = "rgba(255, 255, 255, 0.04)"
+        if self._hovered:
+            border = "#5a6c88"
+            background = "rgba(125, 211, 252, 0.08)"
+        if self.checkbox.isChecked():
+            border = "#38bdf8"
+            background = "rgba(14, 165, 233, 0.12)"
+        self.setStyleSheet(
+            f"""
+            WrappedCheckOption {{
+                background-color: {background};
+                border: 1px solid {border};
+                border-radius: 8px;
+            }}
+            """
+        )
+
+    def enterEvent(self, event):
+        self._hovered = True
+        self._apply_state_style()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hovered = False
+        self._apply_state_style()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.checkbox.toggle()
+        super().mousePressEvent(event)
+
+
 class QuestionFloatingWidget(CardWidget):
-    """Question 悬浮框组件 - 让用户选择答案或输入文本"""
+    """悬浮提问卡片，支持单选、多选和切换为文本输入。"""
 
     answered = pyqtSignal(str)
     cancelled = pyqtSignal()
@@ -31,246 +205,351 @@ class QuestionFloatingWidget(CardWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setSizePolicy(1, 0)
-        self.setMaximumHeight(350)
-        self.setMinimumHeight(100)
-        self.setStyleSheet("""
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        self.setMaximumHeight(420)
+        self.setMinimumHeight(128)
+        self.setStyleSheet(
+            """
             CardWidget {
-                background-color: rgba(30, 30, 30, 240);
-                border: 1px solid #404040;
+                background-color: rgba(33, 33, 38, 248);
+                border: 1px solid #3b4758;
                 border-radius: 8px;
             }
-        """)
+            """
+        )
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 10, 12, 10)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(16, 12, 16, 14)
+        main_layout.setSpacing(10)
 
         header = QHBoxLayout()
-        header.setSpacing(8)
+        header.setSpacing(10)
 
-        title = QLabel("❓ 询问", self)
-        title.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
-        title.setStyleSheet("color: #ffffff;")
+        self.icon_label = QLabel("?", self)
+        self.icon_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        self.icon_label.setStyleSheet("color: #7dd3fc;")
 
-        header.addWidget(title)
+        self.title_label = QLabel("等待你的选择", self)
+        self.title_label.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        self.title_label.setStyleSheet("color: #e6edf7;")
+
+        self.mode_hint_label = QLabel("", self)
+        self.mode_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.mode_hint_label.setStyleSheet(
+            """
+            color: #7dd3fc;
+            background-color: rgba(125, 211, 252, 0.12);
+            border: 1px solid rgba(125, 211, 252, 0.24);
+            border-radius: 10px;
+            padding: 2px 8px;
+            """
+        )
+        self.mode_hint_label.setVisible(False)
+
+        header.addWidget(self.icon_label)
+        header.addWidget(self.title_label)
+        header.addWidget(self.mode_hint_label)
         header.addStretch()
 
-        close_btn = QPushButton("✕", self)
-        close_btn.setFixedSize(20, 20)
-        close_btn.setStyleSheet("""
+        self.close_btn = QPushButton("x", self)
+        self.close_btn.setFixedSize(24, 24)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
+        self.close_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: transparent;
-                color: #757575;
+                color: #8b95a7;
                 border: none;
+                border-radius: 6px;
                 font-size: 12px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                color: #ffffff;
-                background-color: #404040;
-                border-radius: 3px;
+                color: #f4f7fb;
+                background-color: rgba(255, 255, 255, 0.08);
             }
-        """)
-        close_btn.clicked.connect(self._on_cancel)
-        header.addWidget(close_btn)
+            """
+        )
+        self.close_btn.clicked.connect(self._on_cancel)
+        header.addWidget(self.close_btn)
 
         self.question_label = QLabel("", self)
         self.question_label.setFont(QFont("Microsoft YaHei", 10))
-        self.question_label.setStyleSheet("color: #e0e0e0;")
+        self.question_label.setStyleSheet("color: #c8d1dd;")
         self.question_label.setWordWrap(True)
-        self.question_label.setMinimumHeight(24)
-        self.question_label.setMaximumHeight(60)
+        self.question_label.setMinimumHeight(28)
+
+        self.options_container = QWidget(self)
+        self.options_layout = QGridLayout(self.options_container)
+        self.options_layout.setContentsMargins(0, 0, 0, 0)
+        self.options_layout.setHorizontalSpacing(10)
+        self.options_layout.setVerticalSpacing(10)
+
+        self.custom_entry_bar = QHBoxLayout()
+        self.custom_entry_bar.setSpacing(8)
+
+        self.custom_hint_label = QLabel("没有合适的选项？", self)
+        self.custom_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.custom_hint_label.setStyleSheet("color: #8b95a7;")
+
+        self.toggle_text_mode_btn = QPushButton("改为输入", self)
+        self.toggle_text_mode_btn.setCursor(Qt.PointingHandCursor)
+        self.toggle_text_mode_btn.setStyleSheet(
+            """
+            QPushButton {
+                color: #7dd3fc;
+                background-color: rgba(125, 211, 252, 0.08);
+                border: 1px solid rgba(125, 211, 252, 0.22);
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(125, 211, 252, 0.16);
+                border-color: rgba(125, 211, 252, 0.36);
+            }
+            """
+        )
+        self.toggle_text_mode_btn.clicked.connect(self._toggle_text_mode)
+
+        self.custom_entry_bar.addWidget(self.custom_hint_label)
+        self.custom_entry_bar.addStretch()
+        self.custom_entry_bar.addWidget(self.toggle_text_mode_btn)
 
         self.text_input = QTextEdit(self)
-        self.text_input.setPlaceholderText("请输入您的回答...")
+        self.text_input.setPlaceholderText("输入你想补充的内容")
         self.text_input.setFont(QFont("Microsoft YaHei", 10))
-        self.text_input.setStyleSheet("""
-            QTextEdit {
-                background-color: #2a2a2a;
-                color: #ffffff;
-                border: 1px solid #505050;
-                border-radius: 4px;
-                padding: 8px;
-            }
-        """)
-        self.text_input.setMaximumHeight(80)
+        self.text_input.setMaximumHeight(104)
         self.text_input.setVisible(False)
+        self.text_input.textChanged.connect(self._update_submit_state)
+        self.text_input.setStyleSheet(
+            """
+            QTextEdit {
+                background-color: rgba(18, 23, 31, 0.96);
+                color: #f4f7fb;
+                border: 1px solid #41516a;
+                border-radius: 8px;
+                padding: 10px 12px;
+                selection-background-color: #2563eb;
+            }
+            QTextEdit:focus {
+                border-color: #7dd3fc;
+            }
+            """
+        )
 
-        self.options_container = QWidget()
-        self.options_layout = QGridLayout(self.options_container)
-        self.options_layout.setSpacing(8)
-        self.options_layout.setContentsMargins(0, 0, 0, 0)
+        self.footer_layout = QHBoxLayout()
+        self.footer_layout.setSpacing(8)
 
-        self.button_area = QHBoxLayout()
-        self.button_area.addStretch()
+        self.selection_hint_label = QLabel("", self)
+        self.selection_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.selection_hint_label.setStyleSheet("color: #8b95a7;")
 
-        self.confirm_btn = PrimaryPushButton("确认", self)
-        self.confirm_btn.setVisible(False)
-        self.confirm_btn.setStyleSheet("""
+        self.confirm_btn = PrimaryPushButton("提交", self)
+        self.confirm_btn.setCursor(Qt.PointingHandCursor)
+        self.confirm_btn.clicked.connect(self._on_confirm)
+        self.confirm_btn.setStyleSheet(
+            """
             PrimaryPushButton {
-                background-color: #0078d4;
+                background-color: #0f766e;
                 color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 6px 16px;
+                border-radius: 6px;
+                padding: 7px 18px;
                 font-size: 11px;
+                font-weight: bold;
             }
             PrimaryPushButton:hover {
-                background-color: #1084d8;
+                background-color: #0d9488;
             }
-        """)
-        self.confirm_btn.clicked.connect(self._on_confirm)
-        self.button_area.addWidget(self.confirm_btn)
+            PrimaryPushButton:disabled {
+                background-color: #3f4b5f;
+                color: #93a0b4;
+            }
+            """
+        )
+
+        self.footer_layout.addWidget(self.selection_hint_label)
+        self.footer_layout.addStretch()
+        self.footer_layout.addWidget(self.confirm_btn)
 
         main_layout.addLayout(header)
         main_layout.addWidget(self.question_label)
+        main_layout.addWidget(self.options_container)
+        main_layout.addLayout(self.custom_entry_bar)
         main_layout.addWidget(self.text_input)
-        main_layout.addWidget(self.options_container, 1)
-        main_layout.addLayout(self.button_area)
+        main_layout.addLayout(self.footer_layout)
+
+        self._update_mode_ui()
+
+    def _clear_options(self):
+        self._option_widgets = []
+        while self.options_layout.count():
+            item = self.options_layout.takeAt(0)
+            if item and item.widget():
+                item.widget().deleteLater()
+
+    def _option_label(self, option):
+        return option.get("label", option) if isinstance(option, dict) else str(option)
+
+    def _selected_options(self):
+        return [
+            widget.text()
+            for widget in self._option_widgets
+            if isinstance(widget, WrappedCheckOption) and widget.isChecked()
+        ]
+
+    def _has_text_input(self):
+        return bool(self.text_input.toPlainText().strip())
+
+    def _build_answer(self):
+        text = self.text_input.toPlainText().strip()
+
+        if self._multiple:
+            selected = self._selected_options()
+            if selected and text:
+                return f"已选：{'、'.join(selected)}；补充：{text}"
+            if selected:
+                return "、".join(selected)
+            return text
+
+        return text
+
+    def _update_mode_ui(self):
+        has_options = bool(self._options)
+        text_visible = self._text_input_mode or not has_options
+
+        self.options_container.setVisible(has_options)
+        self.custom_hint_label.setVisible(has_options)
+        self.toggle_text_mode_btn.setVisible(has_options)
+        self.text_input.setVisible(text_visible)
+
+        if not has_options:
+            self.mode_hint_label.setVisible(True)
+            self.mode_hint_label.setText("文本输入")
+            self.selection_hint_label.setText("直接输入回答")
+            self.toggle_text_mode_btn.setText("改为输入")
+        elif self._multiple:
+            self.mode_hint_label.setVisible(True)
+            self.mode_hint_label.setText("多选")
+            if text_visible:
+                self.selection_hint_label.setText("可多选，也可补充说明")
+                self.toggle_text_mode_btn.setText("收起输入")
+            else:
+                self.selection_hint_label.setText("可多选，必要时再补充说明")
+                self.toggle_text_mode_btn.setText("改为输入")
+        else:
+            self.mode_hint_label.setVisible(True)
+            self.mode_hint_label.setText("单选")
+            if text_visible:
+                self.selection_hint_label.setText("文本输入会替代选项选择")
+                self.toggle_text_mode_btn.setText("返回选项")
+            else:
+                self.selection_hint_label.setText("点击选项可直接提交")
+                self.toggle_text_mode_btn.setText("改为输入")
+
+        self._update_submit_state()
+
+    def _update_submit_state(self):
+        if not self._options:
+            self.confirm_btn.setVisible(True)
+            self.confirm_btn.setEnabled(self._has_text_input())
+            self.confirm_btn.setText("提交")
+            return
+
+        if self._multiple:
+            selected_count = len(self._selected_options())
+            has_text = self._has_text_input()
+            self.confirm_btn.setVisible(True)
+            self.confirm_btn.setEnabled(selected_count > 0 or has_text)
+            if selected_count > 0:
+                self.confirm_btn.setText(f"提交 ({selected_count})")
+            else:
+                self.confirm_btn.setText("提交")
+            return
+
+        if self._text_input_mode:
+            self.confirm_btn.setVisible(True)
+            self.confirm_btn.setEnabled(self._has_text_input())
+            self.confirm_btn.setText("提交")
+        else:
+            self.confirm_btn.setVisible(False)
+
+    def _toggle_text_mode(self):
+        if not self._options:
+            return
+
+        self._text_input_mode = not self._text_input_mode
+        if self._text_input_mode:
+            self.text_input.setFocus()
+        else:
+            self.text_input.clear()
+        self._update_mode_ui()
 
     def _on_cancel(self):
         self.setVisible(False)
         self.cancelled.emit()
 
     def _on_confirm(self):
-        if self._text_input_mode:
-            text = self.text_input.toPlainText().strip()
-            if text:
-                self.setVisible(False)
-                self.answered.emit(text)
+        answer = self._build_answer()
+        if not answer:
             return
-
-        selected = []
-        for widget in self._option_widgets:
-            if isinstance(widget, QCheckBox) and widget.isChecked():
-                selected.append(widget.text())
-        result = ", ".join(selected)
         self.setVisible(False)
-        self.answered.emit(result)
+        self.answered.emit(answer)
 
     def _on_select(self, option):
-        self.setVisible(False)
-        if isinstance(option, dict):
-            option = option.get("label", str(option))
-        self.answered.emit(str(option))
-
-    def _on_checkbox_toggled(self, checked):
-        if self._multiple:
-            selected_count = sum(
-                1
-                for w in self._option_widgets
-                if isinstance(w, QCheckBox) and w.isChecked()
-            )
-            self.confirm_btn.setVisible(selected_count > 0)
-            if selected_count > 0:
-                self.confirm_btn.setText(f"确认 ({selected_count})")
-
-    def show_question(self, question: str, options: list, multiple: bool = False):
-        self._question = question
-        self._options = options
-        self._multiple = multiple
-        self._option_widgets = []
-
-        self.question_label.setText(question)
-        self.setVisible(True)
-        self.confirm_btn.setVisible(False)
-        self.confirm_btn.setText("确认")
-        self.text_input.clear()
-
-        while self.options_layout.count():
-            item = self.options_layout.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
-
-        if not options or len(options) == 0:
-            self._text_input_mode = True
-            self.text_input.setVisible(True)
-            self.options_container.setVisible(False)
-            self.confirm_btn.setVisible(True)
-            self.confirm_btn.setText("提交")
+        answer = self._option_label(option)
+        if self._text_input_mode:
             return
+        sender = self.sender()
+        if isinstance(sender, WrappedOptionButton):
+            sender.set_selected(True)
+        self._emit_single_answer(str(answer))
 
-        self._text_input_mode = False
-        self.text_input.setVisible(False)
-        self.options_container.setVisible(True)
+    def _emit_single_answer(self, answer: str):
+        self.setVisible(False)
+        self.answered.emit(answer)
 
-        cols = 2 if len(options) > 2 else len(options)
-        if cols < 1:
-            cols = 1
-
-        for i, option in enumerate(options):
-            row = i // cols
-            col = i % cols
-            if multiple:
-                widget = self._create_checkbox(option)
-            else:
-                widget = self._create_button(option)
-            self.options_layout.addWidget(widget, row, col)
-            self._option_widgets.append(widget)
+    def _on_checkbox_toggled(self, _checked):
+        self._update_submit_state()
 
     def _create_checkbox(self, option):
-        text = option.get("label", option) if isinstance(option, dict) else str(option)
-        checkbox = QCheckBox(text, self)
-        checkbox.setCursor(Qt.PointingHandCursor)
-        checkbox.setStyleSheet("""
-            QCheckBox {
-                color: #ffffff;
-                spacing: 6px;
-                padding: 8px 10px;
-                background-color: #3a3a3a;
-                border: 1px solid #505050;
-                border-radius: 4px;
-            }
-            QCheckBox:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-                border-radius: 3px;
-                border: 1px solid #606060;
-                background-color: #2a2a2a;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #0078d4;
-                border-color: #0078d4;
-            }
-        """)
-        checkbox.setMinimumHeight(36)
-        checkbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        checkbox.setWordWrap(True)
-        checkbox.stateChanged.connect(self._on_checkbox_toggled)
+        checkbox = WrappedCheckOption(self._option_label(option), self)
+        checkbox.toggled.connect(self._on_checkbox_toggled)
         return checkbox
 
     def _create_button(self, option):
-        btn_text = (
-            option.get("label", option) if isinstance(option, dict) else str(option)
-        )
-        btn = QPushButton(btn_text, self)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3a3a3a;
-                color: #ffffff;
-                border: 1px solid #505050;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 11px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QPushButton:pressed {
-                background-color: #2a2a2a;
-            }
-        """)
-        btn.setMinimumHeight(36)
-        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn.clicked.connect(lambda checked, opt=option: self._on_select(opt))
+        btn = WrappedOptionButton(self._option_label(option), self)
+        btn.clicked.connect(partial(self._on_select, option))
         return btn
+
+    def show_question(self, question: str, options: list, multiple: bool = False):
+        self._question = question or ""
+        self._options = options if isinstance(options, list) else []
+        self._multiple = bool(multiple)
+        self._text_input_mode = not self._options
+
+        self.question_label.setText(self._question)
+        self.text_input.clear()
+        self._clear_options()
+
+        if self._options:
+            columns = 2 if len(self._options) > 2 else max(1, len(self._options))
+            for index, option in enumerate(self._options):
+                row = index // columns
+                col = index % columns
+                widget = (
+                    self._create_checkbox(option)
+                    if self._multiple
+                    else self._create_button(option)
+                )
+                self.options_layout.addWidget(widget, row, col)
+                self._option_widgets.append(widget)
+
+        self._update_mode_ui()
+        self.setVisible(True)
+        self.raise_()
 
     def clear(self):
         self._question = ""
@@ -278,293 +557,5 @@ class QuestionFloatingWidget(CardWidget):
         self._multiple = False
         self._text_input_mode = False
         self.text_input.clear()
-        self.setVisible(False)
-        self.cancelled.emit()
-
-    def _on_confirm(self):
-        if self._text_input_mode:
-            text = self.text_input.toPlainText().strip()
-            if text:
-                self.setVisible(False)
-                self.answered.emit(text)
-            return
-
-        selected = []
-        for widget in self._option_widgets:
-            if isinstance(widget, QCheckBox) and widget.isChecked():
-                selected.append(widget.text())
-        result = ", ".join(selected)
-        self.setVisible(False)
-        self.answered.emit(result)
-
-    def _on_select(self, option):
-        self.setVisible(False)
-        if isinstance(option, dict):
-            option = option.get("label", str(option))
-        self.answered.emit(str(option))
-
-    def _on_checkbox_toggled(self, checked):
-        if self._multiple:
-            selected_count = sum(
-                1
-                for w in self._option_widgets
-                if isinstance(w, QCheckBox) and w.isChecked()
-            )
-            self.confirm_btn.setVisible(selected_count > 0)
-            if selected_count > 0:
-                self.confirm_btn.setText(f"确认 ({selected_count})")
-
-    def show_question(self, question: str, options: list, multiple: bool = False):
-        self._question = question
-        self._options = options
-        self._multiple = multiple
-        self._option_widgets = []
-
-        self.question_label.setText(question)
-        self.setVisible(True)
-        self.confirm_btn.setVisible(False)
-        self.confirm_btn.setText("确认")
-        self.text_input.clear()
-
-        while self.options_layout.count():
-            item = self.options_layout.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
-
-        if not options or len(options) == 0:
-            self._text_input_mode = True
-            self.text_input.setVisible(True)
-            self.options_container.setVisible(False)
-            self.confirm_btn.setVisible(True)
-            self.confirm_btn.setText("提交")
-            return
-
-        self._text_input_mode = False
-        self.text_input.setVisible(False)
-        self.options_container.setVisible(True)
-
-        for option in options:
-            if multiple:
-                widget = self._create_checkbox(option)
-            else:
-                widget = self._create_button(option)
-            self.options_layout.addWidget(widget)
-            self._option_widgets.append(widget)
-
-    def _create_checkbox(self, option):
-        text = option.get("label", option) if isinstance(option, dict) else str(option)
-        checkbox = QCheckBox(text, self)
-        checkbox.setCursor(Qt.PointingHandCursor)
-        checkbox.setStyleSheet("""
-            QCheckBox {
-                color: #ffffff;
-                spacing: 6px;
-                padding: 8px 10px;
-                background-color: #3a3a3a;
-                border: 1px solid #505050;
-                border-radius: 4px;
-            }
-            QCheckBox:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-                border-radius: 3px;
-                border: 1px solid #606060;
-                background-color: #2a2a2a;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #0078d4;
-                border-color: #0078d4;
-            }
-        """)
-        checkbox.setMinimumHeight(36)
-        checkbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        checkbox.setWordWrap(True)
-        checkbox.stateChanged.connect(self._on_checkbox_toggled)
-        return checkbox
-
-    def _create_button(self, option):
-        btn_text = (
-            option.get("label", option) if isinstance(option, dict) else str(option)
-        )
-        btn = QPushButton(btn_text, self)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3a3a3a;
-                color: #ffffff;
-                border: 1px solid #505050;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 11px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QPushButton:pressed {
-                background-color: #2a2a2a;
-            }
-        """)
-        btn.setMinimumHeight(36)
-        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn.clicked.connect(lambda checked, opt=option: self._on_select(opt))
-        return btn
-
-    def clear(self):
-        self._question = ""
-        self._options = []
-        self._multiple = False
-        self._text_input_mode = False
-        self.text_input.clear()
-        self.setVisible(False)
-        self.cancelled.emit()
-
-    def _on_confirm(self):
-        if self._text_input_mode:
-            text = self.text_input.toPlainText().strip()
-            if text:
-                self.setVisible(False)
-                self.answered.emit(text)
-            return
-
-        selected = []
-        for i in range(self.options_layout.count()):
-            widget = self.options_layout.itemAt(i).widget()
-            if widget and isinstance(widget, QCheckBox) and widget.isChecked():
-                selected.append(widget.text())
-        result = ", ".join(selected)
-        self.setVisible(False)
-        self.answered.emit(result)
-
-    def _on_select(self, option):
-        self.setVisible(False)
-        if isinstance(option, dict):
-            option = option.get("label", str(option))
-        self.answered.emit(str(option))
-
-    def _on_checkbox_toggled(self, checked):
-        if self._multiple:
-            selected_count = 0
-            for i in range(self.options_layout.count()):
-                widget = self.options_layout.itemAt(i).widget()
-                if widget and isinstance(widget, QCheckBox) and widget.isChecked():
-                    selected_count += 1
-            self.confirm_btn.setVisible(selected_count > 0)
-            if selected_count > 0:
-                self.confirm_btn.setText(f"确认 ({selected_count})")
-
-    def show_question(self, question: str, options: list, multiple: bool = False):
-        self._question = question
-        self._options = options
-        self._multiple = multiple
-
-        self.question_label.setText(question)
-        self.setVisible(True)
-        self.confirm_btn.setVisible(False)
-        self.confirm_btn.setText("确认")
-        self.text_input.clear()
-
-        while self.options_layout.count():
-            item = self.options_layout.takeAt(0)
-            if item:
-                if item.widget():
-                    item.widget().deleteLater()
-
-        if not options or len(options) == 0:
-            self._text_input_mode = True
-            self.text_input.setVisible(True)
-            self.options_container.setVisible(False)
-            self.confirm_btn.setVisible(True)
-            self.confirm_btn.setText("提交")
-            return
-
-        self._text_input_mode = False
-        self.text_input.setVisible(False)
-        self.options_container.setVisible(True)
-
-        if multiple:
-            for option in options:
-                widget = self._create_checkbox(option)
-                self.options_layout.addWidget(widget)
-        else:
-            for option in options:
-                widget = self._create_button(option)
-                self.options_layout.addWidget(widget)
-
-    def _create_checkbox(self, option):
-        text = option.get("label", option) if isinstance(option, dict) else str(option)
-        checkbox = QCheckBox(text, self)
-        checkbox.setCursor(Qt.PointingHandCursor)
-        checkbox.setStyleSheet("""
-            QCheckBox {
-                color: #ffffff;
-                spacing: 6px;
-                padding: 8px 10px;
-                background-color: #3a3a3a;
-                border: 1px solid #505050;
-                border-radius: 4px;
-            }
-            QCheckBox:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-                border-radius: 3px;
-                border: 1px solid #606060;
-                background-color: #2a2a2a;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #0078d4;
-                border-color: #0078d4;
-            }
-        """)
-        checkbox.setMinimumHeight(36)
-        checkbox.setMaximumWidth(300)
-        checkbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        checkbox.stateChanged.connect(self._on_checkbox_toggled)
-        return checkbox
-
-    def _create_button(self, option):
-        btn_text = (
-            option.get("label", option) if isinstance(option, dict) else str(option)
-        )
-        btn = QPushButton(btn_text, self)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3a3a3a;
-                color: #ffffff;
-                border: 1px solid #505050;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 11px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4a4a4a;
-                border-color: #606060;
-            }
-            QPushButton:pressed {
-                background-color: #2a2a2a;
-            }
-        """)
-        btn.setMinimumHeight(36)
-        btn.setMaximumWidth(300)
-        btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        btn.clicked.connect(lambda checked, opt=option: self._on_select(opt))
-        return btn
-
-    def clear(self):
-        self._question = ""
-        self._options = []
-        self._multiple = False
-        self._text_input_mode = False
-        self.text_input.clear()
+        self._clear_options()
         self.setVisible(False)

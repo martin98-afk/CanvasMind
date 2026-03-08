@@ -44,9 +44,11 @@ class Component(BaseComponent):
         inputs: 上游输入（key=输入端口名）
         return: 输出数据（key=输出端口名）
         """
+        key = (inputs.key if inputs.key is not None else params.key) or ""
+        value = (inputs.value if inputs.value is not None else params.value) or ""
         self.emit_message(
             method="add_custom_to_global_variable",
-            params={str(inputs.key or params.key): str(inputs.value or params.value)}
+            params={key: value}
         )
         
 

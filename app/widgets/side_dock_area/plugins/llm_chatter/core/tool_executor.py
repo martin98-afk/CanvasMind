@@ -74,6 +74,11 @@ class ToolExecutor:
             return self._builtin_tools._todo_list
         return []
 
+    def clear_todo_list(self):
+        """清空待办事项列表"""
+        if self._builtin_tools:
+            self._builtin_tools.todo_clear()
+
     def register_custom_tool(self, name: str, handler: Callable):
         """注册自定义工具"""
         self._custom_tools[name] = handler
@@ -112,6 +117,10 @@ class ToolExecutor:
                 args.get("newString", ""),
                 args.get("replaceAll", False),
             ),
+            "multiedit": lambda: self._builtin_tools.multi_edit(
+                args.get("filePath"),
+                args.get("edits", []),
+            ),
             "grep": lambda: self._builtin_tools.grep_files(
                 args.get("pattern"), args.get("path"), args.get("include")
             ),
@@ -122,6 +131,18 @@ class ToolExecutor:
             "patch": lambda: self._builtin_tools.apply_patch(
                 args.get("filePath"), args.get("patch_content", "")
             ),
+            "diff": lambda: self._builtin_tools.diff_files(
+                args.get("file1", ""),
+                args.get("file2"),
+                args.get("use_git", False),
+            ),
+            "git_status": lambda: self._builtin_tools.git_status(args.get("path")),
+            "git_log": lambda: self._builtin_tools.git_log(
+                args.get("path"), args.get("max_count", 10)
+            ),
+            "git_diff": lambda: self._builtin_tools.git_diff(
+                args.get("ref1"), args.get("ref2"), args.get("path")
+            ),
             "bash": lambda: self._builtin_tools.execute_bash(
                 args.get("command", ""), args.get("timeout", 120)
             ),
@@ -130,6 +151,18 @@ class ToolExecutor:
             ),
             "websearch": lambda: self._builtin_tools.search_web(
                 args.get("query", ""), args.get("num_results", 10)
+            ),
+            "scan_repo": lambda: self._builtin_tools.scan_repo(
+                args.get("path"), args.get("max_depth", 2)
+            ),
+            "stage_files": lambda: self._builtin_tools.stage_files(
+                args.get("files", [])
+            ),
+            "run_verify": lambda: self._builtin_tools.run_verify(
+                args.get("command", ""), args.get("timeout", 120)
+            ),
+            "summarize_changes": lambda: self._builtin_tools.summarize_changes(
+                args.get("text", ""), args.get("limit", 1200)
             ),
             "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
             "todoread": lambda: self._builtin_tools.todo_read(),

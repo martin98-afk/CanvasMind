@@ -126,7 +126,7 @@ def get_builtin_nodes():
 
 
 def find_components(category=None, search=None, limit=None):
-    """查找组件 - 包括内置节点和自定义组件"""
+    """查找组件 - 返回精简格式"""
     results = []
 
     # 1. 获取内置节点
@@ -143,7 +143,16 @@ def find_components(category=None, search=None, limit=None):
                 and search_lower not in node["category"].lower()
             ):
                 continue
-        results.append(node)
+        # 精简输出
+        results.append(
+            {
+                "path": node["full_path"],
+                "cat": node["category"],
+                "desc": node["description"],
+                "in": [p["name"] for p in node.get("inputs", [])],
+                "out": [p["name"] for p in node.get("outputs", [])],
+            }
+        )
 
     # 2. 获取自定义组件
     components_dir = APP_DIR / "components"
@@ -166,48 +175,24 @@ def find_components(category=None, search=None, limit=None):
                 ):
                     continue
 
-            inputs = []
-            for port in getattr(component_class, "inputs", []):
-                inputs.append(
-                    {
-                        "name": port.name,
-                        "label": port.label,
-                        "multi_connection": getattr(port, "multi_connection", False),
-                    }
-                )
+            inputs = [p.name for p in getattr(component_class, "inputs", [])]
+            outputs = [p.name for p in getattr(component_class, "outputs", [])]
 
-            outputs = []
-            for port in getattr(component_class, "outputs", []):
-                outputs.append(
-                    {
-                        "name": port.name,
-                        "label": port.label,
-                        "multi_connection": getattr(port, "multi_connection", True),
-                    }
-                )
-
-            # 尝试获取 type_
-            file_path = file_map.get(full_path)
-            type_ = ""
-            if file_path:
-                type_ = f"dynamic.StatusDynamicNode_{file_path.stem}"
-
+            # 精简输出
             results.append(
                 {
-                    "full_path": full_path,
-                    "category": category_name,
-                    "name": name,
-                    "description": getattr(component_class, "description", ""),
-                    "type_": type_,
-                    "inputs": inputs,
-                    "outputs": outputs,
+                    "path": full_path,
+                    "cat": category_name,
+                    "desc": getattr(component_class, "description", "")[:100],
+                    "in": inputs,
+                    "out": outputs,
                 }
             )
 
     if limit:
         results = results[:limit]
 
-    return {"count": len(results), "components": results}
+    return {"total": len(results), "items": results}
 
 
 if __name__ == "__main__":
