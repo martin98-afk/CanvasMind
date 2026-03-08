@@ -59,6 +59,7 @@ class ExecutionManager:
             record.status = status
             record.end_time = time.time()
             if output_data is not None:
+                output_data = output_data if isinstance(output_data, dict) else {exec_id: output_data}
                 record.output_data.update(output_data)
             if error_msg is not None:
                 record.error_msg = error_msg

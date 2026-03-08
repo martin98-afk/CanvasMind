@@ -4,9 +4,13 @@
 """
 
 import re
+from loguru import logger
 from typing import Dict, List, Optional, Any, Callable
 
-from loguru import logger
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
+from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import CODING_STAGES
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import get_builtin_tools_schema
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import ChatSession, SessionManager
 
 
 TOKEN_ESTIMATION_RATIO = 0.25
@@ -32,19 +36,6 @@ def estimate_tokens_from_messages(messages: List[Dict]) -> int:
         elif isinstance(content, str):
             total += estimate_tokens(content)
     return total
-
-
-from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
-    CODING_STAGES,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-    get_builtin_tools_schema,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
-    ChatSession,
-    SessionManager,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
 
 
 class ChatEngine:

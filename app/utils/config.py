@@ -158,7 +158,7 @@ class Settings(QConfig):
     communication_method = OptionsConfigItem(
         "CanvasRun",
         "CommunicationMethod",
-        "ZMQ通信",
+        "日志通信",
         OptionsValidator(["ZMQ通信", "日志通信"]),
     )
     # ========== 画布自动保存设置 ==========

@@ -2,6 +2,7 @@
 import json
 import re
 import time
+import traceback
 from typing import Dict, List
 from loguru import logger
 
@@ -277,6 +278,11 @@ class OpenAIChatWorker(QThread):
                 if self._is_cancelled:
                     return
 
+                if tool_results == "FINISH":
+                    self.finished_with_content.emit(self.full_response)
+                    self.finished_with_messages.emit(current_messages)
+                    return
+
                 if tool_results is None:
                     while self._pending_answer is None and not self._is_cancelled:
                         QApplication.processEvents()
@@ -311,14 +317,8 @@ class OpenAIChatWorker(QThread):
                         "tool_calls": self._current_tool_calls,
                     }
                 )
-                current_messages.extend(tool_results)
-
-                if self.get_stage_prompt:
-                    stage_prompt = self.get_stage_prompt()
-                    if stage_prompt:
-                        current_messages.append(
-                            {"role": "system", "content": stage_prompt}
-                        )
+                if isinstance(tool_results, list):
+                    current_messages.extend(tool_results)
 
                 self._check_and_notify_stage_change()
 
@@ -329,6 +329,7 @@ class OpenAIChatWorker(QThread):
             self.finished_with_messages.emit(current_messages)
 
         except Exception as e:
+            logger.exception("请求失败!")
             self._handle_error(e)
 
     def _make_api_call(self, messages: List[Dict]):
@@ -415,7 +416,7 @@ class OpenAIChatWorker(QThread):
         tool_calls_found = self._process_response(response)
 
         if not tool_calls_found:
-            return []
+            return "FINISH"
 
         tool_results = self._execute_all_tools()
 
@@ -433,7 +434,7 @@ class OpenAIChatWorker(QThread):
             messages.extend(tool_results)
             return self._make_api_call(messages)
 
-        return []
+        return "FINISH"
 
     def _process_response(self, response):
         self.full_response = ""
