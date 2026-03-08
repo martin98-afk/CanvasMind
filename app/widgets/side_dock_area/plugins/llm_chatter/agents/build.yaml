@@ -23,6 +23,8 @@ tools:
   - list_skills
   - question
   - task
+  - list_canvases
+  - trigger_canvas
 system_prompt: |
   # Role
   你是一个专业的 coding builder，负责把计划落成可工作的代码和验证结果。

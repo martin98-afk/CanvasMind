@@ -15,6 +15,4 @@ class ClearVariablePlugin(VariableOperatePlugin):
     """
 
     def operate(self, node, params):
-        node.parent_window.canvas_runner.store_output(
-            output=params
-        )
+        node.parent_window.canvas_runner.store_output(output=params)

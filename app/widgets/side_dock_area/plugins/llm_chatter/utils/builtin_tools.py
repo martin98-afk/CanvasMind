@@ -929,22 +929,6 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"run_verify error: {str(e)}")
 
-    def summarize_changes(self, text: str, limit: int = 1200) -> ToolResult:
-        """压缩工具输出，便于继续回灌上下文。"""
-        try:
-            raw = (text or "").strip()
-            if not raw:
-                return ToolResult(True, content="No summary content")
-            normalized = re.sub(r"\n{3,}", "\n\n", raw)
-            if len(normalized) <= limit:
-                return ToolResult(True, content=normalized)
-            head = normalized[: limit // 2]
-            tail = normalized[-limit // 2 :]
-            summary = head.rstrip() + "\n...\n" + tail.lstrip()
-            return ToolResult(True, content=summary)
-        except Exception as e:
-            return ToolResult(False, error=f"summarize_changes error: {str(e)}")
-
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
     ) -> ToolResult:
@@ -958,6 +942,90 @@ class BuiltinTools:
                 "type": "question",
             },
         )
+
+    def _get_webhook_manager(self):
+        """获取 WebhookManager 实例"""
+        try:
+            from app.plugins.trigger_plugins.webhook_trigger import WebhookManager
+
+            return WebhookManager()
+        except Exception as e:
+            logger.warning(f"[BuiltinTools] Failed to get WebhookManager: {e}")
+            return None
+
+    def _get_webhook_url(self) -> str:
+        """获取 webhook 服务的基础 URL"""
+        manager = self._get_webhook_manager()
+        if manager:
+            return f"http://{manager.host}:{manager.port}"
+        return "http://localhost:5000"
+
+    def list_canvases(self) -> ToolResult:
+        """列出所有在线画布及其 webhook 触发器"""
+        try:
+            import requests
+
+            base_url = self._get_webhook_url()
+            resp = requests.get(f"{base_url}/health", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                return ToolResult(True, content=data)
+            return ToolResult(
+                False, error=f"Failed to get canvases: {resp.status_code}"
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"List canvases error: {str(e)}")
+
+    def trigger_canvas(
+        self,
+        endpoint: str,
+        data: dict = None,
+        callback_url: str = None,
+        timeout: int = 300,
+    ) -> ToolResult:
+        """触发画布运行并等待结果"""
+        import requests
+
+        try:
+            base_url = self._get_webhook_url()
+            payload = data or {}
+            if callback_url:
+                payload["callback_url"] = callback_url
+
+            resp = requests.post(
+                f"{base_url}/api/v1/trigger/{endpoint}", json=payload, timeout=10
+            )
+            if resp.status_code != 200:
+                return ToolResult(
+                    False, error=f"Trigger failed: {resp.status_code} - {resp.text}"
+                )
+
+            result = resp.json()
+            task_id = result.get("task_id")
+            if not task_id:
+                return ToolResult(True, content=result)
+
+            import time
+
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                time.sleep(1)
+                resp = requests.get(f"{base_url}/api/v1/result/{task_id}", timeout=5)
+                if resp.status_code != 200:
+                    continue
+                result_data = resp.json()
+                status = result_data.get("status")
+                if status == "success":
+                    return ToolResult(True, content=result_data)
+                elif status in ("failed", "cancelled"):
+                    return ToolResult(
+                        False,
+                        error=f"Canvas execution {status}: {result_data.get('error_msg', 'Unknown error')}",
+                    )
+
+            return ToolResult(False, error=f"Canvas execution timeout after {timeout}s")
+        except Exception as e:
+            return ToolResult(False, error=f"Trigger canvas error: {str(e)}")
 
     def _resolve_path(self, path: str) -> Path:
         """解析路径为绝对路径"""
@@ -1244,21 +1312,6 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
-        # {
-        #     "type": "function",
-        #     "function": {
-        #         "name": "summarize_changes",
-        #         "description": "压缩长工具输出或变更说明，便于继续回灌上下文",
-        #         "parameters": {
-        #             "type": "object",
-        #             "properties": {
-        #                 "text": {"type": "string", "description": "需要压缩的文本"},
-        #                 "limit": {"type": "integer", "description": "摘要最大长度"},
-        #             },
-        #             "required": ["text"],
-        #         },
-        #     },
-        # },
         {
             "type": "function",
             "function": {
@@ -1348,6 +1401,46 @@ def get_builtin_tools_schema() -> List[Dict]:
                         },
                     },
                     "required": ["question"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_canvases",
+                "description": "列出所有在线可以执行的画布及其 webhook 触发器信息",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "trigger_canvas",
+                "description": "通过 webhook 触发画布运行并等待结果返回",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "endpoint": {
+                            "type": "string",
+                            "description": "Webhook 端点（从 list_canvases 获取）",
+                        },
+                        "data": {
+                            "type": "object",
+                            "description": "传递给画布的数据（可选）",
+                        },
+                        "callback_url": {
+                            "type": "string",
+                            "description": "结果回调地址（可选）",
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "description": "等待结果超时时间，默认300秒",
+                        },
+                    },
+                    "required": ["endpoint"],
                 },
             },
         },

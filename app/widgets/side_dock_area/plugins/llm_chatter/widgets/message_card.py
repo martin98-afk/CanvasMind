@@ -15,10 +15,7 @@ from PyQt5.QtCore import (
     Qt,
     QTimer,
     pyqtSignal,
-    QUrl,
-    QPropertyAnimation,
-    QEasingCurve,
-    pyqtProperty,
+    QUrl
 )
 from PyQt5.QtGui import (
     QWheelEvent,

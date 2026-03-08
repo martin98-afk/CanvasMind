@@ -178,6 +178,13 @@ class ToolExecutor:
                 args.get("options"),
                 args.get("multiple", False),
             ),
+            "list_canvases": lambda: self._builtin_tools.list_canvases(),
+            "trigger_canvas": lambda: self._builtin_tools.trigger_canvas(
+                args.get("endpoint", ""),
+                args.get("data"),
+                args.get("callback_url"),
+                args.get("timeout", 300),
+            ),
         }
 
         executor = tool_map.get(tool_name)
