@@ -34,6 +34,32 @@ class TaskSessionState:
     verification_status: str = "not_run"
     verification_summary: str = ""
     recent_events: List[TaskEvent] = field(default_factory=list)
+    prompts = {
+        "discover": "## Active Stage: Discover\n"
+                    "Goal: Understand project structure, constraints, and relevant context.\n"
+                    "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
+                    "→ When context is sufficient, respond with [STAGE: plan] to transition.",
+        "plan": "## Active Stage: Plan\n"
+                "Goal: Produce implementation path with files, risks, validation steps.\n"
+                "Expected tools: Write a concrete plan using todo tool or analysis.\n"
+                "→ When plan is solid, respond with [STAGE: edit] to transition.",
+        "edit": "## Active Stage: Edit\n"
+                "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
+                "Expected tools: write, edit.\n"
+                "→ When changes are complete, respond with [STAGE: verify] to transition.",
+        "verify": "## Active Stage: Verify\n"
+                  "Goal: Run validation commands, explain failures concretely.\n"
+                  "Expected tools: Bash (pytest, test, compile, lint).\n"
+                  "→ When verification passes, respond with [STAGE: review] to transition.",
+        "review": "## Active Stage: Review\n"
+                  "Goal: Check for regressions, missing tests, weak assumptions.\n"
+                  "Expected tools: Read, Grep for inspection.\n"
+                  "→ When review is done, respond with [STAGE: summarize] to transition.",
+        "summarize": "## Active Stage: Summarize\n"
+                     "Goal: Compress work into concise handoff for next step.\n"
+                     "Expected tools: Final summary output.\n"
+                     "→ Task complete.",
+    }
 
     def set_goal(self, goal: str):
         goal = (goal or "").strip()
@@ -139,8 +165,10 @@ class TaskSessionState:
 
     def build_context_block(self) -> str:
         lines = ["## Current Coding Task State"]
+        lines.append(f"you should follow the stage steps: discover -> plan -> edit -> verify -> review -> summarize to complete the task.")
         lines.append(f"- Agent: {self.current_agent or 'unknown'}")
         lines.append(f"- Stage: {self.stage}")
+        lines.append(f"- Stage goal: {self.prompts.get(self.stage, 'unknown')}")
         lines.append(f"- Goal: {self.current_goal or 'Not set'}")
         lines.append(f"- Verification: {self.verification_status}")
         if self.related_files:
@@ -166,7 +194,11 @@ class TaskSessionState:
     def build_event_digest(self) -> str:
         if not self.recent_events:
             return ""
-        lines = ["## Recent Execution Digest"]
+        lines = [
+            "## Current Execution Time",
+            f"- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            "## Recent Execution Digest"
+        ]
         for event in self.recent_events[-8:]:
             lines.append(f"- {event.timestamp} [{event.kind}] {event.payload}")
-        return "\n".join(lines)
+        return "\n".join(lines) + "\n\n"
