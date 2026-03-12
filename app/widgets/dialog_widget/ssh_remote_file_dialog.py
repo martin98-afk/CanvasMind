@@ -375,8 +375,7 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         self.path_edit = LineEdit()
         self.path_edit.setPlaceholderText("输入远程路径或使用面包屑导航...")
         self.path_edit.setClearButtonEnabled(True)
-        self.path_edit.returnPressed.connect(self._on_path_entered)
-        self.path_edit.installEventFilter(self)  # 用于ESC清除
+        self.path_edit.installEventFilter(self)  # 用于ESC和回车处理
 
         top_bar.addWidget(self.btn_back)
         top_bar.addWidget(self.btn_refresh)
@@ -402,6 +401,8 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
 
         # 双击/回车打开
         self.table.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self.table.itemClicked.connect(self._on_item_clicked)
+        self.table.itemSelectionChanged.connect(self._on_selection_changed)
         self.table.keyPressEvent = self._table_key_press  # 重写键盘事件
 
         # 表头设置 - 关键优化：实现表格铺展和排序
@@ -616,6 +617,12 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 self.path_edit.setText(self.current_path)
                 self.path_edit.clearFocus()
                 return True
+            if (
+                event.key() == QtCore.Qt.Key_Return
+                or event.key() == QtCore.Qt.Key_Enter
+            ):
+                self._on_path_entered()
+                return True
         return super().eventFilter(obj, event)
 
     def _table_key_press(self, event):
@@ -676,7 +683,35 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 self.selection_label.setText(data["path"])
             else:
                 self.last_selected_path = None
-        self.selection_label.setText(self.tr("⚠ 请选择文件"))
+                self.selection_label.setText("⚠ 请选择文件")
+
+    def _on_selection_changed(self):
+        """选中变化时更新状态"""
+        selected_items = self.table.selectedItems()
+        if not selected_items:
+            return
+
+        first_item = selected_items[0]
+        row = first_item.row()
+        data = self.table.item(row, 0).data(QtCore.Qt.UserRole)
+
+        if not data:
+            return
+
+        # 只处理单选
+        rows = set(item.row() for item in selected_items)
+        if len(rows) == 1:
+            if self.selection_mode == "any":
+                self.last_selected_path = data["path"]
+                self.selection_label.setText(data["path"])
+            elif self.selection_mode == "folder":
+                if data["is_dir"]:
+                    self.last_selected_path = data["path"]
+                    self.selection_label.setText(data["path"])
+            elif self.selection_mode == "file":
+                if not data["is_dir"]:
+                    self.last_selected_path = data["path"]
+                    self.selection_label.setText(data["path"])
 
     def _on_item_double_clicked(self, item):
         """双击处理 - 进入目录或选择文件"""
@@ -884,10 +919,16 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
         progress.setAutoReset(True)
 
         transferred = 0
+        file_sizes = {p: os.path.getsize(p) for p in local_paths}
+        total_size = sum(file_sizes.values())
+        current_file_index = [0]
 
         def progress_callback(transferred_bytes, total_bytes):
             nonlocal transferred
-            transferred += transferred_bytes
+            prev_files_size = sum(
+                file_sizes[local_paths[i]] for i in range(current_file_index[0])
+            )
+            transferred = prev_files_size + transferred_bytes
             progress.setValue(transferred)
             progress.setLabelText(
                 f"已上传: {transferred / 1024 / 1024:.1f} MB / {total_size / 1024 / 1024:.1f} MB"
@@ -897,7 +938,8 @@ class SSHRemoteFileDialog(QtWidgets.QDialog):
                 raise Exception("用户取消了上传")
 
         try:
-            for local_path in local_paths:
+            for i, local_path in enumerate(local_paths):
+                current_file_index[0] = i
                 # 计算远程路径
                 if base_local_path:
                     # 保持目录结构

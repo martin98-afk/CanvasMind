@@ -14,12 +14,12 @@ from app.widgets.custom_nodegraphqt.node_action_buttons import (
 )
 
 # ==============================================================================
-# 高级感配色常量 (ComfyUI Style)
+# 高级感配色常量 (ComfyUI Style) - 磨砂半透明节点
 # ==============================================================================
-COLOR_BG_GRAD_TOP = (40, 40, 45, 255)
-COLOR_BG_GRAD_BOTTOM = (25, 25, 30, 255)
+COLOR_BG_GRAD_TOP = (40, 40, 45, 200)
+COLOR_BG_GRAD_BOTTOM = (25, 25, 30, 200)
 COLOR_SELECTED_GLOW = (255, 180, 0, 255)
-COLOR_BORDER_NORMAL = (60, 60, 65, 255)
+COLOR_BORDER_NORMAL = (80, 80, 90, 200)
 
 
 class CustomNodeSignals(QtCore.QObject):
@@ -796,11 +796,16 @@ class CustomNodeItem(NodeItem):
         header_h = max(self._text_item.boundingRect().height() + 10, 34.0)
         header_rect = QtCore.QRectF(rect.left(), rect.top(), rect.width(), header_h)
         base_color = QtGui.QColor(*self.color)
+        base_color.setAlpha(220)
         head_grad = QtGui.QLinearGradient(
             header_rect.topLeft(), header_rect.bottomLeft()
         )
-        head_grad.setColorAt(0, base_color.lighter(110))
-        head_grad.setColorAt(1, base_color)
+        head_color_top = QtGui.QColor(base_color.lighter(110))
+        head_color_top.setAlpha(230)
+        head_color_bottom = QtGui.QColor(base_color)
+        head_color_bottom.setAlpha(220)
+        head_grad.setColorAt(0, head_color_top)
+        head_grad.setColorAt(1, head_color_bottom)
         painter.setBrush(head_grad)
 
         path = QtGui.QPainterPath()
@@ -826,9 +831,9 @@ class CustomNodeItem(NodeItem):
         border_color = (
             QtGui.QColor(*NodeEnum.SELECTED_BORDER_COLOR.value)
             if self.selected
-            else QtGui.QColor(*COLOR_BORDER_NORMAL)
+            else QtGui.QColor(120, 120, 130, 150)
         )
-        painter.setPen(QtGui.QPen(border_color, 2.5 if self.selected else 1.2))
+        painter.setPen(QtGui.QPen(border_color, 2.5 if self.selected else 1.5))
         painter.drawRoundedRect(rect, radius, radius)
         painter.restore()
 

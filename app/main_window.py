@@ -170,7 +170,6 @@ class LowCodeWindow(FluentWindow):
         pkg_item = self.addSubInterface(
             self.package_manager, get_icon("工具包"), self.tr("环境管理")
         )
-        pkg_item.clicked.connect(self.package_manager.on_env_changed)
 
         # 底部功能区
         self.navigationInterface.addItem(
