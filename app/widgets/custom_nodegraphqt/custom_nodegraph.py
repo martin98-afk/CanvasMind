@@ -1300,7 +1300,6 @@ class CustomNodeViewer(NodeViewer):
             if mime_data.hasFormat("application/x-global-variable") and target_widget:
                 data_bytes = bytes(mime_data.data("application/x-global-variable"))
                 drag_data = orjson.loads(data_bytes.decode("utf-8"))
-                # 调用我们之前写好的完美版 set_value
                 if not target_widget._is_using_global:
                     target_widget.toggle_global_mode()
                 target_widget._global_widget.set_value(
@@ -1325,9 +1324,7 @@ class CustomNodeViewer(NodeViewer):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
                     drag_data = orjson.loads(data_bytes.decode("utf-8"))
                     node.set_icon(":/icons/变量.svg")
-                    node.set_property(
-                        "var_name", f"{drag_data['var_type']}.{drag_data['var_name']}"
-                    )
+                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
                     node.set_name("\n".join(drag_data["var_name"].split("__")))
                     node.view.toggle_collapse()
                     self.home_window.canvas_runner.run_node(node)

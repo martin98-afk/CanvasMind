@@ -1,22 +1,145 @@
 # -*- coding: utf-8 -*-
 import os
 import cv2
+import numpy as np
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from PyQt5.QtCore import Qt, QUrl, QSize
-from PyQt5.QtGui import QImage
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QImage, QPainter, QColor, QPen, QBrush, QPainterPath, QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+
 # 关键修改：Qt5 的导入方式
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSlider
 from PyQt5.QtWidgets import QWidget
 from Qt import QtWidgets
 from qfluentwidgets import FluentIcon
+
 # 引入 qfluentwidgets 的基础控件
 from qfluentwidgets import ToolButton, Slider, FluentIcon as FIF
 
 from app.widgets.basic_widget.combo_widget import CustomComboBox
+
+
+class AudioWaveformDisplay(QtWidgets.QWidget):
+    """
+    音频波形显示控件 - 使用 QPainter 绘制
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(40)
+        self._waveform_data = None
+        self._audio_duration = 0
+        self._position = 0
+        self._is_playing = False
+
+        self._wave_color = QColor("#00E5FF")
+        self._wave_played_color = QColor("#0088AA")
+        self._bg_color = QColor("#1E1E1E")
+        self._playhead_color = QColor("#FFFFFF")
+
+        self._generate_test_waveform(60000)
+
+    def load_audio(self, file_path):
+        """加载音频文件并计算波形数据"""
+        try:
+            import scipy.io.wavfile as wav
+
+            ext = os.path.splitext(file_path)[1].lower()
+
+            if ext == ".wav":
+                rate, data = wav.read(file_path)
+            else:
+                try:
+                    import soundfile as sf
+
+                    data, rate = sf.read(file_path, dtype="float32")
+                except ImportError:
+                    self._generate_test_waveform(60000)
+                    return
+
+            if data.ndim > 1:
+                data = data[:, 0]
+
+            samples = len(data)
+            target_samples = 500
+            if samples > target_samples:
+                indices = np.linspace(0, samples - 1, target_samples, dtype=int)
+                data = data[indices]
+
+            self._waveform_data = data.astype(float)
+            if self._waveform_data.max() > 0:
+                self._waveform_data = self._waveform_data / self._waveform_data.max()
+
+            self._audio_duration = 0
+            self._position = 0
+            self.update()
+        except Exception as e:
+            self._generate_test_waveform(60000)
+
+    def _generate_test_waveform(self, duration_ms):
+        """生成测试波形数据"""
+        self._waveform_data = np.abs(np.random.randn(500)).astype(float)
+        self._waveform_data = self._waveform_data / self._waveform_data.max()
+        self._audio_duration = duration_ms
+        self._position = 0
+        self.update()
+
+    def set_audio_duration(self, duration_ms):
+        """设置音频时长（毫秒）"""
+        self._audio_duration = duration_ms
+        self.update()
+
+    def set_position(self, position, duration):
+        self._position = position
+        self.update()
+
+    def set_playing(self, is_playing):
+        self._is_playing = is_playing
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w = self.width()
+        h = self.height()
+
+        painter.fillRect(0, 0, w, h, self._bg_color)
+
+        if self._waveform_data is None:
+            painter.setPen(QColor("#888888"))
+            painter.drawText(w // 2 - 30, h // 2, "No data")
+            return
+
+        if len(self._waveform_data) == 0:
+            painter.setPen(QColor("#888888"))
+            painter.drawText(w // 2 - 30, h // 2, "Empty")
+            return
+
+        mid_y = float(h) / 2
+        bar_count = min(len(self._waveform_data), max(1, w))
+
+        for i in range(bar_count):
+            idx = int(i * len(self._waveform_data) / bar_count)
+            sample = abs(self._waveform_data[idx])
+            x = int(i * w / bar_count)
+            bar_w = max(1, w // bar_count)
+            bar_h = max(1, int(sample * (h - 4) / 2))
+
+            color = self._wave_color
+            rect = QtCore.QRect(x, int(mid_y - bar_h), bar_w, bar_h * 2)
+            painter.fillRect(rect, color)
+
+        progress = 0
+        if self._audio_duration > 0:
+            progress = self._position / self._audio_duration
+
+        if progress > 0:
+            playhead_x = int(w * progress)
+            painter.setPen(QPen(self._playhead_color, 1))
+            painter.drawLine(playhead_x, 0, playhead_x, h)
 
 
 class MiniAudioPlayer(QtWidgets.QWidget):
@@ -26,25 +149,35 @@ class MiniAudioPlayer(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(50)
+        self.setFixedHeight(90)
 
         # --- 1. 初始化播放器 ---
         self.player = QMediaPlayer(self)
-        self.player.setVolume(50)  # 默认 50% 音量
+        self.player.setVolume(50)
 
         self.is_slider_pressed = False
-        self.last_volume = 50  # 用于记录静音前的音量
+        self.last_volume = 50
 
-        # --- 2. 初始化 UI 界面 ---
+        # --- 2. 初始化波形显示 ---
+        self.waveform_display = AudioWaveformDisplay(self)
+
+        # --- 3. 初始化 UI 界面 ---
         self._init_ui()
 
-        # --- 3. 信号连接 ---
+        # --- 4. 信号连接 ---
         self._connect_signals()
 
     def _init_ui(self):
-        self.h_layout = QtWidgets.QHBoxLayout(self)
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        self.waveform_display.setFixedHeight(40)
+        self.main_layout.addWidget(self.waveform_display)
+
+        self.h_layout = QtWidgets.QHBoxLayout()
         self.h_layout.setContentsMargins(10, 5, 10, 5)
-        self.h_layout.setSpacing(8)  # 稍微调小间距以容纳更多控件
+        self.h_layout.setSpacing(8)
 
         # 1. 播放/暂停按钮
         self.playBtn = ToolButton(FIF.PLAY, self)
@@ -88,6 +221,8 @@ class MiniAudioPlayer(QtWidgets.QWidget):
         self.h_layout.addWidget(self.volumeBtn)
         self.h_layout.addWidget(self.volumeSlider)
 
+        self.main_layout.addLayout(self.h_layout)
+
     def _connect_signals(self):
         # 播放控制
         self.playBtn.clicked.connect(self._toggle_play)
@@ -116,6 +251,8 @@ class MiniAudioPlayer(QtWidgets.QWidget):
         content = QMediaContent(url)
         self.player.setMedia(content)
 
+        self.waveform_display.load_audio(file_path)
+
         self.playBtn.setIcon(FIF.PLAY)
         self.playBtn.setEnabled(True)
 
@@ -137,17 +274,21 @@ class MiniAudioPlayer(QtWidgets.QWidget):
     def _on_state_changed(self, state):
         if state == QMediaPlayer.PlayingState:
             self.playBtn.setIcon(FIF.PAUSE)
+            self.waveform_display.set_playing(True)
         else:
             self.playBtn.setIcon(FIF.PLAY)
+            self.waveform_display.set_playing(False)
 
     def _on_duration_changed(self, duration):
         self.slider.setRange(0, duration)
         self.lblTotal.setText(self._format_time(duration))
+        self.waveform_display.set_audio_duration(duration)
 
     def _on_position_changed(self, position):
         if not self.is_slider_pressed:
             self.slider.setValue(position)
         self.lblCurrent.setText(self._format_time(position))
+        self.waveform_display.set_position(position, self.player.duration())
 
     def _on_slider_pressed(self):
         self.is_slider_pressed = True
@@ -195,14 +336,14 @@ class MiniAudioPlayer(QtWidgets.QWidget):
     @staticmethod
     def _format_time(ms):
         seconds = (ms // 1000) % 60
-        minutes = (ms // 60000)
+        minutes = ms // 60000
         return f"{minutes:02d}:{seconds:02d}"
 
 
 class AudioPlayWidget(QtWidgets.QWidget):
     valueChanged = QtCore.pyqtSignal(object)
     sizeHintChanged = QtCore.pyqtSignal()
-    EXTS = ['.mp3', '.wav', '.flac', '.m4a', '.ogg']
+    EXTS = [".mp3", ".wav", ".flac", ".m4a", ".ogg"]
     fixed_height = True
 
     def __init__(self, parent=None, node=None):
@@ -260,10 +401,9 @@ class AudioPlayWidget(QtWidgets.QWidget):
         return self._file_path
 
     def sizeHint(self):
-        # 动态计算尺寸：如果不显示，高度为0（或者极小）
         if self._file_path and not self.playerWidget.isHidden():
-            return QSize(250, 50)  # 宽度可以稍微大一点，高度固定50
-        return QSize(250, 0)  # 没有文件时尽量收缩
+            return QSize(250, 90)
+        return QSize(250, 0)
 
     def closeEvent(self, event):
         self.stop()
@@ -285,13 +425,15 @@ class VideoLoaderThread(QThread):
 
     def run(self):
         cap = cv2.VideoCapture(self.file_path)
-        if not cap.isOpened(): return
+        if not cap.isOpened():
+            return
 
         raw_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         raw_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0: fps = 24.0
+        if fps <= 0:
+            fps = 24.0
 
         duration = total_frames / fps
         start_frame = int(total_frames * self.range_pct[0])
@@ -304,7 +446,9 @@ class VideoLoaderThread(QThread):
         target_w = self.max_width
         target_h = int(target_w * aspect_ratio)
 
-        self.meta_ready.emit(target_w, target_h, fps, self.frame_step, duration, total_to_extract)
+        self.meta_ready.emit(
+            target_w, target_h, fps, self.frame_step, duration, total_to_extract
+        )
 
         current_f = start_frame
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
@@ -312,18 +456,22 @@ class VideoLoaderThread(QThread):
         while self._is_running:
             cap.set(cv2.CAP_PROP_POS_FRAMES, current_f)
             ret, frame = cap.read()
-            if not ret: break
+            if not ret:
+                break
 
             try:
                 # 预处理成固定宽度发送，减少传输压力
-                frame = cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
-                _, encoded_img = cv2.imencode('.jpg', frame, encode_param)
+                frame = cv2.resize(
+                    frame, (target_w, target_h), interpolation=cv2.INTER_NEAREST
+                )
+                _, encoded_img = cv2.imencode(".jpg", frame, encode_param)
                 self.frame_ready.emit(encoded_img.tobytes())
             except:
                 pass
 
             current_f += self.frame_step
-            if current_f >= end_frame: break
+            if current_f >= end_frame:
+                break
 
         cap.release()
 
@@ -334,13 +482,18 @@ class VideoLoaderThread(QThread):
 
 # --- 2. 配置面板 ---
 
+
 class ComfySlider(QtWidgets.QWidget):
     valueChanged = pyqtSignal(float)
     valueConfirmed = pyqtSignal(float)
 
     def __init__(self, label_text, min_v, max_v, default_v, is_float=False, suffix=""):
         super().__init__()
-        self.is_float, self.suffix, self.factor = is_float, suffix, (100 if is_float else 1)
+        self.is_float, self.suffix, self.factor = (
+            is_float,
+            suffix,
+            (100 if is_float else 1),
+        )
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -360,7 +513,9 @@ class ComfySlider(QtWidgets.QWidget):
         layout.addWidget(self.lbl_val)
 
         self.slider.valueChanged.connect(self._on_value_changed)
-        self.slider.sliderReleased.connect(lambda: self.valueConfirmed.emit(self.slider.value() / self.factor))
+        self.slider.sliderReleased.connect(
+            lambda: self.valueConfirmed.emit(self.slider.value() / self.factor)
+        )
 
     def _on_value_changed(self, v):
         val = v / self.factor
@@ -375,7 +530,9 @@ class ComfyConfigPanel(QtWidgets.QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background: #282828; border-bottom: 1px solid #111; color: #EEE;")
+        self.setStyleSheet(
+            "background: #282828; border-bottom: 1px solid #111; color: #EEE;"
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 6)
         layout.setSpacing(2)
@@ -384,7 +541,9 @@ class ComfyConfigPanel(QtWidgets.QFrame):
         self.combo_res = CustomComboBox()
         self.combo_res.addItems(["低", "中", "高", "原生"])
         self.combo_res.setCurrentIndex(1)
-        self.slider_speed = ComfySlider("倍速", 0.5, 3.0, 1.0, is_float=True, suffix="x")
+        self.slider_speed = ComfySlider(
+            "倍速", 0.5, 3.0, 1.0, is_float=True, suffix="x"
+        )
         row1.addWidget(QLabel("分辨率:"))
         row1.addWidget(self.combo_res)
         row1.addWidget(self.slider_speed)
@@ -550,7 +709,8 @@ class VideoPlayWidget(QFrame):
         self.control_bar.update_info(self._current_idx, total)
 
     def _next_frame(self):
-        if not self._compressed_cache: return
+        if not self._compressed_cache:
+            return
         self._current_idx = (self._current_idx + 1) % len(self._compressed_cache)
         self._render(self._compressed_cache[self._current_idx])
         self.control_bar.update_info(self._current_idx, len(self._compressed_cache))
@@ -558,15 +718,19 @@ class VideoPlayWidget(QFrame):
     def _render(self, jpeg_data):
         """高质量等比例渲染"""
         img = QImage.fromData(jpeg_data)
-        if img.isNull(): return
+        if img.isNull():
+            return
 
         # 获取 Label 当前的实际尺寸
         canvas_size = self.img_label.size()
-        if canvas_size.width() < 10 or canvas_size.height() < 10: return
+        if canvas_size.width() < 10 or canvas_size.height() < 10:
+            return
 
         # 核心：根据 Label 尺寸进行等比例缩放
         pixmap = QPixmap.fromImage(img)
-        scaled_pixmap = pixmap.scaled(canvas_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled_pixmap = pixmap.scaled(
+            canvas_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
         self.img_label.setPixmap(scaled_pixmap)
 
     def _seek_to_frame(self, idx):
