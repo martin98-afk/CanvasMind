@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "文件选择"
+    name = "文件夹选择"
     category = "数据集成"
     description = "与文件上传相比不会复制源文件，只会输出选择文件的地址"
     requirements = "numpy"
@@ -28,7 +28,7 @@ class Component(BaseComponent):
     properties = {
         "file_select": PropertyDefinition(
             type=PropertyType.FILE,
-            default="",
+            default="folder",
             label="文件选择",
         ),
     }
