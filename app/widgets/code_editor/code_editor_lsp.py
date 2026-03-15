@@ -23,7 +23,9 @@ class LSPCodeEditor(CodeEditor):
     lsp_signal = pyqtSignal(str)
     CODE_PREFIX = """from app.components.base import BaseComponent, ArgumentType, PropertyType, PortDefinition, PropertyDefinition, ConnectionType\n\n\n"""
 
-    def __init__(self, parent=None, code_parent=None, python_exe_path=None, dialog=None):
+    def __init__(
+        self, parent=None, code_parent=None, python_exe_path=None, dialog=None
+    ):
         super().__init__()
         self.python_exe_path = python_exe_path
         self.parent_widget = parent
@@ -38,7 +40,7 @@ class LSPCodeEditor(CodeEditor):
         # 缓存变更
         self._pending_changes = []
         # 修正行数统计：确保与 LSP 内部计算逻辑一致
-        self._prefix_line_count = self.CODE_PREFIX.count('\n')
+        self._prefix_line_count = self.CODE_PREFIX.count("\n")
         self._prefix_char_count = len(self.CODE_PREFIX)
 
         # 初始化定时器
@@ -48,18 +50,22 @@ class LSPCodeEditor(CodeEditor):
         self._connect_lsp_signals()
 
         # CompletionWidget
-        self.completion_widget = CompletionWidget(parent=self, ancestor=self.code_parent)
-        self.completion_widget.sig_completion_hint.connect(self.show_hint_for_completion)
+        self.completion_widget = CompletionWidget(
+            parent=self, ancestor=self.code_parent
+        )
+        self.completion_widget.sig_completion_hint.connect(
+            self.show_hint_for_completion
+        )
         self.completion_widget.setStyleSheet("background-color: #1E1E1E;")
         self.completion_widget.setMinimumWidth(350)
         self.completion_widget.setMinimumHeight(120)
-        self._font_family = 'Consolas'
+        self._font_family = "Consolas"
         self._current_font_size = 13
         # 编辑器设置
         self.setup_editor(
-            language='python',
-            color_scheme='spyder/dark',
-            font=QFont('Consolas', 13),
+            language="python",
+            color_scheme="spyder/dark",
+            font=QFont("Consolas", 13),
             show_blanks=False,
             edge_line=True,
             auto_unindent=True,
@@ -77,7 +83,6 @@ class LSPCodeEditor(CodeEditor):
             underline_errors=True,
             highlight_current_line=True,
         )
-        self.auto_completion_characters = ["."]
         # 按钮
         btn_text = "缩小" if dialog else "放大"
         self.fullscreen_button = TransparentToolButton(get_icon(btn_text), parent=self)
@@ -124,7 +129,7 @@ class LSPCodeEditor(CodeEditor):
         else:
             self.python_exe_path = python_exe
             self.lsp_signal.emit("starting")
-        if hasattr(self, 'lsp_session') and self.lsp_session:
+        if hasattr(self, "lsp_session") and self.lsp_session:
             self.lsp_session.shutdown()
         self.lsp_session.set_python_path(self.python_exe_path)
 
@@ -133,10 +138,11 @@ class LSPCodeEditor(CodeEditor):
     # ========== 核心修复：稳健同步逻辑 ==========
 
     def _on_document_contents_change(self, position, chars_removed, chars_added):
-        if not self._lsp_ready: return
+        if not self._lsp_ready:
+            return
         self._pending_changes.append((position, chars_removed, chars_added))
-        # 缩短同步时间间隔，提高响应感
-        self._lsp_sync_timer.start(50)
+        # 缩短同步时间间隔，确保补全请求前文档已同步
+        self._lsp_sync_timer.start(5)
 
     def _sync_to_lsp(self):
         """
@@ -144,7 +150,8 @@ class LSPCodeEditor(CodeEditor):
         在存在 CODE_PREFIX 的情况下，手动计算增量偏移极其容易出错（莫名红线的根源）。
         对于普通脚本大小，发送全量文本的开销微乎其微，但能保证服务器与编辑器绝对同步。
         """
-        if not self._lsp_ready: return
+        if not self._lsp_ready:
+            return
 
         full_text = self._get_code_with_prefix()
 
@@ -165,7 +172,8 @@ class LSPCodeEditor(CodeEditor):
     def _on_lsp_initialized(self):
         self._lsp_ready = True
         self.lsp_signal.emit("ready")
-        if self.toPlainText().strip(): self._sync_to_lsp()
+        if self.toPlainText().strip():
+            self._sync_to_lsp()
 
     def _on_text_changed_for_lsp(self):
         pass
@@ -181,30 +189,36 @@ class LSPCodeEditor(CodeEditor):
         return []
 
     def _pos_to_line_col(self, text: str, pos: int) -> tuple[int, int]:
-        if pos <= 0: return (0, 0)
+        if pos <= 0:
+            return (0, 0)
         lines = text.splitlines(keepends=True)
         curr = 0
         for i, l in enumerate(lines):
-            if curr + len(l) >= pos: return (i, pos - curr)
+            if curr + len(l) >= pos:
+                return (i, pos - curr)
             curr += len(l)
         return (len(lines), 0)
 
     def _request_folding(self):
-        if self._lsp_ready: self.lsp_session.request_folding_ranges()
+        if self._lsp_ready:
+            self.lsp_session.request_folding_ranges()
 
     def _on_lsp_folding_ready(self, folding_ranges: List[Dict]):
-        if not hasattr(self, 'folding_panel') or not self.folding_panel: return
+        if not hasattr(self, "folding_panel") or not self.folding_panel:
+            return
         tree = IntervalTree()
         regions = {}
         status = {}
         for fr in folding_ranges:
-            start = fr['startLine'] + 1 - self._prefix_line_count
-            end = fr['endLine'] + 1 - self._prefix_line_count
+            start = fr["startLine"] + 1 - self._prefix_line_count
+            end = fr["endLine"] + 1 - self._prefix_line_count
             if end > start:
                 regions[start] = end
                 status[start] = False
-                tree[start:end + 1] = (start, end)
-        self.folding_panel.update_folding((tree, FoldingRegion(None, None), regions, {}, {}, status))
+                tree[start : end + 1] = (start, end)
+        self.folding_panel.update_folding(
+            (tree, FoldingRegion(None, None), regions, {}, {}, status)
+        )
         self.folding_panel.folding_regions = regions
         self.folding_panel.folding_status = status
 
@@ -213,26 +227,32 @@ class LSPCodeEditor(CodeEditor):
             self.lsp_session.request_formatting()
 
     def format_selection(self):
-        if not self._lsp_ready: return
+        if not self._lsp_ready:
+            return
         cursor = self.textCursor()
         if cursor.hasSelection():
             self.lsp_session.request_range_formatting(
-                self.document().findBlock(cursor.selectionStart()).blockNumber() + self._prefix_line_count, 0,
-                self.document().findBlock(cursor.selectionEnd()).blockNumber() + self._prefix_line_count, 0
+                self.document().findBlock(cursor.selectionStart()).blockNumber()
+                + self._prefix_line_count,
+                0,
+                self.document().findBlock(cursor.selectionEnd()).blockNumber()
+                + self._prefix_line_count,
+                0,
             )
 
     def _apply_formatting_edits(self, text_edits: List[Dict]):
         if not text_edits:
             return
         # 格式化通常返回全文，去除前缀
-        new_text = text_edits[0]['newText']
+        new_text = text_edits[0]["newText"]
         if new_text.startswith(self.CODE_PREFIX):
-            new_text = new_text[self._prefix_char_count:]
+            new_text = new_text[self._prefix_char_count :]
         self.set_text(new_text)
         self.reopen_document()
 
     def reopen_document(self):
-        if not self._lsp_ready: return
+        if not self._lsp_ready:
+            return
         self._lsp_sync_timer.stop()
         self._pending_changes.clear()
         full_code = self._get_code_with_prefix()
@@ -251,8 +271,11 @@ class LSPCodeEditor(CodeEditor):
 
     def _on_hover_response(self, result):
         if result and result.get("contents"):
-            val = result["contents"].get("value", "") \
-                if isinstance(result["contents"], dict) else str(result["contents"])
+            val = (
+                result["contents"].get("value", "")
+                if isinstance(result["contents"], dict)
+                else str(result["contents"])
+            )
             self.handle_hover_response({"params": val})
 
     def go_to_definition_from_cursor(self, cursor=None):
@@ -263,7 +286,9 @@ class LSPCodeEditor(CodeEditor):
         if not cursor.hasSelection():
             cursor.select(QTextCursor.WordUnderCursor)
         if cursor.selectedText():
-            self.lsp_session.request_definition(cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber())
+            self.lsp_session.request_definition(
+                cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber()
+            )
 
     def _on_definition_response(self, result):
         self.handle_go_to_definition({"params": result})
@@ -295,7 +320,7 @@ class LSPCodeEditor(CodeEditor):
         pos = cursor.position()
         text = self.toPlainText()
         start = pos
-        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == '_'):
+        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
             start -= 1
         return text[start:pos]
 
@@ -311,41 +336,43 @@ class LSPCodeEditor(CodeEditor):
 
         # 1. 基础起始位置计算
         start_pos = current_pos
-        while start_pos > 0 and (text[start_pos - 1].isalnum() or text[start_pos - 1] == '_'):
+        while start_pos > 0 and (
+            text[start_pos - 1].isalnum() or text[start_pos - 1] == "_"
+        ):
             start_pos -= 1
 
         # 2. 核心修复：点号守卫
         # 如果光标就在点号后面，强制将 start_pos 设为当前位置
         # 这样替换范围的长度就是 0，不会触碰点号
         is_dot_trigger = False
-        if current_pos > 0 and text[current_pos - 1] == '.':
+        if current_pos > 0 and text[current_pos - 1] == ".":
             start_pos = current_pos
             is_dot_trigger = True
 
         clean_items = []
         for item in completion_items:
-            label = item.get('label', '')
-            kind = item.get('kind', 1)
+            label = item.get("label", "")
+            kind = item.get("kind", 1)
 
             # 获取插入文本
-            insert_text = item.get('insertText', label)
+            insert_text = item.get("insertText", label)
 
             # 3. 如果是点号触发，且 insertText 开头有句点，则去掉它
             # 防止出现 np..array 或替换逻辑误判
-            if is_dot_trigger and insert_text.startswith('.'):
+            if is_dot_trigger and insert_text.startswith("."):
                 insert_text = insert_text[1:]
 
             # 处理括号逻辑
             insert_format = 1
             if kind in (2, 3):  # Method, Function
                 base_text = insert_text
-                if '(' in base_text:
-                    base_text = base_text.split('(')[0]
+                if "(" in base_text:
+                    base_text = base_text.split("(")[0]
 
                 # 检查是否需要参数
                 has_args = False
-                detail = item.get('detail', '')
-                if '(' in detail and '()' not in detail:
+                detail = item.get("detail", "")
+                if "(" in detail and "()" not in detail:
                     has_args = True
 
                 if has_args:
@@ -356,20 +383,20 @@ class LSPCodeEditor(CodeEditor):
 
             # 构造 Spyder 格式
             item_data = {
-                'label': label,
-                'insertText': insert_text,
-                'insertTextFormat': insert_format,
-                'filterText': item.get('filterText', label),
-                'sortText': item.get('sortText', label),
-                'kind': kind,
-                'documentation': item.get('documentation', ''),
-                'detail': item.get('detail', ''),
-                'point': start_pos,  # 统一使用修正后的锚点
-                'resolve': True
+                "label": label,
+                "insertText": insert_text,
+                "insertTextFormat": insert_format,
+                "filterText": item.get("filterText", label),
+                "sortText": item.get("sortText", label),
+                "kind": kind,
+                "documentation": item.get("documentation", ""),
+                "detail": item.get("detail", ""),
+                "point": start_pos,  # 统一使用修正后的锚点
+                "resolve": True,
             }
 
-            if 'data' in item:
-                item_data['data'] = item['data']
+            if "data" in item:
+                item_data["data"] = item["data"]
 
             clean_items.append(item_data)
 
@@ -389,48 +416,69 @@ class LSPCodeEditor(CodeEditor):
     def resolve_completion_item(self, item):
         self.lsp_session.request_completion_resolve(
             {
-                k: v for k, v in item.items()
-                if k in {'label', 'kind', 'detail', 'documentation', 'insertText',
-                         'filterText', 'textEdit', 'additionalTextEdits', 'command',
-                         'data', 'tags', 'insertTextFormat', 'commitCharacters',
-                         'preselect'}
+                k: v
+                for k, v in item.items()
+                if k
+                in {
+                    "label",
+                    "kind",
+                    "detail",
+                    "documentation",
+                    "insertText",
+                    "filterText",
+                    "textEdit",
+                    "additionalTextEdits",
+                    "command",
+                    "data",
+                    "tags",
+                    "insertTextFormat",
+                    "commitCharacters",
+                    "preselect",
+                }
             }
         )
 
     def _on_completion_resolved(self, resolved_item):
         cw = self.completion_widget
-        if cw.isVisible() and getattr(cw, 'current_selected_item_label', '') == resolved_item.get('label'):
-            doc = resolved_item.get('documentation', '')
-            resolved_item['documentation'] = doc.get('value', '') if isinstance(doc, dict) else doc
+        if cw.isVisible() and getattr(
+            cw, "current_selected_item_label", ""
+        ) == resolved_item.get("label"):
+            doc = resolved_item.get("documentation", "")
+            resolved_item["documentation"] = (
+                doc.get("value", "") if isinstance(doc, dict) else doc
+            )
             cw.augment_completion_info(resolved_item)
 
     def _on_signature_help_response(self, result):
-        if not result or not result.get('signatures'): return
-        active_sig = result.get('activeSignature', 0)
-        sig = result['signatures'][active_sig if active_sig < len(result['signatures']) else 0]
-        doc = sig.get('documentation', '')
+        if not result or not result.get("signatures"):
+            return
+        active_sig = result.get("activeSignature", 0)
+        sig = result["signatures"][
+            active_sig if active_sig < len(result["signatures"]) else 0
+        ]
+        doc = sig.get("documentation", "")
         self.process_signatures(
             {
-                "params":
-                    {
-                        "signatures":
-                            {
-                                "label": sig['label'],
-                                "documentation": doc.get('value', '') if isinstance(doc, dict) else doc,
-                                "parameters": sig.get('parameters', [])
-                            },
-                        "activeParameter": result.get('activeParameter', 0)
-                    }
+                "params": {
+                    "signatures": {
+                        "label": sig["label"],
+                        "documentation": doc.get("value", "")
+                        if isinstance(doc, dict)
+                        else doc,
+                        "parameters": sig.get("parameters", []),
+                    },
+                    "activeParameter": result.get("activeParameter", 0),
+                }
             }
         )
 
     def _on_lsp_diagnostics_ready(self, diagnostics: List[Dict]):
-        self.clear_extra_selections('lsp_underline')
+        self.clear_extra_selections("lsp_underline")
         block = self.document().firstBlock()
         while block.isValid():
             data = block.userData()
-            if data and hasattr(data, 'code_analysis'):
-                data.code_analysis = [x for x in data.code_analysis if x[0] != 'lsp']
+            if data and hasattr(data, "code_analysis"):
+                data.code_analysis = [x for x in data.code_analysis if x[0] != "lsp"]
                 if not data.code_analysis:
                     data.color = None
             block = block.next()
@@ -438,26 +486,30 @@ class LSPCodeEditor(CodeEditor):
         has_error = False
         for diag in diagnostics:
             try:
-                line = diag['range']['start']['line'] - self._prefix_line_count
-                if line < 0: continue  # 过滤前缀部分的错误
+                line = diag["range"]["start"]["line"] - self._prefix_line_count
+                if line < 0:
+                    continue  # 过滤前缀部分的错误
 
-                severity = diag.get('severity', 1)
-                message = diag.get('message', '').strip()
-                if not message: continue
+                severity = diag.get("severity", 1)
+                message = diag.get("message", "").strip()
+                if not message:
+                    continue
 
                 block = self.document().findBlockByNumber(line)
-                if not block.isValid(): continue
+                if not block.isValid():
+                    continue
 
                 data = block.userData()
-                if not data: data = BlockUserData(self)
+                if not data:
+                    data = BlockUserData(self)
                 block.setUserData(data)
 
-                data.code_analysis.append(('lsp', '', severity, message))
+                data.code_analysis.append(("lsp", "", severity, message))
                 data.color = self.error_color if severity == 1 else self.warning_color
                 has_error = True
 
-                start_char = diag['range']['start']['character']
-                end_char = diag['range']['end']['character']
+                start_char = diag["range"]["start"]["character"]
+                end_char = diag["range"]["end"]["character"]
                 start_pos = block.position() + start_char
                 end_pos = block.position() + end_char
 
@@ -465,25 +517,25 @@ class LSPCodeEditor(CodeEditor):
                 cursor.setPosition(start_pos)
                 cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
                 self.highlight_selection(
-                    'lsp_underline',
+                    "lsp_underline",
                     cursor,
                     underline_color=QColor(data.color),
-                    underline_style=QTextCharFormat.WaveUnderline
+                    underline_style=QTextCharFormat.WaveUnderline,
                 )
             except Exception as e:
                 logger.error(f"[LSP] Diagnostic Error: {e}")
 
         if has_error:
             self.sig_flags_changed.emit()
-            if hasattr(self, 'linenumberarea'):
+            if hasattr(self, "linenumberarea"):
                 self.linenumberarea.update()
 
     def _smart_newline(self):
         cursor = self.textCursor()
         line = cursor.block().text()
-        indent = ' ' * (len(line) - len(line.lstrip()))
+        indent = " " * (len(line) - len(line.lstrip()))
         cursor.movePosition(QTextCursor.EndOfLine)
-        cursor.insertText('\n' + indent)
+        cursor.insertText("\n" + indent)
         self.setTextCursor(cursor)
 
     def _toggle_comment(self):
@@ -496,32 +548,37 @@ class LSPCodeEditor(CodeEditor):
         c.setPosition(cursor.selectionEnd())
         c.movePosition(QTextCursor.EndOfLine)
         c.setPosition(start_pos, QTextCursor.KeepAnchor)
-        lines = c.selectedText().split('\u2029')
-        all_commented = all(not t.strip() or t.strip().startswith('#') for t in lines)
+        lines = c.selectedText().split("\u2029")
+        all_commented = all(not t.strip() or t.strip().startswith("#") for t in lines)
         new_lines = []
         for t in lines:
             if all_commented:
-                new_lines.append(re.sub(r'^(\s*)#\s?', r'\1', t))
+                new_lines.append(re.sub(r"^(\s*)#\s?", r"\1", t))
             else:
-                pattern = r'^(\s*)'
+                pattern = r"^(\s*)"
                 new_lines.append(
                     f"{re.match(pattern, t).group(1)}# {t.lstrip()}"
                 ) if t.strip() else new_lines.append(t)
         cursor.beginEditBlock()
-        c.insertText('\n'.join(new_lines))
+        c.insertText("\n".join(new_lines))
         cursor.endEditBlock()
 
     def _copy_with_folding(self):
         cursor = self.textCursor()
         if not cursor.hasSelection():
             line = cursor.blockNumber() + 1
-            if getattr(self, 'folding_panel', None) and self.folding_panel.folding_status.get(line):
+            if getattr(
+                self, "folding_panel", None
+            ) and self.folding_panel.folding_status.get(line):
                 end_line = self.folding_panel.folding_regions[line]
                 c = QTextCursor(self.document())
                 c.setPosition(self.document().findBlockByNumber(line - 1).position())
                 c.setPosition(
-                    self.document().findBlockByNumber(end_line - 1).position() + self.document().findBlockByNumber(
-                        end_line - 1).length() - 1, QTextCursor.KeepAnchor)
+                    self.document().findBlockByNumber(end_line - 1).position()
+                    + self.document().findBlockByNumber(end_line - 1).length()
+                    - 1,
+                    QTextCursor.KeepAnchor,
+                )
                 QApplication.clipboard().setText(c.selectedText())
                 return
         super().copy()
@@ -566,17 +623,18 @@ class LSPCodeEditor(CodeEditor):
         # 逻辑：如果光标左侧紧挨着 '(' 或者 ','，就说明可能需要签名提示
         if pos > 0:
             prev_char = text[pos - 1]
-            if prev_char in ('(', ','):
+            if prev_char in ("(", ","):
                 # 使用定时器防抖，避免光标快速移动时频繁请求
                 self._signature_timer.start(100)
 
     def keyPressEvent(self, event):
         key = event.key()
         txt = event.text()
+        old_text = self.toPlainText()
         # 在字符已经进入文档后，再判断
         if self._lsp_ready:
             # 如果刚才输入的是左括号或逗号
-            if txt in ('(', ','):
+            if txt in ("(", ","):
                 self._signature_timer.start(50)
             # 或者是回车（有时在函数参数里换行也需要提示）
             elif key in (Qt.Key_Return, Qt.Key_Enter):
@@ -588,22 +646,36 @@ class LSPCodeEditor(CodeEditor):
             cursor_pos = cursor.positionInBlock()
             line_before_cursor = text[:cursor_pos]
             line_after_cursor = text[cursor_pos:]
-            open_count = line_before_cursor.count('[') + line_before_cursor.count('(') + line_before_cursor.count('{')
-            close_count = line_before_cursor.count(']') + line_before_cursor.count(')') + line_before_cursor.count('}')
+            open_count = (
+                line_before_cursor.count("[")
+                + line_before_cursor.count("(")
+                + line_before_cursor.count("{")
+            )
+            close_count = (
+                line_before_cursor.count("]")
+                + line_before_cursor.count(")")
+                + line_before_cursor.count("}")
+            )
             if open_count > close_count:
                 leading_spaces = len(text) - len(text.lstrip())
-                new_indent = ' ' * (leading_spaces + 4)
-                cursor.insertText('\n' + new_indent)
-                if line_after_cursor.strip().startswith(']') or line_after_cursor.strip().startswith(
-                        ')') or line_after_cursor.strip().startswith('}'):
-                    cursor.insertText('\n' + ' ' * leading_spaces)
+                new_indent = " " * (leading_spaces + 4)
+                cursor.insertText("\n" + new_indent)
+                if (
+                    line_after_cursor.strip().startswith("]")
+                    or line_after_cursor.strip().startswith(")")
+                    or line_after_cursor.strip().startswith("}")
+                ):
+                    cursor.insertText("\n" + " " * leading_spaces)
                     cursor.movePosition(QTextCursor.PreviousBlock)
                     cursor.movePosition(QTextCursor.EndOfBlock)
                     self.setTextCursor(cursor)
                 event.accept()
                 return
 
-        if event.modifiers() == Qt.ShiftModifier and key in (Qt.Key_Return, Qt.Key_Enter):
+        if event.modifiers() == Qt.ShiftModifier and key in (
+            Qt.Key_Return,
+            Qt.Key_Enter,
+        ):
             self._smart_newline()
             return
         elif event.modifiers() == Qt.ControlModifier and key == Qt.Key_Slash:
@@ -613,16 +685,42 @@ class LSPCodeEditor(CodeEditor):
             self.format_document()
             return
 
-        if txt and self._lsp_ready: self._hover_timer.start(300)
+        if txt and self._lsp_ready:
+            self._hover_timer.start(300)
 
         super().keyPressEvent(event)
+
+        # 补全触发逻辑 (在字符输入之后)
+        if self._lsp_ready:
+            text = event.text()
+            should_trigger = False
+            if text == ".":
+                should_trigger = True
+            elif text == " " and old_text.endswith("import "):
+                should_trigger = True
+            elif text == " " and old_text.endswith("from "):
+                should_trigger = True
+            elif text == " " and (
+                old_text.endswith("def ") or old_text.endswith("class ")
+            ):
+                should_trigger = True
+            elif text.isalnum() or text == "_":
+                prefix = self._get_completion_prefix()
+                if len(prefix) >= 1:
+                    should_trigger = True
+
+            if should_trigger:
+                # 先强制同步文档，确保 LSP 知道最新内容
+                self._lsp_sync_timer.stop()
+                self._sync_to_lsp()
+                self._completion_timer.start(10)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_button_position()
 
     def _update_button_position(self):
-        if hasattr(self, 'fullscreen_button'):
+        if hasattr(self, "fullscreen_button"):
             self.fullscreen_button.move(self.width() - 58, 6)
 
 

@@ -32,14 +32,17 @@ class LspClientManager(QThread):
     initialized = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, python_path: Optional[str] = None, parent: Optional[QObject] = None):
+    def __init__(
+        self, python_path: Optional[str] = None, parent: Optional[QObject] = None
+    ):
         super().__init__(parent)
         self.python_path = str(python_path) if python_path else "python"
-        # 自动获取当前工作目录作为根目录，或者传入实际路径
+        # 自动获取当前工作目录作为根目录
         self.project_root = str(Path(__file__).parent.parent.parent.parent)
         self.process: Optional[QProcess] = None
         self.version = 0
-        self.uri = "file:///tmp/editor.py"
+        # 使用项目根目录作为文档URI
+        self.uri = f"file:///{self.project_root.replace(chr(92), '/')}/editor.py"
 
         self._running = False
         self._msg_id = 1
@@ -63,6 +66,7 @@ class LspClientManager(QThread):
     def _get_hidden_window_environment(self):
         """获取隐藏窗口的环境变量（Windows）"""
         from PyQt5.QtCore import QProcessEnvironment
+
         env = QProcessEnvironment.systemEnvironment()
         # 在Windows下，设置一些环境变量来减少窗口显示
         return env
@@ -76,7 +80,9 @@ class LspClientManager(QThread):
             # Windows 极限优化：隐藏窗口 + 高优先级进程类
             if platform.system() == "Windows":
                 # 在Windows下隐藏窗口
-                self.process.setProcessEnvironment(self._get_hidden_window_environment())
+                self.process.setProcessEnvironment(
+                    self._get_hidden_window_environment()
+                )
 
             # 绑定异步读取信号 (Qt 信号槽比 Python 轮询线程快且稳定)
             self.process.readyReadStandardOutput.connect(self._on_stdout_ready)
@@ -106,47 +112,66 @@ class LspClientManager(QThread):
 
     def _send_initialize(self):
         """极致配置：开启增量同步和 Jedi 高速模式"""
-        self._send_message("initialize", {
-            "processId": os.getpid(),
-            "rootUri": "file:///tmp",
-            "initializationOptions": {
-                "pylsp": {
-                    "plugins": {
-                        "jedi": {
-                            "environment": self.python_path,
-                            "extra_paths": [self.project_root],
-                            "fast_parser": True,
-                        },
-                        "jedi_completion": {
-                            "enabled": True, "fuzzy": True,
-                            "cache_for": ["numpy", "pandas", "sklearn", "matplotlib"]  # 对大型库开启缓存
-                        },
-                        "jedi_definition": {"enabled": True, "follow_imports": True},
-                        "pyflakes": {"enabled": True},
-                        "pycodestyle": {"enabled": False},
-                        "mccabe": {"enabled": False},
-                        "preload": {"enabled": True}
-                    }
-                }
-            },
-            "capabilities": {
-                "textDocument": {
-                    "synchronization": {
-                        "dynamicRegistration": False,
-                        "change": 1,  # 增量更新 (Incremental)
-                        "didSave": True
-                    },
-                    "completion": {
-                        "completionItem": {
-                            "snippetSupport": True,
-                            "resolveSupport": {"properties": ["documentation", "detail"]}
+        self._send_message(
+            "initialize",
+            {
+                "processId": os.getpid(),
+                "rootUri": f"file:///{self.project_root.replace(chr(92), '/')}",
+                "initializationOptions": {
+                    "pylsp": {
+                        "plugins": {
+                            "jedi": {
+                                "environment": self.python_path,
+                                "extra_paths": [self.project_root],
+                                "fast_parser": True,
+                            },
+                            "jedi_completion": {
+                                "enabled": True,
+                                "fuzzy": True,
+                                "cache_for": [
+                                    "numpy",
+                                    "pandas",
+                                    "sklearn",
+                                    "matplotlib",
+                                ],  # 对大型库开启缓存
+                            },
+                            "jedi_definition": {
+                                "enabled": True,
+                                "follow_imports": True,
+                            },
+                            "pyflakes": {"enabled": True},
+                            "pycodestyle": {"enabled": False},
+                            "mccabe": {"enabled": False},
+                            "preload": {"enabled": True},
                         }
-                    },
-                    "hover": {"contentFormat": ["plaintext"]},
-                    "signatureHelp": {"signatureInformation": {"documentationFormat": ["plaintext"]}}
-                }
-            }
-        }, priority=0)
+                    }
+                },
+                "capabilities": {
+                    "textDocument": {
+                        "synchronization": {
+                            "dynamicRegistration": False,
+                            "change": 1,  # 增量更新 (Incremental)
+                            "didSave": True,
+                        },
+                        "completion": {
+                            "completionItem": {
+                                "snippetSupport": True,
+                                "resolveSupport": {
+                                    "properties": ["documentation", "detail"]
+                                },
+                            }
+                        },
+                        "hover": {"contentFormat": ["plaintext"]},
+                        "signatureHelp": {
+                            "signatureInformation": {
+                                "documentationFormat": ["plaintext"]
+                            }
+                        },
+                    }
+                },
+            },
+            priority=0,
+        )
 
     def _on_stdout_ready(self):
         """极限解析：修复 AttributeError 并实现高效切片"""
@@ -162,9 +187,9 @@ class LspClientManager(QThread):
 
                 # 修正此处：使用 .data() 获取 bytes 对象
                 header_bytes = self._buffer.left(header_end).data()
-                header_text = header_bytes.decode('ascii', errors='ignore')
+                header_text = header_bytes.decode("ascii", errors="ignore")
 
-                for line in header_text.split('\r\n'):
+                for line in header_text.split("\r\n"):
                     if line.lower().startswith("content-length:"):
                         try:
                             self._content_length = int(line.split(":")[1].strip())
@@ -176,7 +201,10 @@ class LspClientManager(QThread):
                 self._buffer.remove(0, header_end + 4)
 
             # 检查缓冲区是否已包含完整的 Body
-            if self._content_length != -1 and self._buffer.size() >= self._content_length:
+            if (
+                self._content_length != -1
+                and self._buffer.size() >= self._content_length
+            ):
                 body = self._buffer.left(self._content_length).data()
                 self._buffer.remove(0, self._content_length)
 
@@ -196,18 +224,22 @@ class LspClientManager(QThread):
 
     def _dispatch_message(self, msg: Dict):
         """异步消息分发"""
-        if 'id' in msg:
-            msg_id = msg['id']
+        if "id" in msg:
+            msg_id = msg["id"]
             method = self._pending_requests.pop(msg_id, None)
 
             if method == "initialize":
                 self._send_message("initialized", {}, is_notification=True)
                 self.initialized.emit()
 
-            result = msg.get('result')
+            result = msg.get("result")
             # 极限响应分发
             if method == "textDocument/completion":
-                items = result.get('items', []) if isinstance(result, dict) else (result or [])
+                items = (
+                    result.get("items", [])
+                    if isinstance(result, dict)
+                    else (result or [])
+                )
                 self.completion_ready.emit(items)
             elif method == "textDocument/hover":
                 self.hover_ready.emit(result or {})
@@ -227,9 +259,9 @@ class LspClientManager(QThread):
                 self.references_ready.emit(result or [])
 
             self._response_map[msg_id] = msg
-        elif 'method' in msg:
-            if msg['method'] == 'textDocument/publishDiagnostics':
-                self.diagnostics_ready.emit(msg['params'].get('diagnostics', []))
+        elif "method" in msg:
+            if msg["method"] == "textDocument/publishDiagnostics":
+                self.diagnostics_ready.emit(msg["params"].get("diagnostics", []))
 
     def _consume_queue(self):
         """高优先级写循环：物理层级的异步非阻塞写入"""
@@ -238,7 +270,13 @@ class LspClientManager(QThread):
             if self.process and self.process.state() == QProcess.Running:
                 self.process.write(payload)
 
-    def _send_message(self, method: str, params: dict, is_notification: bool = False, priority: int = 10):
+    def _send_message(
+        self,
+        method: str,
+        params: dict,
+        is_notification: bool = False,
+        priority: int = 10,
+    ):
         """插队逻辑：新的补全请求会触发旧补全请求的取消指令"""
         msg = {"jsonrpc": "2.0", "method": method, "params": params}
 
@@ -247,7 +285,11 @@ class LspClientManager(QThread):
             if method in ("textDocument/completion", "textDocument/hover"):
                 for rid, rmeth in list(self._pending_requests.items()):
                     if rmeth == method:
-                        cancel_req = {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": rid}}
+                        cancel_req = {
+                            "jsonrpc": "2.0",
+                            "method": "$/cancelRequest",
+                            "params": {"id": rid},
+                        }
                         self._put_in_queue(cancel_req, priority=0)  # 最高优先级取消
                         self._pending_requests.pop(rid, None)
 
@@ -265,9 +307,9 @@ class LspClientManager(QThread):
         """极致序列化"""
         body = fast_json.dumps(msg)
         if not isinstance(body, bytes):
-            body = body.encode('utf-8')
+            body = body.encode("utf-8")
 
-        header = f"Content-Length: {len(body)}\r\n\r\n".encode('ascii')
+        header = f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
         self._send_queue.put((priority, time.time(), header + body))
 
     # --- 外部接口逻辑优化 (堪比 PyCharm 的防抖) ---
@@ -280,71 +322,132 @@ class LspClientManager(QThread):
         self._debounce_timer = QTimer()
         self._debounce_timer.setSingleShot(True)
         self._debounce_timer.timeout.connect(
-            lambda: self._send_message("textDocument/completion", {
-                "textDocument": {"uri": self.uri},
-                "position": {"line": line, "character": col},
-                "context": {"triggerKind": 1}
-            }, priority=10)
+            lambda: self._send_message(
+                "textDocument/completion",
+                {
+                    "textDocument": {"uri": self.uri},
+                    "position": {"line": line, "character": col},
+                    "context": {"triggerKind": 1},
+                },
+                priority=10,
+            )
         )
         self._debounce_timer.start(25)
 
     def change_document_full(self, text: str):
         """新增全量同步接口"""
         self.version += 1
-        self._send_message("textDocument/didChange", {
-            "textDocument": {"uri": self.uri, "version": self.version},
-            "contentChanges": [{"text": text}]  # 全量只传一个字典，不传 range
-        }, is_notification=True)
+        self._send_message(
+            "textDocument/didChange",
+            {
+                "textDocument": {"uri": self.uri, "version": self.version},
+                "contentChanges": [{"text": text}],  # 全量只传一个字典，不传 range
+            },
+            is_notification=True,
+        )
 
     def change_document_delta(self, changes: List[Dict]):
         self.version += 1
-        self._send_message("textDocument/didChange", {
-            "textDocument": {"uri": self.uri, "version": self.version},
-            "contentChanges": changes
-        }, is_notification=True)
+        self._send_message(
+            "textDocument/didChange",
+            {
+                "textDocument": {"uri": self.uri, "version": self.version},
+                "contentChanges": changes,
+            },
+            is_notification=True,
+        )
 
     def open_document(self, text: str):
         self.version = 1
-        self._send_message("textDocument/didOpen", {
-            "textDocument": {"uri": self.uri, "languageId": "python", "version": self.version, "text": text}
-        }, is_notification=True)
+        self._send_message(
+            "textDocument/didOpen",
+            {
+                "textDocument": {
+                    "uri": self.uri,
+                    "languageId": "python",
+                    "version": self.version,
+                    "text": text,
+                }
+            },
+            is_notification=True,
+        )
 
     def close_document(self):
         self._send_message(
-            "textDocument/didClose", {"textDocument": {"uri": self.uri}}, is_notification=True
+            "textDocument/didClose",
+            {"textDocument": {"uri": self.uri}},
+            is_notification=True,
         )
 
     def request_completion_resolve(self, item: dict):
-        keys = {'label', 'kind', 'detail', 'documentation', 'insertText', 'filterText', 'textEdit',
-                'additionalTextEdits', 'command', 'data', 'tags', 'insertTextFormat', 'commitCharacters', 'preselect'}
-        self._send_message("completionItem/resolve", {k: v for k, v in item.items() if k in keys})
+        keys = {
+            "label",
+            "kind",
+            "detail",
+            "documentation",
+            "insertText",
+            "filterText",
+            "textEdit",
+            "additionalTextEdits",
+            "command",
+            "data",
+            "tags",
+            "insertTextFormat",
+            "commitCharacters",
+            "preselect",
+        }
+        self._send_message(
+            "completionItem/resolve", {k: v for k, v in item.items() if k in keys}
+        )
 
     def request_signature_help(self, line: int, col: int):
-        self._send_message("textDocument/signatureHelp", {
-            "textDocument": {"uri": self.uri}, "position": {"line": line, "character": col}
-        })
+        self._send_message(
+            "textDocument/signatureHelp",
+            {
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+            },
+        )
 
     def request_hover(self, line: int, col: int):
-        self._send_message("textDocument/hover", {
-            "textDocument": {"uri": self.uri}, "position": {"line": line, "character": col}
-        })
+        self._send_message(
+            "textDocument/hover",
+            {
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+            },
+        )
 
     def request_definition(self, line: int, col: int):
-        self._send_message("textDocument/definition", {
-            "textDocument": {"uri": self.uri}, "position": {"line": line, "character": col}
-        })
+        self._send_message(
+            "textDocument/definition",
+            {
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+            },
+        )
 
     def request_folding_ranges(self):
-        self._send_message("textDocument/foldingRange", {"textDocument": {"uri": self.uri}})
+        self._send_message(
+            "textDocument/foldingRange", {"textDocument": {"uri": self.uri}}
+        )
 
     def request_formatting(self):
-        self._send_message("textDocument/formatting", {
-            "textDocument": {"uri": self.uri}, "options": {"tabSize": 4, "insertSpaces": True}
-        })
+        self._send_message(
+            "textDocument/formatting",
+            {
+                "textDocument": {"uri": self.uri},
+                "options": {"tabSize": 4, "insertSpaces": True},
+            },
+        )
 
     def _on_stderr_ready(self):
         try:
-            err = self.process.readAllStandardError().data().decode('utf-8', errors='ignore')
+            err = (
+                self.process.readAllStandardError()
+                .data()
+                .decode("utf-8", errors="ignore")
+            )
             if err.strip():
                 logger.debug(f"[LSP Stderr] {err.strip()}")
         except:
@@ -358,10 +461,13 @@ class LspClientManager(QThread):
         return self.process and self.process.state() == QProcess.Running
 
     def shutdown(self):
-        if not self._running: return
+        if not self._running:
+            return
         self._running = False
         self._send_message("shutdown", {}, priority=0)
-        QTimer.singleShot(100, lambda: self._send_message("exit", {}, is_notification=True))
+        QTimer.singleShot(
+            100, lambda: self._send_message("exit", {}, is_notification=True)
+        )
         QTimer.singleShot(500, self._terminate_process)
 
     def _terminate_process(self):
