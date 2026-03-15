@@ -124,12 +124,14 @@ class WebhookManager(BaseTriggerManager):
                         self.dynamic_callbacks[task_id] = dynamic_url
                         logger.info(f"[Webhook] 捕获动态回调地址 Task[{task_id}]: {dynamic_url}")
                     # 注入请求元数据
-                    data.update({
+                    data = {
+                        "request_data": data,
                         "request_method": request.method,
                         "request_headers": dict(request.headers),
                         "request_ip": request.client.host,
                         "_webhook_task_id": task_id  # 传递 task_id 以便后续追踪
-                    })
+                    }
+                    print(data)
                 except Exception as e:
                     logger.warning(f"解析 Webhook 数据失败: {e}")
 
