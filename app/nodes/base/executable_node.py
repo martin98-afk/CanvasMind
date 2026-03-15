@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable
 
@@ -232,8 +233,6 @@ class ExecutableNodeMixin:
             return result
         finally:
             self.stop_zmq()
-            import shutil
-
             try:
                 shutil.rmtree(ctx.run_dir, ignore_errors=True)
             except:

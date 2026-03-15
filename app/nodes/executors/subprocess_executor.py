@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
 import platform
+import shutil
 import subprocess
 import time
 from pathlib import Path
 
 from app.nodes.executors.base import BaseExecutor
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
-from app.utils.utils import kill_proc_tree
+from app.utils.utils import kill_proc_tree, resource_path
 
 
 class SubprocessExecutor(BaseExecutor):
@@ -17,12 +18,7 @@ class SubprocessExecutor(BaseExecutor):
         return ctx.env_data.get("type") != "ssh"
 
     def prepare_environment(self, ctx) -> None:
-        import shutil
-
         super().prepare_environment(ctx)
-
-        from app.components.base import resource_path
-
         shutil.copyfile(
             resource_path("app/components/base.py"), str(ctx.run_dir.parent / "base.py")
         )
