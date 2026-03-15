@@ -36,29 +36,29 @@ class TaskSessionState:
     recent_events: List[TaskEvent] = field(default_factory=list)
     prompts = {
         "discover": "## Active Stage: Discover\n"
-                    "Goal: Understand project structure, constraints, and relevant context.\n"
-                    "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
-                    "→ When context is sufficient, respond with [STAGE: plan] to transition.",
+        "Goal: Understand project structure, constraints, and relevant context.\n"
+        "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
+        "→ When context is sufficient, use switch_stage tool to transition to plan.",
         "plan": "## Active Stage: Plan\n"
-                "Goal: Produce implementation path with files, risks, validation steps.\n"
-                "Expected tools: Write a concrete plan using todo tool or analysis.\n"
-                "→ When plan is solid, respond with [STAGE: edit] to transition.",
+        "Goal: Produce implementation path with files, risks, validation steps.\n"
+        "Expected tools: Write a concrete plan using todo tool or analysis.\n"
+        "→ When plan is solid, use switch_stage tool to transition to edit.",
         "edit": "## Active Stage: Edit\n"
-                "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
-                "Expected tools: write, edit.\n"
-                "→ When changes are complete, respond with [STAGE: verify] to transition.",
+        "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
+        "Expected tools: write, edit.\n"
+        "→ When changes are complete, use switch_stage tool to transition to verify.",
         "verify": "## Active Stage: Verify\n"
-                  "Goal: Run validation commands, explain failures concretely.\n"
-                  "Expected tools: Bash (pytest, test, compile, lint).\n"
-                  "→ When verification passes, respond with [STAGE: review] to transition.",
+        "Goal: Run validation commands, explain failures concretely.\n"
+        "Expected tools: Bash (pytest, test, compile, lint).\n"
+        "→ When verification passes, use switch_stage tool to transition to review.",
         "review": "## Active Stage: Review\n"
-                  "Goal: Check for regressions, missing tests, weak assumptions.\n"
-                  "Expected tools: Read, Grep for inspection.\n"
-                  "→ When review is done, respond with [STAGE: summarize] to transition.",
+        "Goal: Check for regressions, missing tests, weak assumptions.\n"
+        "Expected tools: Read, Grep for inspection.\n"
+        "→ When review is done, use switch_stage tool to transition to summarize.",
         "summarize": "## Active Stage: Summarize\n"
-                     "Goal: Compress work into concise handoff for next step.\n"
-                     "Expected tools: Final summary output.\n"
-                     "→ Task complete.",
+        "Goal: Compress work into concise handoff for next step.\n"
+        "Expected tools: Final summary output.\n"
+        "→ Task complete.",
     }
 
     def set_goal(self, goal: str):
@@ -165,7 +165,9 @@ class TaskSessionState:
 
     def build_context_block(self) -> str:
         lines = ["## Current Coding Task State"]
-        lines.append(f"you should follow the stage steps: discover -> plan -> edit -> verify -> review -> summarize to complete the task.")
+        lines.append(
+            f"you should follow the stage steps: discover -> plan -> edit -> verify -> review -> summarize to complete the task."
+        )
         lines.append(f"- Agent: {self.current_agent or 'unknown'}")
         lines.append(f"- Stage: {self.stage}")
         lines.append(f"- Stage goal: {self.prompts.get(self.stage, 'unknown')}")
@@ -197,7 +199,7 @@ class TaskSessionState:
         lines = [
             "## Current Execution Time",
             f"- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            "## Recent Execution Digest"
+            "## Recent Execution Digest",
         ]
         for event in self.recent_events[-8:]:
             lines.append(f"- {event.timestamp} [{event.kind}] {event.payload}")

@@ -61,6 +61,7 @@ class BuiltinTools:
         self._loaded_skills: Dict[str, str] = {}
         self._skill_workspaces: Dict[str, str] = {}
         self._sub_agent_manager = None
+        self._set_stage_callback = None
 
         logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
 
@@ -902,6 +903,25 @@ class BuiltinTools:
         except Exception as e:
             return ToolResult(False, error=f"stage_files error: {str(e)}")
 
+    def switch_stage(self, stage: str) -> ToolResult:
+        """切换当前任务的 stage。"""
+        valid_stages = ["discover", "plan", "edit", "verify", "review", "summarize"]
+        stage = (stage or "").lower().strip()
+        if stage not in valid_stages:
+            return ToolResult(
+                False,
+                error=f"Invalid stage: {stage}. Valid stages: {', '.join(valid_stages)}",
+            )
+
+        if self._set_stage_callback:
+            try:
+                self._set_stage_callback(stage)
+                return ToolResult(True, content=f"Stage switched to: {stage}")
+            except Exception as e:
+                return ToolResult(False, error=f"Failed to switch stage: {str(e)}")
+        else:
+            return ToolResult(False, error="Stage callback not configured")
+
     def run_verify(self, command: str = "", timeout: int = 120) -> ToolResult:
         """运行验证命令，默认尝试项目测试。"""
         try:
@@ -1295,6 +1315,31 @@ def get_builtin_tools_schema() -> List[Dict]:
                         },
                     },
                     "required": ["files"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "switch_stage",
+                "description": "切换当前任务的阶段(stage)。可选阶段: discover(探索) -> plan(计划) -> edit(编辑) -> verify(验证) -> review(审查) -> summarize(总结)",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "stage": {
+                            "type": "string",
+                            "description": "目标阶段名称",
+                            "enum": [
+                                "discover",
+                                "plan",
+                                "edit",
+                                "verify",
+                                "review",
+                                "summarize",
+                            ],
+                        },
+                    },
+                    "required": ["stage"],
                 },
             },
         },
