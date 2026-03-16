@@ -16,9 +16,28 @@ class TaskTools:
         self._sub_agent_manager = None
         self._set_stage_callback = None
 
+    def _normalize_todos(self, todos: List[Dict]) -> List[Dict]:
+        normalized: List[Dict] = []
+        for item in todos or []:
+            if not isinstance(item, dict):
+                continue
+            # Normalize keys and values to match UI expectations.
+            lower_item = {str(k).lower(): v for k, v in item.items()}
+            status = str(lower_item.get("status", "")).lower()
+            priority = str(lower_item.get("priority", "medium")).lower()
+            normalized.append(
+                {
+                    "id": lower_item.get("id"),
+                    "content": lower_item.get("content", ""),
+                    "status": status or "pending",
+                    "priority": priority or "medium",
+                }
+            )
+        return normalized
+
     def todo_write(self, todos: List[Dict]) -> ToolResult:
         try:
-            self._todo_list = todos
+            self._todo_list = self._normalize_todos(todos)
             return ToolResult(True, content=f"Todo list updated: {len(todos)} items")
         except Exception as e:
             return ToolResult(False, error=f"Todo write error: {str(e)}")

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
+import platform
 
 from app.utils.utils import resource_path
 
@@ -15,8 +16,10 @@ def enable_dpi_scale():
 
 
 def enable_opengl():
-    QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
-    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+    # macOS 下禁用部分 OpenGL 相关属性，避免输入法异常
+    if platform.system() != "Darwin":
+        QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
+        QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
 
 
 def create_application():
@@ -24,7 +27,9 @@ def create_application():
     enable_dpi_scale()
     enable_opengl()
     # 创建应用
-    sys.argv.append("--no-sandbox")
+    # QtWebEngine 在 macOS 下通常不需要 --no-sandbox
+    if platform.system() != "Darwin":
+        sys.argv.append("--no-sandbox")
 
     app = QApplication(sys.argv)
     # 启用fusion样式

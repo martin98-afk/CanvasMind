@@ -68,6 +68,10 @@ class BuiltinTools:
         return self._task_tools
 
     @property
+    def todo_list(self):
+        return self._task_tools._todo_list
+
+    @property
     def canvas_tools(self):
         return self._canvas_tools
 
@@ -122,10 +126,13 @@ class BuiltinTools:
         return self._web_tools.search_web(query, num_results)
 
     def todo_write(self, todos: List[Dict]):
-        return self._task_tools.todo_write(todos)
+        result = self._task_tools.todo_write(todos)
+        self._todo_list = list(self._task_tools._todo_list)
+        return result
 
     def todo_clear(self):
-        return self._task_tools.todo_clear()
+        self._task_tools.todo_clear()
+        self._todo_list = []
 
     def todo_read(self):
         return self._task_tools.todo_read()

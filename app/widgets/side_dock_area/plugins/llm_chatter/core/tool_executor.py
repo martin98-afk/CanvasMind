@@ -71,7 +71,7 @@ class ToolExecutor:
     def todo_list(self):
         """获取待办事项列表"""
         if self._builtin_tools:
-            return self._builtin_tools._todo_list
+            return self._builtin_tools.todo_list
         return []
 
     def clear_todo_list(self):
