@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -16,8 +16,8 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "视频读取"
-    category = "数据集成"
+    name = "视频切帧"
+    category = "图像处理"
     description = "读取本地视频文件并返回按帧解码的图像列表（NumPy数组）"
     requirements = "opencv-python"
     inputs = [

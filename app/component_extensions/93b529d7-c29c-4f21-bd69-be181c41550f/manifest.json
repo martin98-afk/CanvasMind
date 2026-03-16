@@ -5,7 +5,8 @@
   "version": "1.0.0",
   "api_version": "2.0",
   "description": "",
-  "category": "数据集成",
-  "updated_at": "2026-01-30 00:20:01",
+  "category": "数据集成/文本数据",
+  "source_file": "..\\..\\components\\数据集成\\文本数据\\93b529d7-c29c-4f21-bd69-be181c41550f.py",
+  "updated_at": "2026-03-16 09:31:00",
   "author": "black"
 }

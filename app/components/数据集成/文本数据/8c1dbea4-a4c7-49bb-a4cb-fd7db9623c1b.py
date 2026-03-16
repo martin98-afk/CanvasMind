@@ -16,28 +16,23 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "长文本输入列表"
-    category = "数据集成"
+    name = "长文本输入"
+    category = "数据集成/文本数据"
     description = ""
-    requirements = "numpy"
+    requirements = ""
     inputs = [
     ]
     outputs = [
-        PortDefinition(name="text_list", label="文本列表", type=ArgumentType.ARRAY),
+        PortDefinition(name="output", label="端口1", type=ArgumentType.TEXT),
     ]
     properties = {
-        "text_list": PropertyDefinition(
-            type=PropertyType.DYNAMICFORM,
-            label="动态文本列表",
-            schema={
-                "text": PropertyDefinition(
-                    type=PropertyType.MULTILINE,
-                    default="",
-                    label="文本输入",
-                ),
-            }
+        "input_text": PropertyDefinition(
+            type=PropertyType.LONGTEXT,
+            default="""""",
+            label="文本输入",
         ),
     }
+
     def run(self, params, inputs=None):
         """
         params: 节点属性（来自UI）
@@ -45,21 +40,5 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         return {
-            "text_list": [item.text for item in params.text_list]
+            "output": params.input_text
         }
-
-
-if __name__ == "__main__":
-    import warnings
-    warnings.filterwarnings("ignore")
-    model = Component()
-    result = model.debug(
-        params={"prop1": "test"},
-        inputs={"input1": "output"},
-        node_id="测试模型",
-        show_input_types = True,
-        show_output_types = True,
-        show_execution_time = True,
-        global_vars = {}
-    )
-    print(result)

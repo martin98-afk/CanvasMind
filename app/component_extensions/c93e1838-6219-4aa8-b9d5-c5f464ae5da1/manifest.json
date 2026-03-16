@@ -5,8 +5,8 @@
   "version": "1.0.2",
   "api_version": "2.0",
   "description": "文本输入内容",
-  "category": "数据集成",
-  "main": "main.py",
-  "updated_at": "2026-01-24 15:23:11",
+  "category": "数据集成/文本数据",
+  "source_file": "..\\..\\components\\数据集成\\文本数据\\c93e1838-6219-4aa8-b9d5-c5f464ae5da1.py",
+  "updated_at": "2026-03-16 09:30:33",
   "author": "DeveloperX"
 }

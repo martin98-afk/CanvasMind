@@ -16,22 +16,26 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
+    name = "excel读取器"
+    category = "数据集成/表格数据"
+    description = ""
     requirements = ""
-    name = "文件上传"
-    category = "数据集成"
-    description = "接收本地上传文件"
     inputs = [
+        PortDefinition(name="input", label="端口1", type=ArgumentType.UPLOAD),
     ]
     outputs = [
-        PortDefinition(name="file", label="文件", type=ArgumentType.UPLOAD),
+        PortDefinition(name="output", label="端口1", type=ArgumentType.EXCEL),
     ]
+    properties = {
+    }
 
     def run(self, params, inputs=None):
-        file_path = params.dict().get("file_upload")
-        if file_path.endswith("png") or file_path.endswith("jpg") or file_path.endswith("jpeg"):
-            # 使用特定格式通知主进程拦截
-            self.emit_message(
-                method="display_image",
-                params={"file": {"data": file_path}}
-            )
-        return {"file": file_path}
+        """
+        params: 节点属性（来自UI）
+        inputs: 上游输入（key=输入端口名）
+        return: 输出数据（key=输出端口名）
+        """
+        # 在这里编写你的组件逻辑
+        return {
+            "output": inputs.input
+        }

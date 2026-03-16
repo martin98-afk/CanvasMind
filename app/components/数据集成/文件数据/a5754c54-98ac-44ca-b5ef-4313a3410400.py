@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "文件选择"
-    category = "数据集成"
+    category = "数据集成/文件数据"
     description = "与文件上传相比不会复制源文件，只会输出选择文件的地址"
     requirements = "numpy"
     inputs = [

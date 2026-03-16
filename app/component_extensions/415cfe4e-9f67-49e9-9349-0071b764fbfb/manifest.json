@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "api_version": "2.0",
   "description": "",
-  "category": "数据集成",
-  "main": "main.py",
-  "updated_at": "2026-01-24 15:18:51",
+  "category": "数据集成/表格数据",
+  "source_file": "..\\..\\components\\数据集成\\表格数据\\415cfe4e-9f67-49e9-9349-0071b764fbfb.py",
+  "updated_at": "2026-03-16 09:31:29",
   "author": "black"
 }
