@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
+import platform
 from pathlib import Path
 
 import PyInstaller.__main__
@@ -11,13 +12,23 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
 extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil", "prettytable", "apscheduler", "tzlocal"]
 
+# 2. 图标选择 (跨平台)
+icon_arg = None
+if platform.system() == "Windows":
+    icon_path = Path(base_dir) / "icons" / "logoico.ico"
+    if icon_path.exists():
+        icon_arg = f"--icon={icon_path}"
+elif platform.system() == "Darwin":
+    icon_path = Path(base_dir) / "icons" / "logo.icns"
+    if icon_path.exists():
+        icon_arg = f"--icon={icon_path}"
+
 # 3. 构造参数列表
 params = [
     'main.py',
     '--onedir',
     '--windowed',
     '--name=CanvasMind',  # 直接指定名称，省去后期改名麻烦
-    '--icon=' + os.path.join(base_dir, 'icons', 'logoico.ico'),
 
     # 数据文件包含
     f'--add-data=app{os.pathsep}app',
@@ -29,6 +40,9 @@ params = [
     '--hidden-import=ipykernel',
     '--copy-metadata=jupyter_client',
 ]
+
+if icon_arg:
+    params.append(icon_arg)
 
 for module in extra_modules:
     params.append(f'--add-data={env_dir}/{module}{os.pathsep}{module}')

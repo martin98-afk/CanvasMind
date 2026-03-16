@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
+from app.utils.utils import normalize_python_executable
 base_path = Path(__file__).parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
@@ -65,7 +66,9 @@ class Component(BaseComponent):
             with open(workflow_file, 'r', encoding='utf-8') as f:
                 full_data = json.load(f)
             runtime_data = full_data.get("runtime", {})
-            python_executable = runtime_data.get("environment_exe", sys.executable)
+            python_executable = normalize_python_executable(
+                runtime_data.get("environment_exe", sys.executable)
+            )
             proc = subprocess.Popen(
                 [python_executable, runner_path],
                 stdout=subprocess.DEVNULL,

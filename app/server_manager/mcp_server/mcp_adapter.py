@@ -9,7 +9,7 @@ from typing import Dict, Any
 
 from loguru import logger
 
-from app.utils.utils import serialize_for_json
+from app.utils.utils import serialize_for_json, normalize_python_executable
 
 
 class McpWorkflowTool:
@@ -30,7 +30,9 @@ class McpWorkflowTool:
         self.description = f"低代码导出工作流: {self.spec.get('graph_name', self.project_dir.name)}"  # 或留空，MCP 允许无描述
 
         # 获取运行时 Python 路径
-        self.python_executable = python_executable or runtime.get("environment_exe")
+        self.python_executable = normalize_python_executable(
+            python_executable or runtime.get("environment_exe")
+        )
         if not Path(self.python_executable).exists():
             raise RuntimeError(f"Python executable not found: {self.python_executable}")
 

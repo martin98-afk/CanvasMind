@@ -1,6 +1,10 @@
 # /app/interfaces/canvas_interface/environment_manager.py
 from app.interfaces.canvas_interaface.utils.logger import get_logger
 from app.interfaces.canvas_interaface.utils.message_manager import MessageManager
+try:
+    from PyQt5 import sip
+except Exception:
+    import sip
 
 logger = get_logger("EnvironmentManager")
 
@@ -14,6 +18,8 @@ class EnvironmentManager:
         self.parent.parent.package_manager.env_changed.connect(self.load_env_combos)
 
     def load_env_combos(self, env_data=None):
+        if not self.env_combo or sip.isdeleted(self.env_combo):
+            return
         envs = self.parent.parent.package_manager.get_all_environments()
         self.env_combo.clear()
         for env in envs:

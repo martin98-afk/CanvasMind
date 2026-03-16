@@ -738,7 +738,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
         self.find_replace = FindReplace(self, True)
-        self.editor = LSPCodeEditor(python_exe_path=r"python.exe")
+        self.editor = LSPCodeEditor(python_exe_path=sys.executable)
         example_code = """import numpy as np
 a = np.array([1, 2, 3])
 

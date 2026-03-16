@@ -18,7 +18,10 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) + "/app"
 def find_pylupdate():
     """ 自动寻找 pylupdate5 的可执行路径 """
     # 优先检查项目内的虚拟环境
-    potential_venv_path = os.path.join(ROOT_DIR, ".venv2", "Scripts", "pylupdate5.exe")
+    if os.name == "nt":
+        potential_venv_path = os.path.join(ROOT_DIR, ".venv2", "Scripts", "pylupdate5.exe")
+    else:
+        potential_venv_path = os.path.join(ROOT_DIR, ".venv2", "bin", "pylupdate5")
     if os.path.exists(potential_venv_path):
         return potential_venv_path
 
@@ -28,7 +31,10 @@ def find_pylupdate():
 
     # 检查 Python 安装目录
     python_dir = os.path.dirname(sys.executable)
-    potential_path = os.path.join(python_dir, "Scripts", "pylupdate5.exe")
+    if os.name == "nt":
+        potential_path = os.path.join(python_dir, "Scripts", "pylupdate5.exe")
+    else:
+        potential_path = os.path.join(python_dir, "pylupdate5")
     if os.path.exists(potential_path): return potential_path
 
     return None

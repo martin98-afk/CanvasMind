@@ -15,6 +15,7 @@ import pandas as pd
 import pyarrow as pa
 from pyarrow import feather
 from loguru import logger
+from app.utils.utils import normalize_python_executable
 
 # ------------------ 序列化逻辑 ------------------
 
@@ -108,7 +109,9 @@ class McpWorkflowTool:
         runtime = full_data.get("runtime", {})
         self.name = self.project_dir.name
         self.description = f"低代码导出工作流: {self.spec.get('graph_name', self.name)}"
-        self.python_executable = python_executable or runtime.get("environment_exe")
+        self.python_executable = normalize_python_executable(
+            python_executable or runtime.get("environment_exe")
+        )
         if not Path(self.python_executable).exists():
             raise RuntimeError(f"Python executable not found: {self.python_executable}")
 
@@ -308,6 +311,7 @@ class GlobalMcpServer:
 # ------------------ 启动 ------------------
 
 if __name__ == "__main__":
-    exports_dir = Path(r"D:\work\CanvasMind\canvas_files\projects")
+    project_root = Path(__file__).resolve().parents[3]
+    exports_dir = project_root / "canvas_files" / "projects"
     server = GlobalMcpServer(exports_dir)
     server.run_stdio()
