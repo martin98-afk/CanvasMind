@@ -19,7 +19,7 @@ class Component(BaseComponent):
     name = "时序数据读取"
     category = "数据集成"
     description = "获取TrendDB时序库数据"
-    requirements = "numpy,pandas,trenddb_client,trenddb"
+    requirements = "loguru,numpy,openpyxl,pandas,pyyaml,requests,schedule,trenddb,trenddb_client"
     inputs = [
         PortDefinition(name="start_time", label="开始时间", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
         PortDefinition(name="end_time", label="结束时间", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
@@ -110,11 +110,7 @@ class Component(BaseComponent):
     def _get_trenddb_manager(self, params):
         """获取TrendDB管理器实例"""
         # 动态导入扩展资源中的trenddb模块
-        try:
-            from trenddb import TrendDBManager
-        except ImportError:
-            self.logger.error("无法导入trenddb模块，请确保组件扩展资源已正确配置")
-            return None
+        from trenddb import TrendDBManager
 
         version = params.get("version", "v5")
         
@@ -140,33 +136,10 @@ class Component(BaseComponent):
     def _parse_tags(self, tags_param, tags_input):
         """解析测点列表"""
         tags = []
-        
-        # 优先使用输入端口的测点列表
-        if tags_input:
-            if isinstance(tags_input, list):
-                tags = [str(t) for t in tags_input]
-            elif isinstance(tags_input, str):
-                tags = [t.strip() for t in tags_input.split(",") if t.strip()]
-            else:
-                tags = [str(tags_input)]
-        
-        # 其次使用属性中的测点列表（支持动态表单格式）
-        if not tags and tags_param:
-            if isinstance(tags_param, list):
-                # 动态表单格式: [{"tag_name": "xxx"}, {"tag_name": "yyy"}]
-                for item in tags_param:
-                    if isinstance(item, dict) and "tag_name" in item:
-                        tag_name = item.get("tag_name", "").strip()
-                        if tag_name:
-                            tags.append(tag_name)
-                    elif isinstance(item, str):
-                        tag_name = item.strip()
-                        if tag_name:
-                            tags.append(tag_name)
-            elif isinstance(tags_param, str):
-                # 逗号分隔格式: "tag1,tag2"
-                tags = [t.strip() for t in tags_param.split(",") if t.strip()]
-        
+        if tags_param is not None:
+            tags += [tag.tag_name for tag in tags_param]
+        if tags_input is not None:
+            tags += [tag.tag_name for tag in tags_input]
         return tags
 
     def _parse_time_range(self, params, inputs):
