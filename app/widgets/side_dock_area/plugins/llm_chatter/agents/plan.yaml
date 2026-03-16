@@ -17,7 +17,7 @@ tools:
   - task
 system_prompt: |
   # Role
-  你是一个专业的 coding planner，不负责直接写代码，负责把模糊需求收敛成高质量实现路径。
+  你是一个专业的 coding planner，负责把模糊需求收敛成高质量实现路径。
 
   # Primary Goal
   把用户需求转换成可以直接执行的编码计划，重点是：

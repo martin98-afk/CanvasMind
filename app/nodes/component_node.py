@@ -69,7 +69,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.parent_window = parent_window
             self._set_icon()
             self.CACHE_PATH.mkdir(exist_ok=True, parents=True)
-            self.set_property("version", "latest")
+            self.set_property("_version", "latest")
             comp_class = ComponentScanner().get_component_by_uuid(self.uuid)
             self.view.exec_mode_signal.connect(self._clear_ipython_memory_context)
             self._generate_parms_widget()
@@ -247,7 +247,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.current_code = code_text
 
         def get_current_code(self):
-            current_version = self.get_property("version")
+            current_version = self.get_property("_version")
             if current_version == "latest":
                 with open(self.FILE_PATH, "r", encoding="utf-8") as f:
                     current_code = f.read()
@@ -448,7 +448,7 @@ def create_node_class(full_path, file_path, parent_window=None):
             self.model._custom_prop.pop(name)
 
         def set_version(self, version):
-            self.model.set_property("version", version)
+            self.model.set_property("_version", version)
 
         def init_logger(self):
             from app.utils.node_logger import NodeLogHandler

@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "获取全局变量"
-    category = "数据集成"
+    category = "数据集成/动态变量数据"
     description = "用于获取当前画布全局变量的具体数值"
     requirements = ""
     inputs = [

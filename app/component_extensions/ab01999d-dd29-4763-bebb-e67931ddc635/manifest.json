@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "使用datetime获取当前时间，返回结果格式：yyyy-mm-dd HH:MM:SS",
   "category": "数据集成",
-  "updated_at": "2026-02-14 23:55:25",
+  "source_file": "..\\..\\components\\数据集成\\ab01999d-dd29-4763-bebb-e67931ddc635.py",
+  "updated_at": "2026-03-16 11:43:50",
   "author": "black"
 }
