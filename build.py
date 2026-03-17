@@ -11,7 +11,11 @@ import spyder
 base_dir = os.path.dirname(os.path.abspath(__file__))
 env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
 extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil", "prettytable", "apscheduler", "tzlocal"]
-
+# 需要删除的冗余库列表
+to_remove = [
+    'scipy', 'scipy.libs', 'sphinx', 'matplotlib', 'torch', 'tensorflow', 'torchaudio'
+    #
+]
 # 2. 图标选择 (跨平台)
 icon_arg = None
 if platform.system() == "Windows":
@@ -19,7 +23,7 @@ if platform.system() == "Windows":
     if icon_path.exists():
         icon_arg = f"--icon={icon_path}"
 elif platform.system() == "Darwin":
-    icon_path = Path(base_dir) / "icons" / "logo.icns"
+    icon_path = Path(base_dir) / "icons" / "logoico.ico"
     if icon_path.exists():
         icon_arg = f"--icon={icon_path}"
 
@@ -39,10 +43,20 @@ params = [
     '--hidden-import=jupyter_client.provisioning.local',
     '--hidden-import=ipykernel',
     '--copy-metadata=jupyter_client',
+    # OpenCV on macOS needs bundled .dylibs (e.g., libpng)
+    '--collect-binaries=cv2',
 ]
 
 if icon_arg:
     params.append(icon_arg)
+
+# macOS: 指定单一架构，避免 universal2 体积膨胀
+if platform.system() == "Darwin":
+    arch = os.environ.get("PYINSTALLER_ARCH", "").strip() or platform.machine()
+    # PyInstaller 期望的值一般是 "arm64" 或 "x86_64"
+    if arch not in ("arm64", "x86_64"):
+        arch = "arm64"
+    params.append(f"--target-arch={arch}")
 
 for module in extra_modules:
     params.append(f'--add-data={env_dir}/{module}{os.pathsep}{module}')
@@ -60,12 +74,6 @@ def post_build_cleanup(dist_path):
     if not os.path.exists(internal_path):
         # 兼容不同版本的打包结构
         internal_path = dist_path
-
-    # 需要删除的冗余库列表
-    to_remove = [
-        'scipy', 'scipy.libs', 'sphinx', 'matplotlib'
-        # 'PIL.ImageQt'  # 如果没用到这些巨无霸库也可以考虑删掉
-    ]
 
     print("正在精简打包体积...")
     for folder in to_remove:

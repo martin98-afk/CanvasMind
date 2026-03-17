@@ -4,6 +4,7 @@ import platform
 import shutil
 import subprocess
 import time
+import sys
 from pathlib import Path
 
 from app.nodes.executors.base import BaseExecutor
@@ -35,6 +36,25 @@ class SubprocessExecutor(BaseExecutor):
             ctx.last_log_pos = os.path.getsize(ctx.log_file_path)
 
         python_exe = ctx.python_executable or ctx.env_data.get("path", "python")
+
+        def _is_app_executable(path: str) -> bool:
+            return bool(path) and ".app/Contents/MacOS" in path
+
+        # 避免在 macOS 打包环境中使用 app 自身作为 Python 解释器，导致启动新实例
+        if getattr(sys, "frozen", False) and (
+            python_exe == sys.executable or _is_app_executable(str(python_exe))
+        ):
+            fallback_candidates = [
+                ctx.env_data.get("path") if ctx.env_data else None,
+                resource_path("envs/miniconda/bin/python"),
+                resource_path("envs/miniconda/python.exe"),
+                shutil.which("python3"),
+                shutil.which("python"),
+            ]
+            for candidate in fallback_candidates:
+                if candidate and os.path.exists(candidate) and not _is_app_executable(str(candidate)):
+                    python_exe = candidate
+                    break
 
         env_inject_code = "\n".join(
             [f"os.environ['{k}'] = '{v}'" for k, v in ctx.zmq_env_vars.items()]
