@@ -148,3 +148,4 @@ paho-mqtt
 redis
 sqlalchemy
 psutil
+ipykernel_launcher

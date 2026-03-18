@@ -353,8 +353,11 @@ def normalize_python_executable(exe_path: Optional[str]) -> Optional[str]:
     match = re.search(r"/envs/miniconda/envs/([^/]+)/python\.exe$", cleaned, re.IGNORECASE)
     if match:
         env_name = match.group(1)
-        project_root = Path(__file__).resolve().parents[2]
-        env_root = project_root / "envs" / "miniconda" / "envs" / env_name
+        if getattr(sys, "frozen", False):
+            base_root = Path(resource_path("."))
+        else:
+            base_root = Path(__file__).resolve().parents[2]
+        env_root = base_root / "envs" / "miniconda" / "envs" / env_name
         candidate = env_root / ("python.exe" if os.name == "nt" else "bin/python")
         if candidate.exists():
             return str(candidate)
