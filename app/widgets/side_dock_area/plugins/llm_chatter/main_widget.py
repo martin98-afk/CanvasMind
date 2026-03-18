@@ -250,8 +250,16 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(5)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+
+        self.setStyleSheet("""
+            OpenAIChatToolWindow {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba(10, 14, 22, 255),
+                    stop:1 rgba(15, 20, 30, 255));
+            }
+        """)
 
         session_bar_layout = QHBoxLayout()
         session_bar_layout.setContentsMargins(0, 0, 0, 0)
@@ -264,15 +272,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self.title_edit = QLabel("新对话", self)
         self.title_edit.setStyleSheet("""
             QLabel {
-                color: #e0e0e0;
-                font-size: 14px;
+                color: #f3f6fc;
+                font-size: 15px;
                 font-weight: bold;
-                padding: 4px 8px;
-                border-radius: 4px;
-                background-color: transparent;
+                padding: 6px 10px;
+                border-radius: 10px;
+                background-color: rgba(255, 255, 255, 0.03);
             }
             QLabel:hover {
-                background-color: #3d3d3d;
+                background-color: rgba(255, 255, 255, 0.06);
             }
         """)
         self.title_edit.setCursor(Qt.PointingHandCursor)
@@ -323,15 +331,22 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet(
-            "background-color: transparent; border: none;"
+            """
+            SingleDirectionScrollArea {
+                background-color: rgba(255, 255, 255, 0.02);
+                border: 1px solid rgba(255, 255, 255, 0.04);
+                border-radius: 18px;
+            }
+            """
         )
         self.chat_scroll_area.setWidgetResizable(True)
-        self.chat_scroll_area.setViewportMargins(0, 0, 10, 0)
+        self.chat_scroll_area.setViewportMargins(2, 2, 10, 2)
 
         self.chat_container = QWidget()
+        self.chat_container.setStyleSheet("background: transparent;")
         self.chat_layout = QVBoxLayout(self.chat_container)
-        self.chat_layout.setContentsMargins(3, 3, 3, 3)
-        self.chat_layout.setSpacing(5)
+        self.chat_layout.setContentsMargins(8, 8, 8, 8)
+        self.chat_layout.setSpacing(8)
         self.chat_layout.setAlignment(Qt.AlignBottom)
         self.chat_scroll_area.setWidget(self.chat_container)
 
@@ -386,7 +401,7 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addLayout(hlayout)
 
         self.input_area = SendableTextEdit(self)
-        self.input_area.setMaximumHeight(80)
+        self.input_area.setMaximumHeight(108)
         setFont(self.input_area, 15)
         self.input_area.sendMessageRequested.connect(self._on_send_clicked)
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
@@ -423,6 +438,13 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._settings_popup.set_config(self.model_combo.currentText(), config)
         self._settings_popup.show_at(self.settings_btn)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget() and isinstance(item.widget(), MessageCard):
+                item.widget().sync_width()
 
     def _on_config_applied(self, new_config: dict):
         current_name = self.model_combo.currentText()
@@ -599,7 +621,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card = MessageCard(parent=self, role="assistant", timestamp="系统")
         card.update_content(intro_md)
         card.finish_streaming()
-        self.chat_layout.addWidget(card)
+        self._add_chat_widget(card)
         self._scroll_to_bottom()
 
     def _update_agent_status(self, agent_name: str):
@@ -708,7 +730,7 @@ class OpenAIChatToolWindow(ToolWindow):
         welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
-        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
+        QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
 
     def _display_current_session(self):
         self._clear_chat_area()
@@ -952,8 +974,18 @@ class OpenAIChatToolWindow(ToolWindow):
         welcome_card = create_welcome_card(self, agent_name, agent_desc)
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
-        QTimer.singleShot(300, lambda: self.chat_layout.addWidget(welcome_card))
+        QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
         self.title_edit.setText("新对话")
+
+    def _add_chat_widget(self, widget: QWidget):
+        if isinstance(widget, MessageCard):
+            widget.sync_width()
+            if widget.role == "user":
+                self.chat_layout.addWidget(widget, 0, Qt.AlignRight)
+            else:
+                self.chat_layout.addWidget(widget, 0, Qt.AlignLeft)
+        else:
+            self.chat_layout.addWidget(widget)
 
     def _delete_history_session(self, index: int):
         self.history_manager.delete_history(index)
@@ -985,7 +1017,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
         card.actionRequested.connect(self._on_code_action)
-        self.chat_layout.addWidget(card)
+        self._add_chat_widget(card)
         self._scroll_to_bottom()
 
         self._update_node_preview()
@@ -1001,7 +1033,7 @@ class OpenAIChatToolWindow(ToolWindow):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
             card.contextActionRequested.connect(self.contextActionRequested.emit)
-        self.chat_layout.addWidget(card)
+        self._add_chat_widget(card)
         self._scroll_to_bottom()
         return card
 

@@ -724,6 +724,33 @@ class NodeOperations:
             )
         self._invalidate_node_cache()
 
+    def duplicate_selected_nodes(self, offset=(80, 40)):
+        selected_nodes = self.graph.selected_nodes()
+        if not selected_nodes:
+            return []
+
+        serial_data = self.graph._serialize(selected_nodes)
+        pasted_nodes = self.graph.paste_nodes(serial_data, False)
+        if not pasted_nodes:
+            return []
+
+        min_x = min(n.pos()[0] for n in pasted_nodes)
+        min_y = min(n.pos()[1] for n in pasted_nodes)
+        src_min_x = min(n.pos()[0] for n in selected_nodes)
+        src_min_y = min(n.pos()[1] for n in selected_nodes)
+
+        for node in pasted_nodes:
+            node.set_property("persistent_id", str(uuid.uuid4()))
+            x, y = node.pos()
+            node.set_pos(
+                x - min_x + src_min_x + offset[0],
+                y - min_y + src_min_y + offset[1],
+            )
+            node.set_selected(True)
+
+        self._invalidate_node_cache()
+        return pasted_nodes
+
     def _request_recommendations(self, node):
         full_path = getattr(node, "FULL_PATH", None)
         if not full_path:

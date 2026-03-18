@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import json
+import math
 import re
 import urllib
 from datetime import datetime
@@ -385,14 +386,8 @@ class CodeWebViewer(QWebEngineView):
         self._markdown_text = ""
         self._streaming = True
         self._is_js_ready = False
-
-        # 打字机效果相关
-        self._pending_chars = ""  # 待显示的字符队列
-        self._typewriter_timer = QTimer(self)
-        self._typewriter_timer.setInterval(15)  # 每个字符间隔15ms
-        self._typewriter_timer.timeout.connect(self._typewriter_tick)
-        self._last_render_time = 0
-        self._min_render_interval = 50  # 渲染节流：至少50ms渲染一次
+        self._last_rendered_html = ""
+        self._min_render_interval = 80
 
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
@@ -487,15 +482,7 @@ class CodeWebViewer(QWebEngineView):
     def _on_js_ready(self):
         self._is_js_ready = True
         if self._markdown_text:
-            if (
-                hasattr(self, "_typewriter_timer")
-                and self._typewriter_timer
-                and self._pending_chars
-                and not self._typewriter_timer.isActive()
-            ):
-                self._typewriter_timer.start()
-            else:
-                self._schedule_render()
+            self._schedule_render(immediate=True)
 
     def _load_skeleton(self):
         # 获取系统字体
@@ -536,56 +523,101 @@ class CodeWebViewer(QWebEngineView):
             <meta charset="utf-8">
             {cdn_libs}
             <style>
+                :root {{
+                    --bg: transparent;
+                    --panel: #121722;
+                    --panel-elevated: #171d2a;
+                    --panel-soft: #1d2533;
+                    --border: #253044;
+                    --border-strong: #32425e;
+                    --text: #e8edf7;
+                    --text-secondary: #b2bfd6;
+                    --text-muted: #7f8ca3;
+                    --accent: #66c6ff;
+                    --accent-warm: #ffb65c;
+                    --code-bg: #0f141d;
+                    --code-toolbar: #131a25;
+                    --code-border: #2a3447;
+                    --success: #5fd18c;
+                    --danger: #ff7b7b;
+                }}
                 html {{ overflow: hidden; }}
                 body {{
-                    background: transparent !important; color: #E0E0E0;
+                    background: var(--bg) !important;
+                    color: var(--text);
                     font-family: "{font_family}", "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5;
                     margin: 0; 
-                    /* 优化：减小上下内边距 */
-                    padding: 4px 12px; 
+                    padding: 6px 14px; 
                     overflow: hidden;
                 }}
                 {scrollbar_css}
 
-                /* 修复黑色内容问题：显式设置所有元素的颜色 */
-                #content-placeholder {{ color: #E0E0E0; }}
+                #content-placeholder {{ color: var(--text); }}
                 #content-placeholder * {{ color: inherit; }}
-                h1, h2, h3, h4, h5, h6 {{ color: #FFFFFF !important; font-weight: 600; }}
-                h1 {{ font-size: 1.5em; margin: 12px 0 8px; }}
-                h2 {{ font-size: 1.3em; margin: 10px 0 6px; }}
+                h1, h2, h3, h4, h5, h6 {{ color: #FFFFFF !important; font-weight: 700; letter-spacing: 0.01em; }}
+                h1 {{ font-size: 1.45em; margin: 12px 0 8px; }}
+                h2 {{ font-size: 1.25em; margin: 10px 0 6px; }}
                 h3 {{ font-size: 1.1em; margin: 8px 0 4px; }}
-                p {{ margin: 6px 0; color: #D0D0D0; }}
-                a {{ color: #6BA3FF !important; text-decoration: none; }}
+                p {{ margin: 8px 0; color: var(--text-secondary); }}
+                a {{ color: var(--accent) !important; text-decoration: none; }}
                 a:hover {{ text-decoration: underline; }}
-                ul, ol {{ margin: 6px 0; padding-left: 24px; }}
-                li {{ margin: 2px 0; color: #D0D0D0; }}
+                ul, ol {{ margin: 8px 0; padding-left: 24px; }}
+                li {{ margin: 4px 0; color: var(--text-secondary); }}
                 strong {{ color: #FFFFFF !important; font-weight: 600; }}
-                em {{ color: #B0B0B0 !important; font-style: italic; }}
+                em {{ color: #c4cedd !important; font-style: italic; }}
                 code:not(.code-content *):not(pre code) {{ 
-                    background: #2D2D2D !important; 
-                    color: #FF7B72 !important;
-                    padding: 2px 4px; 
-                    border-radius: 3px; 
+                    background: rgba(102, 198, 255, 0.12) !important; 
+                    color: #9bddff !important;
+                    padding: 2px 6px; 
+                    border-radius: 5px; 
                     font-family: Consolas, monospace;
                 }}
-                hr {{ border: none; border-top: 1px solid #3A3F47; margin: 12px 0; }}
+                hr {{ border: none; border-top: 1px solid var(--border); margin: 14px 0; }}
                 
                 /* 优化：移除首尾元素的边距，彻底消除多余空白 */
                 #content-placeholder > :first-child {{ margin-top: 0 !important; }}
                 #content-placeholder > :last-child {{ margin-bottom: 0 !important; }}
 
                 /* 优化：紧凑的段落间距 */
-                p {{ margin: 6px 0; }}
+                p {{ margin: 8px 0; }}
 
-                /* Markdown 表格 */
-                table:not(.code-table) {{ width: 100%; border-collapse: collapse; margin: 8px 0; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid #3A3F47; }}
-                table:not(.code-table) th {{ background: #333; padding: 6px 12px; text-align: left; font-weight: 600; color: #fff !important; border-bottom: 2px solid #454545; }}
-                table:not(.code-table) td {{ padding: 6px 12px; border-bottom: 1px solid #3A3F47; color: #ccc !important; }}
-                table:not(.code-table) tr:nth-child(even) {{ background: #2A2D31; }}
-                table:not(.code-table) tr:hover {{ background: #3A3F47; }}
+                table:not(.code-table) {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 10px 0;
+                    background: rgba(18, 23, 34, 0.92);
+                    border-radius: 10px;
+                    overflow: hidden;
+                    border: 1px solid var(--border);
+                }}
+                table:not(.code-table) th {{
+                    background: rgba(50, 66, 94, 0.55);
+                    padding: 8px 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #fff !important;
+                    border-bottom: 1px solid var(--border-strong);
+                }}
+                table:not(.code-table) td {{
+                    padding: 8px 12px;
+                    border-bottom: 1px solid rgba(37, 48, 68, 0.8);
+                    color: var(--text-secondary) !important;
+                }}
+                table:not(.code-table) tr:nth-child(even) {{ background: rgba(29, 37, 51, 0.72); }}
+                table:not(.code-table) tr:hover {{ background: rgba(38, 50, 69, 0.9); }}
 
-                /* 标签 */
-                .context-tag {{ display: inline-block; padding: 1px 5px; margin: 0 2px; border: 1px solid transparent; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; vertical-align: middle; }}
+                .context-tag {{
+                    display: inline-block;
+                    padding: 2px 8px;
+                    margin: 0 2px;
+                    border: 1px solid transparent;
+                    border-radius: 999px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: 0.18s ease;
+                    vertical-align: middle;
+                }}
                 {"".join(tag_css)}
 
                 /* 代码块通用样式 */
@@ -597,7 +629,7 @@ class CodeWebViewer(QWebEngineView):
                     display: flex;
                     overflow-x: auto;
                     overflow-y: hidden;
-                    background: #1E1E1E;
+                    background: var(--code-bg);
                     font-family: Consolas, monospace;
                     font-size: 13px;
                     line-height: 1.5;
@@ -608,8 +640,8 @@ class CodeWebViewer(QWebEngineView):
                     flex: 0 0 auto;
                     text-align: right;
                     padding-right: 12px;
-                    color: #606060;
-                    border-right: 1px solid #404040;
+                    color: #5b6578;
+                    border-right: 1px solid var(--code-border);
                     user-select: none; /* 关键：禁止复制行号 */
                     white-space: pre;
                     min-width: 32px;
@@ -631,21 +663,64 @@ class CodeWebViewer(QWebEngineView):
                     font-size: 13px !important;
                     line-height: 1.5 !important;
                 }}
-                /* 关键：修复缩进丢失 */
                 .code-line {{ padding-left: 12px !important; white-space: pre; font-family: Consolas, monospace; }}
 
-                .code-btn:hover {{ background: rgba(255,255,255,0.1) !important; }}
+                .code-btn:hover {{ background: rgba(255,255,255,0.08) !important; }}
 
-                details.think-block {{ margin: 6px 0; background: #1a1b1e; border: 1px solid #333; border-radius: 6px; }}
-                details.think-block summary {{ padding: 4px 10px; cursor: pointer; color: #aaa; font-weight: 600; }}
-                .think-content {{ padding: 8px; border-top: 1px solid #333; color: #888 !important; font-style: italic; }}
-                
-                details.tool-block {{ margin: 6px 0; background: #1e1f22; border: 1px solid #4a4d50; border-radius: 6px; }}
-                details.tool-block summary {{ padding: 6px 10px; cursor: pointer; color: #9cdcfe; font-weight: 600; font-size: 13px; white-space: pre-wrap; }}
-                .tool-content {{ padding: 8px; border-top: 1px solid #4a4d50; background: #25262b; }}
-                .tool-content pre {{ margin: 0; color: #ce9178; font-size: 12px; font-family: Consolas, monospace; }}
-                
-                blockquote {{ border-left: 3px solid #FFA500; background: rgba(255,165,0,0.05); margin: 6px 0; padding: 4px 12px; color: #ccc !important; }}
+                details.think-block {{
+                    margin: 8px 0;
+                    background: linear-gradient(180deg, rgba(19,26,37,0.92), rgba(16,22,31,0.95));
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                }}
+                details.think-block summary {{
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                }}
+                .think-content {{
+                    padding: 10px 12px;
+                    border-top: 1px solid var(--border);
+                    color: var(--text-muted) !important;
+                    font-style: italic;
+                }}
+
+                details.tool-block {{
+                    margin: 8px 0;
+                    background: linear-gradient(180deg, rgba(18,24,35,0.96), rgba(15,20,29,0.98));
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+                }}
+                details.tool-block summary {{
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    color: var(--accent);
+                    font-weight: 600;
+                    font-size: 13px;
+                    white-space: pre-wrap;
+                }}
+                .tool-content {{
+                    padding: 10px 12px;
+                    border-top: 1px solid var(--border);
+                    background: rgba(18, 24, 35, 0.84);
+                }}
+                .tool-content pre {{
+                    margin: 0;
+                    color: #d8b68d;
+                    font-size: 12px;
+                    font-family: Consolas, monospace;
+                }}
+
+                blockquote {{
+                    border-left: 3px solid var(--accent-warm);
+                    background: rgba(255,182,92,0.08);
+                    margin: 10px 0;
+                    padding: 8px 12px;
+                    border-radius: 0 10px 10px 0;
+                    color: var(--text-secondary) !important;
+                }}
             </style>
         </head>
         <body>
@@ -689,111 +764,49 @@ class CodeWebViewer(QWebEngineView):
         if not text:
             return
 
-        self._pending_chars += text
         self._markdown_text += text
 
         if not self._is_js_ready:
             return
+        self._schedule_render()
 
-        if (
-            hasattr(self, "_typewriter_timer")
-            and self._typewriter_timer
-            and self._pending_chars
-            and not self._typewriter_timer.isActive()
-        ):
-            self._typewriter_timer.start()
+    def _render_markdown_to_html(self, raw_md: str) -> str:
+        safe_md = _sanitize_incomplete_markdown(raw_md)
+        safe_md = _unwrap_code_blocks_with_context_links(safe_md)
+        safe_md = _inject_context_links(safe_md)
+        processed_md = _inject_think_cards(safe_md, self._streaming is False)
+        processed_md = _inject_tool_blocks(processed_md, self._streaming is False)
 
-    def _typewriter_tick(self):
-        if not self._pending_chars:
-            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
-                self._typewriter_timer.stop()
-            return
-
-        if not hasattr(self, "_typewriter_timer") or not self._typewriter_timer:
-            return
-
-        pending_len = len(self._pending_chars)
-
-        if pending_len > 500:
-            chunk_size = 50
-        elif pending_len > 200:
-            chunk_size = 20
-        elif pending_len > 50:
-            chunk_size = 10
-        else:
-            chunk_size = min(3, pending_len)
-
-        display_chars = self._pending_chars[:chunk_size]
-        self._pending_chars = self._pending_chars[chunk_size:]
-
-        visible_text = self._markdown_text[
-            : len(self._markdown_text) - len(self._pending_chars)
-        ]
-
-        import time
-
-        current_time = time.time() * 1000
-        render_throttle = 30
-        if current_time - self._last_render_time >= render_throttle:
-            self._last_render_time = current_time
-            self._perform_update_for_text(visible_text)
-
-        if not self._pending_chars and self._streaming:
-            if hasattr(self, "_typewriter_timer") and self._typewriter_timer:
-                self._typewriter_timer.stop()
-            self._perform_update()
-
-    def _perform_update_for_text(self, visible_text: str):
-        """渲染指定文本（用于打字机效果）"""
         try:
-            if not self.page():
-                return
+            md = get_markdown_instance()
+            md.reset()
+            html_content = md.convert(processed_md)
+            return _wrap_code_blocks_with_copy_button_web(html_content)
+        except Exception:
+            return f"<pre>{escape(raw_md)}</pre>"
 
-            raw_md = visible_text
-            safe_md = _sanitize_incomplete_markdown(raw_md)
-            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
-            safe_md = _inject_context_links(safe_md)
-            processed_md = _inject_think_cards(safe_md, False)
-            processed_md = _inject_tool_blocks(processed_md, self._streaming == False)
-            try:
-                md = get_markdown_instance()
-                md.reset()
-                html_content = md.convert(processed_md)
-                html_content = _wrap_code_blocks_with_copy_button_web(html_content)
-            except Exception:
-                html_content = f"<pre>{escape(raw_md)}</pre>"
-
-            js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
-            self.page().runJavaScript(js_code)
-        except RuntimeError:
-            pass
-
-    def _schedule_render(self):
+    def _schedule_render(self, immediate: bool = False):
         if not self._is_js_ready:
+            return
+        if immediate:
+            if self._render_timer.isActive():
+                self._render_timer.stop()
+            self._perform_update()
             return
         if not self._render_timer.isActive():
             self._render_timer.start(self._min_render_interval)
 
     def _perform_update(self):
         try:
-            # 增加检查
             if not self.page():
                 return
 
-            raw_md = self._markdown_text
-            safe_md = _sanitize_incomplete_markdown(raw_md)
-            safe_md = _unwrap_code_blocks_with_context_links(safe_md)
-            safe_md = _inject_context_links(safe_md)
-            processed_md = _inject_think_cards(safe_md, self._streaming == False)
-            processed_md = _inject_tool_blocks(processed_md, self._streaming == False)
-            try:
-                md = get_markdown_instance()
-                md.reset()
-                html_content = md.convert(processed_md)
-                html_content = _wrap_code_blocks_with_copy_button_web(html_content)
-            except Exception:
-                html_content = f"<pre>{escape(raw_md)}</pre>"
+            html_content = self._render_markdown_to_html(self._markdown_text)
+            if html_content == self._last_rendered_html:
+                self._safe_report_height()
+                return
 
+            self._last_rendered_html = html_content
             js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
             self.page().runJavaScript(js_code)
         except RuntimeError:
@@ -801,16 +814,7 @@ class CodeWebViewer(QWebEngineView):
 
     def finish_streaming(self):
         self._streaming = False
-        # 停止打字机定时器
-        if (
-            hasattr(self, "_typewriter_timer")
-            and self._typewriter_timer
-            and self._typewriter_timer.isActive()
-        ):
-            self._typewriter_timer.stop()
-        # 清空待显示队列，直接显示全部内容
-        self._pending_chars = ""
-        self._perform_update()
+        self._schedule_render(immediate=True)
 
     def get_plain_text(self) -> str:
         return self._markdown_text
@@ -838,7 +842,6 @@ class CodeWebViewer(QWebEngineView):
         super().wheelEvent(event)
 
     def deleteLater(self):
-        # 显式停止定时器
         if self._render_timer.isActive():
             self._render_timer.stop()
         if self._resize_timer.isActive():
@@ -869,9 +872,10 @@ class PlainTextViewer(QWidget):
             QTextEdit {
                 background: transparent;
                 border: none;
-                color: #E0E0E0;
+                color: #F5F7FB;
                 font-size: 14px;
                 line-height: 1.5;
+                selection-background-color: rgba(102, 198, 255, 0.28);
             }
         """)
         layout.addWidget(self.text_edit)
@@ -949,61 +953,119 @@ class MessageCard(SimpleCardWidget):
         self.role = role
         self.context_tags = tag_params or {}
         self.timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M")
-        self.error = False
+        self.error = error
         self._interactive_options: List[dict] = []
         self._streaming = False
-        self._anim_offset = 0
         self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._update_anim)
-        self._base_bg = "#1E293B"
-        self._base_border = "#334155"
-        if role == "user":
-            self._base_bg = "#2A2A2A"
-            self._base_border = "#4A5568"
-        if error:
-            self._base_border = "#ff4d4d"
-            self._base_bg = "#2a1f1f"
+        self._pulse_phase = 0.0
+        self._theme = self._build_theme(role, error)
+        self._base_bg = self._theme["bg"]
+        self._base_border = self._theme["border"]
         self._setup_ui()
+
+    def _build_theme(self, role: str, error: bool = False) -> Dict[str, str]:
+        themes = {
+            "assistant": {
+                "avatar": "AI",
+                "title": "CanvasMind",
+                "subtitle": "Assistant",
+                "bg": "#101720",
+                "border": "#2B415E",
+                "accent": "#63D8FF",
+                "text": "#EAF1FC",
+                "muted": "#8FA4C2",
+                "side": "left",
+            },
+            "welcome": {
+                "avatar": "CM",
+                "title": "CanvasMind",
+                "subtitle": "Workspace Copilot",
+                "bg": "#161A22",
+                "border": "#635238",
+                "accent": "#FFB35C",
+                "text": "#F2F5FB",
+                "muted": "#95A4BC",
+                "side": "left",
+            },
+            "user": {
+                "avatar": "你",
+                "title": "你",
+                "subtitle": "Prompt",
+                "bg": "#1B2A43",
+                "border": "#4C74B5",
+                "accent": "#9FC3FF",
+                "text": "#F4F7FD",
+                "muted": "#B4C2D9",
+                "side": "right",
+            },
+        }
+        theme = dict(themes.get(role, themes["assistant"]))
+        if error:
+            theme["bg"] = "#2A1F1F"
+            theme["border"] = "#A94444"
+            theme["accent"] = "#FF7B7B"
+        return theme
 
     def _setup_ui(self):
         main = QVBoxLayout(self)
-        main.setContentsMargins(5, 5, 5, 5)
-        main.setSpacing(2)
+        main.setContentsMargins(10, 10, 10, 10)
+        main.setSpacing(8)
         top = QHBoxLayout()
-        top.setSpacing(6)
-        if self.role == "user":
-            av_t, av_c, nm, nm_c, bg, bd = (
-                "👤",
-                "#63B3ED",
-                "用户",
-                "#63B3ED",
-                "#2A2A2A",
-                "#4A5568",
-            )
-        else:
-            av_t, av_c, nm, nm_c, bg, bd = (
-                "🤖",
-                "#FFA500",
-                "画布助手",
-                "#FFA500",
-                "#1E293B",
-                "#334155",
-            )
-        if self.error:
-            bd, bg = "#ff4d4d", "#2a1f1f"
+        top.setSpacing(10)
 
-        av = QLabel(av_t, self)
-        av.setStyleSheet(f"font-size:20px;color:{av_c};font-weight:bold")
-        av.setFixedSize(28, 28)
+        av = QLabel(self._theme["avatar"], self)
+        av.setStyleSheet(
+            f"""
+            QLabel {{
+                font-size: 12px;
+                color: #FFFFFF;
+                font-weight: 700;
+                background: {self._theme["accent"]};
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 15px;
+            }}
+            """
+        )
+        av.setFixedSize(30, 30)
         av.setAlignment(Qt.AlignCenter)
-        nm_l = QLabel(nm, self)
-        nm_l.setStyleSheet(f"font-size:15px;color:{nm_c};font-weight:bold")
+
+        title_wrap = QWidget(self)
+        title_layout = QVBoxLayout(title_wrap)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(1)
+
+        nm_l = QLabel(self._theme["title"], self)
+        nm_l.setStyleSheet(
+            f"font-size:14px;color:{self._theme['text']};font-weight:700;"
+        )
+        sub_l = QLabel(self._theme["subtitle"], self)
+        sub_l.setStyleSheet(
+            f"font-size:11px;color:{self._theme['muted']};font-weight:500;letter-spacing:0.02em;"
+        )
+        title_layout.addWidget(nm_l)
+        title_layout.addWidget(sub_l)
+
         top.addWidget(av)
-        top.addWidget(nm_l)
-        if self.role == "assistant":
+        top.addWidget(title_wrap)
+        if self.role != "user":
             ts = QLabel(self.timestamp, self)
-            ts.setStyleSheet("font-size:12px;color:#B0B0B0")
+            ts.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 11px;
+                    color: {self._theme['muted']};
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.06);
+                    border-radius: 9px;
+                    padding: 2px 8px;
+                }}
+                """
+            )
             top.addWidget(ts)
+        self.status_badge = QLabel(self._initial_status_text(), self)
+        self.status_badge.setStyleSheet(self._status_badge_style("#7f8ca3"))
+        top.addWidget(self.status_badge)
         top.addStretch()
 
         btns = QWidget(self)
@@ -1039,6 +1101,18 @@ class MessageCard(SimpleCardWidget):
             b.clicked.connect(cb)
             b.setFixedSize(24, 24)
             b.installEventFilter(ToolTipFilter(b))
+            b.setStyleSheet(
+                """
+                TransparentToolButton {
+                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    border-radius: 8px;
+                }
+                TransparentToolButton:hover {
+                    background: rgba(255, 255, 255, 0.08);
+                }
+                """
+            )
             bl.addWidget(b)
         top.addWidget(btns)
         main.addLayout(top)
@@ -1076,87 +1150,164 @@ class MessageCard(SimpleCardWidget):
 
         main.addWidget(CardSeparator(self))
         self.setStyleSheet(
-            f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
+            f"""
+            CardWidget {{
+                background-color: {self._theme['bg']};
+                border: 1px solid {self._theme['border']};
+                border-radius: 16px;
+            }}
+            """
         )
+        self._update_status_badge()
+
+    def _initial_status_text(self) -> str:
+        if self.error:
+            return "Error"
+        if self.role == "user":
+            return "Prompt"
+        if self.role == "welcome":
+            return "Ready"
+        return "Idle"
+
+    def _status_badge_style(self, border_color: str, text_color: str = "#dbe7f8") -> str:
+        return f"""
+            QLabel {{
+                font-size: 10px;
+                color: {text_color};
+                background: rgba(255,255,255,0.03);
+                border: 1px solid {border_color};
+                border-radius: 9px;
+                padding: 2px 8px;
+                letter-spacing: 0.04em;
+                font-weight: 600;
+            }}
+        """
+
+    def _update_status_badge(self):
+        if not hasattr(self, "status_badge"):
+            return
+        if self.error:
+            self.status_badge.setText("Error")
+            self.status_badge.setStyleSheet(self._status_badge_style("#A94444", "#FFB4B4"))
+            return
+        if self.role == "user":
+            self.status_badge.setText("Prompt")
+            self.status_badge.setStyleSheet(self._status_badge_style("#4C74B5", "#DCE9FF"))
+            return
+        if self.role == "welcome":
+            self.status_badge.setText("Workspace")
+            self.status_badge.setStyleSheet(self._status_badge_style("#6B583C", "#FFE3BC"))
+            return
+        if self._streaming:
+            self.status_badge.setText("Thinking")
+            self.status_badge.setStyleSheet(self._status_badge_style("#63D8FF", "#DDF7FF"))
+        else:
+            self.status_badge.setText("Ready")
+            self.status_badge.setStyleSheet(self._status_badge_style("#3B516F", "#D7E4F5"))
 
     def start_streaming_anim(self):
-        """启动流式输出光影边框动画"""
         if self._streaming:
             return
         self._streaming = True
-        self._anim_offset = 0
+        self._pulse_phase = 0.0
+        self._update_status_badge()
         try:
-            self._anim_timer.start(30)
+            self._anim_timer.start(80)
         except RuntimeError:
             return
         self.update()
 
     def _update_anim(self):
-        self._anim_offset = (self._anim_offset + 2) % 360
+        self._pulse_phase = (self._pulse_phase + 0.25) % (math.pi * 2)
         self.update()
 
+    def _apply_card_style(self, border: str = None, bg: str = None):
+        self.setStyleSheet(
+            f"""
+            CardWidget {{
+                background-color: {bg or self._base_bg};
+                border: 1px solid {border or self._base_border};
+                border-radius: 16px;
+            }}
+            """
+        )
+
     def stop_streaming_anim(self):
-        """停止流式输出光影边框动画"""
         self._streaming = False
         try:
             self._anim_timer.stop()
         except RuntimeError:
             return
-        self.setStyleSheet(
-            f"CardWidget{{background-color:{self._base_bg};border:1px solid {self._base_border};border-radius:12px;}}"
-        )
+        self._apply_card_style()
+        self._update_status_badge()
         self.update()
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        if not self._streaming:
-            return
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         w, h = self.width(), self.height()
-        radius = 12
+        radius = 16
+
+        accent = QColor(self._theme["accent"])
+        accent.setAlpha(95 if self.role == "user" else 75)
+        stripe_width = 4
+        stripe_x = w - stripe_width - 2 if self._theme.get("side") == "right" else 2
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(accent)
+        painter.drawRoundedRect(stripe_x, 10, stripe_width, max(18, h - 20), 3, 3)
+
+        if not self._streaming:
+            return
 
         path = QPainterPath()
         path.addRoundedRect(1, 1, w - 2, h - 2, radius, radius)
         painter.setClipPath(path)
 
         gradient = QLinearGradient(0, 0, w, h)
-        colors = []
-        for i in range(8):
-            hue = (self._anim_offset + i * 45) % 360
-            c = QColor()
-            c.setHsl(hue, 200, 150)
-            colors.append(c)
-
-        gradient.setColorAt(0, colors[0])
-        gradient.setColorAt(0.14, colors[1])
-        gradient.setColorAt(0.28, colors[2])
-        gradient.setColorAt(0.42, colors[3])
-        gradient.setColorAt(0.56, colors[4])
-        gradient.setColorAt(0.70, colors[5])
-        gradient.setColorAt(0.84, colors[6])
-        gradient.setColorAt(1.0, colors[7])
+        if self.role == "assistant":
+            rainbow = [
+                QColor("#63D8FF"),
+                QColor("#7FA8FF"),
+                QColor("#A98BFF"),
+                QColor("#FF92C2"),
+                QColor("#FFB86B"),
+                QColor("#7BE3A1"),
+            ]
+            shift = int((self._pulse_phase / (math.pi * 2)) * len(rainbow))
+            rainbow = rainbow[shift:] + rainbow[:shift]
+            positions = [0.0, 0.2, 0.4, 0.62, 0.82, 1.0]
+            for pos, color in zip(positions, rainbow):
+                c = QColor(color)
+                c.setAlpha(175)
+                gradient.setColorAt(pos, c)
+        else:
+            pulse = QColor(self._theme["accent"])
+            glow_alpha = 90 + int(45 * (math.sin(self._pulse_phase) + 1) / 2)
+            pulse.setAlpha(glow_alpha)
+            gradient.setColorAt(0.0, pulse.lighter(120))
+            gradient.setColorAt(0.5, pulse)
+            gradient.setColorAt(1.0, pulse.darker(130))
 
         pen = QPen(gradient, 2)
         painter.setPen(pen)
         painter.setBrush(QBrush(Qt.NoBrush))
         painter.drawRoundedRect(1, 1, w - 2, h - 2, radius, radius)
 
+        highlight = QColor(self._theme["accent"])
+        highlight.setAlpha(24)
+        painter.fillRect(0, 0, w, 4, highlight)
+
     def set_error_state(self, is_error: bool):
-        """设置错误状态，卡片边框变红"""
         self.error = is_error
         if is_error:
             bd, bg = "#ff4d4d", "#2a1f1f"
         else:
-            if self.role == "user":
-                bd, bg = "#4A5568", "#2A2A2A"
-            else:
-                bd, bg = self._base_border, self._base_bg
-        self.setStyleSheet(
-            f"CardWidget{{background-color:{bg};border:1px solid {bd};border-radius:12px;}}"
-        )
+            bd, bg = self._base_border, self._base_bg
+        self._apply_card_style(border=bd, bg=bg)
+        self._update_status_badge()
 
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:
@@ -1172,6 +1323,22 @@ class MessageCard(SimpleCardWidget):
         self.updateGeometry()
         if self.parentWidget():
             QTimer.singleShot(10, self.parentWidget().updateGeometry)
+
+    def sync_width(self):
+        parent = self.parentWidget()
+        if not parent:
+            return
+        parent_width = parent.width()
+        if self.role == "welcome":
+            horizontal_margin = 20
+        elif self.role == "user":
+            horizontal_margin = 120
+        else:
+            horizontal_margin = 72
+
+        target_width = max(320, parent_width - horizontal_margin)
+        self.setMinimumWidth(target_width)
+        self.setMaximumWidth(target_width)
 
     def wheelEvent(self, event: QWheelEvent):
         try:
@@ -1207,7 +1374,6 @@ class MessageCard(SimpleCardWidget):
         """直接设置 HTML，绕过打字机效果"""
         try:
             if self.viewer:
-                self.viewer._pending_chars = ""
                 self.viewer._markdown_text = html
                 self.viewer._streaming = False
                 self.viewer._perform_update()
@@ -1264,6 +1430,10 @@ class MessageCard(SimpleCardWidget):
         except RuntimeError:
             pass
         self.stop_streaming_anim()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.sync_width()
 
     def closeEvent(self, e):
         try:
