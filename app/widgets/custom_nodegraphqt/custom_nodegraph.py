@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import math
+import os
 
 import orjson
 import traceback
@@ -617,6 +618,8 @@ class CustomNodeViewer(NodeViewer):
         self.setCacheMode(QtWidgets.QGraphicsView.CacheBackground)
         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorViewCenter)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.viewport().setFocusPolicy(QtCore.Qt.StrongFocus)
 
         # --- 对齐线对象 (初始化一次，复用) ---
         self._snap_lines_item = QtWidgets.QGraphicsPathItem()
@@ -669,7 +672,31 @@ class CustomNodeViewer(NodeViewer):
         QtCore.QTimer.singleShot(0, lambda: self._schedule_lod_update(immediate=True))
 
     def _sync_modifier_states(self, modifiers=None):
-        modifiers = QApplication.keyboardModifiers() if modifiers is None else modifiers
+        live_modifiers = QApplication.keyboardModifiers()
+        query_modifiers = live_modifiers
+        if hasattr(QApplication, "queryKeyboardModifiers"):
+            try:
+                query_modifiers = QApplication.queryKeyboardModifiers()
+            except Exception:
+                query_modifiers = live_modifiers
+        system_modifiers = QtCore.Qt.NoModifier
+        if os.name == "nt":
+            try:
+                import ctypes
+
+                get_async_key_state = ctypes.windll.user32.GetAsyncKeyState
+                if get_async_key_state(0x12) & 0x8000:
+                    system_modifiers |= QtCore.Qt.AltModifier
+                if get_async_key_state(0x11) & 0x8000:
+                    system_modifiers |= QtCore.Qt.ControlModifier
+                if get_async_key_state(0x10) & 0x8000:
+                    system_modifiers |= QtCore.Qt.ShiftModifier
+            except Exception:
+                system_modifiers = QtCore.Qt.NoModifier
+        if modifiers is None:
+            modifiers = system_modifiers or query_modifiers or live_modifiers
+        else:
+            modifiers = modifiers | system_modifiers | query_modifiers | live_modifiers
         self.ALT_state = bool(modifiers & QtCore.Qt.AltModifier)
         self.CTRL_state = bool(modifiers & QtCore.Qt.ControlModifier)
         self.SHIFT_state = bool(modifiers & QtCore.Qt.ShiftModifier)
@@ -696,6 +723,7 @@ class CustomNodeViewer(NodeViewer):
         self.ALT_state = False
         self.CTRL_state = False
         self.SHIFT_state = False
+        self._cursor_text.setPlainText("")
         self._cursor_text.setVisible(False)
 
     def _device_transform(self):
@@ -1072,7 +1100,7 @@ class CustomNodeViewer(NodeViewer):
             event.button() == QtCore.Qt.MiddleButton
             or (
                 event.button() == QtCore.Qt.LeftButton
-                and event.modifiers() == QtCore.Qt.AltModifier
+                and (event.modifiers() & QtCore.Qt.AltModifier)
             )
             or (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)
         ):
@@ -1191,6 +1219,17 @@ class CustomNodeViewer(NodeViewer):
 
     def mouseMoveEvent(self, event):
         self._sync_modifier_states(event.modifiers())
+        if self.ALT_state and self.SHIFT_state:
+            if self.pipe_slicing:
+                if self.LMB_state and self._SLICER_PIPE.isVisible():
+                    p1 = self._SLICER_PIPE.path().pointAtPercent(0)
+                    p2 = self.mapToScene(self._previous_pos)
+                    self._SLICER_PIPE.draw_path(p1, p2)
+                    self._SLICER_PIPE.show()
+            self._previous_pos = event.pos()
+            super(CustomNodeViewer, self).mouseMoveEvent(event)
+            return
+
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
@@ -1275,7 +1314,7 @@ class CustomNodeViewer(NodeViewer):
         was_panning = self._panning
         if event.button() == QtCore.Qt.LeftButton:
             self.LMB_state = False
-            if event.modifiers() == QtCore.Qt.AltModifier:
+            if event.modifiers() & QtCore.Qt.AltModifier:
                 self._panning = False
         elif event.button() == QtCore.Qt.RightButton:
             self.RMB_state = False
@@ -1350,14 +1389,12 @@ class CustomNodeViewer(NodeViewer):
         # 国际化悬浮提示文字
         overlay_text = None
         self._cursor_text.setVisible(False)
-        if not self.ALT_state:
-            if self.SHIFT_state:
-                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
-            elif self.CTRL_state:
-                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
-        elif self.ALT_state and self.SHIFT_state:
-            if self.pipe_slicing:
-                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
+        if self.ALT_state and self.SHIFT_state:
+            overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
+        elif self.SHIFT_state:
+            overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
+        elif self.CTRL_state:
+            overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
 
         if overlay_text:
             self._cursor_text.setPlainText(overlay_text)
@@ -1414,7 +1451,8 @@ class CustomNodeViewer(NodeViewer):
 
         super(NodeViewer, self).keyReleaseEvent(event)
         self._sync_modifier_states()
-        self._refresh_modifier_overlay()
+        self._cursor_text.setPlainText("")
+        self._cursor_text.setVisible(False)
 
     def focusOutEvent(self, event):
         self._clear_modifier_states()

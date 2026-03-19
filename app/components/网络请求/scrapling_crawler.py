@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -16,13 +15,14 @@ ArgumentType = base_module.ArgumentType
 ConnectionType = base_module.ConnectionType
 
 
+
 class ScraplingCrawlerComponent(BaseComponent):
     name = "Scrapling 网页抓取器"
     category = "网络请求"
     description = "基于 Scrapling 库的高性能网页内容抓取，支持 CSS/XPath 选择器、自动元素匹配、隐形抓取等功能"
-    requirements = "scrapling>=0.2.9"
+    requirements = "scrapling>=0.2.9,curl_cffi>=0.14.0,click>=8.3.0,playwright==1.58.0,patchright==1.58.2,browserforge>=1.2.4,apify-fingerprint-datapoints>=0.11.0,msgspec>=0.20.0"
     inputs = [
-        PortDefinition(name="url", label="URL", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="input", label="INPUT", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
     ]
     outputs = [
         PortDefinition(name="html_content", label="HTML 内容", type=ArgumentType.TEXT),
@@ -41,7 +41,7 @@ class ScraplingCrawlerComponent(BaseComponent):
             type=PropertyType.CHOICE,
             default="Fetcher",
             label="抓取器类型",
-            choices=["Fetcher", "StealthyFetcher", "PlayWrightFetcher"]
+            choices=["Fetcher", "StealthyFetcher", "DynamicFetcher"]
         ),
         "stealth_mode": PropertyDefinition(
             type=PropertyType.BOOL,
@@ -109,16 +109,36 @@ class ScraplingCrawlerComponent(BaseComponent):
     }
 
     def run(self, params, inputs=None):
-        from scrapling.fetchers import Fetcher, StealthyFetcher, PlayWrightFetcher
+        from scrapling.fetchers import Fetcher, StealthyFetcher, DynamicFetcher
         import time
+        import re
 
         # 获取输入 URL（优先使用输入端口）
-        url = inputs.url if inputs and hasattr(inputs, 'url') and inputs.url else params.url
+        url = params.url
+
+        # URL 验证：确保是有效的 URL 格式
+        url_pattern = re.compile(
+            r'^https?://'  # http:// 或 https://
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # 域名
+            r'localhost|'  # localhost
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # IP 地址
+            r'(?::\d+)?'  # 可选端口
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        
+        if not url or not url_pattern.match(url):
+            error_msg = f"无效的 URL: '{url}' - 请输入以 http:// 或 https:// 开头的有效网址"
+            self.logger.error(error_msg)
+            return {
+                "html_content": "",
+                "text_content": "",
+                "extracted_data": {},
+                "status": f"error: {error_msg}"
+            }
 
         # 解析属性
         fetcher_type = params.fetcher_type
         stealth_mode = params.stealth_mode
-        timeout = float(params.timeout)
+        timeout = int(float(params.timeout))  # 确保 timeout 是 int 类型
         selector_type = params.selector_type
         selector = params.selector
         extract_mode = params.extract_mode
@@ -137,7 +157,7 @@ class ScraplingCrawlerComponent(BaseComponent):
         fetcher_map = {
             "Fetcher": Fetcher,
             "StealthyFetcher": StealthyFetcher,
-            "PlayWrightFetcher": PlayWrightFetcher
+            "DynamicFetcher": DynamicFetcher
         }
         FetcherClass = fetcher_map.get(fetcher_type, Fetcher)
 
@@ -151,7 +171,8 @@ class ScraplingCrawlerComponent(BaseComponent):
                     headers=custom_headers if custom_headers else None,
                     stealthy_headers=stealth_mode,
                     timeout=timeout,
-                    allow_redirects=follow_redirects
+                    allow_redirects=follow_redirects,
+                    verify=False  # 跳过 SSL 证书验证
                 )
             elif fetcher_type == "StealthyFetcher":
                 page = StealthyFetcher.fetch(
@@ -160,8 +181,8 @@ class ScraplingCrawlerComponent(BaseComponent):
                     network_idle=True,
                     timeout=timeout
                 )
-            elif fetcher_type == "PlayWrightFetcher":
-                page = PlayWrightFetcher.fetch(
+            elif fetcher_type == "DynamicFetcher":
+                page = DynamicFetcher.fetch(
                     url,
                     headless=True,
                     wait_until="network_idle",
@@ -171,7 +192,7 @@ class ScraplingCrawlerComponent(BaseComponent):
             elapsed_time = time.time() - start_time
 
             # 获取完整的 HTML 内容
-            html_content = page.html
+            html_content = page.html_content if hasattr(page, 'html_content') else page.text
 
             # 获取纯文本内容（排除指定标签）
             text_content = page.get_all_text(ignore_tags=ignore_tags) if ignore_tags else page.get_all_text()
@@ -182,50 +203,79 @@ class ScraplingCrawlerComponent(BaseComponent):
             if selector:
                 # 执行选择器
                 if selector_type == "css":
-                    elements = page.css(selector, auto_match=auto_match, auto_save=auto_save)
+                    elements = page.css(selector)
                 elif selector_type == "xpath":
-                    elements = page.xpath(selector, auto_match=auto_match, auto_save=auto_save)
+                    elements = page.xpath(selector)
                 elif selector_type == "text":
                     elements = page.find_all(text=selector)
 
                 # 根据提取模式处理结果
                 if extract_mode == "text":
-                    if hasattr(elements, '__iter__') and not isinstance(elements, str):
-                        extracted_data = [elem.text if hasattr(elem, 'text') else str(elem) for elem in elements]
-                    else:
-                        extracted_data = elements.text if hasattr(elements, 'text') else str(elements)
+                    # 安全提取文本，确保返回字符串
+                    try:
+                        if hasattr(elements, '__iter__') and not isinstance(elements, (str, bytes)):
+                            extracted_data = []
+                            for elem in elements:
+                                try:
+                                    text_val = elem.text if hasattr(elem, 'text') else str(elem) if elem else ""
+                                    extracted_data.append(str(text_val))
+                                except:
+                                    extracted_data.append(str(elem) if elem else "")
+                        else:
+                            text_val = elements.text if hasattr(elements, 'text') else str(elements) if elements else ""
+                            extracted_data = str(text_val)
+                    except:
+                        extracted_data = str(elements) if elements else ""
                 elif extract_mode == "html":
-                    if hasattr(elements, '__iter__') and not isinstance(elements, str):
-                        extracted_data = [elem.html_content if hasattr(elem, 'html_content') else str(elem) for elem in elements]
-                    else:
-                        extracted_data = elements.html_content if hasattr(elements, 'html_content') else str(elements)
+                    # 安全提取HTML，确保返回字符串
+                    try:
+                        if hasattr(elements, '__iter__') and not isinstance(elements, (str, bytes)):
+                            extracted_data = []
+                            for elem in elements:
+                                html_val = elem.html_content if hasattr(elem, 'html_content') else str(elem) if elem else ""
+                                extracted_data.append(str(html_val))
+                        else:
+                            html_val = elements.html_content if hasattr(elements, 'html_content') else str(elements) if elements else ""
+                            extracted_data = str(html_val)
+                    except:
+                        extracted_data = str(elements) if elements else ""
                 elif extract_mode == "attributes":
-                    if hasattr(elements, '__iter__') and not isinstance(elements, str):
-                        extracted_data = [dict(elem.attrib) if hasattr(elem, 'attrib') else {} for elem in elements]
-                    else:
-                        extracted_data = dict(elements.attrib) if hasattr(elements, 'attrib') else {}
-                elif extract_mode == "all":
-                    # 返回完整元素信息
-                    if hasattr(elements, '__iter__') and not isinstance(elements, str):
+                    # 安全提取属性，确保返回字典
+                    try:
+                        if hasattr(elements, '__iter__') and not isinstance(elements, (str, bytes)):
+                            extracted_data = []
+                            for elem in elements:
+                                attrib_val = dict(elem.attrib) if hasattr(elem, 'attrib') else {}
+                                extracted_data.append(attrib_val)
+                        else:
+                            extracted_data = dict(elements.attrib) if hasattr(elements, 'attrib') else {}
+                    except:
                         extracted_data = []
-                        for elem in elements:
-                            item = {}
-                            if hasattr(elem, 'text'):
-                                item['text'] = elem.text
-                            if hasattr(elem, 'html_content'):
-                                item['html'] = elem.html_content
-                            if hasattr(elem, 'attrib'):
-                                item['attributes'] = dict(elem.attrib)
-                            if hasattr(elem, 'path'):
-                                item['path'] = elem.path
-                            extracted_data.append(item)
-                    else:
-                        extracted_data = {
-                            'text': elements.text if hasattr(elements, 'text') else None,
-                            'html': elements.html_content if hasattr(elements, 'html_content') else None,
-                            'attributes': dict(elements.attrib) if hasattr(elements, 'attrib') else None,
-                            'path': elements.path if hasattr(elements, 'path') else None,
-                        }
+                elif extract_mode == "all":
+                    # 返回完整元素信息，确保所有值都是字符串
+                    try:
+                        if hasattr(elements, '__iter__') and not isinstance(elements, (str, bytes)):
+                            extracted_data = []
+                            for elem in elements:
+                                item = {}
+                                if hasattr(elem, 'text'):
+                                    item['text'] = str(elem.text) if elem.text else ""
+                                if hasattr(elem, 'html_content'):
+                                    item['html'] = str(elem.html_content) if elem.html_content else ""
+                                if hasattr(elem, 'attrib'):
+                                    item['attributes'] = dict(elem.attrib)
+                                if hasattr(elem, 'path'):
+                                    item['path'] = str(elem.path) if elem.path else ""
+                                extracted_data.append(item)
+                        else:
+                            extracted_data = {
+                                'text': str(elements.text) if hasattr(elements, 'text') and elements.text else "",
+                                'html': str(elements.html_content) if hasattr(elements, 'html_content') and elements.html_content else "",
+                                'attributes': dict(elements.attrib) if hasattr(elements, 'attrib') else {},
+                                'path': str(elements.path) if hasattr(elements, 'path') and elements.path else "",
+                            }
+                    except:
+                        extracted_data = {}
 
             return {
                 "html_content": html_content,
