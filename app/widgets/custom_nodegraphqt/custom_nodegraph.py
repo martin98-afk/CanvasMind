@@ -596,6 +596,9 @@ class CustomNodeViewer(NodeViewer):
         self.graph = None
         self._navigation_mode = False
         self._temporary_navigation_mode = False
+        self.ALT_state = False
+        self.CTRL_state = False
+        self.SHIFT_state = False
         self._last_drag_target = None  # 记录当前正在高亮的代理控件
         self._custom_menu = None  # 用于存放 CustomGraphMenu 的引用
         self._temp_connection_source = None  # 用于存放拉线的起始端口
@@ -664,6 +667,36 @@ class CustomNodeViewer(NodeViewer):
         self._lod_update_timer.setSingleShot(True)
         self._lod_update_timer.timeout.connect(self._apply_lod_update)
         QtCore.QTimer.singleShot(0, lambda: self._schedule_lod_update(immediate=True))
+
+    def _sync_modifier_states(self, modifiers=None):
+        modifiers = QApplication.keyboardModifiers() if modifiers is None else modifiers
+        self.ALT_state = bool(modifiers & QtCore.Qt.AltModifier)
+        self.CTRL_state = bool(modifiers & QtCore.Qt.ControlModifier)
+        self.SHIFT_state = bool(modifiers & QtCore.Qt.ShiftModifier)
+
+    def _refresh_modifier_overlay(self):
+        overlay_text = None
+        self._cursor_text.setVisible(False)
+        if not self.ALT_state:
+            if self.SHIFT_state:
+                overlay_text = self.tr("\n    SHIFT:\n    鎵╁睍鑺傜偣閫夋嫨")
+            elif self.CTRL_state:
+                overlay_text = self.tr("\n    CTRL:\n    鍙栨秷鑺傜偣閫夋嫨")
+        elif self.ALT_state and self.SHIFT_state and self.pipe_slicing:
+            overlay_text = self.tr("\n    ALT + SHIFT:\n    杩炵嚎鍒犻櫎妯″紡")
+
+        if overlay_text:
+            self._cursor_text.setPlainText(overlay_text)
+            self._cursor_text.setFont(QtGui.QFont("Arial", 10))
+            self._cursor_text.setDefaultTextColor(Qt.white)
+            self._cursor_text.setPos(self.mapToScene(self._previous_pos))
+            self._cursor_text.setVisible(True)
+
+    def _clear_modifier_states(self):
+        self.ALT_state = False
+        self.CTRL_state = False
+        self.SHIFT_state = False
+        self._cursor_text.setVisible(False)
 
     def _device_transform(self):
         transform = self.transform()
@@ -1024,6 +1057,7 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
+        self._sync_modifier_states(event.modifiers())
         self.home_window.graph.graph_splitter.set_active_viewer(self)
         item = self.itemAt(event.pos())
         if isinstance(item, NodeActionButton):
@@ -1156,6 +1190,7 @@ class CustomNodeViewer(NodeViewer):
     _selected_nodes_cache_time = 0
 
     def mouseMoveEvent(self, event):
+        self._sync_modifier_states(event.modifiers())
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
@@ -1291,6 +1326,7 @@ class CustomNodeViewer(NodeViewer):
         super(NodeViewer, self).mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
+        self._sync_modifier_states(event.modifiers())
         focused_widget = QApplication.focusWidget()
         if focused_widget:
             if hasattr(focused_widget, "code_editor"):
@@ -1307,12 +1343,6 @@ class CustomNodeViewer(NodeViewer):
             event.accept()
             return
 
-        self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
-        self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
-        self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
-        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
-            self.ALT_state = True
-            self.SHIFT_state = True
         if self._LIVE_PIPE.isVisible():
             super(NodeViewer, self).keyPressEvent(event)
             return
@@ -1357,10 +1387,6 @@ class CustomNodeViewer(NodeViewer):
                 self._frame_all_nodes()
             event.accept()
             return
-        elif event.key() == QtCore.Qt.Key_A:
-            self._frame_all_nodes()
-            event.accept()
-            return
         elif event.key() == QtCore.Qt.Key_Home:
             self._frame_all_nodes()
             event.accept()
@@ -1369,6 +1395,7 @@ class CustomNodeViewer(NodeViewer):
         super(NodeViewer, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
+        self._sync_modifier_states(event.modifiers())
         focused_widget = QApplication.focusWidget()
         if focused_widget:
             if hasattr(focused_widget, "code_editor"):
@@ -1386,6 +1413,12 @@ class CustomNodeViewer(NodeViewer):
             return
 
         super(NodeViewer, self).keyReleaseEvent(event)
+        self._sync_modifier_states()
+        self._refresh_modifier_overlay()
+
+    def focusOutEvent(self, event):
+        self._clear_modifier_states()
+        super(CustomNodeViewer, self).focusOutEvent(event)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -1767,6 +1800,7 @@ class CustomNodeViewer(NodeViewer):
             event (QtWidgets.QGraphicsScenePressEvent):
                 The event handler from the QtWidgets.QGraphicsScene
         """
+        self._sync_modifier_states(event.modifiers())
         # pipe slicer enabled.
         if self.ALT_state and self.SHIFT_state:
             return

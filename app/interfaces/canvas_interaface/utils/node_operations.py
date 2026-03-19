@@ -133,12 +133,6 @@ class NodeOperations:
 
     def setup_graph_menu(self, viewer):
         """注入函数"""
-        left_panel = self.parent.nav_panel
-        left_panel.draggable_tree.filter_changed_signal.connect(
-            self.graph_menu.set_category_filter
-        )
-        initial_cats = left_panel.draggable_tree.tree._selected_categories
-        self.graph_menu.set_category_filter(initial_cats)
         viewer._custom_menu = self.graph_menu
         original_context_menu_event = viewer.contextMenuEvent
 

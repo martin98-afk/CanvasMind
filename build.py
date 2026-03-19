@@ -14,7 +14,6 @@ extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyech
 # 需要删除的冗余库列表
 to_remove = [
     'scipy', 'scipy.libs', 'sphinx', 'matplotlib', 'torch', 'tensorflow', 'torchaudio'
-    #
 ]
 # 2. 图标选择 (跨平台)
 icon_arg = None

@@ -1,13 +1,13 @@
 # 大模型输入框
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QDragEnterEvent, QDropEvent
-from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtWidgets import QShortcut, QTextEdit
 from qfluentwidgets import FluentIcon, ComboBox
 from qfluentwidgets import TextEdit, TransparentToolButton
 from qtpy import QtCore
 
 
-class SendableTextEdit(TextEdit):
+class SendableTextEdit(QTextEdit):
     sendMessageRequested = pyqtSignal()
     stopMessageRequested = pyqtSignal()
     clearRequested = pyqtSignal()
@@ -27,7 +27,7 @@ class SendableTextEdit(TextEdit):
         self.setAcceptDrops(True)
         self.setMinimumHeight(96)
         self.setStyleSheet("""
-            TextEdit {
+            QTextEdit {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 rgba(18, 24, 34, 245),
                     stop:1 rgba(24, 31, 45, 245));
@@ -38,7 +38,7 @@ class SendableTextEdit(TextEdit):
                 selection-background-color: rgba(103, 197, 255, 0.28);
                 font-size: 14px;
             }
-            TextEdit:focus {
+            QTextEdit:focus {
                 border: 1px solid #4E93FF;
                 background: rgba(22, 29, 41, 248);
             }
