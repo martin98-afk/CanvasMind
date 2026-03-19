@@ -146,6 +146,9 @@ class TaskSessionState:
 
     def infer_stage_from_turn(self, user_text: str):
         text = (user_text or "").lower()
+        if not text.strip():
+            return
+
         if any(token in text for token in ["test", "pytest", "验证", "检查", "运行"]):
             self.set_stage("verify", "user-request")
             return
@@ -161,6 +164,43 @@ class TaskSessionState:
         if any(token in text for token in ["plan", "分析", "设计", "方案", "思路"]):
             self.set_stage("plan", "user-request")
             return
+
+        # 对多轮追问默认保持当前阶段，避免每次都回到 discover 重新搜索文件。
+        follow_up_markers = [
+            "继续",
+            "然后",
+            "再",
+            "另外",
+            "顺便",
+            "基于上面",
+            "根据上面",
+            "刚才",
+            "前面",
+            "这里",
+            "这个",
+            "那个",
+            "为什么",
+            "怎么",
+            "如何",
+            "那就",
+            "接着",
+            "下一步",
+        ]
+        has_existing_context = bool(
+            self.related_files
+            or self.todo_items
+            or self.last_tool_name
+            or self.recent_events
+        )
+        if any(marker in text for marker in follow_up_markers) and has_existing_context:
+            return
+
+        # 已经有上下文时，普通追问默认进入 plan，而不是退回 discover。
+        if has_existing_context:
+            if self.stage == "discover":
+                self.set_stage("plan", "preserve-context")
+            return
+
         self.set_stage("discover", "default")
 
     def build_context_block(self) -> str:
@@ -173,6 +213,10 @@ class TaskSessionState:
         lines.append(f"- Stage goal: {self.prompts.get(self.stage, 'unknown')}")
         lines.append(f"- Goal: {self.current_goal or 'Not set'}")
         lines.append(f"- Verification: {self.verification_status}")
+        if self.related_files or self.todo_items or self.last_tool_name:
+            lines.append(
+                "- Reuse existing session context first. Avoid re-scanning files unless the user changes scope or the current context is insufficient."
+            )
         if self.related_files:
             lines.append("- Related files:")
             lines.extend(f"  - {item}" for item in self.related_files[-8:])

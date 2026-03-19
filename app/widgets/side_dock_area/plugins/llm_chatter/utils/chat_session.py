@@ -140,6 +140,17 @@ class SessionManager(QObject):
         else:
             self.sessions[self.current_index] = ChatSession(messages=messages.copy())
 
+    def set_current_session(self, session: ChatSession):
+        if self.current_index < 0:
+            self.sessions.append(session)
+            self.current_index = len(self.sessions) - 1
+            return
+        if self.current_index >= len(self.sessions):
+            self.sessions.append(session)
+            self.current_index = len(self.sessions) - 1
+            return
+        self.sessions[self.current_index] = session
+
     def delete_session(self, index: int) -> bool:
         if 0 <= index < len(self.sessions):
             self.sessions.pop(index)

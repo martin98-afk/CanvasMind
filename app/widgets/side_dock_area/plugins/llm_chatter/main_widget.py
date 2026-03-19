@@ -47,6 +47,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core import (
 from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import AgentManager
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     SessionManager,
+    ChatSession,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import (
     HistoryManager,
@@ -127,6 +128,11 @@ class OpenAIChatToolWindow(ToolWindow):
     _todo_floating_widget = None
     _question_floating_widget = None
     _question_tool_call_id = None
+    _history_preview_session_data: Optional[dict] = None
+    _history_preview_history_index: Optional[int] = None
+    _history_preview_opening: bool = False
+    _history_preview_messages: Optional[List[dict]] = None
+    _history_preview_title: str = ""
     insertResponse = pyqtSignal(str)
     createResponse = pyqtSignal(str)
     contextActionRequested = pyqtSignal(str, str)
@@ -734,6 +740,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _display_current_session(self):
         self._clear_chat_area()
+        self._history_preview_messages = None
+        self._history_preview_title = ""
 
         session = self.session_manager.get_current_session()
         if not session:
@@ -750,6 +758,17 @@ class OpenAIChatToolWindow(ToolWindow):
         self._batch_size = 4
         self._load_message_batch()
 
+    def _display_preview_session(self):
+        self._clear_chat_area()
+
+        if self._history_preview_title:
+            self.title_edit.setText(self._history_preview_title)
+
+        self._message_batch = list(self._history_preview_messages or [])
+        self._message_batch_index = 0
+        self._batch_size = 4
+        self._load_message_batch()
+
     def _load_message_batch(self):
         """分批加载消息，避免卡顿"""
         batch = self._message_batch[
@@ -760,8 +779,11 @@ class OpenAIChatToolWindow(ToolWindow):
             role = msg.get("role")
 
             if role == "user":
+                content = self._sanitize_user_message_for_display(
+                    msg.get("content", "")
+                )
                 self._append_user_message(
-                    msg.get("content", ""),
+                    content,
                     timestamp=msg.get(
                         "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
                     ),
@@ -769,7 +791,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 )
 
             elif role == "assistant":
-                card = self._append_assistant_message()
+                card = self._append_assistant_message(
+                    timestamp=msg.get(
+                        "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+                    )
+                )
                 content = msg.get("content", "")
                 if isinstance(content, list):
                     content = "\n".join(
@@ -845,12 +871,32 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
+            if self._history_preview_session_data is None:
+                current_session = self.session_manager.get_current_session()
+                self._history_preview_session_data = (
+                    current_session.to_dict() if current_session else None
+                )
+                self._history_preview_history_index = self._current_history_index
             self._in_history_mode = True
             self.chat_layout.setAlignment(Qt.AlignTop)
             self._display_history_sessions()
         else:
             self._in_history_mode = False
             self.chat_layout.setAlignment(Qt.AlignBottom)
+            if self._history_preview_opening:
+                self._history_preview_opening = False
+                self._display_preview_session()
+                return
+            if self._history_preview_session_data:
+                restored_session = ChatSession.from_dict(
+                    self._history_preview_session_data
+                )
+                self.session_manager.set_current_session(restored_session)
+            self._current_history_index = self._history_preview_history_index
+            self._history_preview_session_data = None
+            self._history_preview_history_index = None
+            self._history_preview_messages = None
+            self._history_preview_title = ""
             self._display_current_session()
 
     def _toggle_shell_mode(self, enabled: bool):
@@ -952,10 +998,21 @@ class OpenAIChatToolWindow(ToolWindow):
         return card
 
     def _clear_chat_area(self):
+        self._current_assistant_card = None
         while self.chat_layout.count():
             item = self.chat_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+
+    def _sanitize_user_message_for_display(self, content: str) -> str:
+        if not isinstance(content, str):
+            return content
+
+        pattern = re.compile(
+            r"^\[Task Stage:.*?\]\n\[Current Goal:.*?\]\n\[Verification:.*?\]\n\n",
+            re.DOTALL,
+        )
+        return pattern.sub("", content, count=1)
 
     def _on_clear_shortcut(self):
         self._clear_chat_area()
@@ -995,12 +1052,13 @@ class OpenAIChatToolWindow(ToolWindow):
         messages = self.history_manager.get_session_by_index(index)
         if messages is None:
             return
-        self.session_manager.set_session_from_messages(messages)
+        self._history_preview_messages = list(messages)
+        self._history_preview_title = self.history_manager.get_current_title(index)
         self._current_history_index = index
         self._in_history_mode = False
         self.chat_layout.setAlignment(Qt.AlignBottom)
+        self._history_preview_opening = True
         self.history_btn.setChecked(False)
-        self._display_current_session()
 
     def _append_user_message(
         self, content: str, timestamp: str = None, tag_params: dict = None
@@ -1023,8 +1081,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._update_node_preview()
         return card
 
-    def _append_assistant_message(self) -> MessageCard:
-        card = MessageCard(parent=self, role="assistant")
+    def _append_assistant_message(self, timestamp: str = None) -> MessageCard:
+        card = MessageCard(parent=self, role="assistant", timestamp=timestamp)
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.regenerateRequested.connect(lambda: self._regenerate_message(card))
@@ -1500,9 +1558,38 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
+            self._sync_current_assistant_card_to_session()
 
         if self.history_manager:
             self._save_current_session_to_history()
+
+    def _sync_current_assistant_card_to_session(self):
+        if self._history_preview_messages is not None:
+            return
+
+        session = self.session_manager.get_current_session()
+        if not session or not self._current_assistant_card:
+            return
+
+        viewer = getattr(self._current_assistant_card, "viewer", None)
+        if not viewer or not hasattr(viewer, "get_plain_text"):
+            return
+
+        content = viewer.get_plain_text()
+        if not content or not str(content).strip():
+            return
+
+        assistant_message = {
+            "role": "assistant",
+            "content": content,
+            "timestamp": self._current_assistant_card.timestamp,
+        }
+
+        if session.messages and session.messages[-1].get("role") == "assistant":
+            session.messages[-1] = assistant_message
+        else:
+            session.messages.append(assistant_message)
+        session._update_timestamp()
 
     def _save_current_session_to_history(self):
         saved_messages = []
@@ -1542,6 +1629,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_assistant_card.stop_streaming_anim()
             self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
+            self._sync_current_assistant_card_to_session()
         self._is_streaming = False
         self._toggle_send_stop(False)
 
