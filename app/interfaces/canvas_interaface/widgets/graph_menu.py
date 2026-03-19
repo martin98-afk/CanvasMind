@@ -11,6 +11,7 @@ from app.components.base import ArgumentType
 from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
 from app.scan_components import ComponentScanner
 from app.utils.utils import get_pinyin_search_keys, get_icon
+from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 from app.widgets.basic_widget.style_sheet import StyleSheet
 
 
@@ -383,61 +384,47 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
     def _update_create_cache(self):
         self._cached_data = []
-        tree_widget = self._left_panel.draggable_tree.tree
-        root = tree_widget.invisibleRootItem()
         scanner = ComponentScanner()
+        component_map, _ = scanner.get_components()
         node_factory_nodes = self._graph._node_factory.nodes
         node_type_map = self._graph.parent().node_type_map
 
-        def collect_nodes(parent_item):
-            for i in range(parent_item.childCount()):
-                item = parent_item.child(i)
-                node_id = item.data(0, Qt.UserRole + 1)
-                if node_id:
-                    node_type = node_type_map.get(node_id)
-                    node_class = node_factory_nodes.get(node_type)
-                    if not node_class:
-                        continue
+        for full_path, comp in component_map.items():
+            node_type = node_type_map.get(full_path)
+            if not node_type:
+                continue
 
-                    node_uuid = node_class.__name__.split("StatusDynamicNode_")[1]
-                    comp = scanner.get_component_by_uuid(node_uuid)
-                    node_inputs = comp.get_inputs()
-                    node_outputs = comp.get_outputs()
+            node_class = node_factory_nodes.get(node_type)
+            if not node_class:
+                continue
 
-                    path_parts = []
-                    p = item.parent()
-                    while p and p != root:
-                        path_parts.insert(0, p.text(0))
-                        p = p.parent()
-                    cat_full_str = "/".join(path_parts)
-                    node_name = item.text(0).replace("★ ", "")
-                    py_keys = get_pinyin_search_keys(node_name)
+            node_name = getattr(comp, "name", full_path.split("/")[-1])
+            category = "/".join(full_path.split("/")[:-1])
+            py_keys = get_pinyin_search_keys(node_name)
+            node_inputs = comp.get_inputs()
+            node_outputs = comp.get_outputs()
 
-                    self._cached_data.append(
-                        {
-                            "type": "node",
-                            "id": node_type,
-                            "name": node_name,
-                            "category": cat_full_str,
-                            "search_keys": f"{node_name} {cat_full_str} {node_id} {py_keys}".lower(),
-                            "in_port_count": len(node_inputs),
-                            "out_port_count": len(node_outputs),
-                            "input_ports_raw": node_inputs,
-                            "output_ports_raw": node_outputs,
-                            "in_port_types": [
-                                port_type for _, _, _, port_type, _ in node_inputs
-                            ],
-                            "out_port_types": [
-                                port_type for _, _, port_type, _ in node_outputs
-                            ],
-                            "in_port_sub_types": comp.get_input_sub_types(),
-                            "out_port_sub_types": comp.get_output_sub_types(),
-                        }
-                    )
-                else:
-                    collect_nodes(item)
-
-        collect_nodes(root)
+            self._cached_data.append(
+                {
+                    "type": "node",
+                    "id": node_type,
+                    "name": node_name,
+                    "category": category,
+                    "search_keys": f"{node_name} {category} {full_path} {py_keys}".lower(),
+                    "in_port_count": len(node_inputs),
+                    "out_port_count": len(node_outputs),
+                    "input_ports_raw": node_inputs,
+                    "output_ports_raw": node_outputs,
+                    "in_port_types": [
+                        port_type for _, _, _, port_type, _ in node_inputs
+                    ],
+                    "out_port_types": [
+                        port_type for _, _, port_type, _ in node_outputs
+                    ],
+                    "in_port_sub_types": comp.get_input_sub_types(),
+                    "out_port_sub_types": comp.get_output_sub_types(),
+                }
+            )
 
     def _update_template_cache(self):
         self._cached_data = []
@@ -779,8 +766,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
         if self._current_mode == MenuMode.CREATE:
             pos = self.filter_button.mapToGlobal(self.filter_button.rect().bottomLeft())
             # 这里需要连接信号
-            dialog = self._left_panel.draggable_tree.category_filter_dialog
-            dialog.categories_changed.disconnect() if dialog.categories_changed else None
+            dialog = CategoryFilterDialog(
+                parent=self,
+                selected_categories=self._selected_categories.copy(),
+                direction="down",
+            )
             dialog.categories_changed.connect(self.set_category_filter)
             dialog.show_at(pos)
 
@@ -790,7 +780,6 @@ class CustomGraphMenu(QtWidgets.QWidget):
             if not all_tags:
                 return
 
-            from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
             # 创建一个临时的过滤对话框
             dialog = CategoryFilterDialog(

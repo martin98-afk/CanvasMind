@@ -1282,7 +1282,6 @@ class OpenAIChatToolWindow(ToolWindow):
                 "\n".join([value[1] for value in user_params.values()])
                 + "\n\n"
                 + user_input
-                + "\n\n回复内容:\n"
             )
 
         self._delete_message(card)
