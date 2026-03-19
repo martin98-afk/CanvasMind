@@ -594,6 +594,7 @@ class CustomNodeViewer(NodeViewer):
         super(CustomNodeViewer, self).__init__(parent)
         self.home_window = parent
         self._panning = False
+        self._toolbar_interaction_active = False
         self.graph = None
         self._navigation_mode = False
         self._temporary_navigation_mode = False
@@ -725,6 +726,16 @@ class CustomNodeViewer(NodeViewer):
         self.SHIFT_state = False
         self._cursor_text.setPlainText("")
         self._cursor_text.setVisible(False)
+
+    @staticmethod
+    def _is_modifier_key_event(event):
+        return event.key() in (
+            QtCore.Qt.Key_Alt,
+            QtCore.Qt.Key_Shift,
+            QtCore.Qt.Key_Control,
+            QtCore.Qt.Key_Meta,
+            QtCore.Qt.Key_AltGr,
+        )
 
     def _device_transform(self):
         transform = self.transform()
@@ -1085,9 +1096,26 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
-        self._sync_modifier_states(event.modifiers())
         self.home_window.graph.graph_splitter.set_active_viewer(self)
         item = self.itemAt(event.pos())
+        if isinstance(item, BaseCanvasToolbar):
+            self._toolbar_interaction_active = True
+            self.LMB_state = False
+            self._panning = False
+            if self._rubber_band.isActive or self._rubber_band.isVisible():
+                self._rubber_band.isActive = False
+                self._rubber_band.hide()
+            super(CustomNodeViewer, self).mousePressEvent(event)
+            return
+        if isinstance(item, NodeActionButton):
+            self._toolbar_interaction_active = True
+            self.LMB_state = False
+            self._panning = False
+            if self._rubber_band.isActive or self._rubber_band.isVisible():
+                self._rubber_band.isActive = False
+                self._rubber_band.hide()
+            super(CustomNodeViewer, self).mousePressEvent(event)
+            return
         if isinstance(item, NodeActionButton):
             # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
             super(CustomNodeViewer, self).mousePressEvent(event)
@@ -1100,7 +1128,7 @@ class CustomNodeViewer(NodeViewer):
             event.button() == QtCore.Qt.MiddleButton
             or (
                 event.button() == QtCore.Qt.LeftButton
-                and (event.modifiers() & QtCore.Qt.AltModifier)
+                and event.modifiers() == QtCore.Qt.AltModifier
             )
             or (event.button() == QtCore.Qt.LeftButton and self._navigation_mode)
         ):
@@ -1218,28 +1246,19 @@ class CustomNodeViewer(NodeViewer):
     _selected_nodes_cache_time = 0
 
     def mouseMoveEvent(self, event):
-        self._sync_modifier_states(event.modifiers())
-        if self.ALT_state and self.SHIFT_state:
-            if self.pipe_slicing:
-                if self.LMB_state and self._SLICER_PIPE.isVisible():
-                    p1 = self._SLICER_PIPE.path().pointAtPercent(0)
-                    p2 = self.mapToScene(self._previous_pos)
-                    self._SLICER_PIPE.draw_path(p1, p2)
-                    self._SLICER_PIPE.show()
-            self._previous_pos = event.pos()
+        if self._toolbar_interaction_active:
             super(CustomNodeViewer, self).mouseMoveEvent(event)
             return
-
+        # 1. 注入导航模式下的平移逻辑
         if self._navigation_mode and self.LMB_state and not self.ALT_state:
             previous_pos = self.mapToScene(self._previous_pos)
             current_pos = self.mapToScene(event.pos())
             delta = previous_pos - current_pos
             self._set_viewer_pan(delta.x(), delta.y())
-            self._invalidate_viewport_cache()
-            self._schedule_lod_update()
 
+        # 2. 执行父类逻辑 (NodeGraphQt 在这里处理节点的拖动计算)
         super(CustomNodeViewer, self).mouseMoveEvent(event)
-
+        # 3. 判定是否正在拖拽节点
         is_dragging_nodes = (
             self.LMB_state
             and not self.ALT_state
@@ -1249,38 +1268,40 @@ class CustomNodeViewer(NodeViewer):
         )
 
         if is_dragging_nodes:
-            current_time = QtCore.QDateTime.currentMSecsSinceEpoch()
-            if (
-                self._selected_nodes_cache is None
-                or current_time - self._selected_nodes_cache_time > 50
-            ):
-                self._selected_nodes_cache = self._selected_node_items()
-                self._selected_nodes_cache_time = current_time
+            selected_nodes = [
+                i
+                for i in self.scene().selectedItems()
+                if isinstance(i, AbstractNodeItem)
+            ]
 
-            selected_nodes = self._selected_nodes_cache
-
+            # 排除正在缩放节点的情况
             if any(getattr(n, "_is_resizing", False) for n in selected_nodes):
                 self._snap_lines_item.hide()
                 self._selection_overlay.hide()
             else:
-                if self._auto_pan_from_view_pos(event.pos()):
-                    self._schedule_lod_update()
+                # 处理对齐线
                 self._handle_snapping(selected_nodes)
-                self._selection_overlay.refresh(
-                    full_recalc=False, selected_nodes=selected_nodes
-                )
+                self._selection_overlay.refresh()
         else:
-            self._selected_nodes_cache = None
-
             if self._snap_lines_item.isVisible():
                 self._snap_lines_item.hide()
 
+            # 如果是在拉框选择，实时更新虚线框 (体验更好)
             if self._rubber_band.isActive:
                 self._selection_overlay.refresh(full_recalc=True)
 
     # ---------------------------------------------
 
     def mouseReleaseEvent(self, event):
+        if self._toolbar_interaction_active:
+            self._toolbar_interaction_active = False
+            self.LMB_state = False
+            self._panning = False
+            if self._rubber_band.isActive or self._rubber_band.isVisible():
+                self._rubber_band.isActive = False
+                self._rubber_band.hide()
+            super(CustomNodeViewer, self).mouseReleaseEvent(event)
+            return
         # 1. 检查拉线状态 (NodeGraphQt 基类在拉线时会填充 self._start_port)
         live_pipe_active = self._LIVE_PIPE.isVisible()
         # 关键：直接访问 viewer 自身的 _start_port
@@ -1314,7 +1335,7 @@ class CustomNodeViewer(NodeViewer):
         was_panning = self._panning
         if event.button() == QtCore.Qt.LeftButton:
             self.LMB_state = False
-            if event.modifiers() & QtCore.Qt.AltModifier:
+            if event.modifiers() == QtCore.Qt.AltModifier:
                 self._panning = False
         elif event.button() == QtCore.Qt.RightButton:
             self.RMB_state = False
@@ -1365,7 +1386,6 @@ class CustomNodeViewer(NodeViewer):
         super(NodeViewer, self).mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
-        self._sync_modifier_states(event.modifiers())
         focused_widget = QApplication.focusWidget()
         if focused_widget:
             if hasattr(focused_widget, "code_editor"):
@@ -1382,6 +1402,12 @@ class CustomNodeViewer(NodeViewer):
             event.accept()
             return
 
+        self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
+        self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
+        self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
+        if event.modifiers() == (QtCore.Qt.AltModifier | QtCore.Qt.ShiftModifier):
+            self.ALT_state = True
+            self.SHIFT_state = True
         if self._LIVE_PIPE.isVisible():
             super(NodeViewer, self).keyPressEvent(event)
             return
@@ -1389,12 +1415,14 @@ class CustomNodeViewer(NodeViewer):
         # 国际化悬浮提示文字
         overlay_text = None
         self._cursor_text.setVisible(False)
-        if self.ALT_state and self.SHIFT_state:
-            overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
-        elif self.SHIFT_state:
-            overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
-        elif self.CTRL_state:
-            overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
+        if not self.ALT_state:
+            if self.SHIFT_state:
+                overlay_text = self.tr("\n    SHIFT:\n    扩展节点选择")
+            elif self.CTRL_state:
+                overlay_text = self.tr("\n    CTRL:\n    取消节点选择")
+        elif self.ALT_state and self.SHIFT_state:
+            if self.pipe_slicing:
+                overlay_text = self.tr("\n    ALT + SHIFT:\n    连线删除模式")
 
         if overlay_text:
             self._cursor_text.setPlainText(overlay_text)
@@ -1408,40 +1436,10 @@ class CustomNodeViewer(NodeViewer):
                 self.home_window.node_operations._copy_selected_nodes()
             elif event.key() == QtCore.Qt.Key_V:
                 self.home_window.node_operations._paste_nodes()
-            elif event.key() == QtCore.Qt.Key_D:
-                self.home_window.node_operations.duplicate_selected_nodes()
-                event.accept()
-                return
-            elif event.key() == QtCore.Qt.Key_0:
-                self._frame_all_nodes()
-                event.accept()
-                return
-        elif event.key() == QtCore.Qt.Key_F:
-            nodes = self.selected_nodes()
-            if nodes:
-                self.zoom_to_nodes(nodes)
-            else:
-                self._frame_all_nodes()
-            event.accept()
-            return
-        elif event.key() == QtCore.Qt.Key_Home:
-            self._frame_all_nodes()
-            event.accept()
-            return
 
         super(NodeViewer, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        self._sync_modifier_states(event.modifiers())
-        focused_widget = QApplication.focusWidget()
-        if focused_widget:
-            if hasattr(focused_widget, "code_editor"):
-                QApplication.sendEvent(focused_widget.code_editor, event)
-                return
-            elif isinstance(focused_widget, (QTextEdit, QLineEdit)):
-                QApplication.sendEvent(focused_widget, event)
-                return
-
         if event.key() == QtCore.Qt.Key_Space and not event.isAutoRepeat():
             if self._temporary_navigation_mode:
                 self._temporary_navigation_mode = False
@@ -1449,8 +1447,10 @@ class CustomNodeViewer(NodeViewer):
             event.accept()
             return
 
+        self.ALT_state = event.modifiers() == QtCore.Qt.AltModifier
+        self.CTRL_state = event.modifiers() == QtCore.Qt.ControlModifier
+        self.SHIFT_state = event.modifiers() == QtCore.Qt.ShiftModifier
         super(NodeViewer, self).keyReleaseEvent(event)
-        self._sync_modifier_states()
         self._cursor_text.setPlainText("")
         self._cursor_text.setVisible(False)
 
@@ -1838,7 +1838,6 @@ class CustomNodeViewer(NodeViewer):
             event (QtWidgets.QGraphicsScenePressEvent):
                 The event handler from the QtWidgets.QGraphicsScene
         """
-        self._sync_modifier_states(event.modifiers())
         # pipe slicer enabled.
         if self.ALT_state and self.SHIFT_state:
             return

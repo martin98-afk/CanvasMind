@@ -9,6 +9,7 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
     def __init__(self, parent, icon_type, tooltip, color, hover_color, is_permanent=False):
         super(NodeActionButton, self).__init__(parent)
         self.setAcceptHoverEvents(True)
+        self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         self.setZValue(Z_VAL_NODE_WIDGET + 10)
         self.icon_type = icon_type
@@ -17,6 +18,7 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
         self.hover_color = QtGui.QColor(hover_color)
         self.is_permanent = is_permanent
         self._hovered = False
+        self._pressed = False
         self._rect = QtCore.QRectF(0, 0, 28, 28)
         self.clicked_func = None
 
@@ -192,12 +194,27 @@ class NodeActionButton(QtWidgets.QGraphicsItem):
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
+            self._pressed = True
             event.accept()
             if self.clicked_func:
                 self.clicked_func()
                 self.update() # 点击后立刻强制刷新一次状态
         else:
             event.ignore()
+
+    def mouseMoveEvent(self, event):
+        if self._pressed:
+            event.accept()
+            return
+        event.ignore()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton and self._pressed:
+            self._pressed = False
+            event.accept()
+            return
+        self._pressed = False
+        event.ignore()
 
 
 class BaseCanvasToolbar(QtWidgets.QGraphicsWidget):
