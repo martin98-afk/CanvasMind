@@ -9,17 +9,21 @@ from pathlib import Path
 
 from loguru import logger
 
-# 添加当前目录到 Python 路径
+# 添加当前目录与项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from runner.workflow_runner import execute_workflow, deserialize_from_json
+from app.utils.utils import normalize_python_executable
 
 if __name__ == "__main__":
     # 可以传入外部输入参数
     with open("model.workflow.json", 'r', encoding='utf-8') as f:
         full_data = deserialize_from_json(json.load(f))
     runtime_data = full_data.get("runtime", {})
-    python_executable = runtime_data.get("environment_exe", sys.executable)
+    python_executable = normalize_python_executable(
+        runtime_data.get("environment_exe", sys.executable)
+    )
     proc = subprocess.Popen(
         [python_executable, Path(__file__).parent / "runner" / "workflow_runner.py"],
         stdout=subprocess.DEVNULL,

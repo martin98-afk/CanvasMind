@@ -5,8 +5,8 @@
   "version": "1.0.0",
   "api_version": "2.0",
   "description": "CSV读取器需连接文档上传组件作为输入，将文件内容解析为结构化数据流输出，支持单个CSV文件上传输入，输出为CSV格式数据，无额外参数配置。",
-  "category": "数据集成",
-  "main": "main.py",
-  "updated_at": "2026-01-24 15:18:56",
+  "category": "数据集成/表格数据",
+  "source_file": "..\\..\\components\\数据集成\\表格数据\\26f404b9-0029-4f8b-8abc-0740ecad423b.py",
+  "updated_at": "2026-03-16 09:31:19",
   "author": "black"
 }

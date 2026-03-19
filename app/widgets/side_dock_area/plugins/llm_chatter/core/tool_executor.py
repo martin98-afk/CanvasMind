@@ -71,7 +71,7 @@ class ToolExecutor:
     def todo_list(self):
         """获取待办事项列表"""
         if self._builtin_tools:
-            return self._builtin_tools._todo_list
+            return self._builtin_tools.todo_list
         return []
 
     def clear_todo_list(self):
@@ -158,6 +158,9 @@ class ToolExecutor:
             "stage_files": lambda: self._builtin_tools.stage_files(
                 args.get("files", [])
             ),
+            "switch_stage": lambda: self._builtin_tools.switch_stage(
+                args.get("stage", "")
+            ),
             "run_verify": lambda: self._builtin_tools.run_verify(
                 args.get("command", ""), args.get("timeout", 120)
             ),
@@ -216,3 +219,9 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools._sub_agent_manager = sub_agent_manager
             logger.info("[ToolExecutor] SubAgentManager attached to BuiltinTools")
+
+    def set_stage_callback(self, callback):
+        """设置 stage 切换回调"""
+        if self._builtin_tools:
+            self._builtin_tools._set_stage_callback = callback
+            logger.info("[ToolExecutor] Stage callback attached to BuiltinTools")

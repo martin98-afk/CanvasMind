@@ -44,6 +44,7 @@ class Component(BaseComponent):
         import pickle
         import time
         from pathlib import Path
+        from app.utils.utils import normalize_python_executable
 
         try:
             # 获取输入参数
@@ -65,7 +66,9 @@ class Component(BaseComponent):
             with open(workflow_file, 'r', encoding='utf-8') as f:
                 full_data = json.load(f)
             runtime_data = full_data.get("runtime", {})
-            python_executable = runtime_data.get("environment_exe", sys.executable)
+            python_executable = normalize_python_executable(
+                runtime_data.get("environment_exe", sys.executable)
+            )
             proc = subprocess.Popen(
                 [python_executable, runner_path],
                 stdout=subprocess.DEVNULL,

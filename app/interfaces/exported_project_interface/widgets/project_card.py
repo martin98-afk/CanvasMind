@@ -28,6 +28,7 @@ from qfluentwidgets import (
 )
 from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
+from app.utils.utils import normalize_python_executable
 
 
 class ClickableLabel(BodyLabel):
@@ -306,6 +307,7 @@ class ProjectCard(CardWidget):
                     data = json.load(f)
                     # 尝试从 runtime -> environment_exe 获取路径
                     exe_path = data.get("runtime", {}).get("environment_exe")
+                    exe_path = normalize_python_executable(exe_path)
                     if exe_path and os.path.exists(exe_path):
                         return exe_path.replace("\\", "/")
             except Exception as e:

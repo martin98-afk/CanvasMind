@@ -523,16 +523,17 @@ class EnvManagerUI(QWidget):
         fake_env = {"name": "System", "type": "local"}
         self.create_task(self.tr("安装 uv"), fake_env, process, is_remote=False)
 
-    def run_pip_command(self, action=None, package_input=None):
+    def run_pip_command(self, action=None, package_input=None, force_no_uv=False):
         if not self.current_env_data: return
 
         # === 关键修复：解决 Windows 文件占用 (OS Error 32) ===
-        if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
-            self._pkg_thread.terminate()
-            self._pkg_thread.wait()
-            self.pyVersionLabel.setText(self.tr("列表刷新已暂停，准备执行任务..."))
+        if platform.system() == "Windows":
+            if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+                self._pkg_thread.terminate()
+                self._pkg_thread.wait()
+                self.pyVersionLabel.setText(self.tr("列表刷新已暂停，准备执行任务..."))
 
-        use_uv = self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
+        use_uv = (not force_no_uv) and self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
         if use_uv and not self.is_uv_installed():
             res = MessageBox(self.tr("未检测到 uv"), self.tr("是否立即安装 uv 以启用加速功能？"), self).exec()
             if res:
@@ -1024,7 +1025,7 @@ class EnvManagerUI(QWidget):
             InfoBar.warning(self.tr("提示"), self.tr("未配置默认安装包"), parent=self)
             return
         pkgs_str = " ".join(pkgs)
-        self.run_pip_command(self.tr("安装"), pkgs_str)
+        self.run_pip_command(self.tr("安装"), pkgs_str, force_no_uv=True)
 
     def create_env(self, window=None):
         v_dlg = CustomComboDialog(self.tr("选择 Python 版本"), list(self.config.python_versions.value), 0,
@@ -1099,10 +1100,28 @@ class EnvManagerUI(QWidget):
             r"failed to open file `(.+?\.dist-info)\\METADATA`"
         ]
 
-        site_packages = os.path.join(os.path.dirname(env_path), "Lib", "site-packages")
-        if not os.path.exists(site_packages):
-            # 针对某些环境结构的适配
-            site_packages = os.path.join(os.path.dirname(os.path.dirname(env_path)), "Lib", "site-packages")
+        # 兼容 Windows 与 macOS/Linux 的 site-packages 路径
+        env_path_obj = Path(env_path)
+        if env_path_obj.is_file():
+            env_path_obj = env_path_obj.parent
+        env_root = env_path_obj.parent if env_path_obj.name in ("bin", "Scripts") else env_path_obj
+
+        site_packages = None
+        if platform.system() == "Windows":
+            win_site = env_root / "Lib" / "site-packages"
+            if win_site.exists():
+                site_packages = str(win_site)
+            else:
+                # 针对某些环境结构的适配
+                fallback = env_root.parent / "Lib" / "site-packages"
+                if fallback.exists():
+                    site_packages = str(fallback)
+        else:
+            lib_dir = env_root / "lib"
+            if lib_dir.exists():
+                candidates = sorted(lib_dir.glob("python*/site-packages"))
+                if candidates:
+                    site_packages = str(candidates[-1])
 
         cleaned_folders = []
 
@@ -1123,7 +1142,7 @@ class EnvManagerUI(QWidget):
             match = re.search(r"Cannot uninstall ([\w\-\.]+)", log_text)
             if match:
                 pkg_name = match.group(1).replace("-", "_").lower()
-                if os.path.exists(site_packages):
+                if site_packages and os.path.exists(site_packages):
                     for folder in os.listdir(site_packages):
                         # 寻找该包对应的 .dist-info 文件夹
                         if folder.lower().startswith(pkg_name) and folder.endswith(".dist-info"):

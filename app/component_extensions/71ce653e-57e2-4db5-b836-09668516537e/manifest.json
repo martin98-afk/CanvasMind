@@ -1,0 +1,12 @@
+{
+  "id": "com.canvasmind.71ce653e-57e2-4db5-b836-09668516537e",
+  "uuid": "71ce653e-57e2-4db5-b836-09668516537e",
+  "name": "摄像头捕获",
+  "version": "1.0.0",
+  "api_version": "2.0",
+  "description": "打开摄像头捕获当前画面并保存为图像文件",
+  "category": "图像处理",
+  "source_file": "../../components/图像处理/71ce653e-57e2-4db5-b836-09668516537e.py",
+  "updated_at": "2026-03-17 01:35:10",
+  "author": "root"
+}

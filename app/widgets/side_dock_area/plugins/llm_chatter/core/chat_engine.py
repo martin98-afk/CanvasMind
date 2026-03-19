@@ -9,8 +9,13 @@ from typing import Dict, List, Optional, Any, Callable
 
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import CODING_STAGES
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import get_builtin_tools_schema
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import ChatSession, SessionManager
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
+    get_builtin_tools_schema,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
+    ChatSession,
+    SessionManager,
+)
 
 
 TOKEN_ESTIMATION_RATIO = 0.25
@@ -287,23 +292,23 @@ class ChatEngine:
             "discover": "## Active Stage: Discover\n"
             "Goal: Understand project structure, constraints, and relevant context.\n"
             "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
-            "→ When context is sufficient, respond with [STAGE: plan] to transition.",
+            "→ When context is sufficient, use switch_stage tool to transition to plan.",
             "plan": "## Active Stage: Plan\n"
             "Goal: Produce implementation path with files, risks, validation steps.\n"
             "Expected tools: Write a concrete plan using todo tool or analysis.\n"
-            "→ When plan is solid, respond with [STAGE: edit] to transition.",
+            "→ When plan is solid, use switch_stage tool to transition to edit.",
             "edit": "## Active Stage: Edit\n"
             "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
             "Expected tools: write, edit.\n"
-            "→ When changes are complete, respond with [STAGE: verify] to transition.",
+            "→ When changes are complete, use switch_stage tool to transition to verify.",
             "verify": "## Active Stage: Verify\n"
             "Goal: Run validation commands, explain failures concretely.\n"
             "Expected tools: Bash (pytest, test, compile, lint).\n"
-            "→ When verification passes, respond with [STAGE: review] to transition.",
+            "→ When verification passes, use switch_stage tool to transition to review.",
             "review": "## Active Stage: Review\n"
             "Goal: Check for regressions, missing tests, weak assumptions.\n"
             "Expected tools: Read, Grep for inspection.\n"
-            "→ When review is done, respond with [STAGE: summarize] to transition.",
+            "→ When review is done, use switch_stage tool to transition to summarize.",
             "summarize": "## Active Stage: Summarize\n"
             "Goal: Compress work into concise handoff for next step.\n"
             "Expected tools: Final summary output.\n"
@@ -335,6 +340,9 @@ class ChatEngine:
             if session and new_stage in CODING_STAGES:
                 session.task_state.set_stage(new_stage, "model-requested")
                 self._emit("task_state_changed", session.task_state)
+
+        if self._tool_executor:
+            self._tool_executor.set_stage_callback(on_stage_changed)
 
         self._current_worker = OpenAIChatWorker(
             messages=messages,
@@ -398,6 +406,10 @@ class ChatEngine:
                 session.task_state.update_todos(self._tool_executor.todo_list)
             if tool_name == "task":
                 session.task_state.set_stage("summarize", "sub-agent-result")
+            if tool_name == "switch_stage" and success:
+                new_stage = (arguments or {}).get("stage", "")
+                if new_stage:
+                    session.task_state.set_stage(new_stage, "tool-requested")
             self._emit("task_state_changed", session.task_state)
 
         self._emit("tool_result_received", tool_call_id, tool_name, arguments, result)

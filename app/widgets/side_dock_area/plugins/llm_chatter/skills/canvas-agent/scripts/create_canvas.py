@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 import json
 from pathlib import Path
@@ -24,6 +25,7 @@ def create_canvas(name, description=""):
     canvas_folder = workflows_dir / name
     canvas_folder.mkdir(parents=True, exist_ok=True)
 
+    python_exe_name = "python.exe" if os.name == "nt" else "bin/python"
     workflow_json = {
         "graph": {
             "graph": {
@@ -67,7 +69,7 @@ def create_canvas(name, description=""):
                 "name": "3.11",
                 "type": "local",
                 "path": str(
-                    PROJECT_DIR / "envs" / "miniconda" / "envs" / "3.11" / "python.exe"
+                    PROJECT_DIR / "envs" / "miniconda" / "envs" / "3.11" / python_exe_name
                 ),
             }
         },

@@ -19,26 +19,45 @@ class SendableTextEdit(TextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setPlaceholderText(
-            "enter 发送信息, shift+enter 换行 | Ctrl+L 清空 | Ctrl+N 新对话"
+            "给 CanvasMind 发送消息，Enter 发送，Shift+Enter 换行"
         )
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setAcceptDrops(True)
+        self.setMinimumHeight(96)
+        self.setStyleSheet("""
+            TextEdit {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba(18, 24, 34, 245),
+                    stop:1 rgba(24, 31, 45, 245));
+                color: #F2F6FF;
+                border: 1px solid #2B3850;
+                border-radius: 18px;
+                padding: 14px 128px 18px 16px;
+                selection-background-color: rgba(103, 197, 255, 0.28);
+                font-size: 14px;
+            }
+            TextEdit:focus {
+                border: 1px solid #4E93FF;
+                background: rgba(22, 29, 41, 248);
+            }
+        """)
 
         self._agent_combo = ComboBox(self)
-        self._agent_combo.setFixedSize(110, 24)
+        self._agent_combo.setFixedSize(126, 28)
         self._agent_combo.setStyleSheet("""
             ComboBox {
-                background-color: transparent;
-                color: #e0e0e0;
-                border: none;
-                padding: 2px 8px;
+                background-color: rgba(255, 255, 255, 0.05);
+                color: #EAF2FF;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 10px;
+                padding: 3px 10px;
                 font-size: 12px;
             }
             ComboBox:hover {
-                background-color: rgba(55, 55, 55, 220);
-                border-color: #555;
+                background-color: rgba(255, 255, 255, 0.08);
+                border-color: rgba(103, 197, 255, 0.45);
             }
             ComboBox::drop-down {
                 border: none;
@@ -47,14 +66,15 @@ class SendableTextEdit(TextEdit):
             ComboBox::down-arrow {
                 border-left: 4px solid transparent;
                 border-right: 4px solid transparent;
-                border-top: 5px solid #888;
+                border-top: 5px solid #9BB0D3;
                 margin-right: 2px;
             }
             ComboBox AbstractItemView {
-                background-color: #2d2d2d;
-                color: #e0e0e0;
-                selection-background-color: #404040;
-                border: 1px solid #3d3d3d;
+                background-color: #192232;
+                color: #EAF2FF;
+                selection-background-color: #2B4C78;
+                border: 1px solid #2B3850;
+                border-radius: 10px;
                 padding: 4px;
             }
         """)
@@ -63,10 +83,27 @@ class SendableTextEdit(TextEdit):
         QTimer.singleShot(0, self._position_elements)
 
         self.send_btn = TransparentToolButton(FluentIcon.SEND, self)
-        self.send_btn.setFixedSize(28, 28)
+        self.send_btn.setFixedSize(34, 34)
         self.send_btn.setToolTip("发送（Enter）")
         self.send_btn.clicked.connect(self._on_send_click)
         self.send_btn.setDisabled(True)
+        self.send_btn.setStyleSheet("""
+            TransparentToolButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #66C6FF, stop:1 #4E93FF);
+                border: none;
+                border-radius: 17px;
+                color: white;
+            }
+            TransparentToolButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #78D0FF, stop:1 #6AA8FF);
+            }
+            TransparentToolButton:disabled {
+                background: rgba(255, 255, 255, 0.10);
+                color: rgba(255, 255, 255, 0.45);
+            }
+        """)
         self.textChanged.connect(self._on_text_changed)
 
         self._setup_keyboard_shortcuts()
@@ -89,27 +126,32 @@ class SendableTextEdit(TextEdit):
 
     def _on_text_changed(self):
         has_text = bool(self.toPlainText().strip())
-        if has_text:
-            self.send_btn.setDisabled(False)
-        else:
-            self.send_btn.setDisabled(True)
+        self.send_btn.setDisabled(not has_text)
+
+    def _rebind_send_btn(self, handler):
+        try:
+            self.send_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        self.send_btn.clicked.connect(handler)
 
     def toggle_send_button(self, enable: bool):
         """启用/禁用发送按钮"""
         if enable:
             self.send_btn.setIcon(FluentIcon.SEND)
             self.send_btn.setToolTip("发送（Enter）")
-            self.send_btn.clicked.disconnect()
-            self.send_btn.clicked.connect(self._on_send_click)
+            self._rebind_send_btn(self._on_send_click)
+            self._on_text_changed()
         else:
             self.send_btn.setIcon(FluentIcon.PAUSE)
             self.send_btn.setToolTip("停止")
             QtCore.QTimer.singleShot(100, lambda: self.send_btn.setDisabled(False))
-            self.send_btn.clicked.disconnect()
-            self.send_btn.clicked.connect(self._on_stop_click)
+            self._rebind_send_btn(self._on_stop_click)
 
     def _on_send_click(self):
         """发送按钮点击事件"""
+        if not self.toPlainText().strip():
+            return
         self.toggle_send_button(False)
         self.sendMessageRequested.emit()
 
@@ -128,10 +170,10 @@ class SendableTextEdit(TextEdit):
             btn_size = self.send_btn.size()
             agent_width = self._agent_combo.width()
 
-            send_btn_x = self.width() - btn_size.width() - 3
-            send_btn_y = self.height() - btn_size.height() - 3
+            send_btn_x = self.width() - btn_size.width() - 12
+            send_btn_y = self.height() - btn_size.height() - 10
 
-            combo_x = send_btn_x - agent_width - 5
+            combo_x = send_btn_x - agent_width - 8
             combo_y = send_btn_y + (btn_size.height() - self._agent_combo.height()) // 2
 
             self._agent_combo.move(max(0, combo_x), max(0, combo_y))

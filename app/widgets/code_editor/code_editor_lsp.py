@@ -36,6 +36,7 @@ class LSPCodeEditor(CodeEditor):
         self._show_hint = True
         self._lsp_document_opened = False
         self._last_lsp_content = ""
+        self._pending_trigger_dot = False
 
         # 缓存变更
         self._pending_changes = []
@@ -83,6 +84,7 @@ class LSPCodeEditor(CodeEditor):
             underline_errors=True,
             highlight_current_line=True,
         )
+        self.auto_completion_characters = ["."]
         # 按钮
         btn_text = "缩小" if dialog else "放大"
         self.fullscreen_button = TransparentToolButton(get_icon(btn_text), parent=self)
@@ -297,10 +299,12 @@ class LSPCodeEditor(CodeEditor):
         if self._lsp_ready:
             self._completion_timer.start(10)
 
-    def _trigger_completion(self):
+    def _trigger_completion(self, trigger_dot: bool = False):
         cursor = self.textCursor()
         self.lsp_session.request_completion(
-            cursor.blockNumber() + self._prefix_line_count, cursor.columnNumber()
+            cursor.blockNumber() + self._prefix_line_count,
+            cursor.columnNumber(),
+            trigger_dot=trigger_dot,
         )
 
     def _trigger_signature_help(self):
@@ -330,6 +334,7 @@ class LSPCodeEditor(CodeEditor):
         """
         处理补全结果：极致防吞点逻辑
         """
+        logger.info(f"LSP completions received: {len(completion_items)} items")
         cursor = self.textCursor()
         current_pos = cursor.position()
         text = self.toPlainText()
@@ -342,8 +347,8 @@ class LSPCodeEditor(CodeEditor):
             start_pos -= 1
 
         # 2. 核心修复：点号守卫
-        # 如果光标就在点号后面，强制将 start_pos 设为当前位置
-        # 这样替换范围的长度就是 0，不会触碰点号
+        # 如果光标就在点号后面，start_pos 保持在当前位置
+        # 不替换点号，只替换点号后面的内容
         is_dot_trigger = False
         if current_pos > 0 and text[current_pos - 1] == ".":
             start_pos = current_pos
@@ -406,6 +411,7 @@ class LSPCodeEditor(CodeEditor):
         try:
             # 检查是否有有效项
             if clean_items:
+                # 使用正确的数据格式调用 process_completion
                 self.process_completion({"params": clean_items})
             else:
                 if self.completion_widget:
@@ -713,7 +719,8 @@ class LSPCodeEditor(CodeEditor):
                 # 先强制同步文档，确保 LSP 知道最新内容
                 self._lsp_sync_timer.stop()
                 self._sync_to_lsp()
-                self._completion_timer.start(10)
+                # 调用 do_completion 来触发补全流程
+                self.do_completion(automatic=True)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -731,7 +738,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("background-color: #333; color: white;")
         self.resize(800, 600)
         self.find_replace = FindReplace(self, True)
-        self.editor = LSPCodeEditor(python_exe_path=r"python.exe")
+        self.editor = LSPCodeEditor(python_exe_path=sys.executable)
         example_code = """import numpy as np
 a = np.array([1, 2, 3])
 

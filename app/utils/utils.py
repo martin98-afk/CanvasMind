@@ -337,6 +337,41 @@ def resource_path(relative_path) -> str:
     return os.path.join(base_path, relative_path)
 
 
+def normalize_python_executable(exe_path: Optional[str]) -> Optional[str]:
+    """
+    规范化 Python 可执行路径，兼容 Windows 路径在 macOS/Linux 上的映射。
+    """
+    if not exe_path:
+        return exe_path
+
+    exe_path = os.path.expanduser(exe_path)
+    if os.path.isabs(exe_path) and os.path.exists(exe_path):
+        return os.path.normpath(exe_path)
+
+    # 处理 Windows 风格路径
+    cleaned = exe_path.replace("\\", "/")
+    match = re.search(r"/envs/miniconda/envs/([^/]+)/python\.exe$", cleaned, re.IGNORECASE)
+    if match:
+        env_name = match.group(1)
+        if getattr(sys, "frozen", False):
+            base_root = Path(resource_path("."))
+        else:
+            base_root = Path(__file__).resolve().parents[2]
+        env_root = base_root / "envs" / "miniconda" / "envs" / env_name
+        candidate = env_root / ("python.exe" if os.name == "nt" else "bin/python")
+        if candidate.exists():
+            return str(candidate)
+
+    # 如果是 Windows 的 python.exe，尝试转换为 *nix 的 bin/python
+    if cleaned.endswith("/python.exe") and os.name != "nt":
+        base = Path(cleaned[:-len("/python.exe")])
+        candidate = base / "bin" / "python"
+        if candidate.exists():
+            return str(candidate)
+
+    return os.path.normpath(exe_path)
+
+
 def canvas_file_dump_path(dump_location: str = "canvas_files") -> Path:
     dump_path = Path(dump_location)
     dump_path.mkdir(parents=True, exist_ok=True)

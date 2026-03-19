@@ -391,7 +391,9 @@ class QuestionFloatingWidget(CardWidget):
                 item.widget().deleteLater()
 
     def _option_label(self, option):
-        return option.get("label", option) if isinstance(option, dict) else str(option)
+        if isinstance(option, dict):
+            return option.get("label", str(option))
+        return str(option)
 
     def _selected_options(self):
         return [

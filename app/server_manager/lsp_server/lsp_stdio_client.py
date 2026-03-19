@@ -314,25 +314,16 @@ class LspClientManager(QThread):
 
     # --- 外部接口逻辑优化 (堪比 PyCharm 的防抖) ---
 
-    def request_completion(self, line: int, col: int):
-        """极限补全：25ms 极短防抖，感知几乎为零"""
-        if self._debounce_timer:
-            self._debounce_timer.stop()
-
-        self._debounce_timer = QTimer()
-        self._debounce_timer.setSingleShot(True)
-        self._debounce_timer.timeout.connect(
-            lambda: self._send_message(
-                "textDocument/completion",
-                {
-                    "textDocument": {"uri": self.uri},
-                    "position": {"line": line, "character": col},
-                    "context": {"triggerKind": 1},
-                },
-                priority=10,
-            )
+    def request_completion(self, line: int, col: int, trigger_dot: bool = False):
+        """直接发送补全请求，编辑器端已有防抖"""
+        self._send_message(
+            "textDocument/completion",
+            {
+                "textDocument": {"uri": self.uri},
+                "position": {"line": line, "character": col},
+            },
+            priority=10,
         )
-        self._debounce_timer.start(25)
 
     def change_document_full(self, text: str):
         """新增全量同步接口"""

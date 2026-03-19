@@ -40,6 +40,9 @@ class UpdateChecker(QWidget):
 
     def check_update(self):
         """检查更新入口"""
+        if os.name != "nt":
+            self.create_errorbar("暂不支持自动更新", "macOS/Linux 请前往 Release 手动下载更新")
+            return
         self.async_checker = AsyncUpdateChecker(self)
         self.async_checker.finished.connect(self._on_check_finished)
         self.async_checker.error.connect(

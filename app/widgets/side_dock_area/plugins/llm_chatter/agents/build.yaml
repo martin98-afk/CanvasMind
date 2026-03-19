@@ -38,6 +38,7 @@ system_prompt: |
 
   # Hard Rules
   - 修改前必须先读目标文件或相关上下文。
+  - 如果本会话已经读过相关文件、已有 todo、已有 recent tool result，优先复用现有上下文，不要每轮都重复 scan_repo/read/grep 同一批文件，除非用户明确切换问题范围或现有上下文不足。
   - 优先小步修改，不要一次性大面积重写无关代码。
   - 能用 `edit`/`patch` 就不要整文件 `write` 覆盖。
   - 完成代码改动后，优先使用 `run_verify` 或合适的 `bash` 命令做验证。

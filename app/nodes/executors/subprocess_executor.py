@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
 import platform
+import shutil
 import subprocess
 import time
+import sys
 from pathlib import Path
 
 from app.nodes.executors.base import BaseExecutor
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
-from app.utils.utils import kill_proc_tree
+from app.utils.utils import kill_proc_tree, resource_path, normalize_python_executable
 
 
 class SubprocessExecutor(BaseExecutor):
@@ -17,12 +19,7 @@ class SubprocessExecutor(BaseExecutor):
         return ctx.env_data.get("type") != "ssh"
 
     def prepare_environment(self, ctx) -> None:
-        import shutil
-
         super().prepare_environment(ctx)
-
-        from app.components.base import resource_path
-
         shutil.copyfile(
             resource_path("app/components/base.py"), str(ctx.run_dir.parent / "base.py")
         )
@@ -38,7 +35,39 @@ class SubprocessExecutor(BaseExecutor):
         if ctx.log_file_path and os.path.exists(ctx.log_file_path):
             ctx.last_log_pos = os.path.getsize(ctx.log_file_path)
 
-        python_exe = ctx.python_executable or ctx.env_data.get("path", "python")
+        python_exe = normalize_python_executable(
+            ctx.python_executable or ctx.env_data.get("path", "python")
+        )
+
+        def _is_app_executable(path: str) -> bool:
+            return bool(path) and ".app/Contents/MacOS" in path
+
+        # 避免在 macOS 打包环境中使用 app 自身作为 Python 解释器，导致启动新实例
+        if getattr(sys, "frozen", False) and (
+            python_exe == sys.executable or _is_app_executable(str(python_exe))
+        ):
+            env_name = None
+            if isinstance(ctx.env_data, dict):
+                env_name = ctx.env_data.get("name")
+            fallback_candidates = [
+                ctx.env_data.get("path") if ctx.env_data else None,
+                resource_path(f"envs/miniconda/envs/{env_name}/bin/python") if env_name else None,
+                resource_path(f"envs/miniconda/envs/{env_name}/python.exe") if env_name else None,
+                resource_path("envs/miniconda/bin/python"),
+                resource_path("envs/miniconda/python.exe"),
+                resource_path("_internal/envs/miniconda/bin/python"),
+                resource_path("_internal/envs/miniconda/python.exe"),
+                shutil.which("python3"),
+                shutil.which("python"),
+            ]
+            for candidate in fallback_candidates:
+                if candidate and os.path.exists(candidate) and not _is_app_executable(str(candidate)):
+                    python_exe = candidate
+                    break
+
+        # 如果仍然指向 app 可执行文件，直接报错避免拉起新实例
+        if getattr(sys, "frozen", False) and _is_app_executable(str(python_exe)):
+            raise Exception("打包环境下未找到可用的 Python 解释器，已阻止启动新应用实例")
 
         env_inject_code = "\n".join(
             [f"os.environ['{k}'] = '{v}'" for k, v in ctx.zmq_env_vars.items()]
