@@ -1,4 +1,6 @@
 # -- coding: utf-8 --
+import json
+from datetime import datetime
 from pathlib import Path
 
 import orjson
@@ -181,7 +183,8 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._left_panel = left_panel
         self.parent = parent
         self._cached_data = []
-        self._selected_categories = set()
+        self._selected_component_categories = set()
+        self._selected_template_categories = set()
         self._current_mode = MenuMode.CREATE
         self._is_upward_mode = False
         self._spawn_pos = QtCore.QPoint(0, 0)
@@ -189,6 +192,10 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._spawn_pos_set = False
         self._visible_items = []
         self._ignore_connection_filter = False
+        self._usage_stats_file = Path("./canvas_files/nodegraph_usage.json")
+        self._favorites_file = Path("./canvas_files/nodegraph_favorites.json")
+        self._usage_stats = self._load_usage_stats()
+        self._favorites = set(self._load_favorites())
 
         self._template_dir = Path("canvas_files") / "subgraph_templates"
 
@@ -262,8 +269,14 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         StyleSheet.QLIST.apply(self.list_widget)
 
+        self.status_label = QtWidgets.QLabel()
+        self.status_label.setStyleSheet(
+            "color: #8A8A8A; font-size: 11px; padding: 2px 8px 4px 8px;"
+        )
+
         self.container_layout.addWidget(self.header_widget)
         self.container_layout.addWidget(self.list_widget)
+        self.container_layout.addWidget(self.status_label)
         self.main_layout.addWidget(self.container)
 
         self.search_line.textChanged.connect(self.filter_list)
@@ -271,9 +284,117 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.list_widget.itemActivated.connect(self.on_item_confirmed)
         self.search_line.returnPressed.connect(self.on_return_pressed)
         self.search_line.installEventFilter(self)
+        self.list_widget.installEventFilter(self)
         self.list_widget.viewport().installEventFilter(self)
         self.list_widget.currentItemChanged.connect(self._on_current_item_changed)
         self.setFixedSize(460, 480)
+
+    def _load_usage_stats(self):
+        if self._usage_stats_file.exists():
+            try:
+                with open(self._usage_stats_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return {}
+        return {}
+
+    def _save_usage_stats(self):
+        try:
+            self._usage_stats_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._usage_stats_file, "w", encoding="utf-8") as f:
+                json.dump(self._usage_stats, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def _load_favorites(self):
+        if self._favorites_file.exists():
+            try:
+                with open(self._favorites_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return []
+        return []
+
+    def _record_usage(self, full_path):
+        if not full_path:
+            return
+        timestamps = self._usage_stats.setdefault(full_path, [])
+        timestamps.append(datetime.now().isoformat())
+        self._usage_stats[full_path] = timestamps[-20:]
+        self._save_usage_stats()
+
+    def _get_usage_count(self, full_path):
+        return len(self._usage_stats.get(full_path, []))
+
+    def _get_last_used_dt(self, full_path):
+        timestamps = self._usage_stats.get(full_path, [])
+        if not timestamps:
+            return None
+        try:
+            return datetime.fromisoformat(timestamps[-1])
+        except (TypeError, ValueError):
+            return None
+
+    def _score_item(self, data, search_text):
+        score = 0
+        if data.get("_is_empty"):
+            return score
+
+        name = data.get("name", "").lower()
+        category = data.get("category", "").lower()
+        full_path = data.get("full_path", "")
+        search_keys = data.get("search_keys", "")
+
+        if search_text:
+            if name == search_text:
+                score += 1200
+            elif name.startswith(search_text):
+                score += 900
+            elif search_text in name:
+                score += 650
+            elif category.startswith(search_text):
+                score += 480
+            elif search_text in category:
+                score += 320
+            elif full_path.lower().startswith(search_text):
+                score += 260
+            elif search_text in search_keys:
+                score += 150
+        else:
+            score += 50
+
+        if self._current_mode == MenuMode.CREATE and full_path:
+            if full_path in self._favorites:
+                score += 300
+
+            usage_count = self._get_usage_count(full_path)
+            score += min(usage_count, 20) * 12
+
+            last_used = self._get_last_used_dt(full_path)
+            if last_used:
+                days = max((datetime.now() - last_used).days, 0)
+                if days == 0:
+                    score += 180
+                elif days <= 3:
+                    score += 120
+                elif days <= 7:
+                    score += 80
+                elif days <= 30:
+                    score += 40
+
+        return score
+
+    def _get_active_category_filter(self):
+        if self._current_mode == MenuMode.TEMPLATE:
+            return self._selected_template_categories
+        return self._selected_component_categories
+
+    def _set_active_category_filter(self, categories):
+        categories = set(categories)
+        if self._current_mode == MenuMode.TEMPLATE:
+            self._selected_template_categories = categories
+        else:
+            self._selected_component_categories = categories
 
     def toggle_mode(self):
         self._current_mode = (self._current_mode + 1) % 3
@@ -410,6 +531,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     "id": node_type,
                     "name": node_name,
                     "category": category,
+                    "full_path": full_path,
                     "search_keys": f"{node_name} {category} {full_path} {py_keys}".lower(),
                     "in_port_count": len(node_inputs),
                     "out_port_count": len(node_outputs),
@@ -493,15 +615,42 @@ class CustomGraphMenu(QtWidgets.QWidget):
         for data in items_to_show:
             item = QtWidgets.QListWidgetItem(data["name"])
             item.setData(Qt.UserRole, data)
+            if data.get("_is_empty"):
+                item.setFlags(Qt.NoItemFlags)
+                item.setForeground(QtGui.QColor("#8A8A8A"))
             self.list_widget.addItem(item)
 
-        if self.list_widget.count() > 0:
+        if self.list_widget.count() > 0 and not items_to_show[0].get("_is_empty"):
             first_real_index = (
                 max(0, self.list_widget.count() - len(items_to_show))
                 if is_upward
                 else 0
             )
             self.list_widget.setCurrentRow(first_real_index)
+
+    def _update_status_label(self, search_text):
+        count = len(
+            [item for item in self._visible_items if not item.get("_is_empty", False)]
+        )
+        if self._current_mode == MenuMode.CREATE:
+            mode_text = self.tr("创建节点")
+        elif self._current_mode == MenuMode.NAVIGATE:
+            mode_text = self.tr("定位节点")
+        else:
+            mode_text = self.tr("插入模板")
+
+        if search_text:
+            self.status_label.setText(
+                self.tr("{}  ·  {} 个结果  ·  Enter确认 / Tab切模式 / Esc关闭").format(
+                    mode_text, count
+                )
+            )
+        else:
+            self.status_label.setText(
+                self.tr("{}  ·  {} 个结果  ·  已优先显示收藏与最近使用").format(
+                    mode_text, count
+                )
+            )
 
     def filter_list(self, text):
         search_text = text.lower().strip()
@@ -569,8 +718,32 @@ class CustomGraphMenu(QtWidgets.QWidget):
             if search_text in data["search_keys"]:
                 self._visible_items.append(data)
 
+        self._visible_items.sort(
+            key=lambda item: (
+                -self._score_item(item, search_text),
+                item.get("name", "").lower(),
+            )
+        )
+
+        if not self._visible_items:
+            empty_text = (
+                self.tr("没有匹配结果，试试更短的关键词")
+                if search_text
+                else self.tr("当前没有可用项目")
+            )
+            self._visible_items = [
+                {
+                    "_is_empty": True,
+                    "name": empty_text,
+                    "category": "",
+                    "type": "empty",
+                    "search_keys": "",
+                }
+            ]
+
         self._update_list_widget()
-        if self.list_widget.count() > 0:
+        self._update_status_label(search_text)
+        if self.list_widget.count() > 0 and not self._visible_items[0].get("_is_empty"):
             self.list_widget.setCurrentRow(0)
         else:
             self._hide_preview()
@@ -595,6 +768,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             new_node = self._graph.create_node(
                 data["id"], pos=[scene_pos.x(), scene_pos.y()]
             )
+            self._record_usage(data.get("full_path"))
 
             if self.source_port_item and hasattr(
                 self.source_port_item, "original_node"
@@ -880,7 +1054,29 @@ class CustomGraphMenu(QtWidgets.QWidget):
                 self.close()
                 return True
             if event.key() in (Qt.Key_Down, Qt.Key_Up):
+                if self.list_widget.count() > 0:
+                    current_row = self.list_widget.currentRow()
+                    if current_row < 0:
+                        current_row = 0
+                    step = 1 if event.key() == Qt.Key_Down else -1
+                    next_row = max(0, min(self.list_widget.count() - 1, current_row + step))
+                    self.list_widget.setCurrentRow(next_row)
                 self.list_widget.setFocus()
+                return True
+
+        elif obj == self.list_widget and event.type() == QtCore.QEvent.KeyPress:
+            if event.key() == Qt.Key_Tab:
+                self.toggle_mode()
+                return True
+            if event.key() == Qt.Key_Escape:
+                self.close()
+                return True
+            if event.key() == Qt.Key_Slash:
+                self.search_line.setFocus()
+                self.search_line.selectAll()
+                return True
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self.on_return_pressed()
                 return True
 
         return super(CustomGraphMenu, self).eventFilter(obj, event)
