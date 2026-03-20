@@ -658,9 +658,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
         target_dir = None if self._ignore_connection_filter else self._locked_target_dir
         req_type = self._locked_req_type
-        req_sub_type = self._locked_req_sub_type  # 获取锁定的子类型
+        req_sub_type = self._locked_req_sub_type
         curr_mode = self._current_mode
-        sel_cats = self._selected_categories
+        sel_cats = self._get_active_category_filter()
         ignore_types = [ArgumentType.UPLOAD, ArgumentType.FILE]
 
         for data in self._cached_data:
@@ -942,7 +942,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
             # 这里需要连接信号
             dialog = CategoryFilterDialog(
                 parent=self,
-                selected_categories=self._selected_categories.copy(),
+                selected_categories=self._get_active_category_filter().copy(),
                 direction="down",
             )
             dialog.categories_changed.connect(self.set_category_filter)
@@ -954,12 +954,11 @@ class CustomGraphMenu(QtWidgets.QWidget):
             if not all_tags:
                 return
 
-
             # 创建一个临时的过滤对话框
             dialog = CategoryFilterDialog(
                 categories=all_tags,
                 parent=self,
-                selected_categories=self._selected_categories.copy(),
+                selected_categories=self._get_active_category_filter().copy(),
                 direction="down",
             )
 
@@ -971,8 +970,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
 
     def set_category_filter(self, categories):
         """更新过滤条件并重刷列表"""
-        self._selected_categories = set(categories)
-        # 刷新缓存（以防外部有更新）并重绘列表
+        self._set_active_category_filter(categories)
         self.filter_list(self.search_line.text())
 
     def _get_connection_filter(self):
@@ -1059,7 +1057,9 @@ class CustomGraphMenu(QtWidgets.QWidget):
                     if current_row < 0:
                         current_row = 0
                     step = 1 if event.key() == Qt.Key_Down else -1
-                    next_row = max(0, min(self.list_widget.count() - 1, current_row + step))
+                    next_row = max(
+                        0, min(self.list_widget.count() - 1, current_row + step)
+                    )
                     self.list_widget.setCurrentRow(next_row)
                 self.list_widget.setFocus()
                 return True
