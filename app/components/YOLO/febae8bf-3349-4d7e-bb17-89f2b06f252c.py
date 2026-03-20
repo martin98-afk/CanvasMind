@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class ModelExportToOnnx(BaseComponent):
     name = "模型导出为 ONNX"
-    category = "目标检测"
+    category = "YOLO"
     description = "将训练好的模型导出为 ONNX 格式，便于跨平台部署与推理"
     requirements = "onnx,torch"
     inputs = [
@@ -32,33 +32,28 @@ class ModelExportToOnnx(BaseComponent):
     properties = {
         "opset_version": PropertyDefinition(
             type=PropertyType.INT,
+            default=13,
             label="ONNX Opset 版本",
-            default="13",
-            min=10,
-            max=20,
-            step=1,
         ),
         "input_names": PropertyDefinition(
             type=PropertyType.MULTILINE,
-            label="输入名称列表",
             default="input",
-            help="多个输入用换行分隔，如：input1\ninput2",
+            label="输入名称列表",
         ),
         "output_names": PropertyDefinition(
             type=PropertyType.MULTILINE,
-            label="输出名称列表",
             default="output",
-            help="多个输出用换行分隔，如：output1\noutput2",
+            label="输出名称列表",
         ),
         "dynamic_axes": PropertyDefinition(
             type=PropertyType.BOOL,
+            default=True,
             label="启用动态轴",
-            default="true",
         ),
         "verbose": PropertyDefinition(
             type=PropertyType.BOOL,
+            default=False,
             label="输出详细信息",
-            default="false",
         ),
     }
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py"
+base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class Component(BaseComponent):
     name = "YOLO目标检测及关键点检测"
-    category = "目标检测"
+    category = "YOLO"
     description = "使用YOLOv8模型进行目标检测和关键点检测"
     requirements = "ultralytics,opencv-python,numpy,pillow"
     inputs = [
