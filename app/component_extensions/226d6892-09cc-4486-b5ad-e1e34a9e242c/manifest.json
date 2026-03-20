@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "配置MCP服务连接参数",
   "category": "大模型组件/mcp工具",
-  "updated_at": "2026-02-14 22:50:34",
+  "source_file": "..\\..\\components\\大模型组件\\mcp工具\\226d6892-09cc-4486-b5ad-e1e34a9e242c.py",
+  "updated_at": "2026-03-20 15:42:06",
   "author": "black"
 }

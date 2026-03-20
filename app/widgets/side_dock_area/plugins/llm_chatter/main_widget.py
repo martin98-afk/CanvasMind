@@ -347,6 +347,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self.chat_scroll_area.setWidgetResizable(True)
         self.chat_scroll_area.setViewportMargins(2, 2, 10, 2)
+        self.chat_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.chat_container = QWidget()
         self.chat_container.setStyleSheet("background: transparent;")
@@ -1101,14 +1102,18 @@ class OpenAIChatToolWindow(ToolWindow):
             self._scroll_to_bottom()
 
     def _update_node_preview(self):
-        session = self.session_manager.get_current_session()
-        if not session:
-            return
+        if self._history_preview_messages is not None:
+            messages = self._history_preview_messages
+        else:
+            session = self.session_manager.get_current_session()
+            if not session:
+                return
+            messages = session.messages
 
         node_data = []
         current_user_msg = None
 
-        for msg in session.messages:
+        for msg in messages:
             if msg["role"] == "user":
                 current_user_msg = msg.get("content", "")[:30]
             elif msg["role"] == "assistant" and current_user_msg:
@@ -1124,16 +1129,20 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.update_nodes(node_data)
 
     def _on_node_preview_clicked(self, index: int):
-        session = self.session_manager.get_current_session()
-        if not session:
-            return
+        if self._history_preview_messages is not None:
+            messages = self._history_preview_messages
+        else:
+            session = self.session_manager.get_current_session()
+            if not session:
+                return
+            messages = session.messages
 
         pair_index = 0
-        for i, msg in enumerate(session.messages):
+        for i, msg in enumerate(messages):
             if msg["role"] == "user":
                 if pair_index == index:
                     card_index = i
-                    for j in range(i + 1, len(session.messages)):
+                    for j in range(i, len(messages)-1):
                         if isinstance(self.chat_layout.itemAt(j), type(None)):
                             continue
                         widget = self.chat_layout.itemAt(j).widget()

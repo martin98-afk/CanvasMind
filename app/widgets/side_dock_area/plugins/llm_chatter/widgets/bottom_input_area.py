@@ -18,9 +18,7 @@ class SendableTextEdit(QTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText(
-            "给 CanvasMind 发送消息，Enter 发送，Shift+Enter 换行"
-        )
+        self.setPlaceholderText("给 CanvasMind 发送消息，Enter 发送，Shift+Enter 换行")
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -41,6 +39,28 @@ class SendableTextEdit(QTextEdit):
             QTextEdit:focus {
                 border: 1px solid #4E93FF;
                 background: rgba(22, 29, 41, 248);
+            }
+            QTextEdit QScrollBar:vertical {
+                background: rgba(255, 255, 255, 0.05);
+                width: 6px;
+                margin: 2px 0 2px 0;
+                border-radius: 3px;
+            }
+            QTextEdit QScrollBar::handle:vertical {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 3px;
+                min-height: 20px;
+            }
+            QTextEdit QScrollBar::handle:vertical:hover {
+                background: rgba(255, 255, 255, 0.25);
+            }
+            QTextEdit QScrollBar::add-line:vertical,
+            QTextEdit QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QTextEdit QScrollBar::add-page:vertical,
+            QTextEdit QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
 

@@ -2,6 +2,7 @@
 import copy
 import math
 import os
+from pathlib import Path
 
 import orjson
 import traceback
@@ -1293,9 +1294,10 @@ class CustomNodeViewer(NodeViewer):
 
         # 2. 检测释放位置
         scene_pos = self.mapToScene(event.pos())
-        on_port = self._find_port_item_at_scene_pos(
-            scene_pos, exclude_port=start_port_item
-        ) is not None
+        on_port = (
+            self._find_port_item_at_scene_pos(scene_pos, exclude_port=start_port_item)
+            is not None
+        )
 
         # 3. ComfyUI 触发逻辑：正在拉线 且 左键松开 且 在空白处
         if (
@@ -1438,6 +1440,10 @@ class CustomNodeViewer(NodeViewer):
         super(CustomNodeViewer, self).focusOutEvent(event)
 
     def dragEnterEvent(self, event):
+        mime_data = event.mimeData()
+        if mime_data.hasFormat("text/uri-list") and mime_data.urls():
+            event.accept()
+            return
         event.accept()
 
     def mouseDoubleClickEvent(self, event):
@@ -1493,7 +1499,7 @@ class CustomNodeViewer(NodeViewer):
 
         else:
             # 处理普通的节点创建拖拽 以及 我们的子图模板拖拽
-            # 在列表里增加 'application/x-subgraph-template'
+            # 在列表里增加 'application/x-subgraph-template' 和 'text/uri-list' (文件拖拽)
             is_acceptable = any(
                 [
                     mime_data.hasFormat(i)
@@ -1501,6 +1507,7 @@ class CustomNodeViewer(NodeViewer):
                         "nodegraphqt/nodes",
                         "text/plain",
                         "application/x-subgraph-template",
+                        "text/uri-list",
                     ]
                 ]
             )
@@ -1565,6 +1572,18 @@ class CustomNodeViewer(NodeViewer):
                 event.accept()
                 return
 
+            # --- 情况 C：如果是外部文件拖拽 -> 创建文件上传节点 ---
+            if mime_data.hasFormat("text/uri-list") and mime_data.urls():
+                urls = mime_data.urls()
+                if urls:
+                    file_url = urls[0]
+                    if file_url.isLocalFile():
+                        src_path = Path(file_url.toLocalFile())
+                        if src_path.exists() and src_path.is_file():
+                            self._handle_file_drop(src_path, scene_pos)
+                            event.accept()
+                            return
+
             node_type = self.home_window.node_type_map.get(full_path)
             if node_type:
                 node = self.home_window.graph.create_node(node_type)
@@ -1581,7 +1600,9 @@ class CustomNodeViewer(NodeViewer):
                     data_bytes = bytes(mime_data.data("application/x-global-variable"))
                     drag_data = orjson.loads(data_bytes.decode("utf-8"))
                     node.set_icon(":/icons/变量.svg")
-                    node.set_property("var_name", f"{drag_data['var_type']}.{drag_data['var_name']}")
+                    node.set_property(
+                        "var_name", f"{drag_data['var_type']}.{drag_data['var_name']}"
+                    )
                     node.set_name("\n".join(drag_data["var_name"].split("__")))
                     node.view.toggle_collapse()
                     self.home_window.canvas_runner.run_node(node)
@@ -1590,6 +1611,106 @@ class CustomNodeViewer(NodeViewer):
                 event.ignore()
         except Exception as e:
             logger.error(traceback.format_exc())
+
+    def _handle_file_drop(self, src_path: Path, scene_pos):
+        """处理从外部拖拽文件到画布，创建文件上传节点并上传文件"""
+        try:
+            file_upload_key = "数据集成/文件数据/文件上传"
+            node_type = self.home_window.node_type_map.get(file_upload_key)
+            if not node_type:
+                InfoBar.warning(
+                    "提示", "未找到文件上传组件", parent=self.home_window, duration=2000
+                )
+                return
+
+            node = self.home_window.graph.create_node(node_type)
+            node.set_pos(scene_pos.x(), scene_pos.y())
+
+            workspace = (
+                getattr(self.home_window, "file_path", Path(".")).parent / "workspace"
+            )
+            upload_root = workspace / node.persistent_id / "upload"
+            upload_root.mkdir(exist_ok=True, parents=True)
+
+            import re
+
+            pattern = r"[^\w\.-]"
+            dst = (
+                upload_root / f"{re.sub(pattern, '_', src_path.stem)}{src_path.suffix}"
+            )
+
+            if src_path.resolve() == dst.resolve():
+                final_path = str(dst)
+            else:
+                from PyQt5.QtCore import QThread
+                from app.widgets.side_dock_area.plugins.property_panel.port_widget import (
+                    FileCopyWorker,
+                )
+
+                thread = QThread(self)
+                worker = FileCopyWorker(src_path, dst)
+                worker.moveToThread(thread)
+                thread.worker = worker
+
+                result_holder = {}
+
+                def on_finished(success, final_path_val, error_msg):
+                    if success:
+                        result_holder["path"] = final_path_val
+                        node.set_output_value("file", final_path_val)
+                        try:
+                            node.model.add_property("file_upload", final_path_val)
+                        except:
+                            node.model.set_property("file_upload", final_path_val)
+                        InfoBar.success(
+                            "完成",
+                            f"{src_path.name} 上传成功",
+                            parent=self.home_window,
+                            duration=2000,
+                        )
+                        QtCore.QTimer.singleShot(
+                            0,
+                            lambda: self.home_window.property_panel.update_properties(
+                                node
+                            ),
+                        )
+                        self.home_window.canvas_runner.run_node(node)
+                    else:
+                        InfoBar.error(
+                            "上传失败", f"错误: {error_msg}", parent=self.home_window
+                        )
+                    thread.quit()
+                    thread.wait()
+                    worker.deleteLater()
+                    thread.deleteLater()
+
+                worker.finished.connect(on_finished)
+                thread.started.connect(worker.run)
+                worker.progress.connect(lambda v: None)
+                self._active_file_threads = getattr(self, "_active_file_threads", [])
+                self._active_file_threads.append(thread)
+                thread.start()
+                return
+
+            node.set_output_value("file", final_path)
+            try:
+                node.model.add_property("file_upload", final_path)
+            except:
+                node.model.set_property("file_upload", final_path)
+            InfoBar.success(
+                "完成",
+                f"{src_path.name} 上传成功",
+                parent=self.home_window,
+                duration=2000,
+            )
+            QtCore.QTimer.singleShot(
+                0, lambda: self.home_window.property_panel.update_properties(node)
+            )
+            self.home_window.canvas_runner.run_node(node)
+
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            InfoBar.error("错误", f"文件上传失败: {str(e)}", parent=self.home_window)
 
     def resizeEvent(self, event):
         self._invalidate_viewport_cache()
@@ -2356,7 +2477,9 @@ class CustomNodeGraph(NodeGraph):
                 continue
             if isinstance(item, SlicerPipeItem):
                 continue
-            if not getattr(item, "input_port", None) or not getattr(item, "output_port", None):
+            if not getattr(item, "input_port", None) or not getattr(
+                item, "output_port", None
+            ):
                 continue
 
             # 管线切换后需要清掉缓存并立刻重算路径，否则要等节点移动才会刷新。

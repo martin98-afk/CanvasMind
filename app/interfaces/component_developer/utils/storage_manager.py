@@ -171,8 +171,12 @@ class ComponentStorageManager:
             # 【核心逻辑】加载并刷新扩展环境
             comp_uuid = (
                 component.uuid
-                if hasattr(component, "uuid")
-                else self._current_component_file.stem
+                if hasattr(component, "uuid") and component.uuid
+                else (
+                    self._current_component_file.stem
+                    if self._current_component_file
+                    else None
+                )
             )
             self._ensure_extension_environment(comp_uuid, component)
 
@@ -180,6 +184,8 @@ class ComponentStorageManager:
             self.ui.current_comp_uuid = comp_uuid
             self.ui._update_file_manager_path(comp_uuid)
             self.ui.tab_manager.change_main_tab_name(getattr(component, "name", ""))
+            logger.info(f"About to load icon for comp_uuid: {comp_uuid}")
+            QTimer.singleShot(50, lambda: self._load_component_icon(comp_uuid))
             if component is None:
                 return
             QTimer.singleShot(
@@ -188,6 +194,37 @@ class ComponentStorageManager:
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self.parent)
+
+    def _load_component_icon(self, uuid_str):
+        try:
+            from pathlib import Path
+
+            logger.info(f"_load_component_icon called with uuid: {uuid_str}")
+            component_info = self.parent.component_info
+            logger.info(f"component_info: {component_info}")
+            if component_info:
+                if hasattr(component_info, "_update_icon_preview"):
+                    logger.info("Calling _update_icon_preview to clear")
+                    component_info._update_icon_preview()
+                if uuid_str and hasattr(component_info, "load_component_icon"):
+                    logger.info(f"Calling load_component_icon with {uuid_str}")
+                    icon_dir = (
+                        Path(resource_path("app/component_extensions"))
+                        / uuid_str
+                        / "assets"
+                        / "component_icon"
+                    )
+                    logger.info(
+                        f"Icon dir exists: {icon_dir.exists()}, files: {list(icon_dir.glob('*')) if icon_dir.exists() else []}"
+                    )
+                    component_info.load_component_icon(uuid_str)
+                else:
+                    logger.info("uuid_str is None or load_component_icon not found")
+        except Exception as e:
+            logger.error(f"Failed to load component icon: {e}")
+            import traceback
+
+            traceback.print_exc()
 
     def _merge_requirements_from_extension(self):
         """
@@ -530,9 +567,10 @@ class ComponentStorageManager:
             current_user = "Unknown"
 
         # 将绝对路径转换为相对路径
-        source_path = getattr(ComponentScanner().get_component_by_uuid(uuid_str), "_source_file", "")
+        source_path = getattr(
+            ComponentScanner().get_component_by_uuid(uuid_str), "_source_file", ""
+        )
         try:
-
             # 相对于扩展目录的相对路径
             ext_dir = self.extension_base_dir / uuid_str
             source_file_rel = str(

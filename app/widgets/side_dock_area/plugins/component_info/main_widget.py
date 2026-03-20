@@ -1,22 +1,49 @@
 # -*- coding: utf-8 -*-
+import shutil
+from pathlib import Path
+
 from PyQt5.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer
-from PyQt5.QtGui import QFont, QTextOption
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFormLayout, QToolButton, QFrame, QSizePolicy, QApplication
+from PyQt5.QtGui import QFont, QTextOption, QPixmap
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QWidget,
+    QFormLayout,
+    QToolButton,
+    QFrame,
+    QSizePolicy,
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFileDialog,
+    QMessageBox,
+)
 from qfluentwidgets import (
-    LineEdit, BodyLabel, TextEdit,
-    FluentIcon, setFont, SmoothScrollArea
+    LineEdit,
+    BodyLabel,
+    TextEdit,
+    FluentIcon,
+    setFont,
+    SmoothScrollArea,
 )
 
-from app.scan_components import ComponentScanner
+from app.scan_components import ComponentScanner, resource_path
 from app.utils.utils import get_icon
-from app.widgets.basic_widget.searchable_editable_combobox import SearchableEditableComboBox
-from app.widgets.side_dock_area.plugins.component_info.port_editory_widget import PortEditorWidget
-from app.widgets.side_dock_area.plugins.component_info.property_editory_widget import PropertyEditorWidget
+from app.widgets.basic_widget.searchable_editable_combobox import (
+    SearchableEditableComboBox,
+)
+from app.widgets.side_dock_area.plugins.component_info.port_editory_widget import (
+    PortEditorWidget,
+)
+from app.widgets.side_dock_area.plugins.component_info.property_editory_widget import (
+    PropertyEditorWidget,
+)
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
 class CollapsibleCard(QWidget):
     """可折叠的卡片容器（带平滑动画，避免幽灵窗口）"""
+
     toggled = pyqtSignal(bool)
 
     def __init__(self, title: str, parent=None):
@@ -159,6 +186,8 @@ class ComponentInfoWindow(ToolWindow):
     _input_port_editor = None
     _output_port_editor = None
     _property_editor = None
+    _icon_label = None
+    _icon_button = None
 
     def setup_ui(self):
         self.scroll_area = SmoothScrollArea()
@@ -180,7 +209,13 @@ class ComponentInfoWindow(ToolWindow):
         self.output_card = self._create_output_card()
         self.prop_card = self._create_property_card()
 
-        for card in [self.basic_card, self.dep_card, self.input_card, self.output_card, self.prop_card]:
+        for card in [
+            self.basic_card,
+            self.dep_card,
+            self.input_card,
+            self.output_card,
+            self.prop_card,
+        ]:
             self.content_layout.addWidget(card)
 
         self.content_layout.addStretch(1)
@@ -213,24 +248,202 @@ class ComponentInfoWindow(ToolWindow):
         self._description_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
         self._description_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
+        name_row_widget = QWidget()
+        name_row_layout = QHBoxLayout(name_row_widget)
+        name_row_layout.setContentsMargins(0, 0, 0, 0)
+        name_row_layout.setSpacing(8)
+        name_row_layout.addWidget(self._name_edit, 1)
+        name_row_layout.addWidget(self._create_icon_selector())
+
         # 统一字体层级
-        for label_text in [self.tr("组件名称:"), self.tr("组件分类:"), self.tr("组件描述:")]:
+        for label_text in [
+            self.tr("组件名称:"),
+            self.tr("组件分类:"),
+            self.tr("组件描述:"),
+        ]:
             label = BodyLabel(label_text)
             setFont(label, 12)
             form_layout.addRow(label, None)
 
-        form_layout.setWidget(0, QFormLayout.FieldRole, self._name_edit)
+        form_layout.setWidget(0, QFormLayout.FieldRole, name_row_widget)
         form_layout.setWidget(1, QFormLayout.FieldRole, self._category_edit)
         form_layout.setWidget(2, QFormLayout.FieldRole, self._description_edit)
 
         card.add_widget(form_widget)
         return card
 
+    def _create_icon_selector(self):
+        icon_widget = QWidget()
+        icon_layout = QHBoxLayout(icon_widget)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        icon_layout.setSpacing(12)
+
+        self._icon_label = QLabel()
+        self._icon_label.setFixedSize(48, 48)
+        self._icon_label.setStyleSheet("""
+            QLabel {
+                background: rgba(255, 255, 255, 8);
+                border: 2px dashed rgba(255, 255, 255, 30);
+                border-radius: 8px;
+            }
+        """)
+        self._icon_label.setAlignment(Qt.AlignCenter)
+
+        btn_widget = QWidget()
+        btn_layout = QVBoxLayout(btn_widget)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setSpacing(4)
+        btn_layout.addStretch()
+
+        self._icon_button = QPushButton()
+        self._icon_button.setFixedSize(80, 32)
+        self._icon_button.setText("上传图标")
+        self._icon_button.setCursor(Qt.PointingHandCursor)
+        self._icon_button.setStyleSheet("""
+            QPushButton {
+                background: rgba(100, 120, 255, 150);
+                border: none;
+                border-radius: 6px;
+                color: white;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: rgba(120, 140, 255, 200);
+            }
+            QPushButton:pressed {
+                background: rgba(80, 100, 235, 150);
+            }
+        """)
+        self._icon_button.clicked.connect(self._select_icon)
+
+        self._icon_tip = QLabel("SVG/PNG/JPG/ICO")
+        self._icon_tip.setStyleSheet("color: rgba(255,255,255,50); font-size: 10px;")
+        self._icon_tip.setAlignment(Qt.AlignCenter)
+
+        btn_layout.addWidget(self._icon_button, 0, Qt.AlignCenter)
+        btn_layout.addWidget(self._icon_tip, 0, Qt.AlignCenter)
+        btn_layout.addStretch()
+
+        icon_layout.addWidget(self._icon_label)
+        icon_layout.addWidget(btn_widget)
+        icon_layout.addStretch()
+
+        return icon_widget
+
+    def _select_icon(self):
+        uuid_str = self._get_component_uuid()
+        if not uuid_str:
+            QMessageBox.warning(
+                self, self.tr("警告"), self.tr("请先保存组件后再选择图标")
+            )
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("选择图标文件"),
+            "",
+            self.tr("图标文件 (*.png *.jpg *.jpeg *.svg *.ico *.gif)"),
+        )
+
+        if not file_path:
+            return
+
+        source_path = Path(file_path)
+        ext = source_path.suffix.lower()
+        if ext not in [".png", ".jpg", ".jpeg", ".svg", ".ico", ".gif"]:
+            QMessageBox.warning(self, self.tr("警告"), self.tr("不支持的图标格式"))
+            return
+
+        icon_dir = (
+            Path(resource_path("app/component_extensions"))
+            / uuid_str
+            / "assets"
+            / "component_icon"
+        )
+        icon_dir.mkdir(parents=True, exist_ok=True)
+
+        for old_icon in icon_dir.glob("*"):
+            if old_icon.is_file():
+                old_icon.unlink()
+
+        dest_path = icon_dir / f"icon{ext}"
+        shutil.copy2(source_path, dest_path)
+
+        self._update_icon_preview(str(dest_path))
+
+    def _update_icon_preview(self, icon_path=None):
+        if icon_path and Path(icon_path).exists():
+            pixmap = QPixmap(icon_path)
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(
+                    44, 44, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+                self._icon_label.setPixmap(scaled_pixmap)
+                self._icon_label.setStyleSheet("""
+                    QLabel {
+                        background: rgba(255, 255, 255, 15);
+                        border: 2px solid rgba(100, 120, 255, 100);
+                        border-radius: 8px;
+                    }
+                """)
+            else:
+                self._icon_label.setPixmap(QPixmap())
+                self._icon_label.setText("N/A")
+        else:
+            self._icon_label.setPixmap(QPixmap())
+            self._icon_label.setStyleSheet("""
+                QLabel {
+                    background: rgba(255, 255, 255, 8);
+                    border: 2px dashed rgba(255, 255, 255, 30);
+                    border-radius: 8px;
+                }
+            """)
+
+    def _get_component_uuid(self):
+        try:
+            homepage = getattr(self, "homepage", None)
+            if homepage and hasattr(homepage, "storage_manager"):
+                current_file = homepage.storage_manager._current_component_file
+                if current_file:
+                    return current_file.stem
+        except Exception:
+            pass
+        return None
+
+    def load_component_icon(self, uuid_str):
+        from loguru import logger
+
+        logger.info(f"load_component_icon called with uuid: {uuid_str}")
+        if not uuid_str or not hasattr(self, "_icon_label") or not self._icon_label:
+            logger.info("Early return: uuid_str is None or _icon_label not found")
+            self._update_icon_preview()
+            return
+        icon_dir = (
+            Path(resource_path("app/component_extensions"))
+            / uuid_str
+            / "assets"
+            / "component_icon"
+        )
+        logger.info(f"Looking for icons in: {icon_dir}, exists: {icon_dir.exists()}")
+        if icon_dir.exists():
+            icon_files = [f for f in icon_dir.glob("*") if f.is_file()]
+            logger.info(f"Found icon files: {icon_files}")
+            if icon_files:
+                self._update_icon_preview(str(icon_files[0]))
+                return
+        logger.info("No icon found, clearing preview")
+        self._update_icon_preview()
+
     def _create_dependency_card(self):
         card = CollapsibleCard(self.tr("依赖信息"))
         self._requirements_edit = TextEdit()
-        self._requirements_edit.setPlaceholderText(self.tr("例如：requests>=2.25.0\nnumpy\n# 支持多行"))
-        self._requirements_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self._requirements_edit.setPlaceholderText(
+            self.tr("例如：requests>=2.25.0\nnumpy\n# 支持多行")
+        )
+        self._requirements_edit.setWordWrapMode(
+            QTextOption.WrapAtWordBoundaryOrAnywhere
+        )
         self._requirements_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         card.add_widget(self._requirements_edit)
         return card
@@ -268,7 +481,9 @@ class ComponentInfoWindow(ToolWindow):
         current_category = self.category_edit.currentText()
         self._category_edit.clear()
         compoent_map, _ = ComponentScanner().get_components()
-        categories = {getattr(cls, 'category', 'General') for cls in compoent_map.values()}
+        categories = {
+            getattr(cls, "category", "General") for cls in compoent_map.values()
+        }
         self._category_edit.addItems(sorted(categories))
         if current_category in categories:
             self._category_edit.setCurrentText(current_category)
@@ -287,6 +502,7 @@ class ComponentInfoWindow(ToolWindow):
             self._output_port_editor.set_ports([])
         if self._property_editor:
             self._property_editor.set_properties({})
+        self._update_icon_preview()
 
     @property
     def name_edit(self):
