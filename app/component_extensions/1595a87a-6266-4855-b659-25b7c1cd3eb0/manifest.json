@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "向飞书多维表格写入数据，支持JSON Key提取、自动创建列和上传图片",
   "category": "消息推送",
-  "updated_at": "2026-02-02 22:27:28",
+  "source_file": "..\\..\\components\\消息推送\\1595a87a-6266-4855-b659-25b7c1cd3eb0.py",
+  "updated_at": "2026-03-20 15:36:01",
   "author": "black"
 }
