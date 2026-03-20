@@ -180,6 +180,7 @@ class ComponentStorageManager:
             self.ui.current_comp_uuid = comp_uuid
             self.ui._update_file_manager_path(comp_uuid)
             self.ui.tab_manager.change_main_tab_name(getattr(component, "name", ""))
+            QTimer.singleShot(50, lambda: self._load_component_icon(comp_uuid))
             if component is None:
                 return
             QTimer.singleShot(
@@ -188,6 +189,14 @@ class ComponentStorageManager:
         except Exception as e:
             logger.error(traceback.format_exc())
             MessageManager.error(f"加载组件失败: {str(e)}", "", self.parent)
+
+    def _load_component_icon(self, uuid_str):
+        try:
+            component_info = self.parent.component_info
+            if component_info and hasattr(component_info, "load_component_icon"):
+                component_info.load_component_icon(uuid_str)
+        except Exception as e:
+            logger.warning(f"Failed to load component icon: {e}")
 
     def _merge_requirements_from_extension(self):
         """
@@ -530,9 +539,10 @@ class ComponentStorageManager:
             current_user = "Unknown"
 
         # 将绝对路径转换为相对路径
-        source_path = getattr(ComponentScanner().get_component_by_uuid(uuid_str), "_source_file", "")
+        source_path = getattr(
+            ComponentScanner().get_component_by_uuid(uuid_str), "_source_file", ""
+        )
         try:
-
             # 相对于扩展目录的相对路径
             ext_dir = self.extension_base_dir / uuid_str
             source_file_rel = str(
