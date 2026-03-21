@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import shutil
 from pathlib import Path
 
@@ -25,6 +26,10 @@ from qfluentwidgets import (
     FluentIcon,
     setFont,
     SmoothScrollArea,
+)
+
+from app.widgets.side_dock_area.plugins.component_info.icon_selector_popup import (
+    IconSelectorPopup,
 )
 
 from app.scan_components import ComponentScanner, resource_path
@@ -297,7 +302,7 @@ class ComponentInfoWindow(ToolWindow):
 
         self._icon_button = QPushButton()
         self._icon_button.setFixedSize(80, 32)
-        self._icon_button.setText("上传图标")
+        self._icon_button.setText("选择图标")
         self._icon_button.setCursor(Qt.PointingHandCursor)
         self._icon_button.setStyleSheet("""
             QPushButton {
@@ -332,29 +337,40 @@ class ComponentInfoWindow(ToolWindow):
         return icon_widget
 
     def _select_icon(self):
+        from loguru import logger
         uuid_str = self._get_component_uuid()
+        logger.info(f"_select_icon called, uuid: {uuid_str}")
         if not uuid_str:
             QMessageBox.warning(
                 self, self.tr("警告"), self.tr("请先保存组件后再选择图标")
             )
             return
 
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            self.tr("选择图标文件"),
-            "",
-            self.tr("图标文件 (*.png *.jpg *.jpeg *.svg *.ico *.gif)"),
+        logger.info(f"Creating icon selector for uuid: {uuid_str}")
+        icon_dir = (
+            Path(resource_path("app/component_extensions"))
+            / uuid_str
+            / "assets"
+            / "component_icon"
         )
+        icon_dir.mkdir(parents=True, exist_ok=True)
 
-        if not file_path:
+        icons_dir = str(icon_dir)
+        
+        self._icon_selector = IconSelectorPopup(self, icons_dir)
+        self._icon_selector.icon_selected.connect(self._on_icon_selected)
+        self._icon_selector.show_at_widget(self._icon_button)
+
+    def _on_icon_selected(self, icon_path):
+        from loguru import logger
+        logger.info(f"_on_icon_selected called with path: {icon_path}")
+        
+        if not icon_path:
+            self._update_icon_preview()
             return
 
-        source_path = Path(file_path)
-        ext = source_path.suffix.lower()
-        if ext not in [".png", ".jpg", ".jpeg", ".svg", ".ico", ".gif"]:
-            QMessageBox.warning(self, self.tr("警告"), self.tr("不支持的图标格式"))
-            return
-
+        uuid_str = self._get_component_uuid()
+        logger.info(f"uuid_str: {uuid_str}")
         icon_dir = (
             Path(resource_path("app/component_extensions"))
             / uuid_str
@@ -367,14 +383,51 @@ class ComponentInfoWindow(ToolWindow):
             if old_icon.is_file():
                 old_icon.unlink()
 
-        dest_path = icon_dir / f"icon{ext}"
-        shutil.copy2(source_path, dest_path)
+        if icon_path.startswith("builtin:") or icon_path.startswith(":/icons/"):
+            from loguru import logger
+            ext = ".png"
+            if icon_path.startswith(":/icons/"):
+                logger.info(f"Processing custom icon: {icon_path}")
+                pixmap = QPixmap(icon_path)
+                logger.info(f"QPixmap loaded, isNull: {pixmap.isNull()}")
+                if not pixmap.isNull():
+                    dest_path = icon_dir / "icon.png"
+                    pixmap.save(str(dest_path))
+                    logger.info(f"Saved to: {dest_path}")
+                    self._update_icon_preview(str(dest_path))
+                    return
+            else:
+                from PyQt5.QtGui import QIcon
+                from qfluentwidgets import FluentIcon
+                builtin_name = icon_path.replace("builtin:", "")
+                for ficon in FluentIcon:
+                    if ficon.name == builtin_name:
+                        qicon = ficon.icon()
+                        pixmap = qicon.pixmap(64, 64)
+                        if not pixmap.isNull():
+                            dest_path = icon_dir / "icon.png"
+                            pixmap.save(str(dest_path))
+                            self._update_icon_preview(str(dest_path))
+                        break
+                return
 
-        self._update_icon_preview(str(dest_path))
+        source_path = Path(icon_path)
+        if source_path.exists():
+            ext = source_path.suffix.lower()
+            if ext not in [".png", ".jpg", ".jpeg", ".svg", ".ico", ".gif"]:
+                ext = ".png"
+
+            dest_path = icon_dir / f"icon{ext}"
+            shutil.copy2(source_path, dest_path)
+            self._update_icon_preview(str(dest_path))
 
     def _update_icon_preview(self, icon_path=None):
+        from loguru import logger
+        logger.info(f"_update_icon_preview called with: {icon_path}")
         if icon_path and Path(icon_path).exists():
+            logger.info(f"Icon file exists, loading pixmap")
             pixmap = QPixmap(icon_path)
+            logger.info(f"Pixmap isNull: {pixmap.isNull()}")
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(
                     44, 44, Qt.KeepAspectRatio, Qt.SmoothTransformation
