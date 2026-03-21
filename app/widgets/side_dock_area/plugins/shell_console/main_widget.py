@@ -3,6 +3,7 @@ import os
 import platform
 import re
 import locale
+from qfluentwidgets import FluentIcon, ToolButton
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -29,6 +30,7 @@ from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 class InlineTerminal(QTextEdit):
     command_entered = pyqtSignal(str)
     interrupt_requested = pyqtSignal()
+    completion_requested = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -36,6 +38,7 @@ class InlineTerminal(QTextEdit):
         self._history_index = -1
         self._command_start_pos = 0
         self._max_line_count = 10000
+        self._completing = False
         self._setup_style()
         self._setup_context_menu()
 
@@ -132,6 +135,15 @@ class InlineTerminal(QTextEdit):
             event.accept()
             return
 
+        # 7. Tab键补全
+        if event.key() == Qt.Key_Tab:
+            if not self._completing:
+                self._completing = True
+                self.completion_requested.emit(self._get_current_input())
+            event.accept()
+            return
+
+        self._completing = False
         super().keyPressEvent(event)
 
     def _navigate_history(self, direction):
@@ -166,20 +178,22 @@ class InlineTerminal(QTextEdit):
         self.setTextCursor(cursor)
 
     def append_output(self, text):
-        """专业解析 ANSI 转义序列并追加文本"""
+        """解析 ANSI 转义序列并追加文本"""
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
 
-        # 简单的 ANSI 解析逻辑
-        ansi_pattern = re.compile(r'(\x1b\[[\d;]*m)')
-        parts = ansi_pattern.split(text)
+        ansi_clean = re.compile(r'\x1b(\[[0-9;]*[A-Za-z]|\][^\x07]*\x07|\[[0-9;]*H|\[[0-9]*[JKJ]|\[[0-9]*;[0-9]*H|\=)')
+        color_pattern = re.compile(r'\x1b\[([\d;]*)m')
 
+        text = ansi_clean.sub('', text)
+
+        parts = color_pattern.split(text)
         current_fmt = QTextCharFormat()
         current_fmt.setForeground(QColor("#D4D4D4"))
 
         for part in parts:
-            if part.startswith('\x1b['):
-                codes = part.strip('\x1b[m').split(';')
+            if part.startswith('\x1b[') or not part:
+                codes = part.strip('\x1b[').strip('m').split(';')
                 for code in codes:
                     if code in ('0', ''):
                         current_fmt = QTextCharFormat()
@@ -208,6 +222,16 @@ class InlineTerminal(QTextEdit):
             self._history.append(cmd)
         self._history_index = -1
 
+    def do_completion(self, completion):
+        if completion:
+            cursor = self.textCursor()
+            cursor.setPosition(self._command_start_pos)
+            cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
+            cursor.insertText(completion)
+            self.setTextCursor(cursor)
+        self._completing = False
+
 
 class ShellConsoleToolWindow(ToolWindow):
     name = "Shell 命令行"
@@ -233,6 +257,9 @@ class ShellConsoleToolWindow(ToolWindow):
         self.terminal = InlineTerminal()
         self.terminal.command_entered.connect(self._on_command_entered)
         self.terminal.interrupt_requested.connect(self._interrupt_process)
+        self.terminal.completion_requested.connect(self._on_completion_requested)
+        self._completion_options = []
+        self._completion_index = 0
 
         layout.addWidget(self.terminal, 1)
 
@@ -251,20 +278,17 @@ class ShellConsoleToolWindow(ToolWindow):
         self.cwd_label = QLabel(self._shorten_path(self.working_directory))
         self.cwd_label.setStyleSheet("color: #666666; font-size: 10px;")
 
-        self.stop_btn = QPushButton("")
-        self.stop_btn.setIcon(get_icon("stop"))
+        self.stop_btn = ToolButton(FluentIcon.PAUSE)
         self.stop_btn.setToolTip("中断当前命令 (Ctrl+C)")
         self.stop_btn.setFixedSize(22, 22)
         self.stop_btn.clicked.connect(self._interrupt_process)
 
-        self.clear_btn = QPushButton("")
-        self.clear_btn.setIcon(get_icon("clear"))
+        self.clear_btn = ToolButton(FluentIcon.DELETE)
         self.clear_btn.setToolTip("清空屏幕")
         self.clear_btn.setFixedSize(22, 22)
         self.clear_btn.clicked.connect(self._clear_terminal)
 
-        self.restart_btn = QPushButton("")
-        self.restart_btn.setIcon(get_icon("refresh"))
+        self.restart_btn = ToolButton(FluentIcon.SYNC)
         self.restart_btn.setToolTip("重启会话")
         self.restart_btn.setFixedSize(22, 22)
         self.restart_btn.clicked.connect(self._restart_shell)
@@ -296,6 +320,41 @@ class ShellConsoleToolWindow(ToolWindow):
     def _update_prompt(self):
         prompt = f"\x1b[92mPS {self.working_directory}>\x1b[0m "
         self.terminal.append_output(prompt)
+
+    def _on_completion_requested(self, current_input):
+        if not current_input:
+            return
+
+        base = os.path.basename(current_input)
+        dir_path = os.path.dirname(current_input)
+        if not dir_path:
+            dir_path = "."
+
+        try:
+            entries = os.listdir(dir_path)
+        except OSError:
+            entries = []
+
+        matches = []
+        for entry in entries:
+            if entry.startswith(base):
+                full_path = os.path.join(dir_path, entry)
+                if os.path.isdir(full_path):
+                    matches.append(os.path.join(dir_path, entry) + os.sep)
+                else:
+                    matches.append(os.path.join(dir_path, entry))
+
+        if len(matches) == 1:
+            self.terminal.do_completion(matches[0])
+        elif len(matches) > 1:
+            self._completion_options = matches
+            self._completion_index = 0
+            self.terminal.do_completion(matches[0])
+            self.terminal.append_output("\n")
+            self.terminal.append_output("  ".join(matches) + "\n")
+            self._update_prompt()
+            last_cmd = self.terminal._get_current_input()
+            self.terminal._replace_command(last_cmd)
 
     def _start_shell(self):
         if self.process:
@@ -345,10 +404,10 @@ class ShellConsoleToolWindow(ToolWindow):
                 os.chdir(path)
                 self.working_directory = os.getcwd()
                 self.cwd_label.setText(self._shorten_path(self.working_directory))
-                # 同时也让后台进程 cd
                 self.process.write(f"cd \"{self.working_directory}\"\n".encode(self.encoding))
+                self._update_prompt()
+                return
 
-        # 发送给后台进程
         self.process.write((cmd + "\n").encode(self.encoding))
 
     def _interrupt_process(self):

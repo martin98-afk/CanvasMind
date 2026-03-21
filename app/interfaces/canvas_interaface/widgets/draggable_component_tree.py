@@ -2,23 +2,42 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QMimeData, QRectF, QPoint, QTimer
-from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen, QFont, QPainterPath, QFontMetrics
+from PyQt5.QtGui import (
+    QDrag,
+    QPixmap,
+    QPainter,
+    QColor,
+    QPen,
+    QFont,
+    QPainterPath,
+    QFontMetrics,
+)
 from PyQt5.QtWidgets import QTreeWidgetItem, QWidget, QVBoxLayout, QHBoxLayout
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF, TransparentToggleToolButton, RoundMenu, Action
-from qfluentwidgets import TreeWidget, SearchLineEdit, FluentStyleSheet, DropDownPushButton
+from qfluentwidgets import (
+    FluentIcon as FIF,
+    TransparentToggleToolButton,
+    RoundMenu,
+    Action,
+)
+from qfluentwidgets import (
+    TreeWidget,
+    SearchLineEdit,
+    FluentStyleSheet,
+    DropDownPushButton,
+)
 
 from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
-from app.scan_components import ComponentScanner
+from app.scan_components import ComponentScanner, resource_path
 from app.utils.utils import get_pinyin_search_keys
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
 
 class DraggableTreeWidget(TreeWidget):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -35,13 +54,14 @@ class DraggableTreeWidget(TreeWidget):
         self.setMouseTracking(True)
         self.viewport().setAttribute(Qt.WA_Hover)
         self.viewport().installEventFilter(self)
+        self.setIndentation(8)
         self._init_components()
 
     def _load_usage_stats(self):
         stats_file = Path("./canvas_files/nodegraph_usage.json")
         if stats_file.exists():
             try:
-                with open(stats_file, 'r', encoding='utf-8') as f:
+                with open(stats_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except:
                 pass
@@ -50,7 +70,7 @@ class DraggableTreeWidget(TreeWidget):
     def _save_usage_stats(self):
         stats_file = Path("./canvas_files/nodegraph_usage.json")
         try:
-            with open(stats_file, 'w', encoding='utf-8') as f:
+            with open(stats_file, "w", encoding="utf-8") as f:
                 json.dump(self._usage_stats, f, ensure_ascii=False, indent=2)
         except:
             pass
@@ -59,7 +79,7 @@ class DraggableTreeWidget(TreeWidget):
         fav_file = Path("./canvas_files/nodegraph_favorites.json")
         if fav_file.exists():
             try:
-                with open(fav_file, 'r', encoding='utf-8') as f:
+                with open(fav_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except:
                 pass
@@ -68,7 +88,7 @@ class DraggableTreeWidget(TreeWidget):
     def _save_favorites(self):
         fav_file = Path("./canvas_files/nodegraph_favorites.json")
         try:
-            with open(fav_file, 'w', encoding='utf-8') as f:
+            with open(fav_file, "w", encoding="utf-8") as f:
                 json.dump(self._favorites, f, ensure_ascii=False, indent=2)
         except:
             pass
@@ -153,43 +173,48 @@ class DraggableTreeWidget(TreeWidget):
             py_keys = get_pinyin_search_keys(name)
             search_metadata = f"{full_path} {py_keys}".lower()
 
-            all_components.append({
-                'full_path': full_path,
-                'name': name,
-                'category': category,
-                'last_used': self.get_last_used_time(full_path),
-                'is_fav': self.is_favorite(full_path),
-                'search_metadata': search_metadata
-            })
+            all_components.append(
+                {
+                    "full_path": full_path,
+                    "name": name,
+                    "category": category,
+                    "last_used": self.get_last_used_time(full_path),
+                    "is_fav": self.is_favorite(full_path),
+                    "search_metadata": search_metadata,
+                }
+            )
 
         filtered = []
         for comp in all_components:
-            if self._selected_categories and comp['category'] not in self._selected_categories:
+            if (
+                self._selected_categories
+                and comp["category"] not in self._selected_categories
+            ):
                 continue
-            if self._show_only_favorites and not comp['is_fav']:
+            if self._show_only_favorites and not comp["is_fav"]:
                 continue
             filtered.append(comp)
 
         if self._show_time_sorted:
-            filtered.sort(key=lambda x: x['last_used'] or datetime.min, reverse=True)
+            filtered.sort(key=lambda x: x["last_used"] or datetime.min, reverse=True)
             # 翻译分组标题
             groups = {
-                self.tr('最近使用'): [],
-                self.tr('近一周'): [],
-                self.tr('近一月'): [],
-                self.tr('未使用'): []
+                self.tr("最近使用"): [],
+                self.tr("近一周"): [],
+                self.tr("近一月"): [],
+                self.tr("未使用"): [],
             }
             now = datetime.now()
             for comp in filtered:
-                last_used = comp['last_used']
+                last_used = comp["last_used"]
                 if not last_used:
-                    groups[self.tr('未使用')].append(comp)
+                    groups[self.tr("未使用")].append(comp)
                 elif (now - last_used).days <= 1:
-                    groups[self.tr('最近使用')].append(comp)
+                    groups[self.tr("最近使用")].append(comp)
                 elif (now - last_used).days <= 7:
-                    groups[self.tr('近一周')].append(comp)
+                    groups[self.tr("近一周")].append(comp)
                 else:
-                    groups[self.tr('近一月')].append(comp)
+                    groups[self.tr("近一月")].append(comp)
 
             for group_name, items in groups.items():
                 if items:
@@ -198,27 +223,32 @@ class DraggableTreeWidget(TreeWidget):
                     self.addTopLevelItem(group_item)
                     self._all_items.append(group_item)
                     for comp in items:
-                        display_name = comp['name']
-                        if comp['is_fav']:
+                        display_name = comp["name"]
+                        if comp["is_fav"]:
                             display_name = f"★ {display_name}"
                         comp_item = QTreeWidgetItem([display_name])
-                        comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
-                        comp_item.setData(0, Qt.UserRole + 2, comp['search_metadata'])
+                        comp_item.setData(0, Qt.UserRole + 1, comp["full_path"])
+                        comp_item.setData(0, Qt.UserRole + 2, comp["search_metadata"])
+                        icon_path = self._get_component_icon_path(comp["full_path"])
+                        if icon_path:
+                            comp_item.setIcon(0, QtGui.QIcon(icon_path))
+                        else:
+                            comp_item.setIcon(0, FIF.APPLICATION.icon())
                         group_item.addChild(comp_item)
                         self._all_items.append(comp_item)
                     group_item.setExpanded(True)
         else:
-            filtered.sort(key=lambda x: x['full_path'])
+            filtered.sort(key=lambda x: x["full_path"])
             path_nodes = {}
 
             for comp in filtered:
-                parts = comp['full_path'].split("/")
+                parts = comp["full_path"].split("/")
                 current_parent = None
                 path_acc = ""
 
                 for i in range(len(parts) - 1):
                     part_name = parts[i]
-                    path_acc = "/".join(parts[:i + 1])
+                    path_acc = "/".join(parts[: i + 1])
                     if path_acc not in path_nodes:
                         folder_item = QTreeWidgetItem([part_name])
                         if current_parent:
@@ -229,13 +259,18 @@ class DraggableTreeWidget(TreeWidget):
                         self._all_items.append(folder_item)
                     current_parent = path_nodes[path_acc]
 
-                display_name = comp['name']
-                if comp['is_fav']:
+                display_name = comp["name"]
+                if comp["is_fav"]:
                     display_name = f"★ {display_name}"
 
                 comp_item = QTreeWidgetItem([display_name])
-                comp_item.setData(0, Qt.UserRole + 1, comp['full_path'])
-                comp_item.setData(0, Qt.UserRole + 2, comp['search_metadata'])
+                comp_item.setData(0, Qt.UserRole + 1, comp["full_path"])
+                comp_item.setData(0, Qt.UserRole + 2, comp["search_metadata"])
+                icon_path = self._get_component_icon_path(comp["full_path"])
+                if icon_path:
+                    comp_item.setIcon(0, QtGui.QIcon(icon_path))
+                else:
+                    comp_item.setIcon(0, FIF.APPLICATION.icon())
 
                 if current_parent:
                     current_parent.addChild(comp_item)
@@ -254,6 +289,30 @@ class DraggableTreeWidget(TreeWidget):
             self.build_filtered_tree()
         except Exception as e:
             logger.error(self.tr("刷新组件失败: {}").format(e))
+
+    def _get_component_icon_path(self, full_path) -> Optional[str]:
+        """获取组件图标路径"""
+        _, file_map = ComponentScanner().get_components()
+        file_path = file_map.get(full_path)
+        if not file_path:
+            return ":/icons/同心圆.svg"
+        uuid_str = Path(file_path).stem
+        icon_dir = Path(
+            resource_path(f"app/component_extensions/{uuid_str}/assets/component_icon")
+        )
+        if not icon_dir.exists():
+            return ":/icons/同心圆.svg"
+        for icon_path in icon_dir.glob("*"):
+            if icon_path.is_file() and icon_path.suffix.lower() in [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".ico",
+            ]:
+                return str(icon_path)
+        return ":/icons/同心圆.svg"
 
     def startDrag(self, supportedActions):
         self._hide_preview()  # 拖拽开始时立刻关闭预览
@@ -285,7 +344,9 @@ class DraggableTreeWidget(TreeWidget):
         try:
             # 基础尺寸
             base_width, base_height = 190, 125
-            dpr = self.devicePixelRatioF() if hasattr(self, 'devicePixelRatioF') else 1.0
+            dpr = (
+                self.devicePixelRatioF() if hasattr(self, "devicePixelRatioF") else 1.0
+            )
 
             pixmap = QPixmap(int(base_width * dpr), int(base_height * dpr))
             pixmap.setDevicePixelRatio(dpr)
@@ -317,23 +378,30 @@ class DraggableTreeWidget(TreeWidget):
             font.setBold(True)
             painter.setFont(font)
 
-            title = getattr(comp_cls, 'name', comp_cls.__name__)
+            title = getattr(comp_cls, "name", comp_cls.__name__)
             # 使用省略号处理超长标题
             fm = QFontMetrics(font)
             elided_title = fm.elidedText(title, Qt.ElideRight, width - 30)
-            painter.drawText(QRectF(12, 12, width - 24, 24), Qt.AlignLeft | Qt.AlignVCenter, elided_title)
+            painter.drawText(
+                QRectF(12, 12, width - 24, 24),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                elided_title,
+            )
 
             # === 3. 类别 (淡白色) ===
             painter.setPen(QColor(255, 255, 255, 160))
             font.setPointSize(9)
             font.setBold(False)
             painter.setFont(font)
-            category = getattr(comp_cls, 'category', self.tr('General'))
-            painter.drawText(QRectF(12, 36, width - 24, 20), Qt.AlignLeft | Qt.AlignVCenter,
-                             self.tr("📁 {}").format(category))
+            category = getattr(comp_cls, "category", self.tr("General"))
+            painter.drawText(
+                QRectF(12, 36, width - 24, 20),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                self.tr("📁 {}").format(category),
+            )
 
             # === 4. 描述 (更淡的颜色) ===
-            description = getattr(comp_cls, 'description', "")
+            description = getattr(comp_cls, "description", "")
             if isinstance(description, str) and description.strip():
                 painter.setPen(QColor(255, 255, 255, 120))
                 font.setItalic(True)  # 斜体增加设计感
@@ -342,11 +410,13 @@ class DraggableTreeWidget(TreeWidget):
                 # 使用 Qt 自带的自动换行绘制，比手动计算更准确
                 desc_rect = QRectF(12, 60, width - 24, 35)
                 desc_text = description.strip()
-                painter.drawText(desc_rect, Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap, desc_text)
+                painter.drawText(
+                    desc_rect, Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap, desc_text
+                )
 
             # === 底部信息 (输入/输出/使用次数) ===
-            inputs = getattr(comp_cls, 'get_inputs', lambda: [])()
-            outputs = getattr(comp_cls, 'get_outputs', lambda: [])()
+            inputs = getattr(comp_cls, "get_inputs", lambda: [])()
+            outputs = getattr(comp_cls, "get_outputs", lambda: [])()
             usage_count = len(self._usage_stats.get(full_path, []))
 
             bottom_y = height - 25
@@ -358,19 +428,28 @@ class DraggableTreeWidget(TreeWidget):
             # 输入 (绿色，稍微调亮以适应暗背景)
             if inputs:
                 painter.setPen(QColor("#4ADE80"))
-                painter.drawText(QRectF(12, bottom_y, 60, 20), Qt.AlignLeft | Qt.AlignVCenter, f"◂ {len(inputs)}")
+                painter.drawText(
+                    QRectF(12, bottom_y, 60, 20),
+                    Qt.AlignLeft | Qt.AlignVCenter,
+                    f"◂ {len(inputs)}",
+                )
 
             # 使用次数 (橙色)
             if usage_count > 0:
                 painter.setPen(QColor("#FBBF24"))
                 usage_text = self.tr("🕒 {}").format(usage_count)
-                painter.drawText(QRectF(0, bottom_y, width, 20), Qt.AlignCenter, usage_text)
+                painter.drawText(
+                    QRectF(0, bottom_y, width, 20), Qt.AlignCenter, usage_text
+                )
 
             # 输出 (红色/粉色)
             if outputs:
                 painter.setPen(QColor("#F87171"))
-                painter.drawText(QRectF(width - 72, bottom_y, 60, 20), Qt.AlignRight | Qt.AlignVCenter,
-                                 f"{len(outputs)} ▸")
+                painter.drawText(
+                    QRectF(width - 72, bottom_y, 60, 20),
+                    Qt.AlignRight | Qt.AlignVCenter,
+                    f"{len(outputs)} ▸",
+                )
 
             # === 收藏星标 ===
             if self.is_favorite(full_path):
@@ -420,7 +499,8 @@ class DraggableTreeWidget(TreeWidget):
         item = self.itemAt(event.pos())
         if item and item.parent():
             full_path = item.data(0, Qt.UserRole + 1)
-            if not full_path: return
+            if not full_path:
+                return
             menu = RoundMenu(parent=self)
             is_fav = self.is_favorite(full_path)
 
@@ -429,19 +509,25 @@ class DraggableTreeWidget(TreeWidget):
             add_text = self.tr("⭐ 添加收藏")
             action_text = remove_text if is_fav else add_text
 
-            menu.addAction(Action(action_text,
-                                  triggered=lambda: self._toggle_favorite(full_path, item, is_fav)))
+            menu.addAction(
+                Action(
+                    action_text,
+                    triggered=lambda: self._toggle_favorite(full_path, item, is_fav),
+                )
+            )
             menu.exec_(event.globalPos())
 
     def _toggle_favorite(self, full_path, item, is_currently_fav):
         if is_currently_fav:
             self.remove_from_favorites(full_path)
             text = item.text(0)
-            if text.startswith("★ "): item.setText(0, text[2:])
+            if text.startswith("★ "):
+                item.setText(0, text[2:])
         else:
             if self.add_to_favorites(full_path):
                 current_text = item.text(0)
-                if not current_text.startswith("★ "): item.setText(0, f"★ {current_text}")
+                if not current_text.startswith("★ "):
+                    item.setText(0, f"★ {current_text}")
         self.refresh_components()
 
     def filter_items(self, keyword: str):
@@ -449,7 +535,8 @@ class DraggableTreeWidget(TreeWidget):
         if not keyword:
             for item in self._all_items:
                 item.setHidden(False)
-                if item.parent(): item.parent().setExpanded(True)
+                if item.parent():
+                    item.parent().setExpanded(True)
             return
 
         for item in self._all_items:
@@ -457,7 +544,8 @@ class DraggableTreeWidget(TreeWidget):
 
         for item in self._all_items:
             search_data = item.data(0, Qt.UserRole + 2)
-            if not search_data: continue
+            if not search_data:
+                continue
 
             if keyword in search_data:
                 item.setHidden(False)
@@ -481,14 +569,16 @@ class DraggableTreeWidget(TreeWidget):
                     if data:
                         # 计算位置：显示在Item右侧，而不是鼠标位置，这样更稳定
                         rect = self.visualItemRect(item)
-                        global_pos = self.viewport().mapToGlobal(QPoint(rect.right(), rect.top()))
+                        global_pos = self.viewport().mapToGlobal(
+                            QPoint(rect.right(), rect.top())
+                        )
 
                         # 调用单例管理器
                         PreviewManager.get_instance().show_preview(
                             data,
                             global_pos,
                             self,
-                            delay=300  # 300ms 延迟
+                            delay=300,  # 300ms 延迟
                         )
                 else:
                     # 移到空白处或文件夹，请求隐藏
@@ -511,13 +601,13 @@ class DraggableTreeWidget(TreeWidget):
             return None
 
         return {
-            'name': getattr(comp_cls, 'name', None) or comp_cls.__name__,
-            'category': getattr(comp_cls, 'category', 'General'),
-            'description': getattr(comp_cls, 'description', ''),
-            'inputs': getattr(comp_cls, 'get_inputs', lambda: [])(),
-            'outputs': getattr(comp_cls, 'get_outputs', lambda: [])(),
-            'input_sub_types': getattr(comp_cls, 'get_input_sub_types', lambda: {})(),
-            'output_sub_types': getattr(comp_cls, 'get_output_sub_types', lambda: {})(),
+            "name": getattr(comp_cls, "name", None) or comp_cls.__name__,
+            "category": getattr(comp_cls, "category", "General"),
+            "description": getattr(comp_cls, "description", ""),
+            "inputs": getattr(comp_cls, "get_inputs", lambda: [])(),
+            "outputs": getattr(comp_cls, "get_outputs", lambda: [])(),
+            "input_sub_types": getattr(comp_cls, "get_input_sub_types", lambda: {})(),
+            "output_sub_types": getattr(comp_cls, "get_output_sub_types", lambda: {})(),
         }
 
     def leaveEvent(self, event):
@@ -537,12 +627,13 @@ class DraggableTreeWidget(TreeWidget):
 
     def __del__(self):
         """清理预览窗口"""
-        if hasattr(self, '_preview_widget') and self._preview_widget:
+        if hasattr(self, "_preview_widget") and self._preview_widget:
             self._preview_widget.deleteLater()
 
 
 class DraggableTreePanel(QWidget):
     """带搜索框的组件树面板"""
+
     filter_changed_signal = QtCore.pyqtSignal(set)
 
     def __init__(self, parent=None):
@@ -575,7 +666,9 @@ class DraggableTreePanel(QWidget):
         self.time_toggle.toggled.connect(self._on_time_toggled)
 
         # 收藏按钮
-        self.favorite_toggle = TransparentToggleToolButton(FIF.EXPRESSIVE_INPUT_ENTRY, self)
+        self.favorite_toggle = TransparentToggleToolButton(
+            FIF.EXPRESSIVE_INPUT_ENTRY, self
+        )
         self.favorite_toggle.setFixedSize(24, 28)
         self.favorite_toggle.setToolTip(self.tr("只显示收藏组件"))
         self.favorite_toggle.toggled.connect(self._on_favorite_toggled)
@@ -624,12 +717,16 @@ class DraggableTreePanel(QWidget):
     def _init_categories(self):
         """初始化类别列表"""
         self.category_filter_dialog = CategoryFilterDialog(self.parent_window)
-        self.category_filter_dialog.categories_changed.connect(self._on_categories_changed)
+        self.category_filter_dialog.categories_changed.connect(
+            self._on_categories_changed
+        )
 
     def _show_category_dialog(self):
         """显示类别筛选对话框"""
         if self.category_filter_dialog:
-            pos = self.category_button.mapToGlobal(QPoint(10, self.category_button.height()))
+            pos = self.category_button.mapToGlobal(
+                QPoint(10, self.category_button.height())
+            )
             self.category_filter_dialog.show_at(pos)
 
     def _on_categories_changed(self, selected_categories):
