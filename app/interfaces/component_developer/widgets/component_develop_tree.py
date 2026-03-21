@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
 )
-from PyQt5.QtGui import QDrag
+from PyQt5.QtGui import QDrag, QIcon
 from qfluentwidgets import (
     TreeWidget,
     RoundMenu,
@@ -27,9 +27,9 @@ from qfluentwidgets import (
     FluentIcon,
 )
 
-from app.scan_components import ComponentScanner
+from app.scan_components import ComponentScanner, resource_path
 from app.utils.config import Settings
-from app.utils.utils import get_icon, resource_path
+from app.utils.utils import get_icon
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
@@ -60,6 +60,7 @@ class ComponentTreeWidget(TreeWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setDragEnabled(True)
         self.setDragDropMode(QTreeWidget.DragOnly)
+        self.setIndentation(8)
 
     def refresh_components(self):
         """刷新组件列表，并保持当前类别筛选状态"""
@@ -68,6 +69,29 @@ class ComponentTreeWidget(TreeWidget):
             self.show_selected_category()
         except Exception as e:
             self._show_error(f"刷新组件失败: {e}")
+
+    def _get_component_icon_path(self, full_path) -> Optional[str]:
+        """获取组件图标路径"""
+        file_path = self._file_map.get(full_path)
+        if not file_path:
+            return ":/icons/同心圆.svg"
+        uuid_str = Path(file_path).stem
+        icon_dir = Path(
+            resource_path(f"app/component_extensions/{uuid_str}/assets/component_icon")
+        )
+        if not icon_dir.exists():
+            return ":/icons/同心圆.svg"
+        for icon_path in icon_dir.glob("*"):
+            if icon_path.is_file() and icon_path.suffix.lower() in [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".ico",
+            ]:
+                return str(icon_path)
+        return ":/icons/同心圆.svg"
 
     def show_selected_category(self):
         """支持无限级路径构建树（如 A/B/C/组件）"""
@@ -118,6 +142,11 @@ class ComponentTreeWidget(TreeWidget):
             comp_item = QTreeWidgetItem([comp_name])
             comp_item.setData(0, ROLE_FULL_PATH, full_path)
             comp_item.setData(0, ROLE_IS_FOLDER, False)
+            icon_path = self._get_component_icon_path(full_path)
+            if icon_path:
+                comp_item.setIcon(0, QIcon(icon_path))
+            else:
+                comp_item.setIcon(0, QIcon(":/icons/同心圆.svg"))
 
             if current_parent:
                 current_parent.addChild(comp_item)
@@ -268,16 +297,30 @@ class ComponentTreeWidget(TreeWidget):
         if self._is_component(item):
             menu.addActions(
                 [
-                    Action("✏️ 编辑组件", triggered=self._edit_component),
-                    Action("📋 复制组件 (Ctrl+C)", triggered=self._copy_component),
-                    Action("🗑️ 删除组件 (Delete)", triggered=self._delete_component),
+                    Action(FluentIcon.EDIT, "编辑组件", triggered=self._edit_component),
+                    Action(
+                        get_icon("复制"),
+                        "复制组件 (Ctrl+C)",
+                        triggered=self._copy_component,
+                    ),
+                    Action(
+                        FluentIcon.DELETE,
+                        "删除组件 (Delete)",
+                        triggered=self._delete_component,
+                    ),
                 ]
             )
         else:
-            menu.addAction(Action("🆕 新建组件", triggered=self._create_new_component))
+            menu.addAction(
+                Action(FluentIcon.ADD, "新建组件", triggered=self._create_new_component)
+            )
             if self._copied_component:
                 menu.addAction(
-                    Action("📌 粘贴组件 (Ctrl+V)", triggered=self._paste_component)
+                    Action(
+                        FluentIcon.PASTE,
+                        "粘贴组件 (Ctrl+V)",
+                        triggered=self._paste_component,
+                    )
                 )
 
         if menu.actions():
