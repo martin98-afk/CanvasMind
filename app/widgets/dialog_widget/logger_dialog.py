@@ -85,11 +85,15 @@ class TabbedLogWidget(QWidget):
                 }
                 QPlainTextEdit QScrollBar:vertical { 
                     background: transparent; 
-                    width: 10px; 
+                    width: 14px; 
                 }
                 QPlainTextEdit QScrollBar::handle:vertical { 
-                    background: #555555; 
-                    border-radius: 5px; 
+                    background: #666666; 
+                    border-radius: 7px; 
+                    min-height: 30px;
+                }
+                QPlainTextEdit QScrollBar::handle:vertical:hover { 
+                    background: #888888; 
                 }
             """)
 
@@ -285,6 +289,33 @@ class LogPopupWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self._resizing = False
         super().mouseReleaseEvent(event)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        mouse_pos = self.mapFromGlobal(QCursor.pos())
+        if mouse_pos.x() >= self.width() - self._resize_zone_width:
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #0078D4;
+                }
+            """
+                % self._resize_zone_width
+            )
+
+    def leaveEvent(self, event):
+        if not self._resizing:
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #404040;
+                }
+            """
+                % self._resize_zone_width
+            )
+        super().leaveEvent(event)
 
     def show_at_left(self, parent_widget, log_button_top_right):
         self._parent_widget = parent_widget
