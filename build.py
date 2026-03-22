@@ -13,7 +13,7 @@ env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
 extra_modules = ["spyder", "fastapi", "watchdog", "uvicorn", "starlette", "pyecharts", "paho", "redis", "sqlalchemy", "psutil", "prettytable", "apscheduler", "tzlocal"]
 # 需要删除的冗余库列表
 to_remove = [
-    'scipy', 'scipy.libs', 'sphinx', 'matplotlib', 'torch', 'tensorflow', 'torchaudio'
+    'scipy', 'scipy.libs', 'sphinx', 'matplotlib', 'torch', 'tensorflow', 'torchaudio', 'sqlalchemy'
 ]
 # 2. 图标选择 (跨平台)
 icon_arg = None

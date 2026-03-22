@@ -740,35 +740,40 @@ class OpenAIChatToolWindow(ToolWindow):
         QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
 
     def _display_current_session(self):
+        # 1. 清空当前 UI
         self._clear_chat_area()
-        self._history_preview_messages = None
-        self._history_preview_title = ""
 
+        # 2. 获取当前会话
         session = self.session_manager.get_current_session()
         if not session:
             return
+
+        # 3. 更新任务状态（左侧可能有的任务面板）
         self._on_task_state_changed(session.task_state)
 
-        if self._current_history_index is not None:
-            title = self.history_manager.get_current_title(self._current_history_index)
-            if title:
-                self.title_edit.setText(title)
-
+        # 4. 准备分批加载的数据源
+        # 注意：这里一定要从 session.messages 拿，不要从临时变量拿
         self._message_batch = list(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
+
+        # 5. 如果确实一条消息都没有，再显示欢迎语
+        if not self._message_batch:
+            self._show_initial_welcome()  # 专门写个函数显示欢迎卡片，不要调 create_new_session
+            return
+
+        # 6. 开始分批异步加载卡片（防止 UI 卡死）
         self._load_message_batch()
 
-    def _display_preview_session(self):
-        self._clear_chat_area()
-
-        if self._history_preview_title:
-            self.title_edit.setText(self._history_preview_title)
-
-        self._message_batch = list(self._history_preview_messages or [])
-        self._message_batch_index = 0
-        self._batch_size = 4
-        self._load_message_batch()
+    def _show_initial_welcome(self):
+        """仅在UI上显示欢迎卡片，不改动Session数据"""
+        agent = self._agent_manager.get_agent(self._current_agent) if self._agent_manager else None
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        welcome_card = create_welcome_card(self, agent_name, agent_desc)
+        welcome_card._is_welcome = True
+        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
+        self._add_chat_widget(welcome_card)
 
     def _load_message_batch(self):
         """分批加载消息，避免卡顿"""
@@ -872,33 +877,40 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
-            if self._history_preview_session_data is None:
-                current_session = self.session_manager.get_current_session()
-                self._history_preview_session_data = (
-                    current_session.to_dict() if current_session else None
-                )
-                self._history_preview_history_index = self._current_history_index
+            # 【进入历史模式】
+            # 如果当前是一个还没保存过的新对话，先备份它，防止切回来时丢了
+            if self._current_history_index is None:
+                curr_session = self.session_manager.get_current_session()
+                if curr_session and curr_session.messages:
+                    self._history_preview_session_data = curr_session.to_dict()
+                else:
+                    self._history_preview_session_data = None
+
             self._in_history_mode = True
             self.chat_layout.setAlignment(Qt.AlignTop)
             self._display_history_sessions()
         else:
+            # 【退出历史模式】
             self._in_history_mode = False
             self.chat_layout.setAlignment(Qt.AlignBottom)
+
+            # 情况 A：如果是从 _load_history_session 点进来的，session 已经更新好了
             if self._history_preview_opening:
                 self._history_preview_opening = False
-                self._display_preview_session()
-                return
-            if self._history_preview_session_data:
-                restored_session = ChatSession.from_dict(
-                    self._history_preview_session_data
-                )
-                self.session_manager.set_current_session(restored_session)
-            self._current_history_index = self._history_preview_history_index
-            self._history_preview_session_data = None
-            self._history_preview_history_index = None
-            self._history_preview_messages = None
-            self._history_preview_title = ""
-            self._display_current_session()
+                # 直接去渲染 Session 里的消息
+                self._display_current_session()
+
+            # 情况 B：如果是直接按返回键/取消键
+            else:
+                # 如果有备份（即刚才那个没存的新对话），还原它
+                if self._history_preview_session_data:
+                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import ChatSession
+                    restored = ChatSession.from_dict(self._history_preview_session_data)
+                    self.session_manager.set_current_session(restored)
+                    self._history_preview_session_data = None
+                    self._current_history_index = None
+
+                self._display_current_session()
 
     def _toggle_shell_mode(self, enabled: bool):
         self._is_shell_mode = enabled
@@ -1050,15 +1062,28 @@ class OpenAIChatToolWindow(ToolWindow):
         self._display_history_sessions()
 
     def _load_history_session(self, index: int):
+        # 1. 获取数据库里的历史消息
         messages = self.history_manager.get_session_by_index(index)
-        if messages is None:
+        if not messages:
             return
-        self._history_preview_messages = list(messages)
-        self._history_preview_title = self.history_manager.get_current_title(index)
+
+        # 2. 获取当前正在使用的 session 对象
+        session = self.session_manager.get_current_session()
+        if not session:
+            session = self.session_manager.create_new_session()
+
+        # 3. 核心：强制覆盖 session 的消息内容
+        session.messages = list(messages)
+
+        # 4. 同步状态变量
         self._current_history_index = index
-        self._in_history_mode = False
-        self.chat_layout.setAlignment(Qt.AlignBottom)
-        self._history_preview_opening = True
+        self._history_preview_opening = True  # 标记：我是通过点击历史项关闭菜单的
+
+        # 5. 更新标题显示
+        title = self.history_manager.get_current_title(index)
+        self.title_edit.setText(title or "历史对话")
+
+        # 6. 关闭历史界面 (这会触发 _toggle_history_mode(False))
         self.history_btn.setChecked(False)
 
     def _append_user_message(
