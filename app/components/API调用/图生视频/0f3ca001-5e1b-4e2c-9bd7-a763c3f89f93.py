@@ -32,7 +32,11 @@ class WanImageToVideoComponent(BaseComponent):
     ]
 
     properties = {
-        "api_key": PropertyDefinition(type=PropertyType.TEXT, default="", label="DashScope API Key"),
+        "api_key": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="",
+            label="DashScope API Key",
+        ),
         "model": PropertyDefinition(
             type=PropertyType.CHOICE,
             default="wan2.6-i2v-flash",
@@ -56,7 +60,11 @@ class WanImageToVideoComponent(BaseComponent):
             label="镜头类型",
             choices=["single", "multi"]
         ),
-        "prompt_extend": PropertyDefinition(type=PropertyType.BOOL, default=True, label="提示词扩展"),
+        "prompt_extend": PropertyDefinition(
+            type=PropertyType.BOOL,
+            default=True,
+            label="提示词扩展",
+        ),
     }
 
     def _upload_image(self, api_key, pil_image):

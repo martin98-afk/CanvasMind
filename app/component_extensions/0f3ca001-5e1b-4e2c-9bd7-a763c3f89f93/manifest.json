@@ -6,7 +6,7 @@
   "api_version": "2.0",
   "description": "上传图片并调用 Wan 2.6 模型生成视频（异步任务）",
   "category": "API调用/图生视频",
-  "source_file": "../../components/API调用/图生视频/0f3ca001-5e1b-4e2c-9bd7-a763c3f89f93.py",
-  "updated_at": "2026-03-16 21:15:39",
+  "source_file": "..\\..\\components\\API调用\\图生视频\\0f3ca001-5e1b-4e2c-9bd7-a763c3f89f93.py",
+  "updated_at": "2026-03-22 22:35:41",
   "author": "black"
 }
