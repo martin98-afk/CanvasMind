@@ -1,18 +1,28 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import (Qt, pyqtSignal, QRectF, QPoint, QTimer, QMimeData)
-from PyQt5.QtGui import (QColor, QPainter, QDrag, QPen)
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget
-from qfluentwidgets import NavigationToolButton, FluentIcon as FIF, isDarkTheme, drawIcon, InfoBadge, InfoBadgePosition
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPoint, QTimer, QMimeData
+from PyQt5.QtGui import QColor, QPainter, QDrag, QPen
+from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget, QMenu, QAction
+from qfluentwidgets import (
+    NavigationToolButton,
+    FluentIcon as FIF,
+    isDarkTheme,
+    drawIcon,
+    InfoBadge,
+    InfoBadgePosition,
+)
 
 
 class ToggleNavigationButton(NavigationToolButton):
+    doubleClicked = pyqtSignal(str)
+    toolHidden = pyqtSignal(str)
+    toolMoveRequested = pyqtSignal(str, str)
+
     def __init__(self, icon, tool_name, parent=None):
         super().__init__(icon, parent)
         self._checked = False
         self.tool_name = tool_name
-        self.setFixedSize(40, 40)  # 建议固定一下大小确保对齐
+        self.setFixedSize(40, 40)
 
-        # 长按逻辑计时器
         self.long_press_timer = QTimer(self)
         self.long_press_timer.setSingleShot(True)
         self.long_press_timer.timeout.connect(self._start_drag)
@@ -30,7 +40,7 @@ class ToggleNavigationButton(NavigationToolButton):
             self.info_badge.setParent(self)
             self.info_badge.move(self.width() - 20, 5)
         else:
-            if hasattr(self, 'info_badge') and self.info_badge:
+            if hasattr(self, "info_badge") and self.info_badge:
                 self.info_badge.deleteLater()
                 self.info_badge = None
 
@@ -55,6 +65,44 @@ class ToggleNavigationButton(NavigationToolButton):
                 self.setChecked(not self._checked)
         super().mouseReleaseEvent(e)
 
+    def mouseDoubleClickEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.doubleClicked.emit(self.tool_name)
+        super().mouseDoubleClickEvent(e)
+
+    def contextMenuEvent(self, e):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #2d2d2d;
+                color: white;
+                border: 1px solid #3a3a3a;
+                border-radius: 4px;
+            }
+            QMenu::item {
+                padding: 6px 24px;
+            }
+            QMenu::item:selected {
+                background-color: #0078d4;
+            }
+        """)
+        move_to_top = QAction("移动到顶部组", menu)
+        move_to_bottom = QAction("移动到底部组", menu)
+        hide_tool = QAction("隐藏工具", menu)
+
+        move_to_top.triggered.connect(
+            lambda: self.toolMoveRequested.emit(self.tool_name, "top")
+        )
+        move_to_bottom.triggered.connect(
+            lambda: self.toolMoveRequested.emit(self.tool_name, "bottom")
+        )
+        hide_tool.triggered.connect(lambda: self.toolHidden.emit(self.tool_name))
+
+        menu.addAction(move_to_top)
+        menu.addAction(move_to_bottom)
+        menu.addAction(hide_tool)
+        menu.exec_(e.globalPos())
+
     def _start_drag(self):
         drag = QDrag(self)
         mime = QMimeData()
@@ -67,8 +115,11 @@ class ToggleNavigationButton(NavigationToolButton):
 
     def paintEvent(self, e):
         painter = QPainter(self)
-        painter.setRenderHints(QPainter.Antialiasing |
-                               QPainter.TextAntialiasing | QPainter.SmoothPixmapTransform)
+        painter.setRenderHints(
+            QPainter.Antialiasing
+            | QPainter.TextAntialiasing
+            | QPainter.SmoothPixmapTransform
+        )
         painter.setPen(Qt.NoPen)
 
         base_opacity = 1.0
@@ -126,12 +177,12 @@ class ToolSeparator(QWidget):
 
 
 class RightToolPanel(QFrame):
-    """PyCharm 风格侧边栏：按钮全部靠上，中间用分割线隔开"""
     topToolChecked = pyqtSignal(str)
     topToolUnchecked = pyqtSignal(str)
     bottomToolChecked = pyqtSignal(str)
     bottomToolUnchecked = pyqtSignal(str)
     toolMoveRequested = pyqtSignal(str, str)
+    toolHidden = pyqtSignal(str)
 
     def __init__(self, canvas_page, parent=None):
         super().__init__(parent)
@@ -143,6 +194,7 @@ class RightToolPanel(QFrame):
         self._bottom_buttons = {}
         self._tool_by_button = {}
         self._button_by_name = {}
+        self._hidden_tools = set()
 
         # 布局初始化
         main_layout = QVBoxLayout(self)
@@ -175,7 +227,9 @@ class RightToolPanel(QFrame):
     def _update_style(self):
         bg = "#202020" if isDarkTheme() else "#f3f3f3"
         border = "#3a3a3a" if isDarkTheme() else "#e0e0e0"
-        self.setStyleSheet(f"#RightToolPanel {{ background: {bg}; border-left: 1px solid {border}; }}")
+        self.setStyleSheet(
+            f"#RightToolPanel {{ background: {bg}; border-left: 1px solid {border}; }}"
+        )
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasText():
@@ -219,27 +273,67 @@ class RightToolPanel(QFrame):
         btn.setToolTip(tool_cls.name)
         self._button_by_name[tool_cls.name] = btn
         self._tool_by_button[btn] = tool_cls
+
+        btn.doubleClicked.connect(self._on_button_double_clicked)
+        btn.toolHidden.connect(self._on_tool_hidden)
+        btn.toolMoveRequested.connect(self._on_button_move_requested)
+
         return btn
 
-    def add_button_to_layout(self, tool_name, position_str):
+    def _on_button_double_clicked(self, tool_name):
         btn = self._button_by_name.get(tool_name)
-        if not btn: return
+        if btn and btn.isChecked():
+            btn.setChecked(False)
+            if btn in self._top_buttons:
+                self.topToolUnchecked.emit(tool_name)
+            else:
+                self.bottomToolUnchecked.emit(tool_name)
+
+    def _on_tool_hidden(self, tool_name):
+        btn = self._button_by_name.get(tool_name)
+        if not btn:
+            return
+
+        was_checked = btn.isChecked()
+        btn.setChecked(False)
+        btn.hide()
+        self._hidden_tools.add(tool_name)
+
+        if btn in self._top_buttons:
+            self._top_buttons.remove(btn)
+            self._top_layout.removeWidget(btn)
+            if was_checked:
+                self.topToolUnchecked.emit(tool_name)
+        elif tool_name in self._bottom_buttons:
+            self._bottom_buttons.pop(tool_name)
+            self._bottom_layout.removeWidget(btn)
+            if was_checked:
+                self.bottomToolUnchecked.emit(tool_name)
+
+        self._update_separator_visibility()
+
+    def _on_button_move_requested(self, tool_name, new_pos):
+        self.toolMoveRequested.emit(tool_name, new_pos)
+
+    def add_button_to_layout(self, tool_name, position_str, force_checked=False):
+        btn = self._button_by_name.get(tool_name)
+        if not btn:
+            return
         tool_cls = self._tool_by_button.get(btn)
 
-        # 清理旧连接
         try:
             btn.clicked.disconnect()
         except:
             pass
 
-        # 移除旧布局归属
         self._top_layout.removeWidget(btn)
-        if btn in self._top_buttons: self._top_buttons.remove(btn)
+        if btn in self._top_buttons:
+            self._top_buttons.remove(btn)
 
         self._bottom_layout.removeWidget(btn)
-        if tool_name in self._bottom_buttons: self._bottom_buttons.pop(tool_name)
+        if tool_name in self._bottom_buttons:
+            self._bottom_buttons.pop(tool_name)
 
-        # 添加到新布局
         if position_str == "top":
             btn.clicked.connect(lambda: self._on_top_clicked(btn, tool_cls))
             self._top_layout.addWidget(btn)
@@ -251,6 +345,13 @@ class RightToolPanel(QFrame):
 
         btn.show()
         self._update_separator_visibility()
+
+        if force_checked:
+            btn.setChecked(True)
+            if position_str == "top":
+                self._on_top_clicked(btn, tool_cls)
+            else:
+                self._on_bottom_clicked(btn, tool_cls)
 
     def _update_separator_visibility(self):
         """只有当上下都有元素时才显示分割线，看起来更整洁"""
@@ -265,7 +366,8 @@ class RightToolPanel(QFrame):
     def _on_top_clicked(self, btn, tool_cls):
         if btn.isChecked():
             for b in self._top_buttons:
-                if b is not btn: b.setChecked(False)
+                if b is not btn:
+                    b.setChecked(False)
             self.topToolChecked.emit(tool_cls.name)
         else:
             self.topToolUnchecked.emit(tool_cls.name)
@@ -273,14 +375,16 @@ class RightToolPanel(QFrame):
     def _on_bottom_clicked(self, btn, tool_cls):
         if btn.isChecked():
             for k, b in self._bottom_buttons.items():
-                if b is not btn: b.setChecked(False)
+                if b is not btn:
+                    b.setChecked(False)
             self.bottomToolChecked.emit(tool_cls.name)
         else:
             self.bottomToolUnchecked.emit(tool_cls.name)
 
     def set_checked(self, tool_name: str):
         btn = self._button_by_name.get(tool_name)
-        if not btn: return
+        if not btn:
+            return
         if not btn.isChecked():
             btn.setChecked(True)
             tool_cls = self._tool_by_button[btn]
@@ -294,4 +398,5 @@ class RightToolPanel(QFrame):
         if btn and btn in self._top_buttons:
             btn.setChecked(True)
             for other_btn in self._top_buttons:
-                if other_btn is not btn: other_btn.setChecked(False)
+                if other_btn is not btn:
+                    other_btn.setChecked(False)

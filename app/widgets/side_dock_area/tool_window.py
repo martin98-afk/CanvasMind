@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional, List, Type, Dict, Any
+
 from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QIcon
 
 from app.utils.config import Settings
 
@@ -9,7 +13,31 @@ from app.utils.config import Settings
 class DockPosition(Enum):
     TOP = "top"
     BOTTOM = "bottom"
-    HIDDEN = "hidden"  # 不自动注册到 dock
+    HIDDEN = "hidden"
+
+
+@dataclass
+class PluginManifest:
+    name: str
+    display_name: str = ""
+    icon: Optional[Any] = None
+    position: DockPosition = DockPosition.HIDDEN
+    shortcut: Optional[str] = None
+    dependencies: List[str] = field(default_factory=list)
+    singleton: bool = True
+    auto_activate: bool = True
+
+
+class PluginProtocol(ABC):
+    @abstractmethod
+    def get_manifest(self) -> PluginManifest:
+        raise NotImplementedError
+
+    def on_activate(self):
+        pass
+
+    def on_deactivate(self):
+        pass
 
 
 class ToolWindow(QWidget):
@@ -18,12 +46,13 @@ class ToolWindow(QWidget):
     singleton = True
     default_position: DockPosition = DockPosition.HIDDEN
 
+    _manifest: Optional[PluginManifest] = None
+
     def __init__(self, page, button):
         super().__init__()
         self.homepage = page
         self.button = button
 
-        # --- 统一字体设置逻辑 ---
         self._init_unified_font()
 
         self.setup_ui()
@@ -36,19 +65,16 @@ class ToolWindow(QWidget):
         try:
             font_name = Settings.get_instance().canvas_font_type.value
         except Exception:
-            font_name = "Microsoft YaHei"  # 默认字体
+            font_name = "Microsoft YaHei"
 
-        # 2. 方案 A：使用 setFont (基础设置)
         font = self.font()
         font.setFamily(font_name)
         self.setFont(font)
 
-        # 3. 方案 B：使用 StyleSheet (强制穿透解决嵌套控件无效问题)
         self.setStyleSheet(f"""
             ToolWindow, QWidget {{
                 font-family: "{font_name}";
             }}
-            /* 针对某些特殊控件的补充（如按钮、标签） */
             QLabel, QPushButton, QLineEdit, QComboBox, QTreeWidget, QTableWidget {{
                 font-family: "{font_name}";
             }}
@@ -59,6 +85,20 @@ class ToolWindow(QWidget):
 
     def cleanup(self):
         pass
+
+    @classmethod
+    def get_manifest(cls) -> PluginManifest:
+        if cls._manifest is not None:
+            return cls._manifest
+        return PluginManifest(
+            name=cls.name,
+            display_name=getattr(cls, "display_name", cls.name),
+            icon=cls.icon,
+            position=cls.default_position,
+            singleton=cls.singleton,
+            auto_activate=False,
+        )
+
 
 @dataclass
 class DockItem:
