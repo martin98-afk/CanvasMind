@@ -7,6 +7,6 @@
   "description": "与文件上传相比不会复制源文件，只会输出选择文件的地址",
   "category": "数据集成/文件数据",
   "source_file": "..\\..\\components\\数据集成\\文件数据\\a5754c54-98ac-44ca-b5ef-4313a3410400.py",
-  "updated_at": "2026-03-16 09:32:18",
+  "updated_at": "2026-03-22 10:04:47",
   "author": "black"
 }

@@ -596,7 +596,7 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self.filter_list(self.search_line.text())
 
     def _get_max_visible_items(self):
-        return 9
+        return 8
 
     def _update_list_widget(self):
         self.list_widget.clear()

@@ -29,7 +29,7 @@ from qfluentwidgets import (
 
 from app.scan_components import ComponentScanner, resource_path
 from app.utils.config import Settings
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, resource_path
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
