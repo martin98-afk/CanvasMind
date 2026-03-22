@@ -588,11 +588,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.addItem(name)
 
     def _load_agent_list(self):
-        """加载智能体列表到选择器"""
+        """加载智能体列表到选择器（仅显示 primary agents）"""
         if not self._agent_manager or not hasattr(self, "input_area"):
             return
         self._suppress_agent_intro = True
-        agents = self._agent_manager.list_agents()
+        agents = self._agent_manager.list_primary_agents()
         self.input_area._agent_combo.clear()
         for agent in agents:
             self.input_area._agent_combo.addItem(agent.name, agent.description)
@@ -637,9 +637,10 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         agent = self._agent_manager.get_agent(agent_name)
         if agent:
-            tools_count = len(agent.tools) if agent.tools else 0
+            mode = agent.mode
+            hidden = "hidden" if agent.hidden else "visible"
             self.input_area._agent_combo.setToolTip(
-                f"{agent.name}: {agent.description}\n可用工具: {tools_count}个"
+                f"{agent.name}: {agent.description}\nMode: {mode}, {hidden}"
             )
 
     def _on_task_state_changed(self, task_state):
@@ -767,7 +768,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _show_initial_welcome(self):
         """仅在UI上显示欢迎卡片，不改动Session数据"""
-        agent = self._agent_manager.get_agent(self._current_agent) if self._agent_manager else None
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
         agent_name = agent.name if agent else ""
         agent_desc = agent.description if agent else ""
         welcome_card = create_welcome_card(self, agent_name, agent_desc)
@@ -904,7 +909,10 @@ class OpenAIChatToolWindow(ToolWindow):
             else:
                 # 如果有备份（即刚才那个没存的新对话），还原它
                 if self._history_preview_session_data:
-                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import ChatSession
+                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
+                        ChatSession,
+                    )
+
                     restored = ChatSession.from_dict(self._history_preview_session_data)
                     self.session_manager.set_current_session(restored)
                     self._history_preview_session_data = None
@@ -1167,7 +1175,7 @@ class OpenAIChatToolWindow(ToolWindow):
             if msg["role"] == "user":
                 if pair_index == index:
                     card_index = i
-                    for j in range(i, len(messages)-1):
+                    for j in range(i, len(messages) - 1):
                         if isinstance(self.chat_layout.itemAt(j), type(None)):
                             continue
                         widget = self.chat_layout.itemAt(j).widget()
