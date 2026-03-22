@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QTabWidget,
     QScrollArea,
+    QHBoxLayout,
 )
 from qfluentwidgets import StrongBodyLabel
 
@@ -202,17 +203,21 @@ class LogPopupWidget(QWidget):
         self._min_width = 400
         self._max_width = 1000
         self._base_x = 0
-        self._resize_zone_width = 12
-        self._hovering_resize_zone = False
-        self._border_color = "#2a2a2a"
-        self._hover_border_color = "#0078D4"
+        self._resize_zone_width = 8
         self.setup_ui()
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
-        self._update_border_style(False)
+        self.setStyleSheet(
+            """
+            QWidget {
+                background-color: #1e1e1e;
+                border-right: %dpx solid #404040;
+            }
+        """
+            % self._resize_zone_width
+        )
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -220,23 +225,25 @@ class LogPopupWidget(QWidget):
 
         header = QWidget()
         header.setFixedHeight(32)
-        header.setStyleSheet("""
-            background-color: #1e1e1e;
-            border-bottom: 1px solid #3c3c3c;
-        """)
-        header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(10, 0, 10, 0)
+        header.setStyleSheet(
+            "background-color: #1e1e1e; border-bottom: 1px solid #3c3c3c;"
+        )
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 0, 12, 0)
+        header_layout.setSpacing(8)
 
         title_label = StrongBodyLabel("执行日志")
         title_label.setStyleSheet("color: white;")
         header_layout.addWidget(title_label)
+        header_layout.addStretch()
 
-        self.resize_handle = QWidget()
-        self.resize_handle.setFixedWidth(self._resize_zone_width)
-        self.resize_handle.setStyleSheet("""
-            background-color: #1e1e1e;
+        self.resize_grip = QWidget()
+        self.resize_grip.setFixedSize(20, 16)
+        self.resize_grip.setStyleSheet("""
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                stop:0 transparent, stop:0.5 #666666, stop:1 transparent);
         """)
-        header_layout.addWidget(self.resize_handle)
+        header_layout.addWidget(self.resize_grip)
 
         self.tabbed_log_widget = TabbedLogWidget()
 
@@ -244,34 +251,6 @@ class LogPopupWidget(QWidget):
         main_layout.addWidget(self.tabbed_log_widget)
 
         self.resize(550, 600)
-
-    def _update_border_style(self, hover):
-        if hover:
-            self.setStyleSheet(
-                """
-                QWidget {
-                    background-color: #1e1e1e;
-                    border-right: %dpx solid #0078D4;
-                }
-            """
-                % self._resize_zone_width
-            )
-            self.resize_handle.setStyleSheet("""
-                background-color: #0078D4;
-            """)
-        else:
-            self.setStyleSheet(
-                """
-                QWidget {
-                    background-color: #1e1e1e;
-                    border-right: %dpx solid #2a2a2a;
-                }
-            """
-                % self._resize_zone_width
-            )
-            self.resize_handle.setStyleSheet("""
-                background-color: #1e1e1e;
-            """)
 
     def set_width(self, width):
         width = max(self._min_width, min(width, self._max_width))
@@ -285,14 +264,11 @@ class LogPopupWidget(QWidget):
             self._resizing = True
             self._start_pos = event.globalPos()
             self._start_width = self.width()
+            event.accept()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         is_in_resize_zone = event.pos().x() >= self.width() - self._resize_zone_width
-
-        if is_in_resize_zone != self._hovering_resize_zone:
-            self._hovering_resize_zone = is_in_resize_zone
-            self._update_border_style(is_in_resize_zone)
 
         if is_in_resize_zone:
             self.setCursor(Qt.SizeHorCursor)
@@ -303,23 +279,12 @@ class LogPopupWidget(QWidget):
             delta = event.globalPos() - self._start_pos
             new_width = self._start_width + delta.x()
             self.set_width(new_width)
+            event.accept()
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         self._resizing = False
         super().mouseReleaseEvent(event)
-
-    def enterEvent(self, event):
-        super().enterEvent(event)
-        mouse_pos = self.mapFromGlobal(QCursor.pos())
-        if mouse_pos.x() >= self.width() - self._resize_zone_width:
-            self._hovering_resize_zone = True
-            self._update_border_style(True)
-
-    def leaveEvent(self, event):
-        self._hovering_resize_zone = False
-        self._update_border_style(False)
-        super().leaveEvent(event)
 
     def show_at_left(self, parent_widget, log_button_top_right):
         self._parent_widget = parent_widget
