@@ -1,23 +1,23 @@
 ---
 description: 面向代码库分析和实现规划的只读智能体。负责理解项目、收集约束、给出明确实施路径，不直接改文件。
 mode: primary
+temperature: 0.1
+steps: 50
 permission:
-  edit: deny
-  bash: deny
+  edit: ask
+  bash: ask
+  write: ask
+  patch: ask
   read: allow
-  write: deny
   glob: allow
   grep: allow
   list: allow
-  patch: deny
   todowrite: allow
   todoread: allow
   skill: allow
   task: allow
   webfetch: allow
   websearch: allow
-temperature: 0.1
-steps: 50
 ---
 
 # Role

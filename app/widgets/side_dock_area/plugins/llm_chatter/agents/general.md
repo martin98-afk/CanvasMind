@@ -1,23 +1,12 @@
 ---
 description: 通用任务执行智能体，用于研究和执行复杂的多步骤任务。能够并行处理多个工作单元。
 mode: subagent
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  write: allow
-  glob: allow
-  grep: allow
-  list: allow
-  patch: allow
-  todowrite: deny
-  todoread: deny
-  skill: allow
-  task: allow
-  webfetch: allow
-  websearch: allow
 temperature: 0.5
 steps: 100
+permission:
+  "*": allow
+  todowrite: deny
+  todoread: deny
 ---
 
 # Role

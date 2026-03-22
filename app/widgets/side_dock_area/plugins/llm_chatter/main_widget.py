@@ -209,6 +209,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback(
             "task_state_changed", self._on_task_state_changed
         )
+        self._chat_engine.set_callback(
+            "permission_approval_requested", self._on_permission_approval_requested
+        )
 
         self._initialize_history_manager()
 
@@ -1740,6 +1743,35 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_agent_switched(self, agent_name: str):
         """智能体切换回调 - 丝滑切换，不清空对话"""
         pass
+
+    def _on_permission_approval_requested(
+        self, tool_call_id: str, tool_name: str, arguments: dict
+    ):
+        self._pending_permission_tool_call_id = tool_call_id
+        try:
+            from PyQt5.QtWidgets import QMessageBox
+            from PyQt5.QtCore import Qt
+
+            arg_str = str(arguments)[:200] if arguments else ""
+            msg = (
+                f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}\n\n是否允许执行?"
+            )
+            reply = QMessageBox.question(
+                self,
+                "权限批准",
+                msg,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._chat_engine.approve_tool_permission(tool_call_id)
+            else:
+                self._chat_engine.deny_tool_permission(tool_call_id)
+        except Exception as e:
+            logger.error(f"[Permission] Approval error: {e}")
+            self._chat_engine.deny_tool_permission(tool_call_id)
+        finally:
+            self._pending_permission_tool_call_id = None
 
     def _maybe_generate_topic_summary(self):
         selected_name = self.model_combo.currentText()

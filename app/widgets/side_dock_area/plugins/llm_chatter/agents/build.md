@@ -1,23 +1,10 @@
 ---
 description: 面向实际编码实现的构建智能体。负责读取代码、修改文件、运行验证并收敛结果。
 mode: primary
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  write: allow
-  glob: allow
-  grep: allow
-  list: allow
-  patch: allow
-  todowrite: allow
-  todoread: allow
-  skill: allow
-  task: allow
-  webfetch: allow
-  websearch: allow
 temperature: 0.3
 steps: 100
+permission:
+  "*": allow
 ---
 
 # Role

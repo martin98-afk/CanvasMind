@@ -72,6 +72,60 @@ class ChatEngine:
     def _get_agent_manager(self):
         return self._agent_manager
 
+    def _check_tool_permission(self, tool_name: str, arguments: dict) -> str:
+        agent_manager = self._get_agent_manager()
+        if not agent_manager or not self._current_agent:
+            return "allow"
+
+        try:
+            from app.widgets.side_dock_area.plugins.llm_chatter.core.agent import (
+                PermissionResolver,
+            )
+
+            agent = agent_manager.get_agent(self._current_agent)
+            if not agent:
+                return "allow"
+
+            perm_resolver = PermissionResolver(agent.permission, {}, agent.tools)
+
+            if tool_name == "bash":
+                command = arguments.get("command", "")
+                return perm_resolver.resolve(tool_name, command)
+            elif tool_name in ("read", "edit", "write", "patch"):
+                file_path = arguments.get("filePath", "")
+                return perm_resolver.resolve(tool_name, file_path)
+            elif tool_name == "webfetch":
+                url = arguments.get("url", "")
+                return perm_resolver.resolve(tool_name, url)
+            elif tool_name == "websearch":
+                query = arguments.get("query", "")
+                return perm_resolver.resolve(tool_name, query)
+            elif tool_name == "task":
+                subagent = arguments.get("agent", "")
+                return perm_resolver.resolve_task(subagent)
+            elif tool_name == "skill":
+                skill_name = arguments.get("name", "")
+                return perm_resolver.resolve(tool_name, skill_name)
+            else:
+                return perm_resolver.resolve(tool_name)
+
+        except Exception as e:
+            logger.warning(f"[ChatEngine] Permission check error: {e}")
+            return "allow"
+
+    def _on_permission_approval_requested(
+        self, tool_call_id: str, tool_name: str, arguments: dict
+    ):
+        self._emit("permission_approval_requested", tool_call_id, tool_name, arguments)
+
+    def approve_tool_permission(self, tool_call_id: str):
+        if self._current_worker:
+            self._current_worker.approve_permission(tool_call_id)
+
+    def deny_tool_permission(self, tool_call_id: str):
+        if self._current_worker:
+            self._current_worker.deny_permission(tool_call_id)
+
     def _get_token_budget(self, llm_config: Dict) -> int:
         max_tokens = llm_config.get("最大Token", 4096)
         model_name = str(llm_config.get("模型名称", "")).lower()
@@ -352,6 +406,7 @@ class ChatEngine:
             tool_start_callback=self._callbacks.get("tool_call_sync_requested"),
             get_stage_prompt=get_stage_prompt,
             stage_changed_callback=on_stage_changed,
+            permission_check_callback=self._check_tool_permission,
         )
 
         self._current_worker.content_received.connect(self._on_content_received)
@@ -363,6 +418,9 @@ class ChatEngine:
             self._on_worker_messages_updated
         )
         self._current_worker.question_asked.connect(self._on_question_asked)
+        self._current_worker.permission_approval_requested.connect(
+            self._on_permission_approval_requested
+        )
 
         self._current_worker.start()
         self._emit("stream_started")

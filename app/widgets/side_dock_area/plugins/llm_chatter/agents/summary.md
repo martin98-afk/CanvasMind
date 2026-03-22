@@ -2,23 +2,10 @@
 description: 会话摘要生成智能体，自动为当前会话生成详细摘要，用于历史记录和上下文恢复。
 mode: primary
 hidden: true
-permission:
-  edit: deny
-  bash: deny
-  read: deny
-  write: deny
-  glob: deny
-  grep: deny
-  list: deny
-  patch: deny
-  todowrite: deny
-  todoread: deny
-  skill: deny
-  task: deny
-  webfetch: deny
-  websearch: deny
 temperature: 0.2
 steps: 5
+permission:
+  "*": deny
 ---
 
 # Role

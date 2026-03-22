@@ -1,15 +1,17 @@
 ---
-description: 快速代码探索智能体，用于深入分析代码库、探索项目结构、理解代码逻辑。只能读取文件，不能修改。
+description: 快速代码探索智能体，用于深入分析代码库、探索项目结构，理解代码逻辑。只能读取文件，不能修改。
 mode: subagent
 hidden: false
+temperature: 0.2
+steps: 30
 permission:
-  edit: deny
-  bash: allow
   read: allow
-  write: deny
   glob: allow
   grep: allow
   list: allow
+  bash: allow
+  write: deny
+  edit: deny
   patch: deny
   todowrite: deny
   todoread: deny
@@ -17,8 +19,6 @@ permission:
   task: deny
   webfetch: deny
   websearch: deny
-temperature: 0.2
-steps: 30
 ---
 
 # Role

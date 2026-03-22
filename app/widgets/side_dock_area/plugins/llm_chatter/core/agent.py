@@ -29,10 +29,13 @@ class Agent:
     color: Optional[str] = None
     top_p: Optional[float] = None
     prompt: str = ""
-    tools: List[str] = field(default_factory=list)
+    tools: Dict[str, bool] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Agent":
+        tools = data.get("tools", {})
+        if isinstance(tools, list):
+            tools = {t: True for t in tools}
         return cls(
             name=data.get("name", ""),
             description=data.get("description", ""),
@@ -46,7 +49,7 @@ class Agent:
             color=data.get("color"),
             top_p=data.get("top_p"),
             prompt=data.get("prompt", ""),
-            tools=data.get("tools", []),
+            tools=tools,
         )
 
     def to_dict(self) -> Dict:
@@ -109,55 +112,85 @@ class PermissionResolver:
         self,
         permission_config: Dict[str, Any],
         global_config: Optional[Dict[str, Any]] = None,
-    ):
+        tools_config: Optional[Union[Dict[str, bool], List[str]]] = None,
+    ) -> None:
         self._config = permission_config
         self._global = global_config or {}
+        if tools_config is None:
+            self._tools_config: Dict[str, bool] = {}
+        elif isinstance(tools_config, list):
+            self._tools_config = {t: True for t in tools_config}
+        else:
+            self._tools_config = tools_config
         self._cache: Dict[tuple, str] = {}
+        self._task_cache: Dict[str, str] = {}
 
     def resolve(self, tool: str, pattern: str = "*") -> str:
         cache_key = (tool, pattern)
         if cache_key in self._cache:
-            cached = self._cache[cache_key]
-            return cached if cached is not None else "allow"
+            return self._cache[cache_key]
 
-        rules = []
+        if tool in self._tools_config:
+            result = "allow" if self._tools_config[tool] else "deny"
+            self._cache[cache_key] = result
+            return result
 
-        global_rules = self._global.get(tool, {})
-        if isinstance(global_rules, str):
-            rules.append(global_rules)
-        elif isinstance(global_rules, dict):
-            for k, v in global_rules.items():
-                rules.append((k, v))
+        if "*" in self._tools_config:
+            result = "allow" if self._tools_config["*"] else "deny"
+            self._cache[cache_key] = result
+            return result
 
-        agent_rules = self._config.get(tool, {})
-        if isinstance(agent_rules, str):
-            rules.append(agent_rules)
-        elif isinstance(agent_rules, dict):
-            for k, v in agent_rules.items():
-                rules.append((k, v))
+        rules = self._collect_rules(tool)
 
-        result = self._match_rules(tool, pattern, rules)
+        result = self._match_rules(pattern, rules)
         self._cache[cache_key] = result
         return result
 
-    def _match_rules(self, tool: str, pattern: str, rules: List) -> str:
+    def resolve_task(self, subagent_name: str) -> str:
+        if subagent_name in self._task_cache:
+            return self._task_cache[subagent_name]
+
+        rules = self._collect_rules("task")
+
         if not rules:
-            return self.DEFAULT_PERMISSIONS.get(
-                tool, self.DEFAULT_PERMISSIONS.get("*", "allow")
-            )
+            rules = [("*", self.DEFAULT_PERMISSIONS.get("task", "allow"))]
 
-        default = self.DEFAULT_PERMISSIONS.get("*", "allow")
+        result = self._match_rules(subagent_name, rules)
+        self._task_cache[subagent_name] = result
+        return result
 
-        for rule in rules:
-            if isinstance(rule, str):
-                if rule == "*" or rule == pattern:
-                    return rule
-            elif isinstance(rule, tuple):
-                key, value = rule
-                if self._glob_match(pattern, key) or self._glob_match(tool, key):
-                    return value
+    def _collect_rules(self, tool: str) -> List[tuple]:
+        rules = []
 
-        return default
+        global_tool_config = self._global.get(tool, {})
+        if isinstance(global_tool_config, str):
+            rules.append(("*", global_tool_config))
+        elif isinstance(global_tool_config, dict):
+            for k, v in global_tool_config.items():
+                rules.append((k, v))
+
+        agent_tool_config = self._config.get(tool, {})
+        if isinstance(agent_tool_config, str):
+            rules.append(("*", agent_tool_config))
+        elif isinstance(agent_tool_config, dict):
+            for k, v in agent_tool_config.items():
+                rules.append((k, v))
+
+        return rules
+
+    def _match_rules(self, pattern: str, rules: List[tuple]) -> str:
+        if not rules:
+            return self.DEFAULT_PERMISSIONS.get("*", "allow")
+
+        last_match = None
+        for key, value in rules:
+            if key == "*" or self._glob_match(pattern, key):
+                last_match = value
+
+        if last_match:
+            return last_match
+
+        return self.DEFAULT_PERMISSIONS.get("*", "allow")
 
     def _glob_match(self, text: str, pattern: str) -> bool:
         return fnmatch.fnmatch(text, pattern)
@@ -267,13 +300,15 @@ class AgentManager:
 
         all_tools = get_builtin_tools_schema()
 
-        perm_resolver = PermissionResolver(agent.permission, global_permission or {})
+        perm_resolver = PermissionResolver(
+            agent.permission, global_permission or {}, agent.tools
+        )
 
         filtered_tools = []
         for tool in all_tools:
             tool_name = tool["function"]["name"].lower()
             permission = perm_resolver.resolve(tool_name)
-            if permission != "deny":
+            if permission in ("allow", "ask"):
                 filtered_tools.append(tool)
 
         return filtered_tools
@@ -337,7 +372,9 @@ Use the tools available to you based on your permissions.
         if not agent:
             return "allow"
 
-        perm_resolver = PermissionResolver(agent.permission, global_permission or {})
+        perm_resolver = PermissionResolver(
+            agent.permission, global_permission or {}, agent.tools
+        )
         return perm_resolver.resolve(tool, pattern)
 
 

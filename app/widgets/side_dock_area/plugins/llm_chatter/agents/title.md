@@ -2,23 +2,10 @@
 description: 会话标题生成智能体，自动为当前对话生成简短标题。
 mode: primary
 hidden: true
-permission:
-  edit: deny
-  bash: deny
-  read: deny
-  write: deny
-  glob: deny
-  grep: deny
-  list: deny
-  patch: deny
-  todowrite: deny
-  todoread: deny
-  skill: deny
-  task: deny
-  webfetch: deny
-  websearch: deny
 temperature: 0.3
 steps: 3
+permission:
+  "*": deny
 ---
 
 # Role

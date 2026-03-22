@@ -2,23 +2,11 @@
 description: 上下文压缩智能体，自动将长对话上下文压缩成简洁摘要。
 mode: primary
 hidden: true
-permission:
-  edit: deny
-  bash: deny
-  read: allow
-  write: deny
-  glob: deny
-  grep: deny
-  list: deny
-  patch: deny
-  todowrite: deny
-  todoread: deny
-  skill: deny
-  task: deny
-  webfetch: deny
-  websearch: deny
 temperature: 0.1
 steps: 5
+permission:
+  read: allow
+  "*": deny
 ---
 
 # Role

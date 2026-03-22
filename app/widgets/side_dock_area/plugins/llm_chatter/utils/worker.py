@@ -228,6 +228,7 @@ class OpenAIChatWorker(QThread):
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
     question_asked = pyqtSignal(str, str, list, bool)
+    permission_approval_requested = pyqtSignal(str, str, dict)
     _DEFERRED_PREVIEW_TOOLS = {"question", "task", "todowrite", "todoread"}
 
     def __init__(
@@ -240,6 +241,7 @@ class OpenAIChatWorker(QThread):
         tool_start_callback=None,
         get_stage_prompt=None,
         stage_changed_callback=None,
+        permission_check_callback=None,
     ):
         super().__init__()
         self.messages = messages
@@ -250,17 +252,40 @@ class OpenAIChatWorker(QThread):
         self.tool_start_callback = tool_start_callback
         self.get_stage_prompt = get_stage_prompt
         self.stage_changed_callback = stage_changed_callback
+        self.permission_check_callback = permission_check_callback
         self.full_response = ""
         self._is_cancelled = False
         self._question_pending = None
         self._pending_answer = None
+        self._permission_pending = None
+        self._permission_approved = False
         self._previewed_tool_call_ids = set()
 
     def cancel(self):
         self._is_cancelled = True
+        if self._question_pending:
+            self._question_pending = None
+        if self._permission_pending:
+            self._permission_pending = None
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
+
+    def approve_permission(self, tool_call_id: str):
+        if (
+            self._permission_pending
+            and self._permission_pending.get("tool_call_id") == tool_call_id
+        ):
+            self._permission_approved = True
+            self._permission_pending = None
+
+    def deny_permission(self, tool_call_id: str):
+        if (
+            self._permission_pending
+            and self._permission_pending.get("tool_call_id") == tool_call_id
+        ):
+            self._permission_approved = False
+            self._permission_pending = None
 
     def run(self):
         try:
@@ -566,6 +591,52 @@ class OpenAIChatWorker(QThread):
                     "multiple": multiple,
                 }
                 return None
+
+            if self.permission_check_callback:
+                permission_result = self.permission_check_callback(tool_name, arguments)
+                if permission_result == "ask":
+                    self.permission_approval_requested.emit(
+                        tool_call_id, tool_name, arguments
+                    )
+                    self._permission_pending = {
+                        "tool_call_id": tool_call_id,
+                        "tool_name": tool_name,
+                        "arguments": arguments,
+                    }
+                    self._permission_approved = False
+                    while (
+                        self._permission_pending is not None and not self._is_cancelled
+                    ):
+                        QApplication.processEvents()
+                        time.sleep(0.1)
+
+                    if self._is_cancelled:
+                        return None
+
+                    if not self._permission_approved:
+                        self.tool_result_received.emit(
+                            tool_call_id,
+                            tool_name,
+                            arguments,
+                            type(
+                                "ToolResult",
+                                (),
+                                {
+                                    "success": False,
+                                    "error": "Permission denied by user",
+                                },
+                            )(),
+                        )
+                        QApplication.processEvents()
+                        results.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "content": "Error: Permission denied by user",
+                                "round_id": round_id,
+                            }
+                        )
+                        continue
 
             result = self.tool_executor.execute(tool_name, arguments)
             result_content = str(result) if result else ""
