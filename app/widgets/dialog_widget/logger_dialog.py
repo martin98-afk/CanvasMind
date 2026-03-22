@@ -199,12 +199,12 @@ class LogPopupWidget(QWidget):
         self._resizing = False
         self._start_pos = None
         self._start_width = None
-        self._min_width = 350
-        self._max_width = 800
+        self._min_width = 400
+        self._max_width = 1000
         self._base_x = 0
-        self._resize_zone_width = 4
+        self._resize_zone_width = 12
         self._hovering_resize_zone = False
-        self._border_color = "#3c3c3c"
+        self._border_color = "#2a2a2a"
         self._hover_border_color = "#0078D4"
         self.setup_ui()
 
@@ -231,21 +231,47 @@ class LogPopupWidget(QWidget):
         title_label.setStyleSheet("color: white;")
         header_layout.addWidget(title_label)
 
+        self.resize_handle = QWidget()
+        self.resize_handle.setFixedWidth(self._resize_zone_width)
+        self.resize_handle.setStyleSheet("""
+            background-color: #1e1e1e;
+        """)
+        header_layout.addWidget(self.resize_handle)
+
         self.tabbed_log_widget = TabbedLogWidget()
 
         main_layout.addWidget(header)
         main_layout.addWidget(self.tabbed_log_widget)
 
-        self.resize(500, 600)
+        self.resize(550, 600)
 
     def _update_border_style(self, hover):
-        border_color = self._hover_border_color if hover else self._border_color
-        self.setStyleSheet(f"""
-            QWidget {{
+        if hover:
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #0078D4;
+                }
+            """
+                % self._resize_zone_width
+            )
+            self.resize_handle.setStyleSheet("""
+                background-color: #0078D4;
+            """)
+        else:
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #2a2a2a;
+                }
+            """
+                % self._resize_zone_width
+            )
+            self.resize_handle.setStyleSheet("""
                 background-color: #1e1e1e;
-                border-right: {self._resize_zone_width}px solid {border_color};
-            }}
-        """)
+            """)
 
     def set_width(self, width):
         width = max(self._min_width, min(width, self._max_width))
