@@ -7,6 +7,6 @@
   "description": "集成了SAM3的文本描述分割(Grounding)和点击互动分割(Segmentation)功能",
   "category": "comfyui节点/SAM3模型",
   "source_file": "..\\..\\components\\comfyui节点\\SAM3模型\\9773b319-c22f-4a07-8df9-f0235173a788.py",
-  "updated_at": "2026-03-02 21:01:14",
+  "updated_at": "2026-03-23 17:50:15",
   "author": "black"
 }
