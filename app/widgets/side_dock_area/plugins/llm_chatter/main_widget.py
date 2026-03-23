@@ -209,6 +209,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine.set_callback(
             "task_state_changed", self._on_task_state_changed
         )
+        self._chat_engine.set_callback(
+            "permission_approval_requested", self._on_permission_approval_requested
+        )
 
         self._initialize_history_manager()
 
@@ -588,11 +591,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.addItem(name)
 
     def _load_agent_list(self):
-        """加载智能体列表到选择器"""
+        """加载智能体列表到选择器（仅显示 primary agents）"""
         if not self._agent_manager or not hasattr(self, "input_area"):
             return
         self._suppress_agent_intro = True
-        agents = self._agent_manager.list_agents()
+        agents = self._agent_manager.list_primary_agents()
         self.input_area._agent_combo.clear()
         for agent in agents:
             self.input_area._agent_combo.addItem(agent.name, agent.description)
@@ -637,9 +640,10 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         agent = self._agent_manager.get_agent(agent_name)
         if agent:
-            tools_count = len(agent.tools) if agent.tools else 0
+            mode = agent.mode
+            hidden = "hidden" if agent.hidden else "visible"
             self.input_area._agent_combo.setToolTip(
-                f"{agent.name}: {agent.description}\n可用工具: {tools_count}个"
+                f"{agent.name}: {agent.description}\nMode: {mode}, {hidden}"
             )
 
     def _on_task_state_changed(self, task_state):
@@ -767,7 +771,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _show_initial_welcome(self):
         """仅在UI上显示欢迎卡片，不改动Session数据"""
-        agent = self._agent_manager.get_agent(self._current_agent) if self._agent_manager else None
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
         agent_name = agent.name if agent else ""
         agent_desc = agent.description if agent else ""
         welcome_card = create_welcome_card(self, agent_name, agent_desc)
@@ -904,7 +912,10 @@ class OpenAIChatToolWindow(ToolWindow):
             else:
                 # 如果有备份（即刚才那个没存的新对话），还原它
                 if self._history_preview_session_data:
-                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import ChatSession
+                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
+                        ChatSession,
+                    )
+
                     restored = ChatSession.from_dict(self._history_preview_session_data)
                     self.session_manager.set_current_session(restored)
                     self._history_preview_session_data = None
@@ -1167,7 +1178,7 @@ class OpenAIChatToolWindow(ToolWindow):
             if msg["role"] == "user":
                 if pair_index == index:
                     card_index = i
-                    for j in range(i, len(messages)-1):
+                    for j in range(i, len(messages) - 1):
                         if isinstance(self.chat_layout.itemAt(j), type(None)):
                             continue
                         widget = self.chat_layout.itemAt(j).widget()
@@ -1732,6 +1743,35 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_agent_switched(self, agent_name: str):
         """智能体切换回调 - 丝滑切换，不清空对话"""
         pass
+
+    def _on_permission_approval_requested(
+        self, tool_call_id: str, tool_name: str, arguments: dict
+    ):
+        self._pending_permission_tool_call_id = tool_call_id
+        try:
+            from PyQt5.QtWidgets import QMessageBox
+            from PyQt5.QtCore import Qt
+
+            arg_str = str(arguments)[:200] if arguments else ""
+            msg = (
+                f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}\n\n是否允许执行?"
+            )
+            reply = QMessageBox.question(
+                self,
+                "权限批准",
+                msg,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._chat_engine.approve_tool_permission(tool_call_id)
+            else:
+                self._chat_engine.deny_tool_permission(tool_call_id)
+        except Exception as e:
+            logger.error(f"[Permission] Approval error: {e}")
+            self._chat_engine.deny_tool_permission(tool_call_id)
+        finally:
+            self._pending_permission_tool_call_id = None
 
     def _maybe_generate_topic_summary(self):
         selected_name = self.model_combo.currentText()

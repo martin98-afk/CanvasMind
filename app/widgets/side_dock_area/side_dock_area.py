@@ -54,6 +54,7 @@ class SideDockArea(QWidget):
             self.tool_panel.bottomToolChecked.connect(self._show_bottom_tool)
             self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
             self.tool_panel.toolMoveRequested.connect(self._handle_tool_reposition)
+            self.tool_panel.toolHidden.connect(self._handle_tool_hidden)
 
             main_layout.addWidget(self.splitter)
 
@@ -66,35 +67,41 @@ class SideDockArea(QWidget):
     def _handle_tool_reposition(self, tool_name, pos_str):
         """处理拖拽后的位置逻辑切换"""
         instance = self.get_tool_instance(tool_name)
-        if not instance: return
-
-        new_pos = DockPosition.TOP if pos_str == "top" else DockPosition.BOTTOM
-        # 如果位置没变，不处理
-        if hasattr(instance, 'position') and instance.position == new_pos:
+        if not instance:
             return
 
-        # 1. 记录当前开启状态
+        new_pos = DockPosition.TOP if pos_str == "top" else DockPosition.BOTTOM
+        if hasattr(instance, "position") and instance.position == new_pos:
+            return
+
         was_visible = instance.isVisible()
 
-        # 2. 从原 Stack 物理移除
         self.top_stack.removeWidget(instance)
         self.bottom_stack.removeWidget(instance)
 
-        # 3. 按钮栏 UI 调整
-        self.tool_panel.add_button_to_layout(tool_name, pos_str)
+        self.tool_panel.add_button_to_layout(
+            tool_name, pos_str, force_checked=was_visible
+        )
 
-        # 4. 更新实例属性
         instance.position = new_pos
 
-        # 5. 如果搬迁前是打开的，搬迁后在对应位置打开
-        if was_visible:
-            self.switch_to(tool_name)
-        else:
+        if not was_visible:
             self._update_splitter()
+
+    def _handle_tool_hidden(self, tool_name):
+        """处理工具隐藏"""
+        instance = self.get_tool_instance(tool_name)
+        if instance:
+            self.top_stack.removeWidget(instance)
+            self.bottom_stack.removeWidget(instance)
+            if hasattr(instance, "set_allowed_update"):
+                instance.set_allowed_update(False)
+        self._update_splitter()
 
     def switch_to(self, tool_name):
         view = self.get_tool_instance(tool_name)
-        if view is None: return
+        if view is None:
+            return
         self.tool_panel.set_checked(tool_name)
 
     def _show_top_tool(self, tool_name):
@@ -136,12 +143,16 @@ class SideDockArea(QWidget):
         self._update_splitter()
 
     def _update_splitter(self):
-        if self.last_content_visible and not (self._top_visible or self._bottom_visible):
+        if self.last_content_visible and not (
+            self._top_visible or self._bottom_visible
+        ):
             self.splitter.setSizes([0, 0])
             self.page.hide_splitter()
             self.last_content_visible = False
             return
-        elif not self.last_content_visible and (self._top_visible or self._bottom_visible):
+        elif not self.last_content_visible and (
+            self._top_visible or self._bottom_visible
+        ):
             self.last_content_visible = True
             self.page.show_splitter()
 
@@ -166,7 +177,9 @@ class SideDockArea(QWidget):
 
         if top_classes:
             first_cls = top_classes[0]
-            QtCore.QTimer.singleShot(100, lambda: self._show_top_tool(first_cls.name))
+            QtCore.QTimer.singleShot(
+                100, lambda cls=first_cls: self._show_top_tool(cls.name)
+            )
             self.last_content_visible = True
             self.tool_panel._set_top_button_checked(first_cls)
 
@@ -197,7 +210,8 @@ class SideDockArea(QWidget):
 
     def get_tool_instance(self, name: str) -> Optional[ToolWindow]:
         entry = SideDockRegistry._registries.get(self.context_id).get(name)
-        if entry is None: return None
+        if entry is None:
+            return None
         return self._get_or_create_instance(entry.cls)
 
     def cleanup(self):
@@ -207,11 +221,13 @@ class SideDockArea(QWidget):
             self.tool_panel.bottomToolChecked.disconnect(self._show_bottom_tool)
             self.tool_panel.bottomToolUnchecked.disconnect(self._hide_bottom_tool)
             self.tool_panel.toolMoveRequested.disconnect(self._handle_tool_reposition)
+            self.tool_panel.toolHidden.disconnect(self._handle_tool_hidden)
         except:
             pass
 
         for name, instance in self._instances.items():
-            if hasattr(instance, 'cleanup'): instance.cleanup()
+            if hasattr(instance, "cleanup"):
+                instance.cleanup()
             instance.setParent(None)
             instance.deleteLater()
         self._instances.clear()

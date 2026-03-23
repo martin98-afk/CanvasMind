@@ -36,16 +36,25 @@ ENV_RULES = {
     "session_id": {"type": str, "readonly": True},
     "run_id": {"type": str, "readonly": True},
     "TZ": {"type": str, "pattern": r"^[A-Za-z_+-/]+$", "default": "Asia/Shanghai"},
-    "LANG": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
-    "LC_ALL": {"type": str, "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$", "default": "en_US.UTF-8"},
-
+    "LANG": {
+        "type": str,
+        "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$",
+        "default": "en_US.UTF-8",
+    },
+    "LC_ALL": {
+        "type": str,
+        "pattern": r"^[a-z]{2}_[A-Z]{2}\.UTF-8$",
+        "default": "en_US.UTF-8",
+    },
     "OMP_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
     "MKL_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
     "OPENBLAS_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
     "NUMEXPR_NUM_THREADS": {"type": str, "pattern": r"^\d+$", "default": "1"},
-
-    "CUDA_VISIBLE_DEVICES": {"type": str, "pattern": r"^(\d+)(,\s*\d+)*$|^$", "default": "0"},
-
+    "CUDA_VISIBLE_DEVICES": {
+        "type": str,
+        "pattern": r"^(\d+)(,\s*\d+)*$|^$",
+        "default": "0",
+    },
     "PYTHONPATH": {"type": str, "default": "."},
     "PYTHONUNBUFFERED": {"type": str, "allowed": {"1"}, "default": "1"},
     "PYTHONIOENCODING": {"type": str, "default": "utf-8"},
@@ -77,12 +86,14 @@ ConnectionType = base_module.ConnectionType\n\n\n"""
 # ==================== 组件基础端口、属性设置 ====================
 class ConnectionType(str, Enum):
     """连接类型"""
+
     SINGLE = "单输入"
     MULTIPLE = "多输入"
 
 
 class PropertyType(str, Enum):
     """属性类型"""
+
     TEXT = "文本"
     MULTILINE = "多行文本"
     LONGTEXT = "长文本"
@@ -99,12 +110,15 @@ class PropertyType(str, Enum):
 
 class PropertyDefinition(BaseModel):
     """属性定义"""
+
     type: PropertyType = PropertyType.TEXT
     default: Any = ""
     label: str = ""
     choices: List[str] = Field(default_factory=list)
     filter: str = "All Files (*)"  # 用于文件类型过滤
-    schema: Optional[Dict[str, 'PropertyDefinition']] = Field(default=None)  # 表单内每个字段的定义
+    schema: Optional[Dict[str, "PropertyDefinition"]] = Field(
+        default=None
+    )  # 表单内每个字段的定义
     min: float = Field(default=0.0, description="最小值")
     max: float = Field(default=100.0, description="最大值")
     step: float = Field(default=1.0, description="步长")
@@ -117,6 +131,7 @@ class PropertyDefinition(BaseModel):
 
 class ArgumentType(str, Enum):
     """参数类型"""
+
     TEXT = "文本"
     INT = "整数"
     FLOAT = "浮点数"
@@ -134,8 +149,13 @@ class ArgumentType(str, Enum):
 
     # 验证是否是文件类型
     def is_file(self):
-        return self in [ArgumentType.FILE, ArgumentType.EXCEL, ArgumentType.SKLEARNMODEL,
-                        ArgumentType.TORCHMODEL, ArgumentType.UPLOAD]
+        return self in [
+            ArgumentType.FILE,
+            ArgumentType.EXCEL,
+            ArgumentType.SKLEARNMODEL,
+            ArgumentType.TORCHMODEL,
+            ArgumentType.UPLOAD,
+        ]
 
     def is_number(self):
         return self in [ArgumentType.INT, ArgumentType.FLOAT]
@@ -152,6 +172,7 @@ class ArgumentType(str, Enum):
 
 class PortDefinition(BaseModel):
     """端口定义"""
+
     name: str
     label: str
     type: ArgumentType = ArgumentType.TEXT
@@ -159,7 +180,9 @@ class PortDefinition(BaseModel):
     connection: ConnectionType = ConnectionType.SINGLE
     description: str = ""
 
+
 # ==================== 中间消息通信协议 ====================
+
 
 class MessageLevel(str, Enum):
     DEBUG = "debug"
@@ -171,6 +194,7 @@ class MessageLevel(str, Enum):
 
 class ComponentMessage(BaseModel):
     """标准通信协议模型"""
+
     v: str = "1.0"  # 协议版本，用于未来兼容性处理
     msg_id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # 消息唯一ID
     timestamp: float = Field(default_factory=time.time)  # 时间戳
@@ -185,9 +209,10 @@ class ComponentMessage(BaseModel):
 
 # ==================== 工具函数 ====================
 
+
 def resource_path(relative_path) -> str:
     """获取打包后资源文件的绝对路径"""
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, "_MEIPASS"):
         # 如果是打包后的环境
         base_path = sys._MEIPASS
     else:
@@ -204,6 +229,7 @@ def _get_torch():
         _get_torch._cache = None
         try:
             import torch
+
             _get_torch._cache = torch
         except ImportError:
             _get_torch._cache = None
@@ -239,7 +265,9 @@ def validate_env_value(key: str, value: Any) -> str:
     if not rule:
         # 未知变量：允许，但只接受简单字符串（无换行、无 shell 元字符）
         if not re.match(r"^[a-zA-Z0-9._/-]*$", value):
-            raise ValueError(f"Unsafe custom env var '{key}': contains special characters")
+            raise ValueError(
+                f"Unsafe custom env var '{key}': contains special characters"
+            )
         return value
 
     # 检查 readonly
@@ -248,7 +276,9 @@ def validate_env_value(key: str, value: Any) -> str:
 
     # 检查 allowed values
     if "allowed" in rule and value not in rule["allowed"]:
-        raise ValueError(f"Invalid value for '{key}': {value}, allowed: {rule['allowed']}")
+        raise ValueError(
+            f"Invalid value for '{key}': {value}, allowed: {rule['allowed']}"
+        )
 
     # 检查正则 pattern
     if "pattern" in rule and not re.fullmatch(rule["pattern"], value):
@@ -263,7 +293,7 @@ class ModelMixin(BaseModel):
 
     class Config:
         # 允许模型接收定义之外的字段
-        extra = 'allow'
+        extra = "allow"
 
     def get(self, key: str, default=None):
         # 直接查 __dict__，不触发任何钩子
@@ -334,10 +364,13 @@ class NodeVariable(BaseModel):
 
 class GlobalVariableContext(BaseModel):
     """全局变量上下文管理器，支持点号和路径访问"""
+
     env: ExecutionEnvironment = Field(default_factory=ExecutionEnvironment)
     custom: OrderedDict[str, CustomVariable] = Field(default_factory=OrderedDict)
     node_vars: OrderedDict[str, NodeVariable] = Field(default_factory=OrderedDict)
-    input: OrderedDict[str, Any] = Field(default_factory=OrderedDict)  # 每个节点的临时输入，不作为常驻变量
+    input: OrderedDict[str, Any] = Field(
+        default_factory=OrderedDict
+    )  # 每个节点的临时输入，不作为常驻变量
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -353,7 +386,12 @@ class GlobalVariableContext(BaseModel):
     def is_variable_name(cls, name: str) -> bool:
         """判断 name 是否为变量名"""
         if isinstance(name, str):
-            return name.startswith("custom.") or name.startswith("node_vars.") or name.startswith("env.") or name.startswith("input.")
+            return (
+                name.startswith("custom.")
+                or name.startswith("node_vars.")
+                or name.startswith("env.")
+                or name.startswith("input.")
+            )
         else:
             return False
 
@@ -364,12 +402,14 @@ class GlobalVariableContext(BaseModel):
         else:
             self.custom[key].value = value
 
-    def set_output(self, node_name: str, output_name: str, output_value: Any, policy: str="更新"):
+    def set_output(
+        self, node_name: str, output_name: str, output_value: Any, policy: str = "更新"
+    ):
         self.node_vars[f"{node_name}__{output_name}"] = NodeVariable(
             value=output_value, update_policy=policy
         )
 
-    def delete_output(self, node_name: str, output_name: str=None):
+    def delete_output(self, node_name: str, output_name: str = None):
         """如果不指定output_name则清除该节点所有节点变量"""
         if output_name is None:
             new_node_vars = OrderedDict()
@@ -389,7 +429,9 @@ class GlobalVariableContext(BaseModel):
     def is_output_in_node_vars(self, node_name: str, output_name: str):
         return f"{node_name}__{output_name}" in self.node_vars
 
-    def rename_node_vars(self, old_name: str, new_name: str) -> Tuple[List[str], List[str]]:
+    def rename_node_vars(
+        self, old_name: str, new_name: str
+    ) -> Tuple[List[str], List[str]]:
         """
         重命名节点相关的变量，并返回重命名的键列表。
 
@@ -456,7 +498,11 @@ class GlobalVariableContext(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """兼容旧逻辑：返回扁平字典（仅 custom 变量）"""
-        return {k: v.value for k, v in self.custom.items()} | self.env.get_all_env_vars() | {k: v.value for k, v in self.node_vars.items()}
+        return (
+            {k: v.value for k, v in self.custom.items()}
+            | self.env.get_all_env_vars()
+            | {k: v.value for k, v in self.node_vars.items()}
+        )
 
     def serialize(self):
         return {
@@ -498,12 +544,16 @@ class GlobalVariableContext(BaseModel):
         for k in node_vars_order:
             if k in node_vars_data and k not in existing_node_keys:
                 v = node_vars_data[k]
-                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+                self.node_vars[k] = (
+                    NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+                )
                 existing_node_keys.add(k)
 
         for k, v in node_vars_data.items():
             if k not in existing_node_keys:
-                self.node_vars[k] = NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+                self.node_vars[k] = (
+                    NodeVariable(**v) if isinstance(v, dict) else NodeVariable(value=v)
+                )
 
         # inputs: 仅补充当前不存在的输入项（避免覆盖运行时输入）
         inputs_data = data.get("inputs", {})
@@ -541,7 +591,9 @@ class GlobalVariableContext(BaseModel):
             return self.node_vars[name].value
 
         # 如果都找不到，抛出 AttributeError
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'"
+        )
 
     def __getitem__(self, path: str) -> Any:
         if not isinstance(path, str):
@@ -607,6 +659,7 @@ class GlobalVariableContext(BaseModel):
 
 # ======= 构造pydantic输入、参数解析 ========
 
+
 def _parse_default_value(default_str: str, target_type: type) -> Any:
     """安全解析默认值"""
     if default_str == "" or default_str is None:
@@ -633,7 +686,9 @@ def _parse_default_value(default_str: str, target_type: type) -> Any:
         return _parse_default_value("", target_type)
 
 
-def _create_dynamic_form_model(name: str, schema: Dict[str, 'PropertyDefinition']) -> Type[BaseModel]:
+def _create_dynamic_form_model(
+    name: str, schema: Dict[str, "PropertyDefinition"]
+) -> Type[BaseModel]:
     """为 DYNAMICFORM 创建嵌套模型"""
     fields = {}
     for field_name, field_def in schema.items():
@@ -674,36 +729,46 @@ class DataHandler:
     负责根据类型读取输入和存储输出。
     """
 
-    def __init__(self,
-                 node_id: Optional[str] = None,
-                 workflow_path: Optional[str] = None,
-                 logger_instance=None,
-                 component_instance=None,
-                 ):
+    def __init__(
+        self,
+        node_id: Optional[str] = None,
+        workflow_path: Optional[str] = None,
+        logger_instance=None,
+        component_instance=None,
+        iteration_tag: Optional[str] = None,
+    ):
         self.node_id = node_id or "default_node"
         self.workflow_path = workflow_path
         self.logger = logger_instance or logger
         self.result_dir = Path("./result").resolve()
         self.result_dir.mkdir(parents=True, exist_ok=True)
         self.component_instance = component_instance
+        self.iteration_tag = iteration_tag
 
     # --- 辅助方法：生成唯一文件名 ---
     def _get_save_path(self, output_name: str, prefix: str, extension: str) -> Path:
         """
         生成唯一的存储路径，解决同节点多端口覆盖问题。
         逻辑：./result/{prefix}_{node_id}_{output_name}_{now}.{ext}
+        如果有迭代标签，还会加上迭代标签：./result/{prefix}_{node_id}_{output_name}_{iteration_tag}_{now}.{ext}
         """
         # 1. 处理 {{now}} 逻辑
         filename = output_name
         if "{{now}}" in filename:
-            filename = filename.replace("{{now}}", datetime.now().strftime("%Y%m%d%H%M%S"))
+            filename = filename.replace(
+                "{{now}}", datetime.now().strftime("%Y%m%d%H%M%S")
+            )
 
         # 2. 清理非法字符
-        filename = re.sub(r'[\\/*?:"<>|]', '_', filename)
+        filename = re.sub(r'[\\/*?:"<>|]', "_", filename)
 
         # 3. 组合文件名 (前缀 + 节点ID + 端口名)
         # 确保 output_name 本身如果不带扩展名，则补上 extension
-        final_filename = f"{prefix}_{self.node_id}_{filename}"
+        # 如果有迭代标签，添加迭代标签以避免覆盖
+        if self.iteration_tag:
+            final_filename = f"{prefix}_{self.node_id}_{filename}_{self.iteration_tag}"
+        else:
+            final_filename = f"{prefix}_{self.node_id}_{filename}"
         if not final_filename.lower().endswith(extension.lower()):
             final_filename += extension
 
@@ -711,12 +776,18 @@ class DataHandler:
 
     # --- 输入数据处理 ---
 
-    def read_input_data(self, input_name: str, input_value: Any, input_type: ArgumentType) -> Any:
+    def read_input_data(
+        self, input_name: str, input_value: Any, input_type: ArgumentType
+    ) -> Any:
         """根据输入类型读取数据，增强鲁棒性"""
         # 1. 统一空值处理
-        if input_value is None or (isinstance(input_value, str) and input_value.strip() == ""):
+        if input_value is None or (
+            isinstance(input_value, str) and input_value.strip() == ""
+        ):
             if input_type.is_file():
-                raise ComponentError(f"输入 {input_name} 为空或路径无效", "INPUT_EMPTY_ERROR")
+                raise ComponentError(
+                    f"输入 {input_name} 为空或路径无效", "INPUT_EMPTY_ERROR"
+                )
             elif input_type.is_number():
                 return 0 if input_type == ArgumentType.INT else 0.0
             elif input_type.is_bool():
@@ -727,7 +798,9 @@ class DataHandler:
                 return ""
 
         # 2. 路径增强解析逻辑 (针对文件/图像)
-        if (input_type.is_file() or input_type.is_image()) and isinstance(input_value, str):
+        if (input_type.is_file() or input_type.is_image()) and isinstance(
+            input_value, str
+        ):
             if not Path(input_value).exists():
                 input_value = input_value.replace("\\", "/")
                 path_obj = Path(input_value)
@@ -739,8 +812,12 @@ class DataHandler:
                     # 逻辑1: 基于原路径的 stem 寻找
                     stem_node_id = path_obj.parent.parent.stem
                     if stem_node_id:
-                        search_candidates.append(Path(f"../{stem_node_id}/upload") / file_name)
-                        search_candidates.append(Path(f"../{stem_node_id}/result") / file_name)
+                        search_candidates.append(
+                            Path(f"../{stem_node_id}/upload") / file_name
+                        )
+                        search_candidates.append(
+                            Path(f"../{stem_node_id}/result") / file_name
+                        )
                 except:
                     pass
 
@@ -795,10 +872,13 @@ class DataHandler:
                 return input_value
         except Exception as e:
             self.logger.error(f"读取输入 '{input_name}'（类型: {input_type}）失败: {e}")
-            raise ComponentError(f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR") from e
+            raise ComponentError(
+                f"读取输入 {input_name} 失败: {str(e)}", "INPUT_READ_ERROR"
+            ) from e
 
     def _read_array_data(self, input_name: str, data: Any) -> Union[list, np.ndarray]:
-        if isinstance(data, np.ndarray): return data
+        if isinstance(data, np.ndarray):
+            return data
         if isinstance(data, (list, tuple)):
             try:
                 return np.array(data)
@@ -823,6 +903,7 @@ class DataHandler:
 
         # 1. 核心：处理 PyArrow 对象
         import pyarrow as pa
+
         if isinstance(input_value, (pa.Table, pa.RecordBatch)):
             return input_value.to_pandas()
 
@@ -836,18 +917,22 @@ class DataHandler:
             # 如果是 CSV 文件，优先用 PyArrow 读成 Table 返回
             if input_value.endswith(".csv"):
                 from pyarrow import csv
+
                 return csv.read_csv(input_value).to_pandas()
 
         return input_value
 
     def _read_json_data(self, data: Any) -> Union[dict, list, str]:
-        if data is None or (isinstance(data, str) and not data.strip()): return {}
-        if isinstance(data, (dict, list)): return data
+        if data is None or (isinstance(data, str) and not data.strip()):
+            return {}
+        if isinstance(data, (dict, list)):
+            return data
         if isinstance(data, (str, Path)):
             path = Path(data)
             if path.is_file():
                 try:
-                    with open(path, 'r', encoding='utf-8') as f: return json.load(f)
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
                 except:
                     return data
             try:
@@ -855,21 +940,24 @@ class DataHandler:
             except:
                 try:
                     parsed = ast.literal_eval(data)
-                    if isinstance(parsed, (dict, list)): return parsed
+                    if isinstance(parsed, (dict, list)):
+                        return parsed
                     return data
                 except:
                     return data
         return data
 
     def _read_excel_data(self, data: Any) -> Union[pd.DataFrame, dict]:
-        if isinstance(data, pd.DataFrame): return data
+        if isinstance(data, pd.DataFrame):
+            return data
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return pd.read_excel(data, sheet_name=None)
         raise ComponentError(f"Excel文件不存在: {data}")
 
     def _read_sklearn_model(self, data: Any) -> Any:
         if isinstance(data, (str, Path)) and os.path.exists(data):
-            with open(data, 'rb') as f: return pickle.load(f)
+            with open(data, "rb") as f:
+                return pickle.load(f)
         raise ComponentError(f"无法读取sklearn模型: {data}")
 
     def _read_torch_model(self, data: Any) -> Any:
@@ -877,7 +965,7 @@ class DataHandler:
         if isinstance(data, (str, Path)) and os.path.exists(data):
             # 兼容 torch.export 或常规 load
             try:
-                with open(data, 'rb') as f:
+                with open(data, "rb") as f:
                     return torch.export.load(f)
             except:
                 return torch.load(data)
@@ -886,9 +974,12 @@ class DataHandler:
     def _read_image_data(self, data: Any) -> Image.Image:
         if isinstance(data, (str, Path)) and os.path.exists(data):
             return Image.open(data)
-        if isinstance(data, Image.Image): return data
-        if isinstance(data, np.ndarray): return Image.fromarray(data.astype('uint8'))
-        if isinstance(data, bytes): return Image.open(io.BytesIO(data))
+        if isinstance(data, Image.Image):
+            return data
+        if isinstance(data, np.ndarray):
+            return Image.fromarray(data.astype("uint8"))
+        if isinstance(data, bytes):
+            return Image.open(io.BytesIO(data))
         raise ComponentError(f"无法读取图像数据: {type(data)}")
 
     def _read_file_data(self, data: Any) -> Path:
@@ -899,7 +990,6 @@ class DataHandler:
             logger.warning(f"文件不存在: {data}")
 
         return str(data)
-
 
     def _fetch_from_memory(self, ref_str: str) -> Any:
         """
@@ -913,7 +1003,7 @@ class DataHandler:
             return ref_str
 
         try:
-            object_name, attr_name = ref_str.split('.', 1)
+            object_name, attr_name = ref_str.split(".", 1)
 
             # 解析 node_id
             # 兼容 INSTANCE_xxx 和 DATA_xxx 两种前缀
@@ -939,11 +1029,15 @@ class DataHandler:
                         # self.logger.info(f"成功从内存加载: {ref_str}")
                         return obj
                     else:
-                        self.logger.error(f"对象 {object_name} 中不存在属性 {attr_name}")
+                        self.logger.error(
+                            f"对象 {object_name} 中不存在属性 {attr_name}"
+                        )
                 else:
                     self.logger.error(f"模块 {module_key} 中未找到对象 {object_name}")
             else:
-                self.logger.error(f"内存中未找到模块 {module_key} (可能是节点未运行或数据已丢失)")
+                self.logger.error(
+                    f"内存中未找到模块 {module_key} (可能是节点未运行或数据已丢失)"
+                )
 
             return None
 
@@ -951,16 +1045,24 @@ class DataHandler:
             self.logger.error(f"解析内存对象失败: {e}")
             raise ComponentError(f"解析内存对象失败: {e}")
 
-    def _process_multiple_inputs(self, input_name: str, input_values: List[Any], input_type: ArgumentType) -> List[Any]:
-        if input_values is None: return []
-        return [self.read_input_data(input_name, val, input_type) for val in input_values]
+    def _process_multiple_inputs(
+        self, input_name: str, input_values: List[Any], input_type: ArgumentType
+    ) -> List[Any]:
+        if input_values is None:
+            return []
+        return [
+            self.read_input_data(input_name, val, input_type) for val in input_values
+        ]
 
     # --- 输出数据处理 ---
 
-    def store_output_data(self, output_name: str, output_value: Any, output_type: ArgumentType) -> Any:
+    def store_output_data(
+        self, output_name: str, output_value: Any, output_type: ArgumentType
+    ) -> Any:
         """根据输出类型存储数据"""
         try:
-            if output_value is None: return None
+            if output_value is None:
+                return None
 
             if output_type == ArgumentType.TEXT:
                 return str(output_value)
@@ -990,7 +1092,9 @@ class DataHandler:
                 return output_value
         except Exception as e:
             self.logger.error(f"存储输出 '{output_name}' 失败: {e}")
-            raise ComponentError(f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR")
+            raise ComponentError(
+                f"存储输出 {output_name} 失败: {str(e)}", "OUTPUT_STORE_ERROR"
+            )
 
     def _store_csv_data(self, output_value: Any) -> Any:
         """
@@ -1003,6 +1107,7 @@ class DataHandler:
 
         try:
             import pyarrow as pa
+
             # 1. 如果是 Pandas DataFrame/Series，转为 PyArrow Table
             if isinstance(output_value, (pd.DataFrame, pd.Series)):
                 # Series 转 DataFrame
@@ -1018,11 +1123,13 @@ class DataHandler:
             elif isinstance(output_value, (str, Path)):
                 if os.path.exists(output_value):
                     from pyarrow import csv as pa_csv
+
                     parse_opts = pa_csv.ParseOptions(newlines_in_values=True)
                     return pa_csv.read_csv(str(output_value), parse_options=parse_opts)
                 else:
                     # 如果是CSV字符串
                     import io
+
                     return pd.read_csv(io.StringIO(output_value))
 
             # 2. 如果已经是 PyArrow 对象，直接返回
@@ -1053,7 +1160,7 @@ class DataHandler:
 
     def _store_sklearn_model(self, model: Any, output_name: str) -> str:
         file_path = self._get_save_path(output_name, "model", ".pkl")
-        with open(file_path, 'wb') as f:
+        with open(file_path, "wb") as f:
             pickle.dump(model, f)
         return str(file_path)
 
@@ -1061,7 +1168,7 @@ class DataHandler:
         torch = self._get_torch()
         file_path = self._get_save_path(output_name, "model", ".pt2")
         try:
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 torch.export.save(model, f)
         except:
             torch.save(model, str(file_path))
@@ -1072,10 +1179,15 @@ class DataHandler:
         if isinstance(image, np.ndarray):
             # 鲁棒性：处理可能存在的浮点图或大位深图
             if image.dtype != np.uint8:
-                if image.max() <= 1.0: image = image * 255
+                if image.max() <= 1.0:
+                    image = image * 255
                 image = image.astype(np.uint8)
             image = Image.fromarray(image)
-        elif isinstance(image, str) and os.path.exists(image) and image.endswith((".png", ".jpg", ".jpeg")):
+        elif (
+            isinstance(image, str)
+            and os.path.exists(image)
+            and image.endswith((".png", ".jpg", ".jpeg"))
+        ):
             try:
                 image = Image.open(image)
             except:
@@ -1094,7 +1206,7 @@ class DataHandler:
             raise ComponentError(f"无效的图像存储类型: {type(image)}")
 
         file_path = self._get_save_path(output_name, "image", ".png")
-        image.save(file_path, 'PNG')
+        image.save(file_path, "PNG")
         return str(file_path)
 
     def _store_file_data(self, data: Any, output_name: str) -> str:
@@ -1117,7 +1229,7 @@ class DataHandler:
         elif isinstance(data, bytes):
             file_path.write_bytes(data)
         else:
-            file_path.write_text(str(data), encoding='utf-8')
+            file_path.write_text(str(data), encoding="utf-8")
         return str(file_path)
 
     def _store_to_memory(self, output_name: str, value: Any) -> str:
@@ -1164,7 +1276,11 @@ class DataHandler:
 
         # 步骤 3: 挂载数据
         # 属性名加个前缀防止冲突，或者直接用 output_name
-        attr_name = f"out_{output_name}"
+        # 如果有迭代标签，使用迭代感知的属性名避免覆盖
+        if self.iteration_tag:
+            attr_name = f"out_{output_name}_{self.iteration_tag}"
+        else:
+            attr_name = f"out_{output_name}"
         setattr(target_obj, attr_name, value)
 
         # 步骤 4: 返回引用字符串 (格式: 对象名.属性名)
@@ -1178,6 +1294,7 @@ class DataHandler:
         if not hasattr(self, "_torch_cache"):
             try:
                 import torch
+
                 self._torch_cache = torch
             except ImportError:
                 raise ComponentError("环境缺失 torch 库", "MISSING_LIB")
@@ -1199,6 +1316,7 @@ class BaseComponent(ABC):
         outputs (List[PortDefinition]): 输出端口列表。
         properties (Dict[str, PropertyDefinition]): UI 属性配置。
     """
+
     name: str = ""
     category: str = ""
     description: str = ""
@@ -1216,7 +1334,7 @@ class BaseComponent(ABC):
 
     @abstractmethod
     def run(self, params: BaseModel, inputs: BaseModel = None) -> Dict[str, Any]:
-        """"组件的核心执行逻辑。
+        """ "组件的核心执行逻辑。
 
         Args:
             params: 经过校验的属性参数对象。可以通过 `params.key` 或 `params['key']` 访问。
@@ -1236,7 +1354,10 @@ class BaseComponent(ABC):
     @classmethod
     def get_inputs(cls) -> List[Tuple[str, str, str, ArgumentType]]:
         """返回输入端口定义：[('port_name', 'Port Label')]"""
-        return [(port.name, port.label, port.connection, port.type, port.description) for port in cls.inputs]
+        return [
+            (port.name, port.label, port.connection, port.type, port.description)
+            for port in cls.inputs
+        ]
 
     @classmethod
     def get_input_sub_types(cls):
@@ -1245,7 +1366,9 @@ class BaseComponent(ABC):
     @classmethod
     def get_outputs(cls) -> List[Tuple[str, str, ArgumentType]]:
         """返回输出端口定义：[('port_name', 'Port Label')]"""
-        return [(port.name, port.label, port.type, port.description) for port in cls.outputs]
+        return [
+            (port.name, port.label, port.type, port.description) for port in cls.outputs
+        ]
 
     @classmethod
     def get_output_sub_types(cls):
@@ -1333,7 +1456,9 @@ class BaseComponent(ABC):
                 le = prop_def.max
             elif prop_def.type == PropertyType.DYNAMICFORM:
                 # 创建嵌套模型，并用 List[Model] 表示
-                item_model = _create_dynamic_form_model(prop_name, prop_def.schema or {})
+                item_model = _create_dynamic_form_model(
+                    prop_name, prop_def.schema or {}
+                )
                 field_type = List[item_model]  # type: ignore
                 default_val = []  # 默认空列表
             elif prop_def.type == PropertyType.DYNAMICTREE:
@@ -1350,7 +1475,10 @@ class BaseComponent(ABC):
 
             # 使用 Field 确保默认值正确
             if le is not None:
-                fields[prop_name] = (field_type, Field(default=default_val, le=le, ge=ge))
+                fields[prop_name] = (
+                    field_type,
+                    Field(default=default_val, le=le, ge=ge),
+                )
             else:
                 fields[prop_name] = (field_type, Field(default=default_val))
 
@@ -1402,27 +1530,36 @@ class BaseComponent(ABC):
                 if msg.get("type") == "handshake":
                     pass
                 else:
-                    self.logger.warning(f"Received unknown message during handshake: {msg}")
+                    self.logger.warning(
+                        f"Received unknown message during handshake: {msg}"
+                    )
             except Exception as e:
                 self.logger.error(f"Handshake error: {e}")
         else:
-            self.logger.warning("⚠️ No UI handshake received (Timeout). Assuming headless/debug mode.")
+            self.logger.warning(
+                "⚠️ No UI handshake received (Timeout). Assuming headless/debug mode."
+            )
 
         return self._pub_socket, self._svc_socket
 
     def _cleanup_zmq(self):
         """进程退出时的清理函数"""
         try:
-            if self._pub_socket: self._pub_socket.close()
-            if self._svc_socket: self._svc_socket.close()
-            if self._zmq_context: self._zmq_context.term()
+            if self._pub_socket:
+                self._pub_socket.close()
+            if self._svc_socket:
+                self._svc_socket.close()
+            if self._zmq_context:
+                self._zmq_context.term()
             self._pub_socket = None
             self._svc_socket = None
             self._zmq_context = None
         except:
             pass
 
-    def emit_message(self, method: str, params: Dict[str, Any], extra={}, interactive=False):
+    def emit_message(
+        self, method: str, params: Dict[str, Any], extra={}, interactive=False
+    ):
         """发送自定义协议消息至 UI 端。
 
         优先尝试 ZMQ 通信，如果未配置 ZMQ 环境（如本地单测），则降级为 stdout 打印。
@@ -1435,24 +1572,18 @@ class BaseComponent(ABC):
         if interactive:
             return self.emit_interactive_message(method, params, extra=extra)
 
-        msg = ComponentMessage(
-            method=method,
-            params=params,
-            extra=extra
-        )
+        msg = ComponentMessage(method=method, params=params, extra=extra)
 
         pub_sock, _ = self._get_zmq_sockets()
         if not pub_sock:
             print(f"{PROGRESS_MARKER}{msg.json()}", flush=True)
         else:
-            final_msg = {
-                "type": "stream_data",
-                "payload": msg.dict()
-            }
+            final_msg = {"type": "stream_data", "payload": msg.dict()}
             pub_sock.send_string(json.dumps(final_msg))
 
     def emit_interactive_message(
-            self, method: str, params: Dict[str, Any], extra={}) -> Any:
+        self, method: str, params: Dict[str, Any], extra={}
+    ) -> Any:
         """
         在组件执行过程中请求人工干预。
 
@@ -1500,7 +1631,7 @@ class BaseComponent(ABC):
                         # 在 Windows 上，如果主进程还在写，open 会报错
                         try:
                             # 使用 rb 模式读取
-                            with open(response_path, 'rb') as f:
+                            with open(response_path, "rb") as f:
                                 data = pickle.load(f)
                             break  # 读取成功，跳出循环
                         except (EOFError, pickle.UnpicklingError, PermissionError):
@@ -1524,17 +1655,13 @@ class BaseComponent(ABC):
             # === ZMQ 交互模式 ===
             req_id = str(uuid.uuid4())
             self.logger.info(f"等待人工干预 [ZMQ ID: {req_id}]...")
-            msg = ComponentMessage(
-                method=method,
-                params=params,
-                extra=extra
-            )
+            msg = ComponentMessage(method=method, params=params, extra=extra)
             # 构造请求，匹配 UI 端 NodeZmqTransceiver 的期望格式
             # UI 端逻辑：msg.get("type") == "intervention_request" -> emit(payload)
             req_msg = {
                 "type": "intervention_request",
                 "req_id": req_id,
-                "payload": msg.dict()  # 直接将业务参数作为 payload 发送给 UI 弹窗
+                "payload": msg.dict(),  # 直接将业务参数作为 payload 发送给 UI 弹窗
             }
 
             try:
@@ -1590,7 +1717,9 @@ class BaseComponent(ABC):
                         return resolved.lower() in ("true", "1", "yes", "on")
                     return bool(resolved)
                 elif prop_type == PropertyType.DYNAMICTREE:
-                    return json.loads(resolved) if isinstance(resolved, str) else resolved
+                    return (
+                        json.loads(resolved) if isinstance(resolved, str) else resolved
+                    )
                 elif prop_type == PropertyType.VARIABLE:
                     # VARIABLE 类型特殊，通常返回 [变量名, 实际值]
                     return [value, resolved]
@@ -1605,17 +1734,24 @@ class BaseComponent(ABC):
 
     # ---------------- 执行包装器 ----------------
     def execute(
-            self,
-            params: Dict[str, Any],
-            inputs: Optional[Dict[str, Any]] = None,
-            global_vars: Dict[str, Any] = None,
-            node_id: str = None,
-            workflow_path: str = None
+        self,
+        params: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
+        global_vars: Dict[str, Any] = None,
+        node_id: str = None,
+        workflow_path: str = None,
     ) -> Dict[str, Any]:
         """执行组件，包含错误处理和数据类型转换"""
         self.node_id = node_id
+        iteration_tag = None
+        if global_vars and "__iteration_tag__" in global_vars:
+            iteration_tag = global_vars.pop("__iteration_tag__")
         self.data_handler = DataHandler(
-            node_id=node_id, workflow_path=workflow_path, logger_instance=self.logger, component_instance=self
+            node_id=node_id,
+            workflow_path=workflow_path,
+            logger_instance=self.logger,
+            component_instance=self,
+            iteration_tag=iteration_tag,
         )
         try:
             if global_vars is not None:
@@ -1624,7 +1760,9 @@ class BaseComponent(ABC):
             # 遍历 params，根据定义尝试将字符串转为数值
             for key, val in params.items():
                 if key in self.properties:
-                    params[key] = self._resolve_value(key, val, self.properties[key].type)
+                    params[key] = self._resolve_value(
+                        key, val, self.properties[key].type
+                    )
             params_model = self.get_params_model()
             validated_params = params_model(**params)
             input_model_cls = self.get_input_model()
@@ -1633,14 +1771,21 @@ class BaseComponent(ABC):
                 for port in self.inputs:
                     if port.name in inputs:
                         if port.connection == ConnectionType.MULTIPLE:
-                            validated_inputs[port.name] = self.data_handler._process_multiple_inputs(
-                                port.name, inputs[port.name], port.type
+                            validated_inputs[port.name] = (
+                                self.data_handler._process_multiple_inputs(
+                                    port.name, inputs[port.name], port.type
+                                )
                             )
                         else:
-                            validated_inputs[port.name] = self.data_handler.read_input_data(
-                                port.name, inputs[port.name], port.type
+                            validated_inputs[port.name] = (
+                                self.data_handler.read_input_data(
+                                    port.name, inputs[port.name], port.type
+                                )
                             )
-                    if f"{port.name}_data_select_visible" in inputs and not inputs[f"{port.name}_data_select_visible"]:
+                    if (
+                        f"{port.name}_data_select_visible" in inputs
+                        and not inputs[f"{port.name}_data_select_visible"]
+                    ):
                         continue
                     if f"{port.name}_data_select" in inputs:
                         selection = inputs[f"{port.name}_data_select"]
@@ -1649,15 +1794,24 @@ class BaseComponent(ABC):
                         # 类型1: CSV列选择 (字符串列表)
                         if isinstance(selection, dict) and "columns" in selection:
                             if isinstance(original_data, pd.DataFrame):
-                                validated_inputs[port.name] = original_data[selection.get("columns", [])]
+                                validated_inputs[port.name] = original_data[
+                                    selection.get("columns", [])
+                                ]
 
                         # 类型2: 列表索引选择 (整数列表)
                         elif isinstance(selection, dict) and "indices" in selection:
                             if isinstance(original_data, (list, tuple)):
                                 try:
-                                    filtered = [original_data[i] for i in selection.get("indices", []) if 0 <= i < len(original_data)]
-                                    validated_inputs[port.name] = filtered if len(filtered) > 1 else (
-                                        filtered[0] if filtered else None)
+                                    filtered = [
+                                        original_data[i]
+                                        for i in selection.get("indices", [])
+                                        if 0 <= i < len(original_data)
+                                    ]
+                                    validated_inputs[port.name] = (
+                                        filtered
+                                        if len(filtered) > 1
+                                        else (filtered[0] if filtered else None)
+                                    )
                                 except (IndexError, TypeError):
                                     pass  # 保持原数据
 
@@ -1665,7 +1819,9 @@ class BaseComponent(ABC):
                         elif isinstance(selection, dict) and "keys" in selection:
                             if isinstance(original_data, dict):
                                 validated_inputs[port.name] = {
-                                    k: v for k, v in original_data.items() if k in selection.get("keys", [])
+                                    k: v
+                                    for k, v in original_data.items()
+                                    if k in selection.get("keys", [])
                                 }
 
                         # 兜底：直接索引（兼容原有CSV逻辑）
@@ -1677,7 +1833,8 @@ class BaseComponent(ABC):
 
             validated_inputs = input_model_cls(**validated_inputs)
             safe_env = {
-                k: str(v) for k, v in self.global_variable.env.get_all_env_vars().items()
+                k: str(v)
+                for k, v in self.global_variable.env.get_all_env_vars().items()
                 if v is not None
             }
 
@@ -1685,8 +1842,13 @@ class BaseComponent(ABC):
                 result = self.run(validated_params, validated_inputs)
 
             if not self.validate_outputs(result):
-                missing_outputs = [port.name for port in self.outputs if port.name not in result]
-                logger.warning(f"组件输出缺少必需的端口: {missing_outputs}", "OUTPUT_VALIDATION_ERROR")
+                missing_outputs = [
+                    port.name for port in self.outputs if port.name not in result
+                ]
+                logger.warning(
+                    f"组件输出缺少必需的端口: {missing_outputs}",
+                    "OUTPUT_VALIDATION_ERROR",
+                )
 
             # ✅ 关键：传递 node_id 给 store_output_data
             stored_result = {}
@@ -1699,19 +1861,23 @@ class BaseComponent(ABC):
             return stored_result
 
         except Exception as e:
-            raise ComponentError(f"组件执行失败: {traceback.format_exc()}", "EXECUTION_ERROR")
+            raise ComponentError(
+                f"组件执行失败: {traceback.format_exc()}", "EXECUTION_ERROR"
+            )
         finally:
             self._cleanup_zmq()
 
     # ---------------- 组件调试专用方法 ----------------
-    def debug(self,
-              params: Dict[str, Any] = None,
-              inputs: Dict[str, Any] = None,
-              global_vars: Dict[str, Any] = None,
-              node_id: str = str(uuid.uuid4()),
-              show_input_types: bool = True,
-              show_output_types: bool = True,
-              show_execution_time: bool = True) -> Dict[str, Any]:
+    def debug(
+        self,
+        params: Dict[str, Any] = None,
+        inputs: Dict[str, Any] = None,
+        global_vars: Dict[str, Any] = None,
+        node_id: str = str(uuid.uuid4()),
+        show_input_types: bool = True,
+        show_output_types: bool = True,
+        show_execution_time: bool = True,
+    ) -> Dict[str, Any]:
         """
         通用调试函数，用于测试组件运行效果
 
@@ -1850,7 +2016,7 @@ class BaseComponent(ABC):
         if isinstance(value, (str, int, float, bool)):
             str_val = str(value)
             if len(str_val) > max_length:
-                return str_val[:max_length - 3] + "..."
+                return str_val[: max_length - 3] + "..."
             return str_val
 
         elif isinstance(value, (list, tuple)):
@@ -1860,17 +2026,24 @@ class BaseComponent(ABC):
                 items = [self._format_value(item, max_length // 3) for item in value]
                 return f"{type(value).__name__}({items})"
             else:  # 大数组只显示前几个
-                items = [self._format_value(item, max_length // 3) for item in value[:5]]
+                items = [
+                    self._format_value(item, max_length // 3) for item in value[:5]
+                ]
                 return f"{type(value).__name__}({items}... 共{len(value)}项)"
 
         elif isinstance(value, dict):
             if len(value) == 0:
                 return "dict({})"
             elif len(value) <= 3:  # 小字典完整显示
-                items = {k: self._format_value(v, max_length // 3) for k, v in value.items()}
+                items = {
+                    k: self._format_value(v, max_length // 3) for k, v in value.items()
+                }
                 return f"dict({items})"
             else:  # 大字典只显示前几个
-                items = {k: self._format_value(v, max_length // 3) for k, v in list(value.items())[:3]}
+                items = {
+                    k: self._format_value(v, max_length // 3)
+                    for k, v in list(value.items())[:3]
+                }
                 return f"dict({{...}} 共{len(value)}项)"
 
         elif isinstance(value, pd.DataFrame):
@@ -1879,7 +2052,7 @@ class BaseComponent(ABC):
         elif isinstance(value, np.ndarray):
             return f"ndarray(shape={value.shape}, dtype={value.dtype})"
 
-        elif hasattr(value, '__class__'):
+        elif hasattr(value, "__class__"):
             # 其他对象显示类型和主要属性
             return f"{type(value).__name__} object"
 

@@ -4,10 +4,198 @@ from collections import deque
 
 from PyQt5.QtCore import QObject, pyqtSignal, Qt, QPoint
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor, QFont, QCursor
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QPlainTextEdit, QApplication
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QWidget,
+    QPlainTextEdit,
+    QApplication,
+    QTabWidget,
+    QScrollArea,
+    QHBoxLayout,
+)
 from qfluentwidgets import StrongBodyLabel
 
 from app.utils.config import Settings
+
+
+class TabbedLogWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: none;
+                background-color: #0e1117;
+            }
+            QTabWidget::tab-bar {
+                alignment: left;
+            }
+            QTabBar::tab {
+                background-color: #1e1e1e;
+                color: #888888;
+                padding: 6px 12px;
+                border: none;
+                font-size: 12px;
+            }
+            QTabBar::tab:selected {
+                background-color: #0e1117;
+                color: white;
+            }
+            QTabBar::tab:hover {
+                color: white;
+            }
+        """)
+
+        self.log_tabs = {}
+        self.log_handlers = {}
+
+        tab_configs = [
+            ("全部", "all"),
+            ("画布", "canvas"),
+            ("组件", "component"),
+            ("AI对话", "llm"),
+            ("系统", "system"),
+        ]
+
+        for label, key in tab_configs:
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setStyleSheet("""
+                QScrollArea {
+                    background-color: #0e1117;
+                    border: none;
+                }
+            """)
+            text_edit = QPlainTextEdit()
+            text_edit.document().setDocumentMargin(0)
+            text_edit.setObjectName(label)
+            text_edit.setReadOnly(True)
+            text_edit.setFont(QFont(Settings.get_instance().canvas_font_type.value, 11))
+            text_edit.setStyleSheet("""
+                QPlainTextEdit {
+                    background-color: #0e1117;
+                    color: white;
+                    border: none;
+                    font-family: Consolas, monospace;
+                    font-size: 13px;
+                    padding: 5px;
+                }
+                QPlainTextEdit QScrollBar:vertical { 
+                    background: transparent; 
+                    width: 14px; 
+                }
+                QPlainTextEdit QScrollBar::handle:vertical { 
+                    background: #666666; 
+                    border-radius: 7px; 
+                    min-height: 30px;
+                }
+                QPlainTextEdit QScrollBar::handle:vertical:hover { 
+                    background: #888888; 
+                }
+            """)
+
+            scroll_area.setWidget(text_edit)
+            self.tab_widget.addTab(scroll_area, label)
+
+            handler = QTextEditLogger(text_edit, max_lines=1000)
+            self.log_tabs[key] = text_edit
+            self.log_handlers[key] = handler
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.tab_widget)
+
+        self._setup_log_handlers()
+
+    def _setup_log_handlers(self):
+        logger.remove()
+
+        logger.add(
+            self.log_handlers["all"],
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+            filter=self._filter_all,
+        )
+
+        logger.add(
+            self.log_handlers["canvas"],
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+            filter=self._filter_canvas,
+        )
+
+        logger.add(
+            self.log_handlers["component"],
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+            filter=self._filter_component,
+        )
+
+        logger.add(
+            self.log_handlers["llm"],
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+            filter=self._filter_llm,
+        )
+
+        logger.add(
+            self.log_handlers["system"],
+            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+            level="DEBUG",
+            filter=self._filter_system,
+        )
+
+    def _filter_all(self, record):
+        return True
+
+    def _filter_canvas(self, record):
+        file_path = record.get("file", "")
+        if file_path:
+            path_str = str(file_path)
+            return "canvas_interaface" in path_str or "canvas_interface" in path_str
+        return False
+
+    def _filter_component(self, record):
+        file_path = record.get("file", "")
+        if file_path:
+            return "component_developer" in str(file_path)
+        return False
+
+    def _filter_llm(self, record):
+        file_path = record.get("file", "")
+        if file_path:
+            return "llm_chatter" in str(file_path)
+        return False
+
+    def _filter_system(self, record):
+        file_path = record.get("file", "")
+        if file_path:
+            path_str = str(file_path)
+            if (
+                "canvas_interaface" in path_str
+                or "canvas_interface" in path_str
+                or "component_developer" in path_str
+                or "llm_chatter" in path_str
+            ):
+                return False
+            return True
+        return False
+
+    def get_current_text_edit(self):
+        scroll_area = self.tab_widget.currentWidget()
+        if scroll_area:
+            return scroll_area.widget()
+        return None
+
+    def scroll_to_bottom(self, force=False):
+        text_edit = self.get_current_text_edit()
+        if text_edit:
+            text_edit.verticalScrollBar().setValue(
+                text_edit.verticalScrollBar().maximum()
+            )
 
 
 class LogPopupWidget(QWidget):
@@ -16,20 +204,24 @@ class LogPopupWidget(QWidget):
         self._resizing = False
         self._start_pos = None
         self._start_width = None
-        self._min_width = 200
-        self._max_width = 600
+        self._min_width = 400
+        self._max_width = 1000
         self._base_x = 0
-        self._resize_zone_width = 4
-        self._hovering_resize_zone = False
-        self._border_color = "#3c3c3c"
-        self._hover_border_color = "#0078D4"
+        self._resize_zone_width = 8
         self.setup_ui()
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
-        self._update_border_style(False)
+        self.setStyleSheet(
+            """
+            QWidget {
+                background-color: #1e1e1e;
+                border-right: %dpx solid #404040;
+            }
+        """
+            % self._resize_zone_width
+        )
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -37,64 +229,32 @@ class LogPopupWidget(QWidget):
 
         header = QWidget()
         header.setFixedHeight(32)
-        header.setStyleSheet("""
-            background-color: #1e1e1e;
-            border-bottom: 1px solid #3c3c3c;
-        """)
-        header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(10, 0, 10, 0)
+        header.setStyleSheet(
+            "background-color: #1e1e1e; border-bottom: 1px solid #3c3c3c;"
+        )
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 0, 12, 0)
+        header_layout.setSpacing(8)
 
         title_label = StrongBodyLabel("执行日志")
         title_label.setStyleSheet("color: white;")
         header_layout.addWidget(title_label)
+        header_layout.addStretch()
 
-        self.text_logger = QPlainTextEdit()
-        self.text_logger.document().setDocumentMargin(0)
-        self.text_logger.setObjectName("运行日志")
-        self.text_logger.setReadOnly(True)
-        self.text_logger.setFont(
-            QFont(Settings.get_instance().canvas_font_type.value, 11)
-        )
-        self.text_logger.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #0e1117;
-                color: white;
-                border: none;
-                font-family: Consolas, monospace;
-                font-size: 13px;
-                padding: 5px;
-            }
-            QPlainTextEdit QScrollBar:vertical { 
-                background: transparent; 
-                width: 10px; 
-            }
-            QPlainTextEdit QScrollBar::handle:vertical { 
-                background: #555555; 
-                border-radius: 5px; 
-            }
+        self.resize_grip = QWidget()
+        self.resize_grip.setFixedSize(20, 16)
+        self.resize_grip.setStyleSheet("""
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                stop:0 transparent, stop:0.5 #666666, stop:1 transparent);
         """)
+        header_layout.addWidget(self.resize_grip)
 
-        self.log_handler = QTextEditLogger(self.text_logger, max_lines=1000)
-        logger.remove()
-        logger.add(
-            self.log_handler,
-            format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
-            level="DEBUG",
-        )
+        self.tabbed_log_widget = TabbedLogWidget()
 
         main_layout.addWidget(header)
-        main_layout.addWidget(self.text_logger)
+        main_layout.addWidget(self.tabbed_log_widget)
 
-        self.resize(400, 600)
-
-    def _update_border_style(self, hover):
-        border_color = self._hover_border_color if hover else self._border_color
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: #1e1e1e;
-                border-right: {self._resize_zone_width}px solid {border_color};
-            }}
-        """)
+        self.resize(550, 600)
 
     def set_width(self, width):
         width = max(self._min_width, min(width, self._max_width))
@@ -108,14 +268,11 @@ class LogPopupWidget(QWidget):
             self._resizing = True
             self._start_pos = event.globalPos()
             self._start_width = self.width()
+            event.accept()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         is_in_resize_zone = event.pos().x() >= self.width() - self._resize_zone_width
-
-        if is_in_resize_zone != self._hovering_resize_zone:
-            self._hovering_resize_zone = is_in_resize_zone
-            self._update_border_style(is_in_resize_zone)
 
         if is_in_resize_zone:
             self.setCursor(Qt.SizeHorCursor)
@@ -126,6 +283,7 @@ class LogPopupWidget(QWidget):
             delta = event.globalPos() - self._start_pos
             new_width = self._start_width + delta.x()
             self.set_width(new_width)
+            event.accept()
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -136,12 +294,27 @@ class LogPopupWidget(QWidget):
         super().enterEvent(event)
         mouse_pos = self.mapFromGlobal(QCursor.pos())
         if mouse_pos.x() >= self.width() - self._resize_zone_width:
-            self._hovering_resize_zone = True
-            self._update_border_style(True)
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #0078D4;
+                }
+            """
+                % self._resize_zone_width
+            )
 
     def leaveEvent(self, event):
-        self._hovering_resize_zone = False
-        self._update_border_style(False)
+        if not self._resizing:
+            self.setStyleSheet(
+                """
+                QWidget {
+                    background-color: #1e1e1e;
+                    border-right: %dpx solid #404040;
+                }
+            """
+                % self._resize_zone_width
+            )
         super().leaveEvent(event)
 
     def show_at_left(self, parent_widget, log_button_top_right):
@@ -186,19 +359,10 @@ class LogPopupWidget(QWidget):
         self.hide()
 
     def scroll_to_bottom(self, force=False):
-        self.text_logger.verticalScrollBar().setValue(
-            self.text_logger.verticalScrollBar().maximum()
-        )
+        self.tabbed_log_widget.scroll_to_bottom(force=force)
 
     def _clean_trailing_empty_lines(self):
-        cursor = self.text_logger.textCursor()
-        cursor.movePosition(cursor.End)
-        while cursor.block().text() == "" and cursor.position() > 0:
-            cursor.deletePreviousChar()
-            cursor.movePosition(cursor.End)
-        while cursor.block().text() == "" and cursor.position() > 0:
-            cursor.deletePreviousChar()
-            cursor.movePosition(cursor.End)
+        pass
 
 
 class QTextEditLogger(QObject):

@@ -162,8 +162,14 @@ class SSHExecutor(BaseExecutor):
                         ctx.timeout_enabled
                         and time.time() - start_time > ctx.timeout_seconds
                     ):
-                        ssh.exec_command(f"pkill -f {remote_run_dir}/exec_script.py")
-                        ssh.close()
+                        try:
+                            ssh.exec_command(
+                                f"pkill -f {remote_run_dir}/exec_script.py"
+                            )
+                        except:
+                            pass
+                        finally:
+                            ssh.close()
                         raise Exception("执行超时")
                     time.sleep(0.5)
 
@@ -192,7 +198,10 @@ class SSHExecutor(BaseExecutor):
             except:
                 pass
 
-            ssh.exec_command(f"rm -rf {remote_run_dir}")
+            try:
+                ssh.exec_command(f"rm -rf {remote_run_dir}")
+            except Exception:
+                pass
             with sftp.open(log_path, "r") as f:
                 f.seek(last_log_pos)
                 new_data = f.read().decode("utf-8", errors="ignore")

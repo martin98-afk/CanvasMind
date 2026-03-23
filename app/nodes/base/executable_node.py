@@ -26,6 +26,7 @@ class ExecutableNodeMixin:
         check_cancel: Optional[Callable[[], bool]] = None,
         global_variable: Optional[Dict[str, Any]] = None,
         python_executable: Optional[str] = None,
+        iteration_tag: Optional[str] = None,
         **kwargs,
     ) -> ExecutionContext:
         """创建执行上下文"""
@@ -37,6 +38,7 @@ class ExecutableNodeMixin:
             global_variable=global_variable or {},
             cache_path=getattr(self, "CACHE_PATH", Path.cwd()),
             python_executable=python_executable or "",
+            iteration_tag=iteration_tag,
         )
 
         ctx.env_data = getattr(self.parent_window, "env_data", {})
@@ -195,12 +197,23 @@ class ExecutableNodeMixin:
         self.hide_inline_widgets()
         self.clear_output_value()
 
+        iteration_tag = None
+        if "execution_context" in kwargs:
+            exec_ctx = kwargs.pop("execution_context")
+            if hasattr(exec_ctx, "iteration_tag"):
+                iteration_tag = exec_ctx.iteration_tag
+
+        if iteration_tag and global_variable:
+            global_variable = dict(global_variable) if global_variable else {}
+            global_variable["__iteration_tag__"] = iteration_tag
+
         ctx = self.create_execution_context(
             comp_obj,
             kernel_manager,
             check_cancel,
             global_variable,
             python_executable=python_executable,
+            iteration_tag=iteration_tag,
             **kwargs,
         )
 

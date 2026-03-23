@@ -16,7 +16,7 @@ ConnectionType = base_module.ConnectionType
 
 
 class Component(BaseComponent):
-    name = "YOLO 语义分割推理"
+    name = "YOLO 语义分割图像推理"
     category = "YOLO/语义分割"
     description = "YOLO语义分割推理组件用于对输入图像进行语义分割预测，基于训练好的YOLOv8分割模型，输入为图像文件和模型文件（.pt），输出为带有分割结果的图像和分割掩码。"
     requirements = "torch,Pillow,ultralytics,numpy"

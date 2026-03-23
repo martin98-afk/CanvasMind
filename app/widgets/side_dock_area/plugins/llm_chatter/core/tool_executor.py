@@ -218,7 +218,10 @@ class ToolExecutor:
         """设置子智能体管理器"""
         if self._builtin_tools:
             self._builtin_tools._sub_agent_manager = sub_agent_manager
-            logger.info("[ToolExecutor] SubAgentManager attached to BuiltinTools")
+            self._builtin_tools._task_tools._sub_agent_manager = sub_agent_manager
+            logger.info(
+                "[ToolExecutor] SubAgentManager attached to BuiltinTools and TaskTools"
+            )
 
     def set_stage_callback(self, callback):
         """设置 stage 切换回调"""
