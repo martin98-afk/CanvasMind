@@ -356,14 +356,7 @@ class PointClickDialog(QDialog):
 
         from qfluentwidgets import PrimaryPushButton, TransparentPushButton
 
-        self.btn_finish = TransparentPushButton("结束交互")
-        self.btn_finish.setFixedWidth(120)
-        self.btn_finish.clicked.connect(self.on_finish)
-        bot_lyt.addWidget(self.btn_finish)
-        bot_lyt.addStretch()
-
-        self.btn_ok = PrimaryPushButton("继续添加点")
-        self.btn_ok.setFixedWidth(150)
+        self.btn_ok = PrimaryPushButton("提交结果")
         self.btn_ok.clicked.connect(self.accept)
         bot_lyt.addWidget(self.btn_ok)
         self.layout.addWidget(self.bottom)
