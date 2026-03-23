@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 import importlib.util
 from pathlib import Path
-base_path = Path(__file__).parent.parent / "base.py" if (Path(__file__).parent.parent / "base.py").exists() else Path(__file__).parent.parent.parent / "base.py"
+
+base_path = (
+    Path(__file__).parent.parent / "base.py"
+    if (Path(__file__).parent.parent / "base.py").exists()
+    else Path(__file__).parent.parent.parent / "base.py"
+)
 spec = importlib.util.spec_from_file_location("base", str(base_path))
 base_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base_module)
@@ -46,7 +51,7 @@ class ComfySAM3Segmenter(BaseComponent):
             type=PropertyType.CHOICE,
             default="Text Grounding",
             label="工作模式",
-            choices=["Text Grounding", "Interactive (Points/Box)"]
+            choices=["Text Grounding", "Interactive (Points/Box)"],
         ),
         "text_prompt": PropertyDefinition(
             type=PropertyType.MULTILINE,
@@ -107,12 +112,12 @@ class ComfySAM3Segmenter(BaseComponent):
             # 模式 'RGB'
             return Image.fromarray((image_np * 255).astype(np.uint8), mode="RGB")
 
-    def tensor_to_base64(self, tensor):
+    def tensor_to_base64(self, tensor, is_mask=False):
         """将 ComfyUI 的 Tensor 转换为 base64 编码的图片"""
         import base64
         from io import BytesIO
 
-        pil_image = self.tensor_to_pil(tensor, is_mask=False)
+        pil_image = self.tensor_to_pil(tensor, is_mask=is_mask)
         buffered = BytesIO()
         pil_image.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
@@ -164,60 +169,104 @@ class ComfySAM3Segmenter(BaseComponent):
         else:
             self.logger.info("正在执行 SAM3 交互式分割...")
 
-            pos_points_data = None
-            neg_points_data = None
+            seg_node = SAM3Segmentation()
+            accumulated_pos_points = []
+            accumulated_neg_points = []
+            mask_b64 = None
+            last_mask_tensor = None
 
-            self.logger.info("使用交互式点标注模式")
-            image_b64 = self.tensor_to_base64(image)
+            for round_idx in range(100):
+                self.logger.info(f"交互式分割第 {round_idx + 1} 轮")
+                image_b64 = self.tensor_to_base64(image)
 
-            result = self.emit_message(
-                method="point_click_selector",
-                params={
-                    "title": "SAM3 交互式标注",
-                    "schema": {
-                        "image": image_b64,
+                result = self.emit_message(
+                    method="point_click_selector",
+                    params={
+                        "title": f"SAM3 交互式标注 (第 {round_idx + 1} 轮)",
+                        "schema": {
+                            "image": image_b64,
+                            "mask": mask_b64,
+                            "positive_points": accumulated_pos_points,
+                            "negative_points": accumulated_neg_points,
+                        },
                     },
-                },
-                interactive=True,
-            )
+                    interactive=True,
+                )
 
-            if result:
+                if not result:
+                    self.logger.warning("交互标注未返回有效结果")
+                    break
+
                 pos_points = result.get("positive_points", [])
                 neg_points = result.get("negative_points", [])
 
-                if pos_points:
-                    pos_points_data = {
-                        "points": pos_points,
-                        "labels": [1] * len(pos_points),
-                    }
-                if neg_points:
-                    neg_points_data = {
-                        "points": neg_points,
-                        "labels": [0] * len(neg_points),
-                    }
+                if round_idx == 0 and len(pos_points) == 0 and len(neg_points) == 0:
+                    self.logger.info("用户未标注任何点，退出交互")
+                    break
+
+                if len(pos_points) == 0 and len(neg_points) == 0:
+                    self.logger.info("用户未添加新点，结束交互")
+                    break
+
+                accumulated_pos_points = pos_points
+                accumulated_neg_points = neg_points
 
                 self.logger.info(
-                    f"交互标注结果: 正点 {len(pos_points)}, 负点 {len(neg_points)}"
+                    f"第 {round_idx + 1} 轮标注: 正点 {len(pos_points)}, 负点 {len(neg_points)}, 累计: 正{len(accumulated_pos_points)}, 负{len(accumulated_neg_points)}"
                 )
+
+                pos_points_data = (
+                    {
+                        "points": accumulated_pos_points,
+                        "labels": [1] * len(accumulated_pos_points),
+                    }
+                    if accumulated_pos_points
+                    else None
+                )
+                neg_points_data = (
+                    {
+                        "points": accumulated_neg_points,
+                        "labels": [0] * len(accumulated_neg_points),
+                    }
+                    if accumulated_neg_points
+                    else None
+                )
+
+                seg_result = seg_node.segment(
+                    sam3_model=sam3_model,
+                    image=image,
+                    positive_points=pos_points_data,
+                    negative_points=neg_points_data,
+                    box=None,
+                    refinement_iterations=0,
+                    use_multimask=params.get("multimask", True),
+                    output_best_mask=True,
+                    offload_model=False,
+                )
+
+                last_mask_tensor = seg_result[0]
+                raw_visualization = seg_result[2]
+                json_boxes = seg_result[3]
+
+                mask_b64 = self.tensor_to_base64(last_mask_tensor, is_mask=True)
+
+            if last_mask_tensor is not None:
+                raw_mask = last_mask_tensor
             else:
-                self.logger.warning("交互标注未返回有效结果")
-
-            seg_node = SAM3Segmentation()
-            result = seg_node.segment(
-                sam3_model=sam3_model,
-                image=image,
-                positive_points=pos_points_data,
-                negative_points=neg_points_data,
-                box=None,
-                refinement_iterations=0,
-                use_multimask=params.get("multimask", True),
-                output_best_mask=True,
-                offload_model=False,
-            )
-
-            raw_mask = result[0]
-            raw_visualization = result[2]
-            json_boxes = result[3]
+                seg_result = seg_node.segment(
+                    sam3_model=sam3_model,
+                    image=image,
+                    positive_points=None,
+                    negative_points=None,
+                    box=None,
+                    refinement_iterations=0,
+                    use_multimask=params.get("multimask", True),
+                    output_best_mask=True,
+                    offload_model=False,
+                )
+                raw_mask = seg_result[0]
+                raw_visualization = seg_result[2]
+                json_boxes = seg_result[3]
 
         self.logger.info("正在转换图像格式...")
 

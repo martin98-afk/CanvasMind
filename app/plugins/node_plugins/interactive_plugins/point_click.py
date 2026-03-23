@@ -11,7 +11,14 @@ from app.plugins.node_plugins.base import InteractivePlugin
 
 
 class PointClickCanvas(QWidget):
-    def __init__(self, base64_image=None, base64_mask=None, parent=None):
+    def __init__(
+        self,
+        base64_image=None,
+        base64_mask=None,
+        initial_positive_points=None,
+        initial_negative_points=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -30,10 +37,34 @@ class PointClickCanvas(QWidget):
         self.hover_point = None
         self.hit_radius = 12
 
+        self.initial_positive = []
+        self.initial_negative = []
+        self._modified = False
+
         if base64_image:
             self.load_image(base64_image)
         if base64_mask:
             self.load_mask(base64_mask)
+
+        if initial_positive_points:
+            self.set_initial_points(initial_positive_points, initial_negative_points)
+
+    def set_initial_points(self, positive_points, negative_points):
+        if not self.original_pixmap:
+            return
+        w, h = self.original_pixmap.width(), self.original_pixmap.height()
+
+        self.positive_points = [
+            QPointF(pt[0] * w, pt[1] * h) for pt in (positive_points or [])
+        ]
+        self.negative_points = [
+            QPointF(pt[0] * w, pt[1] * h) for pt in (negative_points or [])
+        ]
+
+        self.initial_positive = list(self.positive_points)
+        self.initial_negative = list(self.negative_points)
+        self._modified = False
+        self.update()
 
     def load_image(self, b64):
         try:
@@ -113,18 +144,20 @@ class PointClickCanvas(QWidget):
             return False
 
         w, h = self.original_pixmap.width(), self.original_pixmap.height()
+        mask_w, mask_h = self.mask_pixmap.width(), self.mask_pixmap.height()
         if img_pos.x() < 0 or img_pos.x() >= w or img_pos.y() < 0 or img_pos.y() >= h:
             return False
 
-        x, y = int(img_pos.x()), int(img_pos.y())
+        x = int(img_pos.x() * mask_w / w)
+        y = int(img_pos.y() * mask_h / h)
+        x = min(max(x, 0), mask_w - 1)
+        y = min(max(y, 0), mask_h - 1)
+
         mask_img = self.mask_pixmap.toImage()
+        mask_img = mask_img.convertToFormat(QImage.Format_ARGB32)
 
-        if mask_img.format() != QImage.Format_ARGB32:
-            mask_img = mask_img.convertToFormat(QImage.Format_ARGB32)
-
-        pixel = mask_img.pixel(x, y)
-        alpha = QColor(pixel).alpha()
-        return alpha > 127
+        r = mask_img.pixel(x, y) & 0xFF
+        return r > 127
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -145,7 +178,18 @@ class PointClickCanvas(QWidget):
             painter.translate(self.offset)
             painter.scale(self.scale_factor, self.scale_factor)
             painter.setOpacity(0.5)
-            painter.drawPixmap(0, 0, self.mask_pixmap)
+            if (
+                self.mask_pixmap.width() != self.original_pixmap.width()
+                or self.mask_pixmap.height() != self.original_pixmap.height()
+            ):
+                scaled_mask = self.mask_pixmap.scaled(
+                    self.original_pixmap.size(),
+                    Qt.IgnoreAspectRatio,
+                    Qt.SmoothTransformation,
+                )
+                painter.drawPixmap(0, 0, scaled_mask)
+            else:
+                painter.drawPixmap(0, 0, self.mask_pixmap)
             painter.restore()
 
         for pt in self.positive_points:
@@ -160,8 +204,9 @@ class PointClickCanvas(QWidget):
             self.draw_point(painter, spt, QColor(255, 0, 0), True)
             painter.setPen(QPen(QColor(200, 0, 0), 2))
             painter.setBrush(QBrush())
-            painter.drawLine(spt.x() - 8, spt.y() - 8, spt.x() + 8, spt.y() + 8)
-            painter.drawLine(spt.x() - 8, spt.y() + 8, spt.x() + 8, spt.y() - 8)
+            x, y = spt.x(), spt.y()
+            painter.drawLine(int(x - 8), int(y - 8), int(x + 8), int(y + 8))
+            painter.drawLine(int(x - 8), int(y + 8), int(x + 8), int(y - 8))
 
         if self.hover_point:
             self.draw_point(painter, self.hover_point, QColor(255, 255, 0), False)
@@ -182,6 +227,7 @@ class PointClickCanvas(QWidget):
                     self.positive_points.pop(idx)
                 else:
                     self.negative_points.pop(idx)
+                self._modified = True
             else:
                 img_pt = self.screen_to_img(e.pos())
                 in_mask = self.is_point_in_mask(img_pt)
@@ -189,6 +235,7 @@ class PointClickCanvas(QWidget):
                     self.negative_points.append(QPointF(img_pt))
                 else:
                     self.positive_points.append(QPointF(img_pt))
+                self._modified = True
             self.update()
 
         elif e.button() == Qt.MiddleButton:
@@ -203,6 +250,7 @@ class PointClickCanvas(QWidget):
                     self.positive_points.pop(idx)
                 else:
                     self.negative_points.pop(idx)
+                self._modified = True
             self.update()
 
     def mouseMoveEvent(self, e):
@@ -248,11 +296,20 @@ class PointClickCanvas(QWidget):
     def clear_all(self):
         self.positive_points = []
         self.negative_points = []
+        self._modified = True
         self.update()
 
 
 class PointClickDialog(QDialog):
-    def __init__(self, title, image_b64, mask_b64=None, parent=None):
+    def __init__(
+        self,
+        title,
+        image_b64,
+        mask_b64=None,
+        initial_positive_points=None,
+        initial_negative_points=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(1200, 850)
@@ -285,7 +342,9 @@ class PointClickDialog(QDialog):
         head_lyt.addWidget(btn_clear)
         self.layout.addWidget(self.head)
 
-        self.canvas = PointClickCanvas(image_b64, mask_b64, self)
+        self.canvas = PointClickCanvas(
+            image_b64, mask_b64, initial_positive_points, initial_negative_points, self
+        )
         self.layout.addWidget(self.canvas)
 
         self.bottom = QFrame()
@@ -295,18 +354,33 @@ class PointClickDialog(QDialog):
         )
         bot_lyt = QHBoxLayout(self.bottom)
 
-        from qfluentwidgets import PrimaryPushButton
+        from qfluentwidgets import PrimaryPushButton, TransparentPushButton
 
-        self.btn_ok = PrimaryPushButton("完成并导出坐标")
-        self.btn_ok.setFixedWidth(200)
+        self.btn_finish = TransparentPushButton("结束交互")
+        self.btn_finish.setFixedWidth(120)
+        self.btn_finish.clicked.connect(self.on_finish)
+        bot_lyt.addWidget(self.btn_finish)
+        bot_lyt.addStretch()
+
+        self.btn_ok = PrimaryPushButton("继续添加点")
+        self.btn_ok.setFixedWidth(150)
         self.btn_ok.clicked.connect(self.accept)
-        bot_lyt.addStretch()
         bot_lyt.addWidget(self.btn_ok)
-        bot_lyt.addStretch()
         self.layout.addWidget(self.bottom)
 
+        self.finish_result = None
+
+    def on_finish(self):
+        self.finish_result = True
+        self.accept()
+
     def get_result(self):
-        return self.canvas.get_normalized_result()
+        result = self.canvas.get_normalized_result()
+        if not self.canvas._modified:
+            result["positive_points"] = []
+            result["negative_points"] = []
+        result["_finish"] = self.finish_result
+        return result
 
 
 class PointClickPlugin(InteractivePlugin):
@@ -323,6 +397,8 @@ class PointClickPlugin(InteractivePlugin):
         "schema": {
             "image": "data:image/jpeg;base64,...",
             "mask": "data:image/png;base64,...",  # 可选
+            "positive_points": [[0.1, 0.2], [0.3, 0.4]],  # 可选，初始正点
+            "negative_points": [[0.5, 0.6]],  # 可选，初始负点
         }
     }
 )
@@ -333,9 +409,16 @@ class PointClickPlugin(InteractivePlugin):
         schema = params.get("schema", {})
         image = schema.get("image")
         mask = schema.get("mask")
+        positive_points = schema.get("positive_points")
+        negative_points = schema.get("negative_points")
 
         dialog = PointClickDialog(
-            title=title, image_b64=image, mask_b64=mask, parent=node.parent_window
+            title=title,
+            image_b64=image,
+            mask_b64=mask,
+            initial_positive_points=positive_points,
+            initial_negative_points=negative_points,
+            parent=node.parent_window,
         )
 
         if dialog.exec():

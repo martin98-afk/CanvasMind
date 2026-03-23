@@ -99,7 +99,7 @@ class SSHExecutor(BaseExecutor):
             )
 
             last_log_pos = 0
-            is_ipython_mode = getattr(ctx.node.view, "current_mode", None) == "ipython"
+            is_ipython_mode = getattr(ctx.node.view, "current_mode", None) == "ipython" or getattr(ctx.node, "object_io", False)
 
             if is_ipython_mode and ctx.kernel_manager:
                 ctx.kernel_manager.execute_code(remote_script_content, hidden=True)
