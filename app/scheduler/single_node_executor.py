@@ -69,6 +69,7 @@ def execute_node(
             check_cancel=execution_context.check_cancel,
             kernel_manager=kernel_manager,
             global_variable=global_variable.serialize(),
+            execution_context=execution_context,
         )
 
         # 变量更新逻辑...

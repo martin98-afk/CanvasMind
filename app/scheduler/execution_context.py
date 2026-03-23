@@ -2,12 +2,14 @@
 import threading
 from typing import Optional
 
+
 class ExecutionContext:
     def __init__(self):
         self._cancel_event = threading.Event()
         self._pause_event = threading.Event()
-        self._pause_event.set()  # ✅ 初始为“继续”状态！
+        self._pause_event.set()  # ✅ 初始为"继续"状态！
         self._is_paused_val = False  # 仅用于 UI 查询，不用于逻辑判断
+        self.iteration_tag: Optional[str] = None  # 迭代标签，用于迭代模式下结果隔离
 
     def cancel(self):
         self._cancel_event.set()

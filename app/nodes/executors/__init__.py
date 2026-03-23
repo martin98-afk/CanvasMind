@@ -43,6 +43,7 @@ class ExecutionContext:
     component_code: str = ""
     class_name: str = ""
     python_executable: str = ""
+    iteration_tag: Optional[str] = None
 
     def __post_init__(self):
         if not self.run_id:

@@ -18,6 +18,7 @@ class BackdropExecutor(QObject):
     专门用于异步执行 ControlFlowBackdrop 的执行器
     支持 iterate / condition / while 等循环模式
     """
+
     finished = pyqtSignal(object, object)  # backdrop_id, results
     error = pyqtSignal(str)
     log_start = pyqtSignal(str)
@@ -26,16 +27,16 @@ class BackdropExecutor(QObject):
     log_finished = pyqtSignal(str)
 
     def __init__(
-            self,
-            backdrop,
-            scheduler,
-            component_map,
-            python_exe,
-            kernel_manager,
-            global_variables,
-            execution_context,  # ← 新增
-            run_parallel=False,
-            parent=None
+        self,
+        backdrop,
+        scheduler,
+        component_map,
+        python_exe,
+        kernel_manager,
+        global_variables,
+        execution_context,  # ← 新增
+        run_parallel=False,
+        parent=None,
     ):
         super().__init__(parent)
         self.backdrop = backdrop
@@ -50,25 +51,35 @@ class BackdropExecutor(QObject):
     def execute(self):
         """在工作线程中调用（由 QRunnable 包装）"""
         try:
-            self.scheduler.set_node_status(self.backdrop, NodeStatus.NODE_STATUS_RUNNING)
+            self.scheduler.set_node_status(
+                self.backdrop, NodeStatus.NODE_STATUS_RUNNING
+            )
 
             input_data = self._get_input_data()
             input_proxy, output_proxy, execute_nodes = self.backdrop.get_nodes()
             if not input_proxy or not output_proxy:
-                raise ValueError(f"Backdrop {self.backdrop.name()} 缺少输入/输出代理节点")
+                raise ValueError(
+                    f"Backdrop {self.backdrop.name()} 缺少输入/输出代理节点"
+                )
 
             self.backdrop.model.set_property("current_index", 0)
             self.scheduler.property_changed.emit(self.backdrop)
 
             loop_type = self.backdrop.TYPE
             if loop_type == "iterate":
-                results = self._run_iterate(input_data, input_proxy, output_proxy, execute_nodes)
+                results = self._run_iterate(
+                    input_data, input_proxy, output_proxy, execute_nodes
+                )
             elif loop_type == "loop":
-                results = self._run_condition_loop(input_data, input_proxy, output_proxy, execute_nodes)
+                results = self._run_condition_loop(
+                    input_data, input_proxy, output_proxy, execute_nodes
+                )
             else:
                 raise ValueError(f"不支持的 Backdrop 类型: {loop_type}")
 
-            self.scheduler.set_node_status(self.backdrop, NodeStatus.NODE_STATUS_SUCCESS)
+            self.scheduler.set_node_status(
+                self.backdrop, NodeStatus.NODE_STATUS_SUCCESS
+            )
             self.backdrop.set_output_value(results)
 
         except Exception as e:
@@ -83,7 +94,7 @@ class BackdropExecutor(QObject):
         for input_port in self.backdrop.input_ports():
             for out_port in input_port.connected_ports():
                 upstream = get_port_node(out_port)
-                if upstream and hasattr(upstream, '_output_values'):
+                if upstream and hasattr(upstream, "_output_values"):
                     data.append(upstream._output_values.get(out_port.name(), None))
         return data if len(data) != 1 else data[0]
 
@@ -140,11 +151,17 @@ class BackdropExecutor(QObject):
     def _run_condition_loop(self, input_data, input_proxy, output_proxy, execute_nodes):
         loop_mode = self.backdrop.model.get_property("loop_mode")
         if loop_mode == "count":
-            return self._run_count_loop(input_data, input_proxy, output_proxy, execute_nodes)
+            return self._run_count_loop(
+                input_data, input_proxy, output_proxy, execute_nodes
+            )
         elif loop_mode == "condition":
-            return self._run_condition_based_loop(input_data, input_proxy, output_proxy, execute_nodes)
+            return self._run_condition_based_loop(
+                input_data, input_proxy, output_proxy, execute_nodes
+            )
         elif loop_mode == "while":
-            return self._run_while_loop(input_data, input_proxy, output_proxy, execute_nodes)
+            return self._run_while_loop(
+                input_data, input_proxy, output_proxy, execute_nodes
+            )
         else:
             raise ValueError(f"未知 loop_mode: {loop_mode}")
 
@@ -164,7 +181,9 @@ class BackdropExecutor(QObject):
             self.scheduler.property_changed.emit(self.backdrop)
         return current
 
-    def _run_condition_based_loop(self, input_data, input_proxy, output_proxy, execute_nodes):
+    def _run_condition_based_loop(
+        self, input_data, input_proxy, output_proxy, execute_nodes
+    ):
         max_iter = self.backdrop.model.get_property("max_iterations")
         condition = self.backdrop.model.get_property("loop_condition")
         current = input_data
@@ -215,17 +234,20 @@ class BackdropExecutor(QObject):
         else:
             # 原有的串行逻辑
             for node in nodes:
-                if self.ctx.is_cancelled(): break
+                if self.ctx.is_cancelled():
+                    break
                 self.ctx.wait_if_paused()
                 if node.get_property("disabled"):
-                    self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_DISABLED)
+                    self.scheduler.set_node_status(
+                        node, NodeStatus.NODE_STATUS_DISABLED
+                    )
                     continue
                 self._run_single_subnode(node, iteration_tag)
 
         # 收集结果用于表达式判断
         for node in nodes:
-            if hasattr(node, '_output_values'):
-                node_name = re.sub(r'\s+', '_', node.name())
+            if hasattr(node, "_output_values"):
+                node_name = re.sub(r"\s+", "_", node.name())
                 for port, val in node._output_values.items():
                     results_map[f"node_vars.{node_name}__{port}"] = val
         return results_map
@@ -242,11 +264,15 @@ class BackdropExecutor(QObject):
                         children[cp.node().id].append(node.id)
                         in_degree[node.id] += 1
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(nodes) + 1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(nodes) + 1
+        ) as executor:
             lock = Lock()
             futures = {}
+
             def submit(n):
-                if self.ctx.is_cancelled(): return
+                if self.ctx.is_cancelled():
+                    return
                 self.ctx.wait_if_paused()
                 if node.get_property("disabled"):
                     self.scheduler.set_node_status(n, NodeStatus.NODE_STATUS_DISABLED)
@@ -258,27 +284,38 @@ class BackdropExecutor(QObject):
                 submit(n)
 
             while futures:
-                done, _ = concurrent.futures.wait(futures.keys(), return_when=concurrent.futures.FIRST_COMPLETED)
+                done, _ = concurrent.futures.wait(
+                    futures.keys(), return_when=concurrent.futures.FIRST_COMPLETED
+                )
                 for f in done:
                     node = futures.pop(f)
-                    f.result() # 抛出异常
+                    f.result()  # 抛出异常
                     with lock:
                         for cid in children.get(node.id, []):
                             in_degree[cid] -= 1
-                            if in_degree[cid] == 0: submit(node_map[cid])
+                            if in_degree[cid] == 0:
+                                submit(node_map[cid])
 
     def _run_single_subnode(self, node, iteration_tag):
         """包装单个子节点的执行，调用 execute_node"""
         try:
+            self.ctx.iteration_tag = iteration_tag
             execute_node(
-                node=node, python_exe=self.python_exe,
-                kernel_manager=self.kernel_manager, scheduler=self.scheduler,
-                global_variable=self.global_variables, execution_context=self.ctx,
-                log_start_func=self.log_start.emit, log_message_func=self.log_message.emit,
-                log_error_func=self.log_error.emit, log_finish_func=self.log_finished.emit,
+                node=node,
+                python_exe=self.python_exe,
+                kernel_manager=self.kernel_manager,
+                scheduler=self.scheduler,
+                global_variable=self.global_variables,
+                execution_context=self.ctx,
+                log_start_func=self.log_start.emit,
+                log_message_func=self.log_message.emit,
+                log_error_func=self.log_error.emit,
+                log_finish_func=self.log_finished.emit,
                 run_id_postfix=f"{self.backdrop.name()}:{iteration_tag}",
-                semaphore=self.scheduler.execution_semaphore, # 必须传递
-                callback_func=lambda: self.scheduler.property_changed.emit(self.backdrop)
+                semaphore=self.scheduler.execution_semaphore,  # 必须传递
+                callback_func=lambda: self.scheduler.property_changed.emit(
+                    self.backdrop
+                ),
             )
         except Exception as e:
             raise e
@@ -299,16 +336,16 @@ class BackdropExecutor(QObject):
     def _evaluate_condition(self, expr, current_data, internal_outputs):
         engine = ExpressionEngine(self.global_variables)
         temp_vars = {
-            'data': current_data,
-            'result': current_data,
-            'current_index': self.backdrop.model.get_property("current_index"),
-            'iteration_count': self.backdrop.model.get_property("current_index") + 1,
-            'max_iterations': self.backdrop.model.get_property("max_iterations"),
-            'loop_mode': self.backdrop.model.get_property("loop_mode"),
+            "data": current_data,
+            "result": current_data,
+            "current_index": self.backdrop.model.get_property("current_index"),
+            "iteration_count": self.backdrop.model.get_property("current_index") + 1,
+            "max_iterations": self.backdrop.model.get_property("max_iterations"),
+            "loop_mode": self.backdrop.model.get_property("loop_mode"),
         }
         if internal_outputs:
             temp_vars.update(internal_outputs)
         result = engine.evaluate_expression_block(expr, temp_vars)
-        if isinstance(result, str) and result.startswith('[ExprError:'):
+        if isinstance(result, str) and result.startswith("[ExprError:"):
             return False
         return bool(result)
