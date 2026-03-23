@@ -450,31 +450,6 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "switch_stage",
-                "description": "切换当前任务的阶段(stage)。可选阶段: discover(探索) -> plan(计划) -> edit(编辑) -> verify(验证) -> review(审查) -> summarize(总结)",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "stage": {
-                            "type": "string",
-                            "description": "目标阶段名称",
-                            "enum": [
-                                "discover",
-                                "plan",
-                                "edit",
-                                "verify",
-                                "review",
-                                "summarize",
-                            ],
-                        },
-                    },
-                    "required": ["stage"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
                 "name": "run_verify",
                 "description": "运行针对当前任务的验证命令，默认尝试项目测试或语法检查",
                 "parameters": {
