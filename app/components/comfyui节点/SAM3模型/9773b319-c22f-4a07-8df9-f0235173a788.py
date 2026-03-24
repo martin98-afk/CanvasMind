@@ -44,6 +44,9 @@ class ComfySAM3Segmenter(BaseComponent):
         PortDefinition(name="mask", label="MASK", type=ArgumentType.IMAGE),
         PortDefinition(name="image", label="IMAGE", type=ArgumentType.IMAGE),
         PortDefinition(name="json_boxes", label="BOXES (JSON)", type=ArgumentType.JSON),
+        PortDefinition(
+            name="polygons", label="POLYGONS (JSON)", type=ArgumentType.JSON
+        ),
     ]
 
     properties = {
@@ -67,6 +70,12 @@ class ComfySAM3Segmenter(BaseComponent):
             type=PropertyType.BOOL,
             default=True,
             label="多重掩码 (Multimask)",
+        ),
+        "mask_display_mode": PropertyDefinition(
+            type=PropertyType.CHOICE,
+            default="Polygon",
+            label="Mask显示模式",
+            choices=["Pixel", "Polygon"],
         ),
     }
 
@@ -123,6 +132,47 @@ class ComfySAM3Segmenter(BaseComponent):
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return f"data:image/png;base64,{img_str}"
 
+    def mask_to_polygon(self, mask_tensor, epsilon_factor=0.005, min_area=100):
+        """将mask tensor转换为多边形坐标"""
+        import numpy as np
+        import cv2
+        import torch
+
+        if mask_tensor is None:
+            return []
+
+        if isinstance(mask_tensor, torch.Tensor):
+            mask_np = mask_tensor.cpu().detach().numpy()
+        else:
+            mask_np = np.array(mask_tensor)
+
+        if mask_np.ndim == 3:
+            mask_np = mask_np[0]
+        if mask_np.ndim == 4:
+            mask_np = mask_np[0, 0]
+
+        mask_np = (mask_np * 255).astype(np.uint8)
+        h, w = mask_np.shape
+
+        contours, _ = cv2.findContours(
+            mask_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        polygons = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area < min_area:
+                continue
+
+            epsilon = epsilon_factor * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+
+            if len(approx) >= 3:
+                poly_coords = [[pt[0][0] / w, pt[0][1] / h] for pt in approx]
+                polygons.append(poly_coords)
+
+        return polygons
+
     def run(self, params, inputs=None):
         import json
         from sam3_nodes.segmentation import SAM3Grounding, SAM3Segmentation
@@ -174,21 +224,29 @@ class ComfySAM3Segmenter(BaseComponent):
             accumulated_neg_points = []
             mask_b64 = None
             last_mask_tensor = None
+            last_polygons = []
 
             for round_idx in range(100):
                 self.logger.info(f"交互式分割第 {round_idx + 1} 轮")
                 image_b64 = self.tensor_to_base64(image)
 
+                mask_display_mode = params.get("mask_display_mode", "Polygon")
+                schema = {
+                    "image": image_b64,
+                    "positive_points": accumulated_pos_points,
+                    "negative_points": accumulated_neg_points,
+                }
+
+                if mask_display_mode == "Pixel":
+                    schema["mask"] = mask_b64
+                else:
+                    schema["polygons"] = last_polygons if round_idx > 0 else []
+
                 result = self.emit_message(
                     method="point_click_selector",
                     params={
                         "title": f"SAM3 交互式标注 (第 {round_idx + 1} 轮)",
-                        "schema": {
-                            "image": image_b64,
-                            "mask": mask_b64,
-                            "positive_points": accumulated_pos_points,
-                            "negative_points": accumulated_neg_points,
-                        },
+                        "schema": schema,
                     },
                     interactive=True,
                 )
@@ -248,6 +306,7 @@ class ComfySAM3Segmenter(BaseComponent):
                 raw_visualization = seg_result[2]
                 json_boxes = seg_result[3]
 
+                last_polygons = self.mask_to_polygon(last_mask_tensor)
                 mask_b64 = self.tensor_to_base64(last_mask_tensor, is_mask=True)
 
             if last_mask_tensor is not None:
@@ -272,8 +331,11 @@ class ComfySAM3Segmenter(BaseComponent):
 
         pil_mask = self.tensor_to_pil(raw_mask, is_mask=True)
         pil_image = self.tensor_to_pil(raw_visualization, is_mask=False)
+        polygons = self.mask_to_polygon(raw_mask)
+
         return {
             "mask": pil_mask,
             "image": pil_image,
             "json_boxes": json.loads(json_boxes),
+            "polygons": polygons,
         }
