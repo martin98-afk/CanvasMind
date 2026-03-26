@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
 )
-from PyQt5.QtGui import QDrag, QIcon
+from PyQt5.QtGui import QDrag, QIcon, QColor, QPen
 from qfluentwidgets import (
     TreeWidget,
     RoundMenu,
@@ -60,7 +60,40 @@ class ComponentTreeWidget(TreeWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setDragEnabled(True)
         self.setDragDropMode(QTreeWidget.DragOnly)
-        self.setIndentation(8)
+        self.setIndentation(12)
+
+    def drawRow(self, painter, option, index):
+        item = self.itemFromIndex(index)
+        if item:
+            self._draw_depth_lines(painter, option, item)
+        super().drawRow(painter, option, index)
+
+    def _draw_depth_lines(self, painter, option, item):
+        depth = self._get_item_depth(item)
+        if depth == 0:
+            return
+
+        indent = self.indentation()
+        rect = option.rect
+
+        color = QColor(255, 255, 255, 80)
+        pen = QPen(color, 1.5)
+        painter.setPen(pen)
+
+        y_top = rect.top()
+        y_bottom = rect.bottom()
+
+        for level in range(depth):
+            x = level * indent + indent // 2
+            painter.drawLine(x, y_top, x, y_bottom)
+
+    def _get_item_depth(self, item):
+        depth = 0
+        parent = item.parent()
+        while parent:
+            depth += 1
+            parent = parent.parent()
+        return depth
 
     def refresh_components(self):
         """刷新组件列表，并保持当前类别筛选状态"""
