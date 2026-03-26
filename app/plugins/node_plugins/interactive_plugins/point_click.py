@@ -17,6 +17,7 @@ class PointClickCanvas(QWidget):
         base64_mask=None,
         initial_positive_points=None,
         initial_negative_points=None,
+        initial_polygons=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -30,6 +31,7 @@ class PointClickCanvas(QWidget):
 
         self.positive_points = []
         self.negative_points = []
+        self.polygons = []
         self.last_mouse_pos = QPoint()
         self.mouse_curr_pos = QPointF(0, 0)
 
@@ -45,9 +47,10 @@ class PointClickCanvas(QWidget):
             self.load_image(base64_image)
         if base64_mask:
             self.load_mask(base64_mask)
-
         if initial_positive_points:
             self.set_initial_points(initial_positive_points, initial_negative_points)
+        if initial_polygons:
+            self.set_polygons(initial_polygons)
 
     def set_initial_points(self, positive_points, negative_points):
         if not self.original_pixmap:
@@ -64,6 +67,15 @@ class PointClickCanvas(QWidget):
         self.initial_positive = list(self.positive_points)
         self.initial_negative = list(self.negative_points)
         self._modified = False
+        self.update()
+
+    def set_polygons(self, polygons):
+        if not self.original_pixmap:
+            return
+        w, h = self.original_pixmap.width(), self.original_pixmap.height()
+        self.polygons = [
+            [QPointF(pt[0] * w, pt[1] * h) for pt in poly] for poly in (polygons or [])
+        ]
         self.update()
 
     def load_image(self, b64):
@@ -134,30 +146,66 @@ class PointClickCanvas(QWidget):
         return None
 
     def is_point_in_mask(self, pt):
-        if not self.mask_pixmap:
-            return False
+        if self.mask_pixmap:
+            if not isinstance(pt, QPointF):
+                img_pos = self.screen_to_img(pt)
+            else:
+                img_pos = pt
+            if not self.original_pixmap:
+                return False
+
+            w, h = self.original_pixmap.width(), self.original_pixmap.height()
+            mask_w, mask_h = self.mask_pixmap.width(), self.mask_pixmap.height()
+            if (
+                img_pos.x() < 0
+                or img_pos.x() >= w
+                or img_pos.y() < 0
+                or img_pos.y() >= h
+            ):
+                return False
+
+            x = int(img_pos.x() * mask_w / w)
+            y = int(img_pos.y() * mask_h / h)
+            x = min(max(x, 0), mask_w - 1)
+            y = min(max(y, 0), mask_h - 1)
+
+            mask_img = self.mask_pixmap.toImage()
+            mask_img = mask_img.convertToFormat(QImage.Format_ARGB32)
+
+            r = mask_img.pixel(x, y) & 0xFF
+            return r > 127
+
+        if self.polygons:
+            return self.is_point_in_any_polygon(pt)
+
+        return False
+
+    def is_point_in_any_polygon(self, pt):
         if not isinstance(pt, QPointF):
             img_pos = self.screen_to_img(pt)
         else:
             img_pos = pt
-        if not self.original_pixmap:
-            return False
 
-        w, h = self.original_pixmap.width(), self.original_pixmap.height()
-        mask_w, mask_h = self.mask_pixmap.width(), self.mask_pixmap.height()
-        if img_pos.x() < 0 or img_pos.x() >= w or img_pos.y() < 0 or img_pos.y() >= h:
-            return False
+        for poly in self.polygons:
+            if len(poly) >= 3 and self.is_point_in_polygon(img_pos, poly):
+                return True
+        return False
 
-        x = int(img_pos.x() * mask_w / w)
-        y = int(img_pos.y() * mask_h / h)
-        x = min(max(x, 0), mask_w - 1)
-        y = min(max(y, 0), mask_h - 1)
+    def is_point_in_polygon(self, pt, polygon):
+        x, y = pt.x(), pt.y()
+        n = len(polygon)
+        inside = False
 
-        mask_img = self.mask_pixmap.toImage()
-        mask_img = mask_img.convertToFormat(QImage.Format_ARGB32)
+        j = n - 1
+        for i in range(n):
+            xi, yi = polygon[i].x(), polygon[i].y()
+            xj, yj = polygon[j].x(), polygon[j].y()
 
-        r = mask_img.pixel(x, y) & 0xFF
-        return r > 127
+            if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+                inside = not inside
+            j = i
+
+        return inside
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -190,6 +238,19 @@ class PointClickCanvas(QWidget):
                 painter.drawPixmap(0, 0, scaled_mask)
             else:
                 painter.drawPixmap(0, 0, self.mask_pixmap)
+            painter.restore()
+
+        if self.polygons:
+            painter.save()
+            painter.translate(self.offset)
+            painter.scale(self.scale_factor, self.scale_factor)
+            painter.setPen(QPen(QColor(255, 100, 0), 3))
+            painter.setBrush(QColor(255, 100, 0, 30))
+            for poly in self.polygons:
+                if len(poly) >= 3:
+                    painter.drawPolygon(poly)
+                elif len(poly) == 2:
+                    painter.drawLine(poly[0], poly[1])
             painter.restore()
 
         for pt in self.positive_points:
@@ -308,6 +369,7 @@ class PointClickDialog(QDialog):
         mask_b64=None,
         initial_positive_points=None,
         initial_negative_points=None,
+        initial_polygons=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -343,7 +405,12 @@ class PointClickDialog(QDialog):
         self.layout.addWidget(self.head)
 
         self.canvas = PointClickCanvas(
-            image_b64, mask_b64, initial_positive_points, initial_negative_points, self
+            image_b64,
+            mask_b64,
+            initial_positive_points,
+            initial_negative_points,
+            initial_polygons,
+            self,
         )
         self.layout.addWidget(self.canvas)
 
@@ -389,7 +456,8 @@ class PointClickPlugin(InteractivePlugin):
         "title": "请标注正负样本点",
         "schema": {
             "image": "data:image/jpeg;base64,...",
-            "mask": "data:image/png;base64,...",  # 可选
+            "mask": "data:image/png;base64,...",  # 可选，像素模式mask
+            "polygons": [[[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]], ...],  # 可选，多边形模式
             "positive_points": [[0.1, 0.2], [0.3, 0.4]],  # 可选，初始正点
             "negative_points": [[0.5, 0.6]],  # 可选，初始负点
         }
@@ -404,6 +472,7 @@ class PointClickPlugin(InteractivePlugin):
         mask = schema.get("mask")
         positive_points = schema.get("positive_points")
         negative_points = schema.get("negative_points")
+        polygons = schema.get("polygons")
 
         dialog = PointClickDialog(
             title=title,
@@ -411,6 +480,7 @@ class PointClickPlugin(InteractivePlugin):
             mask_b64=mask,
             initial_positive_points=positive_points,
             initial_negative_points=negative_points,
+            initial_polygons=polygons,
             parent=node.parent_window,
         )
 

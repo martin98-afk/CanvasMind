@@ -744,7 +744,13 @@ class CustomGraphMenu(QtWidgets.QWidget):
         self._update_list_widget()
         self._update_status_label(search_text)
         if self.list_widget.count() > 0 and not self._visible_items[0].get("_is_empty"):
-            self.list_widget.setCurrentRow(0)
+            if self._is_upward_mode:
+                first_real_index = max(
+                    0, self.list_widget.count() - len(self._visible_items)
+                )
+                self.list_widget.setCurrentRow(first_real_index)
+            else:
+                self.list_widget.setCurrentRow(0)
         else:
             self._hide_preview()
 

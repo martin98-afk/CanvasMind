@@ -54,8 +54,41 @@ class DraggableTreeWidget(TreeWidget):
         self.setMouseTracking(True)
         self.viewport().setAttribute(Qt.WA_Hover)
         self.viewport().installEventFilter(self)
-        self.setIndentation(8)
+        self.setIndentation(12)
         self._init_components()
+
+    def drawRow(self, painter, option, index):
+        item = self.itemFromIndex(index)
+        if item:
+            self._draw_depth_lines(painter, option, item)
+        super().drawRow(painter, option, index)
+
+    def _draw_depth_lines(self, painter, option, item):
+        depth = self._get_item_depth(item)
+        if depth == 0:
+            return
+
+        indent = self.indentation()
+        rect = option.rect
+
+        color = QColor(255, 255, 255, 80)
+        pen = QPen(color, 1.5)
+        painter.setPen(pen)
+
+        y_top = rect.top()
+        y_bottom = rect.bottom()
+
+        for level in range(depth):
+            x = level * indent + indent // 2
+            painter.drawLine(x, y_top, x, y_bottom)
+
+    def _get_item_depth(self, item):
+        depth = 0
+        parent = item.parent()
+        while parent:
+            depth += 1
+            parent = parent.parent()
+        return depth
 
     def _load_usage_stats(self):
         stats_file = Path("./canvas_files/nodegraph_usage.json")
@@ -251,6 +284,7 @@ class DraggableTreeWidget(TreeWidget):
                     path_acc = "/".join(parts[: i + 1])
                     if path_acc not in path_nodes:
                         folder_item = QTreeWidgetItem([part_name])
+                        folder_item.setIcon(0, FIF.FOLDER.icon())
                         if current_parent:
                             current_parent.addChild(folder_item)
                         else:
@@ -278,8 +312,7 @@ class DraggableTreeWidget(TreeWidget):
                     self.addTopLevelItem(comp_item)
                 self._all_items.append(comp_item)
 
-            for i in range(self.topLevelItemCount()):
-                self.topLevelItem(i).setExpanded(True)
+            self.expandAll()
 
     def _init_components(self):
         self.build_filtered_tree()
