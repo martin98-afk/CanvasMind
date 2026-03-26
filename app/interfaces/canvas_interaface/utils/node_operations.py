@@ -162,6 +162,9 @@ class NodeOperations:
 
             # 执行显示逻辑
             if show_custom_bg_menu:
+                scene_pos = viewer.mapToScene(event.pos())
+                self.graph_menu._spawn_pos_scene = scene_pos
+                self.graph_menu._spawn_pos_set = True
                 self.graph_menu.show_at_cursor(event.globalPos())
                 event.accept()
             else:
@@ -221,7 +224,7 @@ class NodeOperations:
                 "运行所在子图",
                 lambda graph, node: self.parent.run_subgraph(node),
                 node_type=special_node,
-                icon=get_icon("运行所在子图")
+                icon=get_icon("运行所在子图"),
             )
             nodes_menu.add_separator(node_type=special_node)
             if special_node == "dynamic.DYNAMIC_CODE":
