@@ -1,10 +1,59 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtCore import Qt, QPoint, QTimer
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication, QSizePolicy
-from qfluentwidgets import (ScrollArea, SettingCardGroup, SimpleCardWidget,
-                            SwitchSettingCard, RangeSettingCard, OptionsSettingCard, InfoBar)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QApplication,
+    QSizePolicy,
+    QHBoxLayout,
+    QLabel,
+)
+from qfluentwidgets import (
+    ScrollArea,
+    SettingCardGroup,
+    SimpleCardWidget,
+    SwitchSettingCard,
+    RangeSettingCard,
+    OptionsSettingCard,
+    InfoBar,
+    ComboBox,
+    SettingCard,
+    FluentIcon,
+)
 
 from app.utils.utils import get_icon
+
+
+class FontSelectCard(SettingCard):
+    """Simplified font selection card with combo box"""
+
+    fontSelectedChanged = None
+
+    def __init__(self, config, title, parent=None):
+        super().__init__(FluentIcon.FONT, title, "", parent)
+        self.cfg = config
+        self.comboBox = ComboBox()
+        self.comboBox.setFixedWidth(150)
+
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.hBoxLayout.addWidget(self.comboBox, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(8)
+
+        fonts = self.cfg.canvas_font_list.value
+        current = self.cfg.canvas_font_selected.value
+
+        self.comboBox.addItems(fonts)
+        if current in fonts:
+            self.comboBox.setCurrentText(current)
+
+        self.comboBox.currentTextChanged.connect(self.__onFontChanged)
+
+    def __onFontChanged(self, font):
+        if font:
+            self.cfg.canvas_font_selected.value = font
+            self.cfg.save()
 
 
 class CanvasSettingPopup(QWidget):
@@ -17,7 +66,9 @@ class CanvasSettingPopup(QWidget):
         self._save_timer.setSingleShot(True)  # 单次触发
         self._save_timer.setInterval(500)  # 延迟 500ms 保存 (可根据需求调整)
         self._save_timer.timeout.connect(self._perform_save_to_disk)  # 绑定真实保存函数
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setWindowFlags(
+            Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         # 固定宽度，确保每次打开宽度一致
@@ -86,36 +137,67 @@ class CanvasSettingPopup(QWidget):
             print(f"❌ 保存配置失败: {e}")
             # 如果保存失败，可以弹个窗提示
             InfoBar.error(
-                title=self.tr("保存失败"),
-                content=str(e),
-                parent=self,
-                duration=3000
+                title=self.tr("保存失败"), content=str(e), parent=self, duration=3000
             )
 
     def setup_canvas_run_settings(self):
         group = SettingCardGroup("画布运行设置", self.scroll_content)
         cards = [
-            SwitchSettingCard(get_icon("运行模式"), "启用节点超时", configItem=self.cfg.node_run_timeout_toggle,
-                              parent=group),
-            RangeSettingCard(self.cfg.node_run_timeout, get_icon("运行模式"), "超时时间", parent=group),
-            SwitchSettingCard(get_icon("运行模式"), "启用并行运行", configItem=self.cfg.run_parallel, parent=group),
-            RangeSettingCard(self.cfg.run_parallel_max_workers, get_icon("运行模式"), "并行度", parent=group),
-            OptionsSettingCard(self.cfg.communication_method, get_icon("运行模式"), "通信方式",
-                               texts=["ZMQ通信", "日志通信"], parent=group)
+            SwitchSettingCard(
+                get_icon("运行模式"),
+                "启用节点超时",
+                configItem=self.cfg.node_run_timeout_toggle,
+                parent=group,
+            ),
+            RangeSettingCard(
+                self.cfg.node_run_timeout,
+                get_icon("运行模式"),
+                "超时时间",
+                parent=group,
+            ),
+            SwitchSettingCard(
+                get_icon("运行模式"),
+                "启用并行运行",
+                configItem=self.cfg.run_parallel,
+                parent=group,
+            ),
+            RangeSettingCard(
+                self.cfg.run_parallel_max_workers,
+                get_icon("运行模式"),
+                "并行度",
+                parent=group,
+            ),
+            OptionsSettingCard(
+                self.cfg.communication_method,
+                get_icon("运行模式"),
+                "通信方式",
+                texts=["ZMQ通信", "日志通信"],
+                parent=group,
+            ),
         ]
         for card in cards:
             group.addSettingCard(card)
             # 绑定变更
-            if hasattr(card, 'checkedChanged'): card.checkedChanged.connect(self.onConfigChanged)
-            if hasattr(card, 'valueChanged'): card.valueChanged.connect(self.onConfigChanged)
+            if hasattr(card, "checkedChanged"):
+                card.checkedChanged.connect(self.onConfigChanged)
+            if hasattr(card, "valueChanged"):
+                card.valueChanged.connect(self.onConfigChanged)
         self.vBoxLayout.addWidget(group)
 
     def setup_canvas_io_settings(self):
         group = SettingCardGroup("画布保存设置", self.scroll_content)
-        self.autoSaveCard = SwitchSettingCard(get_icon("自动保存"), "自动保存", configItem=self.cfg.canvas_auto_save,
-                                              parent=group)
-        self.autoSaveIntervalCard = RangeSettingCard(self.cfg.canvas_auto_save_interval, get_icon("自动保存"), "间隔时间(s)",
-                                                     parent=group)
+        self.autoSaveCard = SwitchSettingCard(
+            get_icon("自动保存"),
+            "自动保存",
+            configItem=self.cfg.canvas_auto_save,
+            parent=group,
+        )
+        self.autoSaveIntervalCard = RangeSettingCard(
+            self.cfg.canvas_auto_save_interval,
+            get_icon("自动保存"),
+            "间隔时间(s)",
+            parent=group,
+        )
 
         self.autoSaveCard.checkedChanged.connect(self.onConfigChanged)
         self.autoSaveIntervalCard.valueChanged.connect(self.onConfigChanged)
@@ -130,41 +212,53 @@ class CanvasSettingPopup(QWidget):
             get_icon("画布"),
             self.tr("缩放记忆"),
             configItem=self.cfg.canvas_resize_memory,
-            parent=group
+            parent=group,
         )
         self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
         self.NodeProxyCard = RangeSettingCard(
             self.cfg.node_proxy_size,
             get_icon("画布"),
             self.tr("绘制距离"),
-            parent=group
+            parent=group,
         )
         self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
         self.nodeAnimationCard = SwitchSettingCard(
             get_icon("画布"),
             self.tr("节点动画"),
             configItem=self.cfg.node_animation,
-            parent=group
+            parent=group,
         )
         self.nodeAnimationCard.checkedChanged.connect(self.onConfigChanged)
         self.autoCollapseCard = SwitchSettingCard(
             get_icon("画布"),
             self.tr("Proxy模式自动收缩"),
             configItem=self.cfg.canvas_auto_collapse,
-            parent=group
+            parent=group,
         )
         self.autoCollapseCard.checkedChanged.connect(self.onConfigChanged)
 
-        self.showGridCard = OptionsSettingCard(self.cfg.canvas_grid_mode, get_icon("画布"), "显示网格",
-                                               texts=["线网格", "点网格", "无网格"], parent=group)
-        self.pipelayoutCard = OptionsSettingCard(self.cfg.canvas_pipelayout, get_icon("画布"), "连线类型",
-                                                 texts=["直线", "曲线", "折线"], parent=group)
-        self.canvasFontCard = OptionsSettingCard(self.cfg.canvas_font_type, get_icon("画布"), "字体设置",
-                                                 texts=self.cfg.canvas_font_type.options, parent=group)
+        self.showGridCard = OptionsSettingCard(
+            self.cfg.canvas_grid_mode,
+            get_icon("画布"),
+            "显示网格",
+            texts=["线网格", "点网格", "无网格"],
+            parent=group,
+        )
+        self.pipelayoutCard = OptionsSettingCard(
+            self.cfg.canvas_pipelayout,
+            get_icon("画布"),
+            "连线类型",
+            texts=["直线", "曲线", "折线"],
+            parent=group,
+        )
+        self.canvasFontCard = FontSelectCard(
+            self.cfg,
+            "字体设置",
+            parent=group,
+        )
 
         self.showGridCard.optionChanged.connect(self.onConfigChanged)
         self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
-        self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
 
         group.addSettingCard(self.nodeResizeMemoryCard)
         group.addSettingCard(self.NodeProxyCard)

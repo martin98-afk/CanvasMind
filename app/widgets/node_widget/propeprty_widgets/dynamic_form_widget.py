@@ -7,14 +7,24 @@ from app.components.base import PropertyType
 from app.utils.config import Settings
 from app.utils.utils import str_to_bool
 from app.widgets.basic_widget.combo_widget import CustomComboBox
-from app.widgets.basic_widget.variable_complete_widget import VariableCompletionLineEdit, VariableCompletionTextEdit
+from app.widgets.basic_widget.variable_complete_widget import (
+    VariableCompletionLineEdit,
+    VariableCompletionTextEdit,
+)
 from app.widgets.node_widget.base import CustomNodeBaseWidget
 from app.widgets.node_widget.propeprty_widgets.checkbox_widget import CheckBoxWidget
-from app.widgets.node_widget.propeprty_widgets.file_select_widget import FileSelectWidget
+from app.widgets.node_widget.propeprty_widgets.file_select_widget import (
+    FileSelectWidget,
+)
 from app.widgets.node_widget.propeprty_widgets.longtext_dialog import LongTextWidget
 from app.widgets.node_widget.propeprty_widgets.range_widget import RangeWidget
-from app.widgets.node_widget.propeprty_widgets.spinbox_widget import NumberWidgetWrapper, SpinBoxWidget
-from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import VarComboBoxWidget
+from app.widgets.node_widget.propeprty_widgets.spinbox_widget import (
+    NumberWidgetWrapper,
+    SpinBoxWidget,
+)
+from app.widgets.node_widget.propeprty_widgets.variable_combo_widget import (
+    VarComboBoxWidget,
+)
 
 
 class FormFieldWidget(QtWidgets.QWidget):
@@ -22,10 +32,13 @@ class FormFieldWidget(QtWidgets.QWidget):
     表单单行字段组件。
     优化了销毁逻辑，防止在场景中留下幽灵残影。
     """
+
     removed = QtCore.Signal(object)
     changed = QtCore.Signal()
 
-    def __init__(self, schema, home=None, parent=None, get_port_func=lambda: [], index=1):
+    def __init__(
+        self, schema, home=None, parent=None, get_port_func=lambda: [], index=1
+    ):
         super(FormFieldWidget, self).__init__()
         self.parent = parent
         self.schema = schema
@@ -54,9 +67,11 @@ class FormFieldWidget(QtWidgets.QWidget):
             sub_layout.setSpacing(2)
             sub_layout.setAlignment(QtCore.Qt.AlignTop)
             # 标签
-            label_widget = QtWidgets.QLabel(f"{label} ({name}):" if name else f"{label}:", self)
+            label_widget = QtWidgets.QLabel(
+                f"{label} ({name}):" if name else f"{label}:", self
+            )
             child_font = label_widget.font()
-            child_font.setFamily(Settings.get_instance().canvas_font_type.value)
+            child_font.setFamily(Settings.get_instance().canvas_font_selected.value)
             child_font.setPointSize(9)
             child_font.setBold(True)
             label_widget.setFont(child_font)
@@ -65,23 +80,29 @@ class FormFieldWidget(QtWidgets.QWidget):
             # 输入框容器
             input_row = QtWidgets.QHBoxLayout()
             input_row.setContentsMargins(0, 0, 0, 0)
-            gv = getattr(self.home, 'global_variables', None)
+            gv = getattr(self.home, "global_variables", None)
             # 根据类型创建控件
             if field_type == PropertyType.LONGTEXT.name:
-                widget = LongTextWidget(parent=self.home, default_text=default, get_port_func=get_port_func)
+                widget = LongTextWidget(
+                    parent=self.home, default_text=default, get_port_func=get_port_func
+                )
                 widget.valueChanged.connect(self.changed)
                 widget.set_value(default)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
             elif field_type == PropertyType.MULTILINE.name:  # 多行文本
                 widget = VariableCompletionTextEdit(
-                    lambda func=get_port_func: gv.get_vars(func()) if gv else [], use_qcursor=True, parent=self
+                    lambda func=get_port_func: gv.get_vars(func()) if gv else [],
+                    use_qcursor=True,
+                    parent=self,
                 )
                 widget.textChanged.connect(self.changed)
                 widget.setText(str(default))
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
-                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+                widget.setSizePolicy(
+                    QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+                )
             elif field_type in (PropertyType.INT.name, PropertyType.FLOAT.name):
                 widget = SpinBoxWidget(
                     parent=self.home, default=default, type=field_type.lower()
@@ -91,28 +112,37 @@ class FormFieldWidget(QtWidgets.QWidget):
             elif field_type == PropertyType.CHOICE.name:
                 widget = CustomComboBox(parent=self.home)
                 widget.addItems(defn.get("choices", []))
-                widget.setCurrentText(str(default) if default else defn.get("choices", [""])[0])
+                widget.setCurrentText(
+                    str(default) if default else defn.get("choices", [""])[0]
+                )
                 widget.currentTextChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.VARIABLE.name:
-                widget = VarComboBoxWidget(main_window=self.home, type=default, parent=self.parent)
+                widget = VarComboBoxWidget(
+                    main_window=self.home, type=default, parent=self.parent
+                )
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.RANGE.name:
                 widget = RangeWidget(
-                    min_val=defn.get("min", 0), max_val=defn.get("max", 100),
-                    step=defn.get("step", 1), default=default, parent=self
+                    min_val=defn.get("min", 0),
+                    max_val=defn.get("max", 100),
+                    step=defn.get("step", 1),
+                    default=default,
+                    parent=self,
                 )
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget, 1)
 
             elif field_type == PropertyType.BOOL.name:
-                widget = CheckBoxWidget(text=label, state=str_to_bool(default), parent=self)
+                widget = CheckBoxWidget(
+                    text=label, state=str_to_bool(default), parent=self
+                )
                 widget.valueChanged.connect(self.changed)
                 self.fields[key] = widget
                 input_row.addWidget(widget)
@@ -122,8 +152,13 @@ class FormFieldWidget(QtWidgets.QWidget):
                 input_row.addWidget(widget, 1)
             else:
                 widget = VariableCompletionLineEdit(
-                    get_variable_list_func=lambda func=get_port_func: gv.get_vars(func()) if gv else [],
-                    use_qcursor=False, parent=self.home
+                    get_variable_list_func=lambda func=get_port_func: gv.get_vars(
+                        func()
+                    )
+                    if gv
+                    else [],
+                    use_qcursor=False,
+                    parent=self.home,
                 )
                 widget.setPlaceholderText(label)
                 widget.setText(str(default))
@@ -142,13 +177,13 @@ class FormFieldWidget(QtWidgets.QWidget):
     def get_data(self):
         data = {}
         for k, v in self.fields.items():
-            if hasattr(v, 'get_value'):
+            if hasattr(v, "get_value"):
                 data[k] = v.get_value()
-            elif hasattr(v, 'text'):
+            elif hasattr(v, "text"):
                 data[k] = v.text()
-            elif hasattr(v, 'currentText'):
+            elif hasattr(v, "currentText"):
                 data[k] = v.currentText()
-            elif hasattr(v, 'toPlainText'):
+            elif hasattr(v, "toPlainText"):
                 data[k] = v.toPlainText()
             else:
                 data[k] = ""
@@ -156,16 +191,17 @@ class FormFieldWidget(QtWidgets.QWidget):
 
     def set_data(self, data):
         """仅在数据有差异时更新，防止触发死循环刷新"""
-        if not isinstance(data, dict): return
+        if not isinstance(data, dict):
+            return
         for k, v in data.items():
             if k in self.fields:
                 widget = self.fields[k]
                 widget.blockSignals(True)
-                if hasattr(widget, 'set_value'):
+                if hasattr(widget, "set_value"):
                     widget.set_value(str(v))
-                elif hasattr(widget, 'setText'):
+                elif hasattr(widget, "setText"):
                     widget.setText(str(v))
-                elif hasattr(widget, 'setCurrentText'):
+                elif hasattr(widget, "setCurrentText"):
                     widget.setCurrentText(str(v))
                 widget.blockSignals(False)
 
@@ -174,13 +210,16 @@ class DynamicFormWidget(QtWidgets.QWidget):
     """
     动态表单容器部件。
     """
+
     sizeHintChanged = QtCore.Signal()
     valueChanged = QtCore.Signal(object)
     fixed_height = True
 
-    def __init__(self, schema, window=None, parent=None, label=None, get_port_func=lambda: []):
+    def __init__(
+        self, schema, window=None, parent=None, label=None, get_port_func=lambda: []
+    ):
         super(DynamicFormWidget, self).__init__()
-        self.parent=parent
+        self.parent = parent
         self.main_window = window
         self.schema = schema
         self.label = label or "项"
@@ -207,8 +246,11 @@ class DynamicFormWidget(QtWidgets.QWidget):
 
     def add_field(self, data=None):
         field = FormFieldWidget(
-            self.schema, home=self.main_window, parent=self.parent,
-            get_port_func=self.get_port_func, index=len(self.field_widgets) + 1
+            self.schema,
+            home=self.main_window,
+            parent=self.parent,
+            get_port_func=self.get_port_func,
+            index=len(self.field_widgets) + 1,
         )
         if data:
             field.set_data(data)
@@ -289,13 +331,21 @@ class DynamicFormWidgetWrapper(CustomNodeBaseWidget):
     解决了加载过程中的几何尺寸同步问题。
     """
 
-    def __init__(self, parent=None, name="", label="", schema=None, window=None, z_value=1):
+    def __init__(
+        self, parent=None, name="", label="", schema=None, window=None, z_value=1
+    ):
         super(DynamicFormWidgetWrapper, self).__init__(parent, name, label)
         self.setZValue(Z_VAL_NODE_WIDGET + z_value)
         self.window = window
         self._name = name
         self.set_label(f"{label}({name})")
-        widget = DynamicFormWidget(schema or {}, window=window, parent=self, label=label, get_port_func=self.get_port_func)
+        widget = DynamicFormWidget(
+            schema or {},
+            window=window,
+            parent=self,
+            label=label,
+            get_port_func=self.get_port_func,
+        )
         self.set_custom_widget(widget)
 
         widget.sizeHintChanged.connect(self._sync_node_geometry)

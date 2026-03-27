@@ -33,7 +33,7 @@ from qfluentwidgets import (
 
 from app.interfaces.canvas_interaface.widgets.preview_manager import PreviewManager
 from app.scan_components import ComponentScanner, resource_path
-from app.utils.utils import get_pinyin_search_keys
+from app.utils.utils import get_pinyin_search_keys, get_unified_font
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
 
@@ -54,7 +54,7 @@ class DraggableTreeWidget(TreeWidget):
         self.setMouseTracking(True)
         self.viewport().setAttribute(Qt.WA_Hover)
         self.viewport().installEventFilter(self)
-        self.setIndentation(12)
+        self.setIndentation(8)
         self._init_components()
 
     def drawRow(self, painter, option, index):
@@ -406,9 +406,7 @@ class DraggableTreeWidget(TreeWidget):
 
             # === 2. 标题 (高亮白色) ===
             painter.setPen(QColor(255, 255, 255, 240))
-            font = QFont("Microsoft YaHei")  # 建议指定字体
-            font.setPointSize(11)
-            font.setBold(True)
+            font = get_unified_font(11, True)
             painter.setFont(font)
 
             title = getattr(comp_cls, "name", comp_cls.__name__)
@@ -516,8 +514,7 @@ class DraggableTreeWidget(TreeWidget):
 
         # 文字
         painter.setPen(QColor(255, 255, 255, 230))
-        font = QFont("Microsoft YaHei")
-        font.setPointSize(10)
+        font = get_unified_font(10)
         painter.setFont(font)
 
         display_name = name.split("/")[-1]

@@ -16,7 +16,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_unified_font
 
 
 class ActionCard(SimpleCardWidget):
@@ -33,7 +33,7 @@ class ActionCard(SimpleCardWidget):
         layout.setSpacing(20)
 
         title = BodyLabel(self.tr("创建画布"))
-        title.setFont(QFont("Microsoft YaHei", 16, QFont.Bold))
+        title.setFont(get_unified_font(16, True))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
         layout.addWidget(CardSeparator())
@@ -48,7 +48,7 @@ class ActionCard(SimpleCardWidget):
         )
         create_btn.clicked.connect(lambda: self.home.new_canvas())
         create_btn.setIconSize(QSize(22, 22))
-        create_btn.setFont(QFont("Microsoft YaHei", 14))
+        create_btn.setFont(get_unified_font(14))
 
         # 可选：更多按钮（如模板等）
         template_btn = PushButton(
@@ -56,7 +56,7 @@ class ActionCard(SimpleCardWidget):
         )
         template_btn.clicked.connect(lambda: self.home.new_canvas(from_template=True))
         template_btn.setIconSize(QSize(22, 22))
-        template_btn.setFont(QFont("Microsoft YaHei", 14))
+        template_btn.setFont(get_unified_font(14))
 
         # 导入按钮
         import_btn = PushButton(
@@ -64,7 +64,7 @@ class ActionCard(SimpleCardWidget):
         )
         import_btn.clicked.connect(lambda: self.home.import_canvas())
         import_btn.setIconSize(QSize(22, 22))
-        import_btn.setFont(QFont("Microsoft YaHei", 14))
+        import_btn.setFont(get_unified_font(14))
 
         btn_layout.addWidget(create_btn)
         btn_layout.addWidget(template_btn)
@@ -108,7 +108,7 @@ class WorkflowCard(CardWidget):
 
         # 标题（可点击区域的一部分）
         self.name_label = BodyLabel(self.workflow_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
+        self.name_label.setFont(get_unified_font(18, True))
         self.name_label.setAlignment(Qt.AlignCenter)
         self.name_label.setWordWrap(True)
         self.name_label.setObjectName("WorkflowCardTitle")

@@ -152,19 +152,22 @@ class Component(BaseComponent):
             self.logger.error(f"模型训练失败: {str(e)}")
             raise
             
-        # 8. 训练完成后，动态查找最新保存的模型目录
-        project_dir = Path("runs")
-        if not project_dir.exists():
-            raise RuntimeError("训练项目目录不存在！")
-        # 获取所有以 name 开头的子目录（如 pose, pose1, pose2...）
-        pose_dirs = []
-        for item in project_dir.iterdir():
-            if item.is_dir() and item.name.startswith(params.task_name):
-                pose_dirs.append(item)
-        if not pose_dirs:
-            raise RuntimeError(f"未找到训练输出目录，预期在 {project_dir} 下以 {Path(params.save_dir).name} 开头的目录")
-        # 按创建时间排序，取最新的
-        latest_dir = max(pose_dirs, key=lambda x: x.stat().st_ctime)
+        # 8. 获取本次训练的输出目录
+        # 优先从 results 对象获取 save_dir（ultralytics 会记录本次训练目录）
+        if hasattr(results, 'save_dir') and results.save_dir:
+            latest_dir = Path(results.save_dir)
+            self.logger.info(f"训练输出目录: {latest_dir}")
+        else:
+            # 兼容性处理：动态查找最新目录
+            project_dir = Path("runs")
+            if not project_dir.exists():
+                raise RuntimeError("训练项目目录不存在！")
+            pose_dirs = [item for item in project_dir.iterdir()
+                        if item.is_dir() and item.name.startswith(params.task_name)]
+            if not pose_dirs:
+                raise RuntimeError(f"未找到训练输出目录，预期在 {project_dir} 下以 {params.task_name} 开头的目录")
+            latest_dir = max(pose_dirs, key=lambda x: x.stat().st_ctime)
+            self.logger.warning("无法从 results 获取 save_dir，使用兼容性回退方案")
 
         # 构建模型路径
         trained_model_path = latest_dir / "weights" / "best.pt"

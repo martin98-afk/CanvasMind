@@ -5,13 +5,14 @@ from PyQt5.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout
 from qfluentwidgets import IconWidget, TextWrap, FlowLayout, CardWidget
 
 from app.widgets.basic_widget.style_sheet import StyleSheet
+from app.utils.config import Settings
 
 
 class HomeCard(CardWidget):
-    """ Sample card """
+    """Sample card"""
 
     def __init__(self, icon, title, content, routeKey, index, triggered, parent=None):
-        super().__init__(parent=parent) # 必须首先调用父类构造函数
+        super().__init__(parent=parent)  # 必须首先调用父类构造函数
         self.index = index
         self.routekey = routeKey
         # 保存传入的 triggered 回调函数
@@ -44,8 +45,22 @@ class HomeCard(CardWidget):
         # 设置鼠标悬停指针为手型，提供视觉反馈
         self.setCursor(Qt.PointingHandCursor)
 
-        self.titleLabel.setObjectName('titleLabel')
-        self.contentLabel.setObjectName('contentLabel')
+        self.titleLabel.setObjectName("titleLabel")
+        self.contentLabel.setObjectName("contentLabel")
+
+        self._apply_font()
+
+    def _apply_font(self):
+        try:
+            font_family = Settings.get_instance().canvas_font_selected.value
+        except:
+            font_family = "Segoe UI"
+        self.titleLabel.setStyleSheet(
+            f"color: white; font-family: '{font_family}'; font-size: 14px; font-weight: bold;"
+        )
+        self.contentLabel.setStyleSheet(
+            f"color: rgb(208, 208, 208); font-family: '{font_family}'; font-size: 12px;"
+        )
 
     def mousePressEvent(self, event):
         """重写鼠标按下事件，触发回调函数"""
@@ -57,7 +72,7 @@ class HomeCard(CardWidget):
 
 
 class HomeCardView(QWidget):
-    """ Sample card view """
+    """Sample card view"""
 
     def __init__(self, title: str, parent=None):
         super().__init__(parent=parent)
@@ -74,11 +89,21 @@ class HomeCardView(QWidget):
         self.vBoxLayout.addWidget(self.titleLabel)
         self.vBoxLayout.addLayout(self.flowLayout, 1)
 
-        self.titleLabel.setObjectName('viewTitleLabel')
+        self.titleLabel.setObjectName("viewTitleLabel")
+        self._apply_title_font()
         StyleSheet.SAMPLE_CARD.apply(self)
 
+    def _apply_title_font(self):
+        try:
+            font_family = Settings.get_instance().canvas_font_selected.value
+        except:
+            font_family = "Segoe UI"
+        self.titleLabel.setStyleSheet(
+            f"color: white; font-family: '{font_family}'; font-size: 20px; font-weight: bold;"
+        )
+
     def addSampleCard(self, icon, title, content, routeKey, index, triggered=None):
-        """ add sample card """
+        """add sample card"""
         # 创建 HomeCard 实例时，将当前的 HomeCardView (self) 作为 parent 传递
         card = HomeCard(icon, title, content, routeKey, index, triggered, self)
         self.flowLayout.addWidget(card)

@@ -8,7 +8,7 @@ from qfluentwidgets import (
     ToolButton,
     CheckBox,
 )
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_unified_font
 
 
 class ComponentCard(CardWidget):
@@ -72,11 +72,13 @@ class ComponentCard(CardWidget):
         title_v.setSpacing(0)
         name_lbl = QLabel(display_name)
         name_lbl.setObjectName("CardTitle")
+        name_lbl.setFont(get_unified_font(13, True))
         title_v.addWidget(name_lbl)
 
         uuid_val = self.data.get("组件id") or self.data.get("uuid") or "---"
         uuid_lbl = QLabel(str(uuid_val))
         uuid_lbl.setObjectName("CardUUID")
+        uuid_lbl.setFont(get_unified_font(9))
         title_v.addWidget(uuid_lbl)
 
         header.addLayout(title_v)
@@ -118,6 +120,7 @@ class ComponentCard(CardWidget):
         desc_val = self.data.get("组件描述") or self.data.get("desc") or "暂无描述."
         desc = QLabel(str(desc_val))
         desc.setObjectName("CardDesc")
+        desc.setFont(get_unified_font(10))
         desc.setWordWrap(True)
         desc.setFixedHeight(40)
         desc.setAlignment(Qt.AlignTop)
@@ -149,7 +152,8 @@ class ComponentCard(CardWidget):
         else:
             meta_lbl = QLabel(f"by {creator} • ---")
 
-        meta_lbl.setStyleSheet("color: #8b949e; font-size: 11px;")
+        meta_lbl.setFont(get_unified_font(11))
+        meta_lbl.setStyleSheet("color: #8b949e;")
         meta.addWidget(meta_lbl)
         meta.addStretch()
         layout.addLayout(meta)
@@ -160,15 +164,17 @@ class ComponentCard(CardWidget):
 
         cat_val = self.data.get("组件类别") or self.data.get("category") or "常规"
         cat_tag = QLabel(str(cat_val))
+        cat_tag.setFont(get_unified_font(11))
         cat_tag.setStyleSheet(
-            "background: #21262d; color: #8b949e; border-radius: 4px; padding: 2px 8px; font-size: 11px;"
+            "background: #21262d; color: #8b949e; border-radius: 4px; padding: 2px 8px;"
         )
         footer.addWidget(cat_tag)
 
         ver_val = self.data.get("版本号") or "1.0.0"
         ver_tag = QLabel(f"v{ver_val}")
+        ver_tag.setFont(get_unified_font(11))
         ver_tag.setStyleSheet(
-            "background: #21262d; color: #8b949e; border-radius: 4px; padding: 2px 8px; font-size: 11px;"
+            "background: #21262d; color: #8b949e; border-radius: 4px; padding: 2px 8px;"
         )
         footer.addWidget(ver_tag)
 

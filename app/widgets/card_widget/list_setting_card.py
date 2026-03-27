@@ -3,24 +3,235 @@ from typing import List
 
 from PyQt5.QtCore import pyqtSignal, QSize, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QSizePolicy
-from qfluentwidgets import ToolButton, FluentIcon, PushButton, qconfig, ExpandSettingCard, ConfigItem, MessageBoxBase, \
-    LineEdit, Dialog, ConfigValidator, Theme, setTheme, MessageBox
+from PyQt5.QtWidgets import (
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QRadioButton,
+)
+from qfluentwidgets import (
+    ToolButton,
+    FluentIcon,
+    PushButton,
+    qconfig,
+    ExpandSettingCard,
+    ConfigItem,
+    MessageBoxBase,
+    LineEdit,
+    Dialog,
+    ConfigValidator,
+    Theme,
+    setTheme,
+    MessageBox,
+    ComboBox,
+    PrimaryPushButton,
+)
 
 
 class ListValidator(ConfigValidator):
-    """ Folder list validator """
+    """Folder list validator"""
 
     def validate(self, value):
         return True
 
     def correct(self, value: List[str]):
-
         return value
 
 
+class FontItem(QWidget):
+    """Font item with radio button for selection and remove button"""
+
+    removed = pyqtSignal(QWidget)
+    selected = pyqtSignal(QWidget)
+
+    def __init__(self, font: str, is_selected: bool, parent=None):
+        super().__init__(parent=parent)
+        self.font = font
+        self.hBoxLayout = QHBoxLayout(self)
+        self.radioButton = QRadioButton(self)
+        self.fontLabel = QLabel(font, self)
+        self.removeButton = ToolButton(FluentIcon.CLOSE, self)
+
+        self.removeButton.setFixedSize(39, 29)
+        self.removeButton.setIconSize(QSize(12, 12))
+        self.radioButton.setFixedSize(32, 29)
+
+        self.setFixedHeight(53)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.hBoxLayout.setContentsMargins(48, 0, 60, 0)
+        self.hBoxLayout.addWidget(self.radioButton, 0, Qt.AlignLeft)
+        self.hBoxLayout.addWidget(self.fontLabel, 0, Qt.AlignLeft)
+        self.hBoxLayout.addSpacing(16)
+        self.hBoxLayout.addStretch(1)
+        self.hBoxLayout.addWidget(self.removeButton, 0, Qt.AlignRight)
+        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
+
+        self.fontLabel.setObjectName("titleLabel")
+        self.radioButton.setChecked(is_selected)
+
+        self.radioButton.setStyleSheet("""
+            QRadioButton::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                border: 2px solid #8e8e8e;
+                background-color: transparent;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #0078d4;
+                background-color: #0078d4;
+            }
+        """)
+
+        self.removeButton.clicked.connect(lambda: self.removed.emit(self))
+        self.radioButton.toggled.connect(
+            lambda checked: self.selected.emit(self) if checked else None
+        )
+
+
+class FontListSettingCard(ExpandSettingCard):
+    """Font list setting card with add, remove and select functionality"""
+
+    fontChanged = pyqtSignal(list)
+    fontSelectedChanged = pyqtSignal(str)
+
+    def __init__(
+        self,
+        icon: QIcon,
+        fontListItem: ConfigItem,
+        fontSelectedItem: ConfigItem,
+        title: str,
+        content: str = None,
+        parent=None,
+        home=None,
+    ):
+        """
+        Parameters
+        ----------
+        fontListItem: ConfigItem
+            configuration item for font list
+
+        fontSelectedItem: ConfigItem
+            configuration item for selected font
+
+        title: str
+            the title of card
+
+        content: str
+            the content of card
+
+        parent: QWidget
+            parent widget
+        """
+        self.home = home
+        super().__init__(icon, title, content, parent)
+        self.title = title
+        self.fontListItem = fontListItem
+        self.fontSelectedItem = fontSelectedItem
+        self.addFontButton = PushButton(self.tr("添加字体"), self, FluentIcon.ADD)
+
+        self.fonts = qconfig.get(fontListItem).copy()
+        self.currentFont = qconfig.get(fontSelectedItem)
+        self.__initWidget()
+
+    def __initWidget(self):
+        self.addWidget(self.addFontButton)
+
+        self.viewLayout.setSpacing(0)
+        self.viewLayout.setAlignment(Qt.AlignTop)
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.headerLabel = QLabel(self.tr("当前字体: ") + self.currentFont, self.view)
+        self.headerLabel.setObjectName("contentLabel")
+        self.viewLayout.addWidget(self.headerLabel)
+
+        for font in self.fonts:
+            self.__addFontItem(font)
+
+        self.addFontButton.clicked.connect(self.__showFontInputDialog)
+
+    def __showFontInputDialog(self):
+        """show font input dialog"""
+        w = MessageBox(self.tr("添加字体"), "", self.home)
+        w.contentLabel.hide()
+
+        lineEdit = LineEdit(w)
+        lineEdit.setFixedWidth(300)
+        lineEdit.setPlaceholderText(self.tr("输入字体名称 (e.g., Microsoft YaHei)"))
+
+        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
+        w.yesButton.setText(self.tr("保存"))
+        w.cancelButton.setText(self.tr("取消"))
+
+        if w.exec():
+            font = lineEdit.text().strip()
+            if font and font not in self.fonts:
+                self.__addFontItem(font)
+                self.fonts.append(font)
+                qconfig.set(self.fontListItem, self.fonts)
+                self.fontChanged.emit(self.fonts)
+
+    def __addFontItem(self, font: str):
+        """add font item"""
+        is_selected = font == self.currentFont
+        item = FontItem(font, is_selected, self.view)
+        item.removed.connect(self.__showConfirmDialog)
+        item.selected.connect(lambda i: self.__selectFont(i))
+        self.viewLayout.addWidget(item)
+        item.show()
+        self._adjustViewSize()
+
+    def __showConfirmDialog(self, item: FontItem):
+        """show confirm dialog"""
+        title = self.tr("确定要删除这个字体吗?")
+        content = (
+            self.tr('删除 "') + f"{item.font}" + self.tr('" 后将不再出现在列表中。')
+        )
+        w = Dialog(title, content, self.window())
+        w.yesSignal.connect(lambda: self.__removeFont(item))
+        w.exec_()
+
+    def __removeFont(self, item: FontItem):
+        """remove font"""
+        if item.font not in self.fonts:
+            return
+
+        self.fonts.remove(item.font)
+        self.viewLayout.removeWidget(item)
+        item.deleteLater()
+        self._adjustViewSize()
+
+        self.fontChanged.emit(self.fonts)
+        qconfig.set(self.fontListItem, self.fonts)
+
+        if self.currentFont == item.font and self.fonts:
+            self.__updateSelectedFont(self.fonts[0])
+
+    def __selectFont(self, item: FontItem):
+        """select font as current"""
+        for i in range(self.viewLayout.count()):
+            w = self.viewLayout.itemAt(i).widget()
+            if isinstance(w, FontItem) and w != item:
+                w.radioButton.setChecked(False)
+        item.radioButton.setChecked(True)
+        self.__updateSelectedFont(item.font)
+
+    def __updateSelectedFont(self, font: str):
+        """update selected font"""
+        if font not in self.fonts:
+            return
+
+        self.currentFont = font
+        qconfig.set(self.fontSelectedItem, font)
+        qconfig.save()
+        self.headerLabel.setText(self.tr("当前字体: ") + font)
+        self.fontSelectedChanged.emit(font)
+
+
 class PackageItem(QWidget):
-    """ Package item """
+    """Package item"""
 
     removed = pyqtSignal(QWidget)
 
@@ -44,18 +255,25 @@ class PackageItem(QWidget):
         self.hBoxLayout.setAlignment(Qt.AlignVCenter)
 
         # Set object name to apply theme-aware color style
-        self.packageLabel.setObjectName('titleLabel')
+        self.packageLabel.setObjectName("titleLabel")
 
-        self.removeButton.clicked.connect(
-            lambda: self.removed.emit(self))
+        self.removeButton.clicked.connect(lambda: self.removed.emit(self))
 
 
 class PackageListSettingCard(ExpandSettingCard):
-    """ Package list setting card """
+    """Package list setting card"""
 
     packageChanged = pyqtSignal(list)
 
-    def __init__(self, icon: QIcon, configItem: ConfigItem, title: str, content: str = None, parent=None, home=None):
+    def __init__(
+        self,
+        icon: QIcon,
+        configItem: ConfigItem,
+        title: str,
+        content: str = None,
+        parent=None,
+        home=None,
+    ):
         """
         Parameters
         ----------
@@ -73,9 +291,9 @@ class PackageListSettingCard(ExpandSettingCard):
         """
         self.home = home
         super().__init__(icon, title, content, parent)  # 使用书架图标表示包管理
-        self.title= title
+        self.title = title
         self.configItem = configItem
-        self.addPackageButton = PushButton(self.tr('添加'), self, FluentIcon.ADD)
+        self.addPackageButton = PushButton(self.tr("添加"), self, FluentIcon.ADD)
 
         self.packages = qconfig.get(configItem).copy()  # type:List[str]
         self.__initWidget()
@@ -93,13 +311,15 @@ class PackageListSettingCard(ExpandSettingCard):
         self.addPackageButton.clicked.connect(self.__showPackageInputDialog)
 
     def __showPackageInputDialog(self):
-        """ show package input dialog """
+        """show package input dialog"""
         w = MessageBox(self.title, "", self.home)
         w.contentLabel.hide()
 
         lineEdit = LineEdit(w)
         lineEdit.setFixedWidth(300)
-        lineEdit.setPlaceholderText(self.tr('Enter package name (e.g., requests, numpy==1.21.0)'))
+        lineEdit.setPlaceholderText(
+            self.tr("Enter package name (e.g., requests, numpy==1.21.0)")
+        )
 
         w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
         w.yesButton.setText("保存")
@@ -114,7 +334,7 @@ class PackageListSettingCard(ExpandSettingCard):
                 self.packageChanged.emit(self.packages)
 
     def __addPackageItem(self, package: str):
-        """ add package item """
+        """add package item"""
         item = PackageItem(package, self.view)
         item.removed.connect(self.__showConfirmDialog)
         self.viewLayout.addWidget(item)
@@ -122,16 +342,19 @@ class PackageListSettingCard(ExpandSettingCard):
         self._adjustViewSize()
 
     def __showConfirmDialog(self, item: PackageItem):
-        """ show confirm dialog """
-        title = self.tr('Are you sure you want to remove the package?')
-        content = self.tr("If you remove the ") + f'"{item.package}"' + \
-                  self.tr(" package from the list, it will no longer appear in the list.")
+        """show confirm dialog"""
+        title = self.tr("Are you sure you want to remove the package?")
+        content = (
+            self.tr("If you remove the ")
+            + f'"{item.package}"'
+            + self.tr(" package from the list, it will no longer appear in the list.")
+        )
         w = Dialog(title, content, self.window())
         w.yesSignal.connect(lambda: self.__removePackage(item))
         w.exec_()
 
     def __removePackage(self, item: PackageItem):
-        """ remove package """
+        """remove package"""
         if item.package not in self.packages:
             return
 

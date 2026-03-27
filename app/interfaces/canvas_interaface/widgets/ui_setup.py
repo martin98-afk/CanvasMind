@@ -670,7 +670,7 @@ class CanvasUISetUp:
 
     def _init_unified_font(self):
         font_name = getattr(
-            self.parent.config.canvas_font_type, "value", "Microsoft YaHei"
+            self.parent.config.canvas_font_selected, "value", "Microsoft YaHei"
         )
         self.parent.setStyleSheet(f'QWidget {{ font-family: "{font_name}"; }}')
 

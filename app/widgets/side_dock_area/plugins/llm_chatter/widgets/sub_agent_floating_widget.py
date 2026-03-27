@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont
 from qfluentwidgets import CardWidget
+from app.utils.utils import get_unified_font
 
 
 class SubAgentFloatingWidget(CardWidget):
@@ -41,11 +42,11 @@ class SubAgentFloatingWidget(CardWidget):
         header.setSpacing(8)
 
         title = QLabel("🤖 子智能体执行中", self)
-        title.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        title.setFont(get_unified_font(11, True))
         title.setStyleSheet("color: #9C27B0;")
 
         self.agent_label = QLabel("", self)
-        self.agent_label.setFont(QFont("Microsoft YaHei", 10))
+        self.agent_label.setFont(get_unified_font(10))
         self.agent_label.setStyleSheet("color: #FFA500;")
 
         header.addWidget(title)
@@ -71,14 +72,14 @@ class SubAgentFloatingWidget(CardWidget):
         header.addWidget(close_btn)
 
         self.task_label = QLabel("正在启动...", self)
-        self.task_label.setFont(QFont("Microsoft YaHei", 10))
+        self.task_label.setFont(get_unified_font(10))
         self.task_label.setStyleSheet("color: #ffffff;")
         self.task_label.setWordWrap(True)
         self.task_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.task_label.setAlignment(Qt.AlignTop)
 
         self.progress_text = QTextEdit("", self)
-        self.progress_text.setFont(QFont("Consolas", 9))
+        self.progress_text.setFont(get_unified_font(9))
         self.progress_text.setStyleSheet("""
             QTextEdit {
                 background-color: #1e1e1e;

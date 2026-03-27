@@ -3,13 +3,17 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QLabel, QStackedWidget, QVBoxLayout
 from qfluentwidgets import SegmentedWidget
 
-from app.interfaces.canvas_interaface.widgets.draggable_component_tree import DraggableTreePanel
-from app.interfaces.canvas_interaface.widgets.subgraph_template_container import SubgraphTemplatePanel
+from app.interfaces.canvas_interaface.widgets.draggable_component_tree import (
+    DraggableTreePanel,
+)
+from app.interfaces.canvas_interaface.widgets.subgraph_template_container import (
+    SubgraphTemplatePanel,
+)
 from app.utils.config import Settings
 
 
 class LeftPanel(QWidget):
-    """ 左侧面板 """
+    """左侧面板"""
 
     def __init__(self, parent=None):
         super().__init__()
@@ -22,8 +26,10 @@ class LeftPanel(QWidget):
         self.template_container = SubgraphTemplatePanel(parent)
 
         # Add tabs
-        self.addSubInterface(self.draggable_tree, 'draggableTree', self.tr('组件树'))
-        self.addSubInterface(self.template_container, 'templateManager', self.tr('模板库'))
+        self.addSubInterface(self.draggable_tree, "draggableTree", self.tr("组件树"))
+        self.addSubInterface(
+            self.template_container, "templateManager", self.tr("模板库")
+        )
 
         # Connect signal and initialize the current tab
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
@@ -39,7 +45,7 @@ class LeftPanel(QWidget):
         在基类中统一配置字体
         """
         # 1. 获取字体名称
-        font_name = Settings.get_instance().canvas_font_type.value
+        font_name = Settings.get_instance().canvas_font_selected.value
         # 2. 方案 A：使用 setFont (基础设置)
         font = self.font()
         font.setFamily(font_name)
@@ -63,7 +69,7 @@ class LeftPanel(QWidget):
         self.container.addItem(
             routeKey=objectName,
             text=text,
-            onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
+            onClick=lambda: self.stackedWidget.setCurrentWidget(widget),
         )
 
     def onCurrentIndexChanged(self, index):

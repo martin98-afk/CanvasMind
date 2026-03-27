@@ -2,12 +2,17 @@
 from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtGui import QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import (
-    QComboBox, QStyle, QStyleOptionComboBox, QStyleFactory,
-    QStyledItemDelegate, QFrame
+    QComboBox,
+    QStyle,
+    QStyleOptionComboBox,
+    QStyleFactory,
+    QStyledItemDelegate,
+    QFrame,
 )
 from qfluentwidgets import isDarkTheme, themeColor
 
 from app.utils.config import Settings
+from app.utils.utils import get_unified_font
 
 
 class ProfessionalComboBoxDelegate(QStyledItemDelegate):
@@ -33,14 +38,16 @@ class ProfessionalComboBoxDelegate(QStyledItemDelegate):
             combo = combo.parent()
 
         is_current = (index.row() == combo.currentIndex()) if combo else False
-        is_hover = (option.state & QStyle.State_Selected)
+        is_hover = option.state & QStyle.State_Selected
 
         rect = option.rect
 
         # 2. 绘制背景层
         if is_hover:
             # 悬停背景：浅灰色
-            bg_color = QColor(255, 255, 255, 15) if isDarkTheme() else QColor(0, 0, 0, 10)
+            bg_color = (
+                QColor(255, 255, 255, 15) if isDarkTheme() else QColor(0, 0, 0, 10)
+            )
             painter.setPen(Qt.NoPen)
             painter.setBrush(bg_color)
             painter.drawRoundedRect(rect.adjusted(4, 2, -4, -2), 5, 5)
@@ -65,11 +72,13 @@ class ProfessionalComboBoxDelegate(QStyledItemDelegate):
         if is_current:
             # 选中项文字：加粗，颜色高亮
             painter.setPen(QColor(255, 255, 255) if isDarkTheme() else themeColor())
-            painter.setFont(QFont('Segoe UI', 10, QFont.Bold))
+            painter.setFont(get_unified_font(10, True))
         else:
             # 非选中项文字
-            painter.setPen(QColor(210, 210, 210) if isDarkTheme() else QColor(50, 50, 50))
-            painter.setFont(QFont('Segoe UI', 10))
+            painter.setPen(
+                QColor(210, 210, 210) if isDarkTheme() else QColor(50, 50, 50)
+            )
+            painter.setFont(get_unified_font(10))
 
         # 文字整体向右偏移，为左侧指示条留出呼吸空间
         text_rect = rect.adjusted(24, 0, -10, 0)
@@ -99,7 +108,7 @@ class CustomComboBox(QComboBox):
         dark = isDarkTheme()
         t_color = themeColor().name()
         font = self.font()
-        font.setFamily(Settings.get_instance().canvas_font_type.value)
+        font.setFamily(Settings.get_instance().canvas_font_selected.value)
         self.setFont(font)
         # 定义颜色变量
         bg = "#2D2D2D" if dark else "#FFFFFF"
@@ -147,7 +156,7 @@ class CustomComboBox(QComboBox):
         """)
 
     def paintEvent(self, event):
-        """ 绘制工业感十足的 V 型细线箭头 """
+        """绘制工业感十足的 V 型细线箭头"""
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -155,11 +164,16 @@ class CustomComboBox(QComboBox):
         # 计算箭头位置
         opt = QStyleOptionComboBox()
         self.initStyleOption(opt)
-        rect = self.style().subControlRect(QStyle.CC_ComboBox, opt, QStyle.SC_ComboBoxArrow, self)
+        rect = self.style().subControlRect(
+            QStyle.CC_ComboBox, opt, QStyle.SC_ComboBoxArrow, self
+        )
 
         # 箭头颜色交互：悬停变色
-        color = themeColor() if self.underMouse() else (
-            QColor(160, 160, 160) if isDarkTheme() else QColor(100, 100, 100))
+        color = (
+            themeColor()
+            if self.underMouse()
+            else (QColor(160, 160, 160) if isDarkTheme() else QColor(100, 100, 100))
+        )
         painter.setPen(QPen(color, 1.6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 
         center = rect.center()

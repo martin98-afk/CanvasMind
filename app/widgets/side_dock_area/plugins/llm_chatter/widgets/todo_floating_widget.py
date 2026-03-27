@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayo
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from qfluentwidgets import CardWidget
+from app.utils.utils import get_unified_font
 
 
 class TodoFloatingWidget(CardWidget):
@@ -33,14 +34,14 @@ class TodoFloatingWidget(CardWidget):
         header.setSpacing(10)
 
         title_icon = QLabel("📋", self)
-        title_icon.setFont(QFont("", 14))
+        title_icon.setFont(get_unified_font(14))
 
         title = QLabel("待办事项", self)
-        title.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        title.setFont(get_unified_font(11, True))
         title.setStyleSheet("color: #f0f0f0;")
 
         self.progress_label = QLabel("", self)
-        self.progress_label.setFont(QFont("Microsoft YaHei", 10, QFont.Bold))
+        self.progress_label.setFont(get_unified_font(10, True))
         self.progress_label.setStyleSheet("color: #818cf8;")
 
         header.addWidget(title_icon)
@@ -68,7 +69,7 @@ class TodoFloatingWidget(CardWidget):
         header.addWidget(close_btn)
 
         self.content_label = QLabel("暂无待办", self)
-        self.content_label.setFont(QFont("Microsoft YaHei", 10))
+        self.content_label.setFont(get_unified_font(10))
         self.content_label.setStyleSheet("color: #b0b0b0;")
         self.content_label.setWordWrap(True)
         self.content_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
