@@ -459,7 +459,7 @@ class ComponentTreePanel(QWidget):
         """
         # 1. 获取字体名称 (这里替换为你实际获取配置的代码)
         try:
-            font_name = Settings.get_instance().canvas_font_type.value
+            font_name = Settings.get_instance().canvas_font_selected.value
         except Exception:
             font_name = "Microsoft YaHei"  # 默认字体
 

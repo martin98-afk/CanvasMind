@@ -279,7 +279,7 @@ class CustomNodeItem(NodeItem):
         self._geometry_version = 0
 
     def _init_base_components(self):
-        font_type = Settings.get_instance().canvas_font_type.value
+        font_type = Settings.get_instance().canvas_font_selected.value
         self._text_item = NodeTextItem(self.name, self)
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
 

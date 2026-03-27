@@ -109,7 +109,7 @@ class LowCodeWindow(FluentWindow):
         plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
         # ------------加载配置
         self.config = Settings.get_instance()
-        setFontFamilies([self.config.canvas_font_type.value])
+        setFontFamilies([self.config.canvas_font_selected.value])
 
     # endregion
 

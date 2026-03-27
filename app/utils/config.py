@@ -198,39 +198,37 @@ class Settings(QConfig):
         "折线",
         OptionsValidator(["直线", "曲线", "折线"]),
     )
-    canvas_font_type = OptionsConfigItem(
+    canvas_font_list = ConfigItem(
         "CanvasDisplay",
-        "FontType",
-        "Segoe UI",  # 默认值
-        OptionsValidator(
-            [
-                # --- 无衬线字体 (Modern/Clean) ---
-                "Segoe UI",  # Windows 现代 UI 标准
-                "Inter",  # 现代 UI 设计师首选，极简且清晰
-                "Roboto",  # 谷歌风格，安卓标准字体
-                "Arial",  # 最通用的网页无衬线字体
-                "Helvetica",  # 经典排版字体 (Mac 系统核心)
-                "Montserrat",  # 几何感强，适合做标题
-                # --- 等宽字体 (Tech/Code/Cyberpunk) ---
-                "Consolas",  # 经典代码字体，易读性极高
-                "Fira Code",  # 带有编程连字的现代代码字体
-                "JetBrains Mono",  # 极具工业美感的等宽字体
-                "Courier New",  # 复古打字机风格
-                # --- 衬线字体 (Elegant/Classic) ---
-                "Georgia",  # 屏幕显示效果最好的衬线体，优雅稳重
-                "Times New Roman",  # 传统、正式、学院风
-                "Playfair Display",  # 高端、杂志质感的艺术大标题
-                # --- 艺术与特殊风格 ---
-                "Impact",  # 极其粗犷，适合做表情包或强调标题
-                "Comic Sans MS",  # 轻松、手写、非正式风格
-                "Copperplate",  # 带有古典雕刻感的全大写字体
-                # --- 中文优化 (CJK Support) ---
-                "Microsoft YaHei",  # 微软雅黑，Windows 中文首选
-                "PingFang SC",  # 苹果苹方，Mac 中文首选
-                "Noto Sans SC",  # 思源黑体，最通用的开源中文
-                "KaiTi",  # 楷体，具有中国书法韵味
-            ]
-        ),
+        "FontList",
+        [
+            "Segoe UI",
+            "Inter",
+            "Roboto",
+            "Arial",
+            "Helvetica",
+            "Montserrat",
+            "Consolas",
+            "Fira Code",
+            "JetBrains Mono",
+            "Courier New",
+            "Georgia",
+            "Times New Roman",
+            "Playfair Display",
+            "Impact",
+            "Comic Sans MS",
+            "Copperplate",
+            "Microsoft YaHei",
+            "PingFang SC",
+            "Noto Sans SC",
+            "KaiTi",
+        ],
+        ListValidator(),
+    )
+    canvas_font_selected = ConfigItem(
+        "CanvasDisplay",
+        "FontSelected",
+        "Segoe UI",
     )
     canvas_direction = OptionsConfigItem(
         "CanvasDisplay", "Direction", "水平", OptionsValidator(["水平", "垂直"])
@@ -313,4 +311,8 @@ class Settings(QConfig):
     GITEE_REPO = ConfigItem("Patch", "Gitee/Repo", "canvas-mind-components")
     GITEE_TOKEN = ConfigItem("Patch", "Gitee/Token", "a5dcb6e2e7776143b7a7e7685a1f33a3")
     GITEE_OWNER = ConfigItem("Patch", "Gitee/Owner", "dingmama123141")
-    SERPAPI_KEY = ConfigItem("CloudAPI", "SerpAPI", "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27")
+    SERPAPI_KEY = ConfigItem(
+        "CloudAPI",
+        "SerpAPI",
+        "42e2b2817bf48352d3caa227212ebb82d6f8839cdd39b304c68cf58b42961c27",
+    )
