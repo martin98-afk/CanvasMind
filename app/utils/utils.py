@@ -37,36 +37,38 @@ from app.utils.icon_name_map import ICON_NAME_TO_FILE
 
 # ANSI 颜色代码映射
 ANSI_COLOR_MAP = {
-    '30': '#000000',  # 黑色
-    '31': '#ff0000',  # 红色
-    '32': '#00ff00',  # 绿色
-    '33': '#ffff00',  # 黄色
-    '34': '#0000ff',  # 蓝色
-    '35': '#ff00ff',  # 紫色
-    '36': '#00ffff',  # 青色
-    '37': '#ffffff',  # 白色
-    '90': '#808080',  # 亮黑
-    '91': '#ff5555',  # 亮红
-    '92': '#50fa7b',  # 亮绿
-    '93': '#f1fa8c',  # 亮黄
-    '94': '#8be9fd',  # 亮蓝
-    '95': '#ff79c6',  # 亮紫
-    '96': '#8be9fd',  # 亮青
-    '97': '#ffffff',  # 亮白
+    "30": "#000000",  # 黑色
+    "31": "#ff0000",  # 红色
+    "32": "#00ff00",  # 绿色
+    "33": "#ffff00",  # 黄色
+    "34": "#0000ff",  # 蓝色
+    "35": "#ff00ff",  # 紫色
+    "36": "#00ffff",  # 青色
+    "37": "#ffffff",  # 白色
+    "90": "#808080",  # 亮黑
+    "91": "#ff5555",  # 亮红
+    "92": "#50fa7b",  # 亮绿
+    "93": "#f1fa8c",  # 亮黄
+    "94": "#8be9fd",  # 亮蓝
+    "95": "#ff79c6",  # 亮紫
+    "96": "#8be9fd",  # 亮青
+    "97": "#ffffff",  # 亮白
 }
-_ICON_CACHE = {}   # 缓存图标名 → QIcon 实例
+_ICON_CACHE = {}  # 缓存图标名 → QIcon 实例
 
 
 # 定义一个占位类，用于替代本地缺失的模块类
 class MissingModulePlaceholder:
     def __init__(self, *args, **kwargs):
         pass
+
     def __setstate__(self, state):
         self.__dict__.update(state)
 
 
 class SafeUnpickler(pickle.Unpickler):
     """自定义 Unpickler，当模块不存在时返回占位符而不是崩溃"""
+
     def find_class(self, module, name):
         try:
             return super().find_class(module, name)
@@ -83,7 +85,7 @@ def ssh_send_file(env_data, local_path, remote_path):
     :param remote_path: 远程目标绝对路径
     :return: bool 是否发送成功
     """
-    if not isinstance(env_data, dict) or env_data.get('type') != 'ssh':
+    if not isinstance(env_data, dict) or env_data.get("type") != "ssh":
         logger.error("无效的 SSH 环境配置")
         return False
 
@@ -93,16 +95,16 @@ def ssh_send_file(env_data, local_path, remote_path):
     try:
         # 1. 建立连接
         ssh.connect(
-            hostname=env_data['host'],
-            port=int(env_data.get('port', 22)),
-            username=env_data['user'],
-            password=env_data['pwd'],
-            timeout=15
+            hostname=env_data["host"],
+            port=int(env_data.get("port", 22)),
+            username=env_data["user"],
+            password=env_data["pwd"],
+            timeout=15,
         )
 
         # 2. 处理路径与创建远程目录
         # 强制将路径转换为 Linux 风格
-        remote_path = remote_path.replace('\\', '/')
+        remote_path = remote_path.replace("\\", "/")
         remote_dir = os.path.dirname(remote_path)
 
         # 使用 mkdir -p 一次性创建多级目录
@@ -189,7 +191,7 @@ def sftp_download_dir(sftp, remote_dir, local_dir, ssh=None):
 
         # --- 普通模式：递归下载 ---
         for item in items:
-            remote_path = os.path.join(remote_dir, item.filename).replace('\\', '/')
+            remote_path = os.path.join(remote_dir, item.filename).replace("\\", "/")
             local_path = os.path.join(local_dir, item.filename)
 
             if stat.S_ISDIR(item.st_mode):
@@ -213,14 +215,14 @@ def replace_remote_paths(pkl_path, remote_root, local_root):
 
     try:
         # 1. 以二进制读取文件
-        with open(pkl_path, 'rb') as f:
+        with open(pkl_path, "rb") as f:
             # 使用自定义的 SafeUnpickler
             unpickler = SafeUnpickler(f)
             data = unpickler.load()
 
         # 2. 统一路径格式
-        rem_p = remote_root.replace('\\', '/')
-        loc_p = local_root.replace('\\', '/').rstrip('/')
+        rem_p = remote_root.replace("\\", "/")
+        loc_p = local_root.replace("\\", "/").rstrip("/")
 
         def walk_and_replace(obj):
             if isinstance(obj, str):
@@ -241,7 +243,7 @@ def replace_remote_paths(pkl_path, remote_root, local_root):
         new_data = walk_and_replace(data)
 
         # 3. 写回文件
-        with open(pkl_path, 'wb') as f:
+        with open(pkl_path, "wb") as f:
             pickle.dump(new_data, f)
 
     except Exception as e:
@@ -279,18 +281,18 @@ def ansi_to_html(text):
         return ""
 
     # 移除光标控制序列（如 \x1b[2K）
-    text = re.sub(r'\x1b\[[0-9;]*[ABCDHfJKmnsu]', '', text)
+    text = re.sub(r"\x1b\[[0-9;]*[ABCDHfJKmnsu]", "", text)
 
     # 处理颜色代码
     def replace_ansi(match):
-        codes = match.group(1).split(';')
+        codes = match.group(1).split(";")
         color = None
         bold = False
 
         for code in codes:
             if code in ANSI_COLOR_MAP:
                 color = ANSI_COLOR_MAP[code]
-            elif code == '1':
+            elif code == "1":
                 bold = True
 
         if color:
@@ -301,19 +303,19 @@ def ansi_to_html(text):
         elif bold:
             return '<span style="font-weight: bold;">'
         else:
-            return '<span>'
+            return "<span>"
 
     # 替换 ANSI 开始序列 \x1b[...m
-    text = re.sub(r'\x1b\[([0-9;]*)m', replace_ansi, text)
+    text = re.sub(r"\x1b\[([0-9;]*)m", replace_ansi, text)
 
     # 替换 ANSI 结束序列 \x1b[0m 为 </span>
-    text = re.sub(r'\x1b\[0m', '</span>', text)
+    text = re.sub(r"\x1b\[0m", "</span>", text)
 
     # 处理剩余的 ANSI 序列（清理）
-    text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+    text = re.sub(r"\x1b\[[0-9;]*m", "", text)
 
     # 转换换行符
-    text = text.replace('\n', '<br>')
+    text = text.replace("\n", "<br>")
 
     return text
 
@@ -327,7 +329,7 @@ def ansi_to_rich_text(text):
 
 def resource_path(relative_path) -> str:
     """获取打包后资源文件的绝对路径"""
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, "_MEIPASS"):
         # 如果是打包后的环境
         base_path = sys._MEIPASS
     else:
@@ -350,7 +352,9 @@ def normalize_python_executable(exe_path: Optional[str]) -> Optional[str]:
 
     # 处理 Windows 风格路径
     cleaned = exe_path.replace("\\", "/")
-    match = re.search(r"/envs/miniconda/envs/([^/]+)/python\.exe$", cleaned, re.IGNORECASE)
+    match = re.search(
+        r"/envs/miniconda/envs/([^/]+)/python\.exe$", cleaned, re.IGNORECASE
+    )
     if match:
         env_name = match.group(1)
         if getattr(sys, "frozen", False):
@@ -364,7 +368,7 @@ def normalize_python_executable(exe_path: Optional[str]) -> Optional[str]:
 
     # 如果是 Windows 的 python.exe，尝试转换为 *nix 的 bin/python
     if cleaned.endswith("/python.exe") and os.name != "nt":
-        base = Path(cleaned[:-len("/python.exe")])
+        base = Path(cleaned[: -len("/python.exe")])
         candidate = base / "bin" / "python"
         if candidate.exists():
             return str(candidate)
@@ -410,6 +414,7 @@ def get_icon(icon_name: str) -> QIcon:
     # 2. fallback 到 FluentIcon
     try:
         from qfluentwidgets import FluentIcon
+
         icon = FluentIcon.APPLICATION.icon()
         _ICON_CACHE[icon_name] = icon
         return icon
@@ -422,10 +427,22 @@ def get_icon(icon_name: str) -> QIcon:
 
 def get_canvas_font(size=10, bold=False):
     try:
-        font_family = Settings.get_instance().canvas_font_type.value
+        font_family = Settings.get_instance().canvas_font_selected.value
     except Exception:
         font_family = "Segoe UI"
 
+    font = QFont(font_family, size)
+    if bold:
+        font.setBold(True)
+    return font
+
+
+def get_unified_font(size=10, bold=False):
+    """Get font with unified font family configured by user"""
+    try:
+        font_family = Settings.get_instance().canvas_font_selected.value
+    except Exception:
+        font_family = "Segoe UI"
     font = QFont(font_family, size)
     if bold:
         font.setBold(True)
@@ -441,7 +458,7 @@ def str_to_bool(value):
 
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         return s.getsockname()[1]
 
 
@@ -461,14 +478,16 @@ def serialize_for_json(obj, large_list_threshold=1000):
                         buffer = io.BytesIO()
                         np.save(buffer, arr, allow_pickle=False)
                         binary_data = buffer.getvalue()
-                        encoded_data = base64.b64encode(binary_data).decode('utf-8')
+                        encoded_data = base64.b64encode(binary_data).decode("utf-8")
 
                         return {
                             "__type__": "LargeList",
                             "data": encoded_data,
                             "dtype": str(arr.dtype),
                             "format": "numpy_binary",
-                            "original_type": "list" if isinstance(obj, list) else "tuple"
+                            "original_type": "list"
+                            if isinstance(obj, list)
+                            else "tuple",
                         }
                 except (ValueError, TypeError):
                     # 如果无法转换为 numpy 数组（例如包含混合类型），则使用 pickle
@@ -476,13 +495,13 @@ def serialize_for_json(obj, large_list_threshold=1000):
                     buffer = io.BytesIO()
                     pickle.dump(obj, buffer)
                     binary_data = buffer.getvalue()
-                    encoded_data = base64.b64encode(binary_data).decode('utf-8')
+                    encoded_data = base64.b64encode(binary_data).decode("utf-8")
 
                     return {
                         "__type__": "LargeList",
                         "data": encoded_data,
                         "format": "pickle_binary",
-                        "original_type": "list" if isinstance(obj, list) else "tuple"
+                        "original_type": "list" if isinstance(obj, list) else "tuple",
                     }
             except Exception as e:
                 print(f"Large list/tuple serialization failed: {e}")
@@ -503,23 +522,25 @@ def serialize_for_json(obj, large_list_threshold=1000):
             else:
                 # 已经是 pa.Table，直接用（零拷贝，速度最快）
                 table = obj
-                obj_type = "PyArrowTable"  # 标记为 PyArrowTable，接收端决定是否转 Pandas
+                obj_type = (
+                    "PyArrowTable"  # 标记为 PyArrowTable，接收端决定是否转 Pandas
+                )
                 shape = (obj.num_rows, obj.num_columns)
 
             # 2. 写入 feather (Feather 原生支持 PyArrow Table)
             # 确保引入了: import pyarrow.feather as feather
-            feather.write_feather(table, buffer, compression='zstd')
+            feather.write_feather(table, buffer, compression="zstd")
 
             # 3. 获取二进制并编码
             buffer.seek(0)
             binary_data = buffer.read()
-            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+            encoded_data = base64.b64encode(binary_data).decode("utf-8")
 
             return {
                 "__type__": obj_type,  # 告诉接收端原始类型
                 "data": encoded_data,
                 "format": "feather_base64",
-                "shape": shape
+                "shape": shape,
             }
         except Exception as e:
             logger.error(f"Table/DataFrame serialization failed: {e}")
@@ -536,14 +557,14 @@ def serialize_for_json(obj, large_list_threshold=1000):
             np.save(buffer, obj, allow_pickle=False)  # allow_pickle=False 更安全
             binary_data = buffer.getvalue()
             # 将二进制数据编码为 base64 字符串
-            encoded_data = base64.b64encode(binary_data).decode('utf-8')
+            encoded_data = base64.b64encode(binary_data).decode("utf-8")
 
             return {
                 "__type__": "ndarray",
                 "data": encoded_data,  # 存储 base64 编码的二进制数据
                 "dtype": str(obj.dtype),
                 "shape": obj.shape,  # 存储形状信息，便于调试或验证
-                "format": "npy_base64"  # 标记格式
+                "format": "npy_base64",  # 标记格式
             }
         except Exception as e:
             print(f"ndarray binary serialization failed: {e}")
@@ -553,7 +574,7 @@ def serialize_for_json(obj, large_list_threshold=1000):
                     "__type__": "ndarray",
                     "data": obj.tolist(),
                     "dtype": str(obj.dtype),
-                    "format": "list"  # 标记为降级格式
+                    "format": "list",  # 标记为降级格式
                 }
             except Exception as e2:
                 print(f"ndarray list serialization also failed: {e2}")
@@ -564,7 +585,7 @@ def serialize_for_json(obj, large_list_threshold=1000):
         return float(obj)
     elif isinstance(obj, np.bool_):
         return bool(obj)
-    elif hasattr(obj, 'serialize') and callable(getattr(obj, 'serialize')):
+    elif hasattr(obj, "serialize") and callable(getattr(obj, "serialize")):
         try:
             return obj.serialize()
         except:
@@ -577,13 +598,17 @@ def serialize_for_json(obj, large_list_threshold=1000):
         except (TypeError, ValueError):
             return None
 
+
 def deserialize_from_json(obj):
     if isinstance(obj, dict):
         obj_type = obj.get("__type__")
         # ---------------------------------------------------------
         # 1. 核心修改：DataFrame / PyArrowTable -> 直接返回 PyArrow Table
         # ---------------------------------------------------------
-        if obj_type in ["DataFrame", "PyArrowTable"] and obj.get("format") == "feather_base64":
+        if (
+            obj_type in ["DataFrame", "PyArrowTable"]
+            and obj.get("format") == "feather_base64"
+        ):
             try:
                 # 解码 base64
                 binary_data = base64.b64decode(obj["data"])
@@ -601,7 +626,9 @@ def deserialize_from_json(obj):
         # ---------------------------------------------------------
         elif obj_type == "Series":
             # 递归反序列化，这里拿到的 result 现在是 pyarrow.Table 了！
-            table_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
+            table_temp = deserialize_from_json(
+                {**obj, "__type__": "DataFrame", "format": "feather_base64"}
+            )
 
             if isinstance(table_temp, pa.Table):
                 # PyArrow 中没有 Series 概念，最接近的是 Column (ChunkedArray)
@@ -622,7 +649,9 @@ def deserialize_from_json(obj):
                 return obj  # 降级
         elif obj.get("__type__") == "Series":
             # 如果 Series 是通过转为 DataFrame 序列化的
-            df_temp = deserialize_from_json({**obj, "__type__": "DataFrame", "format": "feather_base64"})
+            df_temp = deserialize_from_json(
+                {**obj, "__type__": "DataFrame", "format": "feather_base64"}
+            )
             if isinstance(df_temp, pd.DataFrame) and len(df_temp.columns) == 1:
                 return df_temp.iloc[:, 0]
             return obj
@@ -727,7 +756,9 @@ def _evaluate_value_recursively(value, expr_engine):
     elif isinstance(value, list):
         return [_evaluate_value_recursively(item, expr_engine) for item in value]
     elif isinstance(value, dict):
-        return {k: _evaluate_value_recursively(v, expr_engine) for k, v in value.items()}
+        return {
+            k: _evaluate_value_recursively(v, expr_engine) for k, v in value.items()
+        }
     else:
         return value
 
@@ -747,7 +778,7 @@ def _safe_load_pickle(path, timeout=5.0, retry_interval=0.05):
             continue
 
         try:
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 return pickle.load(f)
         except (EOFError, pickle.UnpicklingError):
             # 文件未写完或损坏，继续等待
@@ -763,18 +794,24 @@ def locate_node_by_name(graph, node_name):
     # 如果 base 本身就在组里，直接返回
     if found_node:
         return found_node.name()
-    parts = node_name.split('_')
+    parts = node_name.split("_")
     n = len(parts)
 
     # 从最细粒度（全拆成空格）到最粗（保留所有下划线）尝试
-    for i in range(n - 1, 0, -1):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
-        candidate = ' '.join(parts[:n - i]) + '_' + '_'.join(parts[n - i:]) if n - i > 0 else '_'.join(parts)
+    for i in range(
+        n - 1, 0, -1
+    ):  # i 是保留原始下划线的起始索引（右侧 i 个部分保持原样）
+        candidate = (
+            " ".join(parts[: n - i]) + "_" + "_".join(parts[n - i :])
+            if n - i > 0
+            else "_".join(parts)
+        )
         found_node = graph.get_node_by_name(candidate)
         if found_node:
             return found_node.name()
 
     # 如果上面都失败，尝试直接用空格替换所有下划线
-    fallback = ' '.join(parts)
+    fallback = " ".join(parts)
     found_node = graph.get_node_by_name(fallback)
     if found_node:
         return found_node.name()
@@ -790,7 +827,7 @@ def get_node_visual_rank(node):
     获取节点的视觉排序权重：从左到右，从上到下
     NodeGraphQt 的 node.pos() 返回 [x, y]
     """
-    if hasattr(node, 'pos'):
+    if hasattr(node, "pos"):
         pos = node.pos()
         return (pos[0], pos[1])  # 先比较 X (左->右)，再比较 Y (上->下)
     return (0, 0)
@@ -807,13 +844,13 @@ def get_graph_fingerprint(nodes: List, use_logic: bool) -> int:
         node_state = [
             node.id,
             node.name(),
-            tuple(node.pos()) if hasattr(node, 'pos') else (0, 0)
+            tuple(node.pos()) if hasattr(node, "pos") else (0, 0),
         ]
 
         # 物理连接
         node_ids = {n.id for n in nodes}
         connections = []
-        if hasattr(node, 'input_ports'):
+        if hasattr(node, "input_ports"):
             for p in node.input_ports():
                 for cp in p.connected_ports():
                     upstream = cp.node()
@@ -822,7 +859,7 @@ def get_graph_fingerprint(nodes: List, use_logic: bool) -> int:
         node_state.append(tuple(sorted(connections)))
 
         # 逻辑依赖
-        if use_logic and hasattr(node, 'get_logical_inputs'):
+        if use_logic and hasattr(node, "get_logical_inputs"):
             node_state.append(tuple(node.get_logical_inputs()))
 
         state.append(tuple(node_state))
@@ -831,10 +868,10 @@ def get_graph_fingerprint(nodes: List, use_logic: bool) -> int:
 
 
 def topological_sort(
-        nodes: List,
-        split_components: bool = False,
-        use_logic: bool = True,
-        use_cache: bool = True
+    nodes: List,
+    split_components: bool = False,
+    use_logic: bool = True,
+    use_cache: bool = True,
 ) -> Union[Optional[List], Optional[List[List]]]:
     """
     增强版拓扑排序
@@ -845,7 +882,7 @@ def topological_sort(
     if not nodes:
         return [] if split_components else []
     # 过滤注释节点
-    nodes = [node for node in nodes if not node.model.type_ == 'general.StickyNote']
+    nodes = [node for node in nodes if not node.model.type_ == "general.StickyNote"]
     # 1. 缓存检查
     fingerprint = None
     if use_cache:
@@ -866,15 +903,15 @@ def topological_sort(
     if use_logic:
         var_to_producer = {}
         for node in sorted_nodes:
-            safe_node_name = re.sub(r'\s+', '_', node.name())
-            if hasattr(node, 'output_ports'):
+            safe_node_name = re.sub(r"\s+", "_", node.name())
+            if hasattr(node, "output_ports"):
                 for port in node.output_ports():
                     var_key = f"node_vars.{safe_node_name}__{port.name()}"
                     var_to_producer[var_key] = node
 
     for node in sorted_nodes:
         # A. 物理依赖
-        if hasattr(node, 'input_ports'):
+        if hasattr(node, "input_ports"):
             for input_port in node.input_ports():
                 for upstream_out in input_port.connected_ports():
                     upstream = upstream_out.node()
@@ -885,7 +922,7 @@ def topological_sort(
                             in_degree[node] += 1
 
         # B. 逻辑依赖
-        if use_logic and hasattr(node, 'get_logical_inputs'):
+        if use_logic and hasattr(node, "get_logical_inputs"):
             for input_name in node.get_logical_inputs():
                 upstream = var_to_producer.get(input_name)
                 if upstream and upstream in node_set and upstream != node:
@@ -907,7 +944,9 @@ def topological_sort(
                     current = queue.popleft()
                     component.append(current)
                     # 合并正向和反向边来找连通块
-                    neighbors = list(set(graph_deps[current] + graph_reverse_deps[current]))
+                    neighbors = list(
+                        set(graph_deps[current] + graph_reverse_deps[current])
+                    )
                     # 邻居也按视觉排序
                     neighbors.sort(key=get_node_visual_rank)
                     for neighbor in neighbors:
@@ -939,7 +978,9 @@ def topological_sort(
                 # 【核心修改：破环逻辑】
                 # 如果没有入度为0的节点，说明剩下的节点形成了环
                 # 按照弱依赖原则：选出剩余节点中视觉位置最靠前的
-                next_node = min(remaining_nodes.keys(), key=lambda x: remaining_nodes[x])
+                next_node = min(
+                    remaining_nodes.keys(), key=lambda x: remaining_nodes[x]
+                )
                 # 强行将其加入就绪队列
                 heapq.heappush(ready_queue, (remaining_nodes[next_node], next_node))
 
@@ -956,7 +997,9 @@ def topological_sort(
                 if neighbor in target_set and neighbor in remaining_nodes:
                     current_in_degrees[neighbor] -= 1
                     if current_in_degrees[neighbor] <= 0:
-                        heapq.heappush(ready_queue, (remaining_nodes[neighbor], neighbor))
+                        heapq.heappush(
+                            ready_queue, (remaining_nodes[neighbor], neighbor)
+                        )
 
         return order
 
@@ -969,7 +1012,8 @@ def topological_sort(
             c_set = set(comp)
             for u in comp:
                 for v in graph_deps[u]:
-                    if v in c_set: comp_in_degree[v] += 1
+                    if v in c_set:
+                        comp_in_degree[v] += 1
             results.append(topo_process(comp, comp_in_degree))
         final_result = results
     else:
@@ -978,7 +1022,8 @@ def topological_sort(
     # 6. 写入缓存
     if use_cache and fingerprint is not None:
         with _TOPO_CACHE_LOCK:
-            if len(_TOPO_CACHE) > 100: _TOPO_CACHE.clear()
+            if len(_TOPO_CACHE) > 100:
+                _TOPO_CACHE.clear()
             _TOPO_CACHE[(fingerprint, split_components, use_logic)] = final_result
 
     return final_result

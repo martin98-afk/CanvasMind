@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
-from PyQt5.QtGui import QPainter, QPainterPath, QLinearGradient, QColor, QBrush, QPixmap
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel)
-from qfluentwidgets import (
-    FluentIcon, PrimaryPushButton, PushButton
+from PyQt5.QtGui import (
+    QPainter,
+    QPainterPath,
+    QLinearGradient,
+    QColor,
+    QBrush,
+    QPixmap,
+    QFont,
 )
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel
+from qfluentwidgets import FluentIcon, PrimaryPushButton, PushButton
+from app.utils.utils import get_unified_font
 
 
 class WelcomeBannerWidget(QWidget):
-    """ 欢迎横幅 """
+    """欢迎横幅"""
+
     newCanvasSignal = pyqtSignal()
     openCanvasSignal = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(300)
-        self.bannerPixmap = QPixmap(':/icons/banner.png')
+        self.bannerPixmap = QPixmap(":/icons/banner.png")
         self.setStyleSheet("background-color: transparent;")
 
         self.vLayout = QVBoxLayout(self)
@@ -25,19 +33,16 @@ class WelcomeBannerWidget(QWidget):
 
         # 标题 - 极大字号
         self.titleLabel = QLabel(self.tr("CanvasMind"))
+        self.titleLabel.setFont(get_unified_font(42, True))
         self.titleLabel.setStyleSheet("""
             color: #FFFFFF;
-            font-family: "Microsoft YaHei UI";
-            font-size: 42px;
-            font-weight: bold;
         """)
 
         # 副标题
         self.subtitleLabel = QLabel(self.tr("现代化的低代码可视化编程平台"))
+        self.subtitleLabel.setFont(get_unified_font(16))
         self.subtitleLabel.setStyleSheet("""
             color: rgba(255, 255, 255, 0.8);
-            font-family: "Microsoft YaHei UI";
-            font-size: 16px;
         """)
 
         # 按钮栏
@@ -100,7 +105,10 @@ class WelcomeBannerWidget(QWidget):
 
     def _on_open_clicked(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, self.tr("打开工作流文件"), "./", "CanvasMind Files (*.workflow.json);;All Files (*)"
+            self,
+            self.tr("打开工作流文件"),
+            "./",
+            "CanvasMind Files (*.workflow.json);;All Files (*)",
         )
         if file_path:
             self.openCanvasSignal.emit(file_path)

@@ -5,19 +5,37 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFileDialog
 from qfluentwidgets import (
-    ScrollArea, SettingCardGroup, PushSettingCard, SwitchSettingCard,
-    LineEdit, FluentIcon as FIF, InfoBar, MessageBox, TextEdit,
-    OptionsSettingCard, FolderListSettingCard, OptionsValidator, Theme, setTheme, themeColor, PrimaryPushSettingCard,
-    FluentIcon, RangeSettingCard
+    ScrollArea,
+    SettingCardGroup,
+    PushSettingCard,
+    SwitchSettingCard,
+    LineEdit,
+    FluentIcon as FIF,
+    InfoBar,
+    MessageBox,
+    TextEdit,
+    OptionsSettingCard,
+    FolderListSettingCard,
+    OptionsValidator,
+    Theme,
+    setTheme,
+    themeColor,
+    PrimaryPushSettingCard,
+    FluentIcon,
+    RangeSettingCard,
 )
 
 from app.utils.config import Settings
 from app.utils.utils import resource_path, get_icon
-from app.widgets.card_widget.list_setting_card import PackageListSettingCard
+from app.widgets.card_widget.list_setting_card import (
+    PackageListSettingCard,
+    FontListSettingCard,
+)
 
 
 class SettingInterface(ScrollArea):
     """设置界面"""
+
     configChanged = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -55,14 +73,16 @@ class SettingInterface(ScrollArea):
     def setup_version_info(self):
         self.versionGroup = SettingCardGroup(self.tr("版本信息"), self.view)
 
-        copyright_text = self.tr("© 版权所有 2025 martin-afk. 当前版本：{}").format(self.cfg.current_version)
+        copyright_text = self.tr("© 版权所有 2025 martin-afk. 当前版本：{}").format(
+            self.cfg.current_version
+        )
 
         self.info_card = PrimaryPushSettingCard(
             text=self.tr("检查更新"),
             icon=FluentIcon.INFO,
             title=self.tr("关于"),
             content=copyright_text,
-            parent=self.versionGroup
+            parent=self.versionGroup,
         )
         self.info_card.clicked.connect(self.parent.updater.check_update)
 
@@ -71,16 +91,18 @@ class SettingInterface(ScrollArea):
             get_icon("用户名"),
             self.tr("当前用户名"),
             self.tr("用户名用于云端组件管理"),
-            parent=self.versionGroup
+            parent=self.versionGroup,
         )
-        self.userNameCard.clicked.connect(lambda: self.onUserNameClicked(self.userNameCard.button))
+        self.userNameCard.clicked.connect(
+            lambda: self.onUserNameClicked(self.userNameCard.button)
+        )
 
         self.autoUpdateCard = SwitchSettingCard(
             get_icon("更新"),
             self.tr("自动更新"),
             self.tr("是否开启自动版本更新检查"),
             configItem=self.cfg.auto_check_update,
-            parent=self.versionGroup
+            parent=self.versionGroup,
         )
         # 连接配置变化信号，自动保存
         self.cfg.auto_check_update.valueChanged.connect(self.onConfigChanged)
@@ -99,7 +121,7 @@ class SettingInterface(ScrollArea):
             FIF.FOLDER,
             self.tr("导出目录"),
             self.cfg.export_dir.value,
-            parent=self.exportGroup
+            parent=self.exportGroup,
         )
         self.exportDirCard.clicked.connect(self.onExportDirClicked)
 
@@ -117,7 +139,7 @@ class SettingInterface(ScrollArea):
             title=self.tr("Python 版本"),
             content=self.tr("选择支持的 Python 版本"),
             parent=self.runtimeEnvGroup,
-            home=self
+            home=self,
         )
         self.cfg.python_versions.valueChanged.connect(self.onConfigChanged)
 
@@ -128,7 +150,7 @@ class SettingInterface(ScrollArea):
             title=self.tr("镜像源管理"),
             content=self.tr("选择合适的镜像源连接"),
             parent=self.runtimeEnvGroup,
-            home=self
+            home=self,
         )
         self.cfg.mirrors.valueChanged.connect(self.onConfigChanged)
 
@@ -138,10 +160,11 @@ class SettingInterface(ScrollArea):
             get_icon("Miniconda"),
             self.tr("Miniconda 版本"),
             self.tr("用于修改 Miniconda 安装的版本"),
-            parent=self.runtimeEnvGroup
+            parent=self.runtimeEnvGroup,
         )
         self.minicondaVersionCard.clicked.connect(
-            lambda: self.onMinicondaVersionClicked(self.minicondaVersionCard.button))
+            lambda: self.onMinicondaVersionClicked(self.minicondaVersionCard.button)
+        )
 
         # 默认包列表
         self.defaultPackagesCard = PackageListSettingCard(
@@ -150,7 +173,7 @@ class SettingInterface(ScrollArea):
             title=self.tr("默认安装包"),
             content=self.tr("管理默认安装的 Python 包"),
             parent=self.runtimeEnvGroup,
-            home=self
+            home=self,
         )
         self.cfg.default_packages.valueChanged.connect(self.onConfigChanged)
 
@@ -169,7 +192,7 @@ class SettingInterface(ScrollArea):
             title=self.tr("本地画布路径"),
             content=self.tr("管理多个画布工作目录"),
             directory="./",
-            parent=self.workflowPathsGroup
+            parent=self.workflowPathsGroup,
         )
         self.cfg.workflow_paths.valueChanged.connect(self.onConfigChanged)
 
@@ -185,7 +208,7 @@ class SettingInterface(ScrollArea):
             title=self.tr("本地项目路径"),
             content=self.tr("管理多个项目工作目录"),
             directory="./",
-            parent=self.projectPathsGroup
+            parent=self.projectPathsGroup,
         )
         self.cfg.project_paths.valueChanged.connect(self.onConfigChanged)
 
@@ -201,7 +224,7 @@ class SettingInterface(ScrollArea):
             self.tr("是否启用节点超时"),
             self.tr("如果启用，节点在超时时间以后会自动中止"),
             configItem=self.cfg.node_run_timeout_toggle,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.timeoutToggleCard.checkedChanged.connect(self.onConfigChanged)
 
@@ -210,16 +233,18 @@ class SettingInterface(ScrollArea):
             get_icon("运行模式"),
             self.tr("节点运行超时时间"),
             self.tr("决定节点最长运行时间（秒），如果超过则会直接中止运行"),
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
 
         self.runParallelCard = SwitchSettingCard(
             get_icon("运行模式"),
             self.tr("是否并行运行"),
-            self.tr("是否并行运行画布节点（拓扑排序中同时入度为0的节点在此模式下会同时运行）"),
+            self.tr(
+                "是否并行运行画布节点（拓扑排序中同时入度为0的节点在此模式下会同时运行）"
+            ),
             configItem=self.cfg.run_parallel,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.runParallelCard.checkedChanged.connect(self.onConfigChanged)
 
@@ -228,7 +253,7 @@ class SettingInterface(ScrollArea):
             get_icon("运行模式"),
             self.tr("运行并行度"),
             self.tr("最大并行度控制，同时最多多少个节点同时运行"),
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.parallelNumCard.valueChanged.connect(self.onConfigChanged)
 
@@ -236,9 +261,11 @@ class SettingInterface(ScrollArea):
             self.cfg.communication_method,
             get_icon("运行模式"),
             self.tr("节点与UI通信方式"),
-            self.tr("控制节点与UI之间通信方式，日志方式是通过节点写日志，主进程读日志来传送消息，ZMQ是通过ZMQ的push和pair机制收发消息"),
+            self.tr(
+                "控制节点与UI之间通信方式，日志方式是通过节点写日志，主进程读日志来传送消息，ZMQ是通过ZMQ的push和pair机制收发消息"
+            ),
             texts=[self.tr("ZMQ通信"), self.tr("日志通信")],
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.communicationMethodCard.optionChanged.connect(self.onConfigChanged)
 
@@ -258,7 +285,7 @@ class SettingInterface(ScrollArea):
             self.tr("自动保存"),
             self.tr("每隔一段时间自动保存当前项目"),
             configItem=self.cfg.canvas_auto_save,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.autoSaveCard.checkedChanged.connect(self.onConfigChanged)
 
@@ -267,7 +294,7 @@ class SettingInterface(ScrollArea):
             get_icon("自动保存"),
             self.tr("修改"),
             self.tr("自动保存间隔 (秒)"),
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.autoSaveIntervalCard.valueChanged.connect(self.onConfigChanged)
         self.canvasGroup.addSettingCard(self.autoSaveCard)
@@ -284,7 +311,7 @@ class SettingInterface(ScrollArea):
             self.tr("节点动画"),
             self.tr("开关节点缩放、新建动画"),
             configItem=self.cfg.node_animation,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.nodeAnimationCard.checkedChanged.connect(self.onConfigChanged)
         self.nodeResizeMemoryCard = SwitchSettingCard(
@@ -292,7 +319,7 @@ class SettingInterface(ScrollArea):
             self.tr("节点缩放记忆"),
             self.tr("用于控制画布加载时是否还原上一次保存时的节点缩放情况"),
             configItem=self.cfg.canvas_resize_memory,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
 
@@ -301,7 +328,7 @@ class SettingInterface(ScrollArea):
             self.tr("Proxy模式自动收缩"),
             self.tr("当节点处于隐藏控件的proxy模式下是否自动缩小节点为固定大小"),
             configItem=self.cfg.canvas_auto_collapse,
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.autoCollapseCard.checkedChanged.connect(self.onConfigChanged)
 
@@ -311,7 +338,7 @@ class SettingInterface(ScrollArea):
             self.tr("显示网格"),
             self.tr("在画布上显示辅助网格"),
             texts=[self.tr("线网格"), self.tr("点网格"), self.tr("无网格")],
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.showGridCard.optionChanged.connect(self.onConfigChanged)
 
@@ -320,7 +347,7 @@ class SettingInterface(ScrollArea):
             get_icon("画布"),
             self.tr("节点细节绘制距离"),
             self.tr("设置节点中控件最小绘制距离，如果超过距离会隐藏控件以提升画布性能"),
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
 
@@ -329,7 +356,7 @@ class SettingInterface(ScrollArea):
             get_icon("画布"),
             self.tr("画布连线粗细"),
             self.tr("控制画布节点之间连线粗细"),
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.PipeWidthCard.valueChanged.connect(self.onConfigChanged)
 
@@ -339,19 +366,21 @@ class SettingInterface(ScrollArea):
             self.tr("流程图连线类型"),
             "",
             texts=[self.tr("直线"), self.tr("曲线"), self.tr("折线")],
-            parent=self.canvasGroup
+            parent=self.canvasGroup,
         )
         self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
 
-        self.canvasFontCard = OptionsSettingCard(
-            self.cfg.canvas_font_type,
-            get_icon("画布"),
-            self.tr("画布显示字体设置"),
-            "",
-            texts=self.cfg.canvas_font_type.options,
-            parent=self.canvasGroup
+        self.canvasFontCard = FontListSettingCard(
+            icon=get_icon("画布"),
+            fontListItem=self.cfg.canvas_font_list,
+            fontSelectedItem=self.cfg.canvas_font_selected,
+            title=self.tr("画布显示字体设置"),
+            content=self.tr("管理字体列表和选择当前字体"),
+            parent=self.canvasGroup,
+            home=self,
         )
-        self.canvasFontCard.optionChanged.connect(self.onConfigChanged)
+        self.canvasFontCard.fontChanged.connect(self.onConfigChanged)
+        self.canvasFontCard.fontSelectedChanged.connect(self.onConfigChanged)
 
         self.canvasGroup.addSettingCard(self.nodeResizeMemoryCard)
         self.canvasGroup.addSettingCard(self.PipeWidthCard)
@@ -373,9 +402,9 @@ class SettingInterface(ScrollArea):
                 self.cfg.set(self.cfg.user_name, x),
                 button.setText(x),
                 self.cfg.save_config(),
-                self.configChanged.emit()
+                self.configChanged.emit(),
             ),
-            placeholder=self.tr("例如: martin98-afk")
+            placeholder=self.tr("例如: martin98-afk"),
         )
 
     def onMinicondaVersionClicked(self, button):
@@ -386,16 +415,14 @@ class SettingInterface(ScrollArea):
                 self.cfg.set(self.cfg.miniconda_version, x),
                 button.setText(x),
                 self.cfg.save_config(),
-                self.configChanged.emit()
+                self.configChanged.emit(),
             ),
-            placeholder=self.tr("例如: 23.11.0")
+            placeholder=self.tr("例如: 23.11.0"),
         )
 
     def onExportDirClicked(self):
         folder = QFileDialog.getExistingDirectory(
-            self,
-            self.tr("选择导出目录"),
-            self.cfg.export_dir.value
+            self, self.tr("选择导出目录"), self.cfg.export_dir.value
         )
         if folder:
             self.cfg.set(self.cfg.export_dir, folder)
@@ -406,7 +433,7 @@ class SettingInterface(ScrollArea):
             InfoBar.success(
                 self.tr("设置已保存"),
                 self.tr("导出目录已更新为 {}").format(folder),
-                parent=self
+                parent=self,
             )
 
     def onGridSizeClicked(self):
@@ -416,10 +443,10 @@ class SettingInterface(ScrollArea):
             lambda x: (
                 self.cfg.set(self.cfg.canvas_grid_size, x),
                 self.cfg.save_config(),
-                self.configChanged.emit()
+                self.configChanged.emit(),
             ),
             min_val=5,
-            max_val=100
+            max_val=100,
         )
 
     def onConfigChanged(self):
@@ -446,15 +473,14 @@ class SettingInterface(ScrollArea):
             print(f"❌ 保存配置失败: {e}")
             # 如果保存失败，可以弹个窗提示
             InfoBar.error(
-                title=self.tr("保存失败"),
-                content=str(e),
-                parent=self,
-                duration=3000
+                title=self.tr("保存失败"), content=str(e), parent=self, duration=3000
             )
 
     # ==================== 通用对话框 ====================
 
-    def showLineEditDialog(self, title: str, current_value: str, callback, placeholder=""):
+    def showLineEditDialog(
+        self, title: str, current_value: str, callback, placeholder=""
+    ):
         w = MessageBox(title, "", self)
         w.contentLabel.hide()
 
@@ -472,11 +498,21 @@ class SettingInterface(ScrollArea):
             new_value = lineEdit.text().strip()
             if new_value:
                 callback(new_value)
-                InfoBar.success(self.tr("设置已保存"), self.tr("{} 已更新").format(title), parent=self)
+                InfoBar.success(
+                    self.tr("设置已保存"),
+                    self.tr("{} 已更新").format(title),
+                    parent=self,
+                )
             else:
-                InfoBar.warning(self.tr("输入无效"), self.tr("{} 不能为空").format(title), parent=self)
+                InfoBar.warning(
+                    self.tr("输入无效"),
+                    self.tr("{} 不能为空").format(title),
+                    parent=self,
+                )
 
-    def showNumberEditDialog(self, title: str, current_value: int, callback, min_val=0, max_val=100):
+    def showNumberEditDialog(
+        self, title: str, current_value: int, callback, min_val=0, max_val=100
+    ):
         # 使用 format 保持翻译文件清洁
         hint = self.tr("请输入 {} ~ {} 之间的整数").format(min_val, max_val)
         w = MessageBox(title, hint, self)
@@ -495,11 +531,17 @@ class SettingInterface(ScrollArea):
                 value = int(lineEdit.text())
                 if min_val <= value <= max_val:
                     callback(value)
-                    InfoBar.success(self.tr("设置已保存"), self.tr("{} 已更新为 {}").format(title, value), parent=self)
+                    InfoBar.success(
+                        self.tr("设置已保存"),
+                        self.tr("{} 已更新为 {}").format(title, value),
+                        parent=self,
+                    )
                 else:
                     InfoBar.warning(self.tr("输入无效"), hint, parent=self)
             except ValueError:
-                InfoBar.error(self.tr("格式错误"), self.tr("请输入有效整数"), parent=self)
+                InfoBar.error(
+                    self.tr("格式错误"), self.tr("请输入有效整数"), parent=self
+                )
 
     def deleteLater(self):
         if self._save_timer.isActive():

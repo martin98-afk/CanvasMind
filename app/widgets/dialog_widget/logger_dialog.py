@@ -73,7 +73,9 @@ class TabbedLogWidget(QWidget):
             text_edit.document().setDocumentMargin(0)
             text_edit.setObjectName(label)
             text_edit.setReadOnly(True)
-            text_edit.setFont(QFont(Settings.get_instance().canvas_font_type.value, 11))
+            text_edit.setFont(
+                QFont(Settings.get_instance().canvas_font_selected.value, 11)
+            )
             text_edit.setStyleSheet("""
                 QPlainTextEdit {
                     background-color: #0e1117;

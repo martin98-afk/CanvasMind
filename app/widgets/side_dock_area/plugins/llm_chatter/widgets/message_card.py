@@ -12,12 +12,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers impor
     render_tool_block,
 )
 
-from PyQt5.QtCore import (
-    Qt,
-    QTimer,
-    pyqtSignal,
-    QUrl
-)
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import (
     QWheelEvent,
     QPainter,
@@ -490,7 +485,7 @@ class CodeWebViewer(QWebEngineView):
         try:
             from app.utils.config import Settings
 
-            font_family = Settings.get_instance().canvas_font_type.value
+            font_family = Settings.get_instance().canvas_font_selected.value
             if not font_family:
                 font_family = "Segoe UI, sans-serif"
         except Exception:
@@ -1054,7 +1049,7 @@ class MessageCard(SimpleCardWidget):
                 f"""
                 QLabel {{
                     font-size: 11px;
-                    color: {self._theme['muted']};
+                    color: {self._theme["muted"]};
                     background: rgba(255,255,255,0.03);
                     border: 1px solid rgba(255,255,255,0.06);
                     border-radius: 9px;
@@ -1152,8 +1147,8 @@ class MessageCard(SimpleCardWidget):
         self.setStyleSheet(
             f"""
             CardWidget {{
-                background-color: {self._theme['bg']};
-                border: 1px solid {self._theme['border']};
+                background-color: {self._theme["bg"]};
+                border: 1px solid {self._theme["border"]};
                 border-radius: 16px;
             }}
             """
@@ -1169,7 +1164,9 @@ class MessageCard(SimpleCardWidget):
             return "Ready"
         return "Idle"
 
-    def _status_badge_style(self, border_color: str, text_color: str = "#dbe7f8") -> str:
+    def _status_badge_style(
+        self, border_color: str, text_color: str = "#dbe7f8"
+    ) -> str:
         return f"""
             QLabel {{
                 font-size: 10px;
@@ -1188,22 +1185,32 @@ class MessageCard(SimpleCardWidget):
             return
         if self.error:
             self.status_badge.setText("Error")
-            self.status_badge.setStyleSheet(self._status_badge_style("#A94444", "#FFB4B4"))
+            self.status_badge.setStyleSheet(
+                self._status_badge_style("#A94444", "#FFB4B4")
+            )
             return
         if self.role == "user":
             self.status_badge.setText("Prompt")
-            self.status_badge.setStyleSheet(self._status_badge_style("#4C74B5", "#DCE9FF"))
+            self.status_badge.setStyleSheet(
+                self._status_badge_style("#4C74B5", "#DCE9FF")
+            )
             return
         if self.role == "welcome":
             self.status_badge.setText("Workspace")
-            self.status_badge.setStyleSheet(self._status_badge_style("#6B583C", "#FFE3BC"))
+            self.status_badge.setStyleSheet(
+                self._status_badge_style("#6B583C", "#FFE3BC")
+            )
             return
         if self._streaming:
             self.status_badge.setText("Thinking")
-            self.status_badge.setStyleSheet(self._status_badge_style("#63D8FF", "#DDF7FF"))
+            self.status_badge.setStyleSheet(
+                self._status_badge_style("#63D8FF", "#DDF7FF")
+            )
         else:
             self.status_badge.setText("Ready")
-            self.status_badge.setStyleSheet(self._status_badge_style("#3B516F", "#D7E4F5"))
+            self.status_badge.setStyleSheet(
+                self._status_badge_style("#3B516F", "#D7E4F5")
+            )
 
     def start_streaming_anim(self):
         if self._streaming:

@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QMimeData, QPoint
 from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from qfluentwidgets import CardWidget
+from app.utils.utils import get_unified_font
 
 
 class DraggableVariableCard(CardWidget):
@@ -28,7 +29,9 @@ class DraggableVariableCard(CardWidget):
             return
         if not self.drag_start_pos:
             return
-        if (event.pos() - self.drag_start_pos).manhattanLength() < QApplication.startDragDistance():
+        if (
+            event.pos() - self.drag_start_pos
+        ).manhattanLength() < QApplication.startDragDistance():
             return
 
         self.startDrag()
@@ -44,10 +47,12 @@ class DraggableVariableCard(CardWidget):
             "type": "global_variable",
             "var_type": self.var_type,
             "var_name": self.var_name,
-            "value_preview": self._get_value_preview()
+            "value_preview": self._get_value_preview(),
         }
-        mime_data.setData("application/x-global-variable",
-                          json.dumps(drag_data, ensure_ascii=False).encode('utf-8'))
+        mime_data.setData(
+            "application/x-global-variable",
+            json.dumps(drag_data, ensure_ascii=False).encode("utf-8"),
+        )
 
         # 同时设置文本格式，便于调试和兼容
         mime_data.setText("变量操作/获取全局变量")
@@ -63,7 +68,10 @@ class DraggableVariableCard(CardWidget):
             if self.var_value is None:
                 return "None"
             elif isinstance(self.var_value, (dict, list)):
-                return json.dumps(self.var_value, ensure_ascii=False, default=str)[:30] + "..."
+                return (
+                    json.dumps(self.var_value, ensure_ascii=False, default=str)[:30]
+                    + "..."
+                )
             else:
                 return str(self.var_value)[:30]
         except:
@@ -98,7 +106,7 @@ class DraggableVariableCard(CardWidget):
         type_color = {
             "custom": QColor("#3498db"),
             "node_vars": QColor("#2ecc71"),
-            "env": QColor("#9b59b6")
+            "env": QColor("#9b59b6"),
         }.get(self.var_type, QColor("#7f8c8d"))
 
         painter.setPen(Qt.NoPen)
@@ -109,12 +117,12 @@ class DraggableVariableCard(CardWidget):
         # 4. 绘制文字内容
         # 变量名 (高亮白色)
         painter.setPen(QColor(255, 255, 255, 230))
-        font = QFont("Microsoft YaHei")  # 建议指定字体以获得更好效果
-        font.setPointSize(10)
-        font.setBold(True)
+        font = get_unified_font(10, True)
         painter.setFont(font)
         # 调整文字坐标以适应新布局
-        painter.drawText(22, 8, width - 30, 24, Qt.AlignLeft | Qt.AlignVCenter, self.var_name)
+        painter.drawText(
+            22, 8, width - 30, 24, Qt.AlignLeft | Qt.AlignVCenter, self.var_name
+        )
 
         # 类型标签 (稍微变暗)
         painter.setPen(QColor(255, 255, 255, 150))
@@ -124,10 +132,12 @@ class DraggableVariableCard(CardWidget):
         type_labels = {
             "custom": "Custom Variable",
             "node_vars": "Node Output",
-            "env": "Environment"
+            "env": "Environment",
         }
         label_text = type_labels.get(self.var_type, self.var_type)
-        painter.drawText(22, 32, width - 30, 16, Qt.AlignLeft | Qt.AlignVCenter, f"{label_text}")
+        painter.drawText(
+            22, 32, width - 30, 16, Qt.AlignLeft | Qt.AlignVCenter, f"{label_text}"
+        )
 
         # 值预览 (更暗的颜色)
         if self.var_value is not None:
@@ -136,7 +146,9 @@ class DraggableVariableCard(CardWidget):
             # 绘制背景框让值看起来更像代码块 (可选)
             # painter.setBrush(QColor(0, 0, 0, 50))
             # painter.drawRoundedRect(22, 52, width-32, 20, 4, 4)
-            painter.drawText(22, 50, width - 32, 24, Qt.AlignLeft | Qt.AlignVCenter, f"{preview}")
+            painter.drawText(
+                22, 50, width - 32, 24, Qt.AlignLeft | Qt.AlignVCenter, f"{preview}"
+            )
 
         painter.end()
         return pixmap

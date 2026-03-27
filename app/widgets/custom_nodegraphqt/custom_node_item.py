@@ -7,6 +7,7 @@ from NodeGraphQt.qgraphics.port import CustomPortItem, PortItem
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from app.utils.config import Settings
+from app.utils.utils import get_unified_font
 from app.widgets.custom_nodegraphqt.custom_port_item import GlowPortItem
 from app.widgets.custom_nodegraphqt.node_action_buttons import (
     NodeActionButton,
@@ -279,7 +280,7 @@ class CustomNodeItem(NodeItem):
         self._geometry_version = 0
 
     def _init_base_components(self):
-        font_type = Settings.get_instance().canvas_font_type.value
+        font_type = Settings.get_instance().canvas_font_selected.value
         self._text_item = NodeTextItem(self.name, self)
         self._text_item.setFont(QtGui.QFont(font_type, 14, QtGui.QFont.DemiBold))
 
@@ -931,7 +932,7 @@ class CustomNodeItem(NodeItem):
 
     def _add_port(self, port):
         text = QtWidgets.QGraphicsTextItem(port.name, self)
-        text.setFont(QtGui.QFont("Segoe UI", 9))
+        text.setFont(get_unified_font(9))
         text.setVisible(port.display_name)
         if port.port_type == PortTypeEnum.IN.value:
             self._input_items[port] = text
