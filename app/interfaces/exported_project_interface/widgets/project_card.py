@@ -28,7 +28,7 @@ from qfluentwidgets import (
 )
 from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.widgets.dialog_widget.service_request_dialog import ServiceRequestDialog
-from app.utils.utils import normalize_python_executable
+from app.utils.utils import normalize_python_executable, get_unified_font
 
 
 class ClickableLabel(BodyLabel):
@@ -41,7 +41,7 @@ class ClickableLabel(BodyLabel):
         self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         color = "#4cc2ff" if isDarkTheme() else "#0078d4"
         self.setStyleSheet(f"color: {color}; text-decoration: none;")
-        self.setFont(QFont("Microsoft YaHei", 9))
+        self.setFont(get_unified_font(9))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -56,11 +56,11 @@ class ClickableLabel(BodyLabel):
         )
 
     def enterEvent(self, event):
-        self.setFont(QFont("Microsoft YaHei", 9, QFont.Bold))
+        self.setFont(get_unified_font(9, True))
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        self.setFont(QFont("Microsoft YaHei", 9))
+        self.setFont(get_unified_font(9))
         super().leaveEvent(event)
 
 
@@ -178,7 +178,7 @@ class ProjectCard(CardWidget):
         # === 顶部：标题 ===
         top_layout = QHBoxLayout()
         self.name_label = BodyLabel(self.project_name)
-        self.name_label.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
+        self.name_label.setFont(get_unified_font(12, True))
         self.name_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.name_label.setWordWrap(False)
         self.name_label.setToolTip(self.project_name)

@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import isDarkTheme, themeColor
 
 from app.utils.config import Settings
+from app.utils.utils import get_unified_font
 
 
 class ProfessionalComboBoxDelegate(QStyledItemDelegate):
@@ -71,13 +72,13 @@ class ProfessionalComboBoxDelegate(QStyledItemDelegate):
         if is_current:
             # 选中项文字：加粗，颜色高亮
             painter.setPen(QColor(255, 255, 255) if isDarkTheme() else themeColor())
-            painter.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            painter.setFont(get_unified_font(10, True))
         else:
             # 非选中项文字
             painter.setPen(
                 QColor(210, 210, 210) if isDarkTheme() else QColor(50, 50, 50)
             )
-            painter.setFont(QFont("Segoe UI", 10))
+            painter.setFont(get_unified_font(10))
 
         # 文字整体向右偏移，为左侧指示条留出呼吸空间
         text_rect = rect.adjusted(24, 0, -10, 0)

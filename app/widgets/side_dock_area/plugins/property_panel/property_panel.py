@@ -2,27 +2,59 @@
 from collections import OrderedDict
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import (Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QEasingCurve, pyqtProperty,
-                          pyqtSignal, QTimer, QRectF, QLineF)
+from PyQt5.QtCore import (
+    Qt,
+    QPropertyAnimation,
+    QRect,
+    QParallelAnimationGroup,
+    QEasingCurve,
+    pyqtProperty,
+    pyqtSignal,
+    QTimer,
+    QRectF,
+    QLineF,
+)
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath
-from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QSizePolicy, QFrame, QGraphicsOpacityEffect,
-                             QScrollArea)
-from qfluentwidgets import StrongBodyLabel, IconWidget, FluentIcon, TransparentToolButton
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QSizePolicy,
+    QFrame,
+    QGraphicsOpacityEffect,
+    QScrollArea,
+)
+from qfluentwidgets import (
+    StrongBodyLabel,
+    IconWidget,
+    FluentIcon,
+    TransparentToolButton,
+)
+
+from app.utils.utils import get_unified_font
 
 # 保持业务相关的引用
 from app.components.base import ArgumentType
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.scan_components import ComponentScanner
-from app.widgets.side_dock_area.plugins.property_panel.flow_control_panel import FlowControlPanelWidget
-from app.widgets.side_dock_area.plugins.property_panel.global_panel import GlobalPanelWidget
-from app.widgets.side_dock_area.plugins.property_panel.node_list_panel import NodeListPanelWidget
+from app.widgets.side_dock_area.plugins.property_panel.flow_control_panel import (
+    FlowControlPanelWidget,
+)
+from app.widgets.side_dock_area.plugins.property_panel.global_panel import (
+    GlobalPanelWidget,
+)
+from app.widgets.side_dock_area.plugins.property_panel.node_list_panel import (
+    NodeListPanelWidget,
+)
 from app.widgets.side_dock_area.plugins.property_panel.node_panel import NodePanelWidget
 
 
 class FuturisticCard(QFrame):
     closed = pyqtSignal(object)
 
-    def __init__(self, parent=None, title="Unknown Node", icon=FluentIcon.DEVELOPER_TOOLS):
+    def __init__(
+        self, parent=None, title="Unknown Node", icon=FluentIcon.DEVELOPER_TOOLS
+    ):
         super().__init__(parent)
         self.is_active = False
         self._custom_opacity = 1.0
@@ -46,7 +78,9 @@ class FuturisticCard(QFrame):
         self.setAttribute(Qt.WA_NoSystemBackground, True)
 
         self.setObjectName("PropertyCard")
-        self.setStyleSheet("QWidget#PropertyCard { background: transparent; border: none; }")
+        self.setStyleSheet(
+            "QWidget#PropertyCard { background: transparent; border: none; }"
+        )
 
         self.card_layout = QVBoxLayout(self)
         self.card_layout.setContentsMargins(0, 0, 0, 0)
@@ -63,7 +97,7 @@ class FuturisticCard(QFrame):
             self.icon_widget = IconWidget(FluentIcon.DEVELOPER_TOOLS, self.header_hud)
         self.icon_widget.setFixedSize(18, 18)
         self.title_label = StrongBodyLabel(title, self.header_hud)
-        self.title_label.setFont(QFont("Segoe UI Semibold", 13))
+        self.title_label.setFont(get_unified_font(13, True))
 
         self.close_btn = TransparentToolButton(FluentIcon.CLOSE, self.header_hud)
         self.close_btn.setFixedSize(28, 28)
@@ -130,22 +164,24 @@ class FuturisticCard(QFrame):
             self._border_path.closeSubpath()
 
             # 2. 重新生成扫描线缓存 (性能关键点：避免在循环中调用 drawLine)
-            self._cached_scan_lines = [
-                QLineF(0, y, w, y)
-                for y in range(0, h, 10)
-            ]
+            self._cached_scan_lines = [QLineF(0, y, w, y) for y in range(0, h, 10)]
 
             self._last_rect = current_rect
 
         # 绘制背景
-        p.fillPath(self._border_path, QBrush(self.BG_ACTIVE if self.is_active else self.BG_INACTIVE))
+        p.fillPath(
+            self._border_path,
+            QBrush(self.BG_ACTIVE if self.is_active else self.BG_INACTIVE),
+        )
 
         # 批量绘制扫描线 (比循环调用快得多)
         p.setPen(self.SCAN_LINE_PEN)
         p.drawLines(self._cached_scan_lines)
 
         # 绘制顶部高亮装饰
-        top_pen = QPen(self.COLOR_ACTIVE_TOP if self.is_active else self.COLOR_INACTIVE_TOP, 2)
+        top_pen = QPen(
+            self.COLOR_ACTIVE_TOP if self.is_active else self.COLOR_INACTIVE_TOP, 2
+        )
         p.setPen(top_pen)
         # 注意：这里直接使用计算好的数值，减少对象创建
         w_f = rect_f.width()
@@ -163,7 +199,7 @@ class FuturisticCard(QFrame):
     def cleanup(self):
         """主动断开所有引用，辅助 GC 回收"""
         # 1. 尝试调用内部逻辑控件的清理方法（如果有线程需要停止）
-        if self._logic and hasattr(self._logic, 'cleanup'):
+        if self._logic and hasattr(self._logic, "cleanup"):
             try:
                 self._logic.cleanup()
             except Exception:
@@ -237,7 +273,7 @@ class PropertyPanel(QWidget):
         # 即使是全局变量面板，在整个 App 关闭或 Panel 销毁时也应该清理
         if self.global_panel_widget:
             # 如果 GlobalPanel 有线程或特定资源，这里也应该调用清理
-            if hasattr(self.global_panel_widget, 'close'):
+            if hasattr(self.global_panel_widget, "close"):
                 self.global_panel_widget.close()
             self.global_panel_widget = None
 
@@ -271,7 +307,8 @@ class PropertyPanel(QWidget):
                 for k in list(self._node_panel_cache.keys()):
                     if k != "GLOBAL_DASHBOARD":
                         c = self._node_panel_cache.pop(k)
-                        if c in self._history_stack: self._history_stack.remove(c)
+                        if c in self._history_stack:
+                            self._history_stack.remove(c)
                         c.deleteLater()
                         break
 
@@ -280,11 +317,13 @@ class PropertyPanel(QWidget):
         self._history_stack.append(target_card)
 
         # 修改淘汰逻辑：如果超过最大数量，只移除最早的“非全局变量”卡片
-        normal_cards = [c for c in self._history_stack if getattr(c, '_node_ref', None) is not None]
+        normal_cards = [
+            c for c in self._history_stack if getattr(c, "_node_ref", None) is not None
+        ]
         if len(normal_cards) > self._max_history:
             for i in range(len(self._history_stack)):
                 candidate = self._history_stack[i]
-                if getattr(candidate, '_node_ref', None) is not None:
+                if getattr(candidate, "_node_ref", None) is not None:
                     self._history_stack.pop(i)
                     candidate.hide()
                     break
@@ -295,20 +334,20 @@ class PropertyPanel(QWidget):
 
     def _close_card(self, card):
         # 全局变量卡片（node_ref 为 None）禁止关闭逻辑
-        if getattr(card, '_node_ref', None) is None:
+        if getattr(card, "_node_ref", None) is None:
             return
 
         if card not in self._history_stack:
             return
 
-        is_active = (self._history_stack[-1] == card)
+        is_active = self._history_stack[-1] == card
         self._history_stack.remove(card)
         card.hide()
 
         if is_active:
             if self._history_stack:
                 next_card = self._history_stack[-1]
-                self.update_properties(getattr(next_card, '_node_ref', None))
+                self.update_properties(getattr(next_card, "_node_ref", None))
             else:
                 self.update_properties(None)
         else:
@@ -323,7 +362,8 @@ class PropertyPanel(QWidget):
 
         self.stage.setUpdatesEnabled(False)
         w, h = self.stage.width(), self.stage.height()
-        if w <= 10: w, h = self.width(), self.height()
+        if w <= 10:
+            w, h = self.width(), self.height()
 
         stack_count = len(self._history_stack)
         for i, card in enumerate(self._history_stack):
@@ -374,7 +414,7 @@ class PropertyPanel(QWidget):
 
             if obj in self._history_stack and self._history_stack[-1] != obj:
                 if 0 <= event.pos().y() <= self._header_reveal_h:
-                    self.update_properties(getattr(obj, '_node_ref', None))
+                    self.update_properties(getattr(obj, "_node_ref", None))
                     return True
         return super().eventFilter(obj, event)
 
@@ -385,7 +425,9 @@ class PropertyPanel(QWidget):
         if key == "GLOBAL_DASHBOARD":
             # 优化点：去掉关闭按钮
             card.close_btn.hide()
-            self.global_panel_widget = GlobalPanelWidget(self.main_window, self, card.content_layout)
+            self.global_panel_widget = GlobalPanelWidget(
+                self.main_window, self, card.content_layout
+            )
             card._logic = self.global_panel_widget
             card._is_logic_class = True
         else:
@@ -417,14 +459,16 @@ class PropertyPanel(QWidget):
             else:
                 self.node_panel_widget = card._logic
 
-            if hasattr(card._logic, 'update_data'):
+            if hasattr(card._logic, "update_data"):
                 card._logic.update_data(node)
-            elif hasattr(card._logic, 'build_ui'):
+            elif hasattr(card._logic, "build_ui"):
                 card._logic.build_ui(node)
 
     def _get_metadata(self, node, key):
-        if key == "GLOBAL_DASHBOARD": return "全局变量", FluentIcon.GLOBE
-        if key == "MULTI_LIST_VIEW": return f"连通图列表", FluentIcon.IOT
+        if key == "GLOBAL_DASHBOARD":
+            return "全局变量", FluentIcon.GLOBE
+        if key == "MULTI_LIST_VIEW":
+            return f"连通图列表", FluentIcon.IOT
         if isinstance(node, ControlFlowBackdrop):
             return node.NODE_NAME, FluentIcon.SYNC
         return node.name(), getattr(node.view, "icon", FluentIcon.INFO)
@@ -444,11 +488,11 @@ class PropertyPanel(QWidget):
         return scroll
 
     def get_port_info(self, node, is_input=True):
-        full_path = getattr(node, 'FULL_PATH', None)
-        if full_path and hasattr(self.main_window, 'component_map'):
+        full_path = getattr(node, "FULL_PATH", None)
+        if full_path and hasattr(self.main_window, "component_map"):
             comp_cls = self.main_window.component_map.get(full_path)
             if comp_cls:
-                comp_ports = getattr(comp_cls, 'inputs' if is_input else 'outputs', [])
+                comp_ports = getattr(comp_cls, "inputs" if is_input else "outputs", [])
                 return [(p.name, p.label, p.type.value) for p in comp_ports]
         try:
             if is_input:
@@ -461,11 +505,13 @@ class PropertyPanel(QWidget):
             ]
         except:
             pass
-        return [(p.name(), p.name(), ArgumentType.JSON.value) for p in
-                (node.input_ports() if is_input else node.output_ports())]
+        return [
+            (p.name(), p.name(), ArgumentType.JSON.value)
+            for p in (node.input_ports() if is_input else node.output_ports())
+        ]
 
     def get_node_description(self, node):
-        if hasattr(node, 'description'):
+        if hasattr(node, "description"):
             return node.description
         if not node or "StatusDynamicNode_" not in node.model.type_:
             return ""
@@ -474,7 +520,9 @@ class PropertyPanel(QWidget):
 
     def _on_global_variables_changed(self, var_type, var_name, action):
         if self.global_panel_widget:
-            self.global_panel_widget.on_global_variables_changed(var_type, var_name, action)
+            self.global_panel_widget.on_global_variables_changed(
+                var_type, var_name, action
+            )
 
     def _refresh_node_vars_page(self):
         if self.global_panel_widget:
@@ -485,26 +533,37 @@ class PropertyPanel(QWidget):
             self.global_panel_widget.copy_as_expression(prefix, var_name)
 
     def _add_output_to_global_variable(self, node, port_name):
-        self.global_panel_widget.add_output_to_global_var(self.main_window, node, port_name)
+        self.global_panel_widget.add_output_to_global_var(
+            self.main_window, node, port_name
+        )
 
     def _delete_output_from_global_variable(self, node, port_name):
         if self.global_panel_widget:
-            self.global_panel_widget.delete_output_from_global_var(self.main_window, node, port_name)
+            self.global_panel_widget.delete_output_from_global_var(
+                self.main_window, node, port_name
+            )
 
     def _is_output_in_global_variable(self, node, port_name):
         if not self._global_panel_built:
             self.update_properties(None)
-        return self.global_panel_widget.is_output_in_global_var(self.main_window, node, port_name)
+        return self.global_panel_widget.is_output_in_global_var(
+            self.main_window, node, port_name
+        )
 
     def update_node_list_content(self):
         if self.node_list_panel_widget:
             self.node_list_panel_widget.update_node_list_content()
 
     def get_current_execution_order(self):
-        return self.node_list_panel_widget.get_current_order() if self.node_list_panel_widget else []
+        return (
+            self.node_list_panel_widget.get_current_order()
+            if self.node_list_panel_widget
+            else []
+        )
 
     def reset_current_components(self):
-        if self.node_list_panel_widget: self.node_list_panel_widget.reset_components()
+        if self.node_list_panel_widget:
+            self.node_list_panel_widget.reset_components()
 
     def set_allowed_update(self, allowed: bool):
         self._allowed_update = allowed
@@ -524,4 +583,6 @@ class PropertyPanel(QWidget):
             self._node_panel_cache.pop(key)
 
         # history 只保留全局变量
-        self._history_stack = [c for c in self._history_stack if getattr(c, '_node_ref', None) is None]
+        self._history_stack = [
+            c for c in self._history_stack if getattr(c, "_node_ref", None) is None
+        ]

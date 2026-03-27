@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QPainter, QLinearGradient, QColor
 from qfluentwidgets import CardWidget
+from app.utils.utils import get_unified_font
 
 
 class ToolFloatingWidget(CardWidget):
@@ -45,16 +46,16 @@ class ToolFloatingWidget(CardWidget):
         header.setSpacing(10)
 
         self.icon_label = QLabel("⚙️", self)
-        self.icon_label.setFont(QFont("", 14))
+        self.icon_label.setFont(get_unified_font(14))
 
         self.tool_name_label = QLabel("", self)
-        self.tool_name_label.setFont(QFont("Consolas", 10))
+        self.tool_name_label.setFont(get_unified_font(10))
         self.tool_name_label.setStyleSheet(
             "color: #64b5f6; background-color: rgba(100, 181, 246, 0.1); padding: 2px 8px; border-radius: 4px;"
         )
 
         self.title_label = QLabel("正在执行工具", self)
-        self.title_label.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        self.title_label.setFont(get_unified_font(11, True))
         self.title_label.setStyleSheet("color: #f59e0b;")
 
         header.addWidget(self.icon_label)
@@ -86,7 +87,7 @@ class ToolFloatingWidget(CardWidget):
         main_layout.addLayout(header)
 
         self.task_label = QLabel("等待执行...", self)
-        self.task_label.setFont(QFont("Microsoft YaHei", 10))
+        self.task_label.setFont(get_unified_font(10))
         self.task_label.setStyleSheet("color: #9e9e9e;")
         self.task_label.setWordWrap(True)
         self.task_label.setTextInteractionFlags(Qt.TextSelectableByMouse)

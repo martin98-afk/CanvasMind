@@ -4,22 +4,23 @@ from pathlib import Path
 from typing import List, Dict
 
 from PyQt5.QtCore import pyqtSignal, QTimer
-from PyQt5.QtWidgets import (QVBoxLayout, QLabel)
-from qfluentwidgets import (
-    FlowLayout, SimpleCardWidget
-)
+from PyQt5.QtWidgets import QVBoxLayout, QLabel
+from qfluentwidgets import FlowLayout, SimpleCardWidget
 
 from app.interfaces.home_interface.widgets.stylish_card import StylishCard
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_unified_font
 
 
 class QuickStartCardView(SimpleCardWidget):
-    """ 快速开始区域 (自适应布局) """
+    """快速开始区域 (自适应布局)"""
+
     openFileSignal = pyqtSignal(str)
 
     def __init__(self, title=None, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("SimpleCardWidget { background-color: transparent; border: none; }")
+        self.setStyleSheet(
+            "SimpleCardWidget { background-color: transparent; border: none; }"
+        )
 
         display_title = title if title else self.tr("最近编辑 >")
 
@@ -28,7 +29,8 @@ class QuickStartCardView(SimpleCardWidget):
 
         # 标题栏样式
         self.titleLabel = QLabel(display_title)
-        self.titleLabel.setStyleSheet("color: #FFFFFF; font-size: 18px; font-weight: bold; margin-bottom: 8px;")
+        self.titleLabel.setFont(get_unified_font(18, True))
+        self.titleLabel.setStyleSheet("color: #FFFFFF; margin-bottom: 8px;")
 
         self.contentLayout = FlowLayout()
         self.contentLayout.setContentsMargins(0, 0, 0, 0)
@@ -43,7 +45,9 @@ class QuickStartCardView(SimpleCardWidget):
         self.layout_timer.setSingleShot(True)
         self.layout_timer.timeout.connect(self._perform_layout)
 
-    def update_recent_files(self, workflow_files: List[Path], file_info_map: Dict[str, dict]):
+    def update_recent_files(
+        self, workflow_files: List[Path], file_info_map: Dict[str, dict]
+    ):
         # 清空
         for card in self.all_cards:
             self.contentLayout.removeWidget(card)
@@ -55,14 +59,16 @@ class QuickStartCardView(SimpleCardWidget):
 
         sorted_paths = sorted(
             workflow_files,
-            key=lambda p: file_info_map.get(str(p), {}).get('mtime_ts', 0),
-            reverse=True
+            key=lambda p: file_info_map.get(str(p), {}).get("mtime_ts", 0),
+            reverse=True,
         )
 
         for wf_path in sorted_paths[:30]:
             card_info = file_info_map.get(str(wf_path), {})
-            card_title = card_info.get('title', ".".join(wf_path.stem.split(".")[:-1]))
-            time_str = datetime.fromtimestamp(card_info.get('mtime_ts', 0)).strftime('%m-%d %H:%M')
+            card_title = card_info.get("title", ".".join(wf_path.stem.split(".")[:-1]))
+            time_str = datetime.fromtimestamp(card_info.get("mtime_ts", 0)).strftime(
+                "%m-%d %H:%M"
+            )
             card_content = f"{self.tr('修改于')}: {time_str}"
 
             # 使用 StylishCard
@@ -70,7 +76,7 @@ class QuickStartCardView(SimpleCardWidget):
                 icon=get_icon("画布"),
                 title=card_title,
                 content=card_content,
-                parent=self
+                parent=self,
             )
             card.clicked.connect(lambda p=wf_path: self.openFileSignal.emit(str(p)))
 
@@ -85,9 +91,14 @@ class QuickStartCardView(SimpleCardWidget):
         self.layout_timer.start(50)
 
     def _perform_layout(self):
-        if not self.all_cards: return
+        if not self.all_cards:
+            return
 
-        container_width = self.contentsRect().width() - self.vLayout.contentsMargins().left() - self.vLayout.contentsMargins().right()
+        container_width = (
+            self.contentsRect().width()
+            - self.vLayout.contentsMargins().left()
+            - self.vLayout.contentsMargins().right()
+        )
         # StylishCard 宽度是自适应的，但我们需要给个参考值来算一行放几个
         # 假设最小宽度 260
         min_width = 260
@@ -104,5 +115,7 @@ class QuickStartCardView(SimpleCardWidget):
             # 强制每个卡片根据行数平分宽度，保证整齐
             if is_visible:
                 # 计算精确宽度
-                target_width = (container_width - (cards_per_row - 1) * spacing) // cards_per_row
+                target_width = (
+                    container_width - (cards_per_row - 1) * spacing
+                ) // cards_per_row
                 card.setFixedWidth(target_width)

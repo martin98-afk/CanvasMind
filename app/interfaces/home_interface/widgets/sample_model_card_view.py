@@ -2,22 +2,23 @@
 from pathlib import Path
 
 from PyQt5.QtCore import pyqtSignal, QTimer
-from PyQt5.QtWidgets import (QVBoxLayout, QLabel)
-from qfluentwidgets import (
-    FlowLayout, SimpleCardWidget
-)
+from PyQt5.QtWidgets import QVBoxLayout, QLabel
+from qfluentwidgets import FlowLayout, SimpleCardWidget
 
 from app.interfaces.home_interface.widgets.stylish_card import StylishCard
-from app.utils.utils import get_icon, resource_path
+from app.utils.utils import get_icon, resource_path, get_unified_font
 
 
 class SampleModelCardView(SimpleCardWidget):
-    """ 示例模型 """
+    """示例模型"""
+
     openSampleSignal = pyqtSignal(str)
 
     def __init__(self, title=None, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("SimpleCardWidget { background-color: transparent; border: none; }")
+        self.setStyleSheet(
+            "SimpleCardWidget { background-color: transparent; border: none; }"
+        )
 
         display_title = title if title else self.tr("示例模型 >")
 
@@ -25,7 +26,8 @@ class SampleModelCardView(SimpleCardWidget):
         self.vLayout.setContentsMargins(20, 10, 20, 10)
 
         self.titleLabel = QLabel(display_title)
-        self.titleLabel.setStyleSheet("color: #FFFFFF; font-size: 18px; font-weight: bold; margin-bottom: 8px;")
+        self.titleLabel.setFont(get_unified_font(18, True))
+        self.titleLabel.setStyleSheet("color: #FFFFFF; margin-bottom: 8px;")
 
         self.contentLayout = FlowLayout()
         self.contentLayout.setContentsMargins(0, 0, 0, 0)
@@ -41,29 +43,74 @@ class SampleModelCardView(SimpleCardWidget):
         self.layout_timer.timeout.connect(self._recalc_width)
 
         self.examples = [
-            {"icon": get_icon("AI音乐"), "title": self.tr("ACE-STEP1.5音乐生成"), "content": self.tr("使用ACE-STEP1.5模型生成AI音乐"),
-             "key": "ace-step1.5"},
-            {"icon": get_icon("多轮对话"), "title": self.tr("AI辩论赛"), "content": self.tr("大模型+TTS辩论"),
-             "key": "AI辩论赛"},
-            {"icon": get_icon("MCP"), "title": self.tr("MCP工具调用智能体"), "content": self.tr("接入本地、线上MCP工具进行智能体工具调用"),
-             "key": "mcp工具调用智能体"},
-            {"icon": get_icon("网络爬虫"), "title": self.tr("新闻抓取、总结、推送"),
-             "content": self.tr("定时抓取百度新闻，获取新闻详情并总结，推送至钉钉"),
-             "key": "抓取百度每日新闻"},
-            {"icon": get_icon("AI绘画"), "title": self.tr("AI扩图"), "content": self.tr("SD+超分图像扩充"),
-             "key": "图像扩充模型"},
-            {"icon": get_icon("智能视频"), "title": self.tr("WAN文图生视频"), "content": self.tr("基于comfyui使用wan模型进行文图生视频"),
-             "key": "wan图生视频实例"},
-            {"icon": get_icon("更新"), "title": self.tr("循环迭代"), "content": self.tr("循环/迭代节点用法"),
-             "key": "循环、迭代样例模型"},
-            {"icon": get_icon("逻辑回归A"), "title": self.tr("机器学习"), "content": self.tr("训练与推理流程"),
-             "key": "机器学习算法样例模型"},
-            {"icon": get_icon("消息推送"), "title": self.tr("触发器使用案例"),
-             "content": self.tr("该案例提供webhook、文件夹监控、错误处理触发器使用样例"),"key": "触发器消息推送"},
-            {"icon": get_icon("HTTP请求"), "title": self.tr("HTTP请求"), "content": self.tr("http请求样例模型，包含请求体合并操作"),
-             "key": "http请求样例模型"},
-            {"icon": get_icon("图表"), "title": self.tr("ECharts图表"), "content": self.tr("使用echarts进行数据可视化分析"),
-             "key": "echarts样例"},
+            {
+                "icon": get_icon("AI音乐"),
+                "title": self.tr("ACE-STEP1.5音乐生成"),
+                "content": self.tr("使用ACE-STEP1.5模型生成AI音乐"),
+                "key": "ace-step1.5",
+            },
+            {
+                "icon": get_icon("多轮对话"),
+                "title": self.tr("AI辩论赛"),
+                "content": self.tr("大模型+TTS辩论"),
+                "key": "AI辩论赛",
+            },
+            {
+                "icon": get_icon("MCP"),
+                "title": self.tr("MCP工具调用智能体"),
+                "content": self.tr("接入本地、线上MCP工具进行智能体工具调用"),
+                "key": "mcp工具调用智能体",
+            },
+            {
+                "icon": get_icon("网络爬虫"),
+                "title": self.tr("新闻抓取、总结、推送"),
+                "content": self.tr("定时抓取百度新闻，获取新闻详情并总结，推送至钉钉"),
+                "key": "抓取百度每日新闻",
+            },
+            {
+                "icon": get_icon("AI绘画"),
+                "title": self.tr("AI扩图"),
+                "content": self.tr("SD+超分图像扩充"),
+                "key": "图像扩充模型",
+            },
+            {
+                "icon": get_icon("智能视频"),
+                "title": self.tr("WAN文图生视频"),
+                "content": self.tr("基于comfyui使用wan模型进行文图生视频"),
+                "key": "wan图生视频实例",
+            },
+            {
+                "icon": get_icon("更新"),
+                "title": self.tr("循环迭代"),
+                "content": self.tr("循环/迭代节点用法"),
+                "key": "循环、迭代样例模型",
+            },
+            {
+                "icon": get_icon("逻辑回归A"),
+                "title": self.tr("机器学习"),
+                "content": self.tr("训练与推理流程"),
+                "key": "机器学习算法样例模型",
+            },
+            {
+                "icon": get_icon("消息推送"),
+                "title": self.tr("触发器使用案例"),
+                "content": self.tr(
+                    "该案例提供webhook、文件夹监控、错误处理触发器使用样例"
+                ),
+                "key": "触发器消息推送",
+            },
+            {
+                "icon": get_icon("HTTP请求"),
+                "title": self.tr("HTTP请求"),
+                "content": self.tr("http请求样例模型，包含请求体合并操作"),
+                "key": "http请求样例模型",
+            },
+            {
+                "icon": get_icon("图表"),
+                "title": self.tr("ECharts图表"),
+                "content": self.tr("使用echarts进行数据可视化分析"),
+                "key": "echarts样例",
+            },
         ]
 
         self.cards = []
@@ -74,7 +121,9 @@ class SampleModelCardView(SimpleCardWidget):
             self.cards.append(card)
 
     def _on_open_sample(self, model_name: str):
-        target_path = Path(resource_path("examples")) / model_name / f"{model_name}.workflow.json"
+        target_path = (
+            Path(resource_path("examples")) / model_name / f"{model_name}.workflow.json"
+        )
         try:
             self.openSampleSignal.emit(str(target_path))
         except Exception as e:
@@ -86,11 +135,17 @@ class SampleModelCardView(SimpleCardWidget):
 
     def _recalc_width(self):
         # 强制所有卡片宽度一致，避免参差不齐
-        container_width = self.contentsRect().width() - self.vLayout.contentsMargins().left() - self.vLayout.contentsMargins().right()
+        container_width = (
+            self.contentsRect().width()
+            - self.vLayout.contentsMargins().left()
+            - self.vLayout.contentsMargins().right()
+        )
         min_width = 260
         spacing = self.contentLayout.horizontalSpacing()
         cards_per_row = max(1, (container_width + spacing) // (min_width + spacing))
-        target_width = (container_width - (cards_per_row - 1) * spacing) // cards_per_row
+        target_width = (
+            container_width - (cards_per_row - 1) * spacing
+        ) // cards_per_row
 
         for card in self.cards:
             card.setFixedWidth(target_width)

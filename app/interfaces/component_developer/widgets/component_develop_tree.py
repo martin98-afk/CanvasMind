@@ -60,7 +60,7 @@ class ComponentTreeWidget(TreeWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setDragEnabled(True)
         self.setDragDropMode(QTreeWidget.DragOnly)
-        self.setIndentation(12)
+        self.setIndentation(8)
 
     def drawRow(self, painter, option, index):
         item = self.itemFromIndex(index)

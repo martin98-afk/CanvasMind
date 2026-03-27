@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel)
-from qfluentwidgets import (
-    FluentIcon, CardWidget, IconWidget
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from qfluentwidgets import FluentIcon, CardWidget, IconWidget
 from qfluentwidgets.common.icon import FluentIconBase
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_unified_font
 
 
 class StylishCard(CardWidget):
@@ -31,7 +29,9 @@ class StylishCard(CardWidget):
         if isinstance(icon, (FluentIcon, FluentIconBase)):
             self.iconWidget = IconWidget(icon)
         else:
-            self.iconWidget = IconWidget(get_icon(icon) if isinstance(icon, str) else icon)
+            self.iconWidget = IconWidget(
+                get_icon(icon) if isinstance(icon, str) else icon
+            )
 
         self.iconWidget.setFixedSize(32, 32)
         self.hLayout.addWidget(self.iconWidget)
@@ -45,10 +45,12 @@ class StylishCard(CardWidget):
         # 标题：强制白色，加粗，16px
         self.titleLabel = QLabel(title)
         self.titleLabel.setObjectName("CardTitle")
+        self.titleLabel.setFont(get_unified_font(16, True))
 
         # 内容：强制灰色，常规，12px
         self.contentLabel = QLabel(content)
         self.contentLabel.setObjectName("CardContent")
+        self.contentLabel.setFont(get_unified_font(12))
         self.contentLabel.setWordWrap(False)  # 不换行，超长截断
 
         self.textLayout.addWidget(self.titleLabel)
@@ -72,14 +74,12 @@ class StylishCard(CardWidget):
             }
             QLabel#CardTitle {
                 color: #ffffff;
-                font-family: "Microsoft YaHei UI", "Segoe UI";
                 font-size: 16px;
                 font-weight: bold;
                 background-color: transparent;
             }
             QLabel#CardContent {
                 color: #bbbbbb;
-                font-family: "Microsoft YaHei UI", "Segoe UI";
                 font-size: 12px;
                 background-color: transparent;
             }

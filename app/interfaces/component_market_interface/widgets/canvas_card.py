@@ -12,6 +12,7 @@ from qfluentwidgets import (
     BodyLabel,
     ImageLabel,
 )
+from app.utils.utils import get_unified_font
 
 
 class CanvasCard(CardWidget):
@@ -83,11 +84,12 @@ class CanvasCard(CardWidget):
 
         # 信息
         title = BodyLabel(data.get("画布名称", "未知"))
-        title.setStyleSheet("font-weight:bold; font-size:14px;")
+        title.setFont(get_unified_font(14, True))
         v_lay.addWidget(title)
 
         sub = BodyLabel(f"Ver: {data.get('版本号', '1.0.0')}")
-        sub.setStyleSheet("color:#888; font-size:11px;")
+        sub.setFont(get_unified_font(11))
+        sub.setStyleSheet("color:#888;")
         v_lay.addWidget(sub)
 
         # 按钮

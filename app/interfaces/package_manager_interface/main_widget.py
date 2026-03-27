@@ -13,30 +13,55 @@ from PyQt5.QtCore import pyqtSignal, QProcess, Qt, QTimer, QSize, QPoint
 from PyQt5.QtGui import QTextCursor, QColor, QFont
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem
 from PyQt5.QtWidgets import (
-    QWidget, QTableWidgetItem, QHeaderView,
-    QFileDialog, QFrame, QAbstractItemView, QStackedWidget
+    QWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QFileDialog,
+    QFrame,
+    QAbstractItemView,
+    QStackedWidget,
 )
 from qfluentwidgets import (
-    ComboBox, PrimaryPushButton, TableWidget,
-    FluentIcon, InfoBar, SearchLineEdit, TextEdit, MessageBox,
-    StateToolTip, SimpleCardWidget,
-    TransparentToolButton, IconWidget, CaptionLabel, Pivot,
-    RoundMenu, Action, SwitchButton, ListWidget
+    ComboBox,
+    PrimaryPushButton,
+    TableWidget,
+    FluentIcon,
+    InfoBar,
+    SearchLineEdit,
+    TextEdit,
+    MessageBox,
+    StateToolTip,
+    SimpleCardWidget,
+    TransparentToolButton,
+    IconWidget,
+    CaptionLabel,
+    Pivot,
+    RoundMenu,
+    Action,
+    SwitchButton,
+    ListWidget,
 )
-from qfluentwidgets import (LineEdit, BodyLabel, StrongBodyLabel)
+from qfluentwidgets import LineEdit, BodyLabel, StrongBodyLabel
 
-from app.interfaces.package_manager_interface.utils.package_list_thread import PackageListThread
+from app.interfaces.package_manager_interface.utils.package_list_thread import (
+    PackageListThread,
+)
 from app.interfaces.package_manager_interface.utils.ssh_exec_thread import SSHExecThread
-from app.interfaces.package_manager_interface.utils.ssh_upload_and_exec_thread import SSHUploadAndExecThread
-from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import SSHAddrDialog
+from app.interfaces.package_manager_interface.utils.ssh_upload_and_exec_thread import (
+    SSHUploadAndExecThread,
+)
+from app.interfaces.package_manager_interface.widgets.ssh_confiig_dialog import (
+    SSHAddrDialog,
+)
 from app.interfaces.package_manager_interface.widgets.task_card import TaskCardWidget
 from app.utils.config import Settings
 from app.utils.env_operation import EnvironmentManager
-from app.utils.utils import get_icon, resource_path
+from app.utils.utils import get_icon, resource_path, get_unified_font
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.basic_widget.style_sheet import StyleSheet
 from app.widgets.dialog_widget.custom_messagebox import (
-    CustomComboDialog, CustomInputDialog
+    CustomComboDialog,
+    CustomInputDialog,
 )
 
 
@@ -72,8 +97,12 @@ class EnvManagerUI(QWidget):
         self.mainLayout.setContentsMargins(16, 16, 16, 16)
 
         self.pivot = Pivot(self)
-        self.pivot.addItem("local", self.tr("本地环境"), lambda: self.on_mode_changed("local"))
-        self.pivot.addItem("remote", self.tr("远程 SSH"), lambda: self.on_mode_changed("remote"))
+        self.pivot.addItem(
+            "local", self.tr("本地环境"), lambda: self.on_mode_changed("local")
+        )
+        self.pivot.addItem(
+            "remote", self.tr("远程 SSH"), lambda: self.on_mode_changed("remote")
+        )
 
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.setHandleWidth(5)
@@ -152,7 +181,9 @@ class EnvManagerUI(QWidget):
 
         self.refreshLocalBtn = TransparentToolButton(FluentIcon.SYNC, self)
         self.refreshLocalBtn.setToolTip(self.tr("刷新包列表"))
-        self.refreshLocalBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
+        self.refreshLocalBtn.clicked.connect(
+            lambda: self.load_packages(self.current_env_data)
+        )
 
         self.newEnvBtn = TransparentToolButton(FluentIcon.ADD, self)
         self.newEnvBtn.clicked.connect(self.create_env)
@@ -190,7 +221,9 @@ class EnvManagerUI(QWidget):
 
         self.refreshRemoteBtn = TransparentToolButton(FluentIcon.SYNC, self)
         self.refreshRemoteBtn.setToolTip(self.tr("刷新包列表"))
-        self.refreshRemoteBtn.clicked.connect(lambda: self.load_packages(self.current_env_data))
+        self.refreshRemoteBtn.clicked.connect(
+            lambda: self.load_packages(self.current_env_data)
+        )
 
         self.installDefaultBtn = TransparentToolButton(get_icon("工具包"), self)
         self.installDefaultBtn.setToolTip(self.tr("安装默认依赖包"))
@@ -245,7 +278,9 @@ class EnvManagerUI(QWidget):
         self.pkgLayout.addWidget(self.fileSelectBtn)
         layout.addLayout(self.pkgLayout)
 
-        self.execBtn = PrimaryPushButton(self.tr("发布任务"), self, icon=FluentIcon.PLAY)
+        self.execBtn = PrimaryPushButton(
+            self.tr("发布任务"), self, icon=FluentIcon.PLAY
+        )
         self.execBtn.clicked.connect(lambda: self.run_pip_command())
         layout.addWidget(self.execBtn)
 
@@ -269,7 +304,9 @@ class EnvManagerUI(QWidget):
 
         self.logEdit = TextEdit(self)
         self.logEdit.setReadOnly(True)
-        self.logEdit.setStyleSheet("background-color:#282c34;color:#abb2bf;font-family:Consolas;")
+        self.logEdit.setStyleSheet(
+            "background-color:#282c34;color:#abb2bf;font-family:Consolas;"
+        )
 
         self.consoleSplitter.addWidget(self.taskListWidget)
         self.consoleSplitter.addWidget(self.logEdit)
@@ -326,15 +363,15 @@ class EnvManagerUI(QWidget):
         self.taskListWidget.setCurrentItem(item)
 
         self.tasks[task_id] = {
-            'id': task_id,
-            'name': name,
-            'worker': worker,
-            'log': [],
-            'env': env_data,
-            'item': item,
-            'card': card,
-            'status': 'running',
-            'is_remote': is_remote
+            "id": task_id,
+            "name": name,
+            "worker": worker,
+            "log": [],
+            "env": env_data,
+            "item": item,
+            "card": card,
+            "status": "running",
+            "is_remote": is_remote,
         }
 
         if is_remote:
@@ -342,8 +379,12 @@ class EnvManagerUI(QWidget):
             worker.finished_signal.connect(lambda: self.on_task_finished(task_id))
             worker.start()
         else:
-            worker.readyReadStandardOutput.connect(lambda: self.on_local_process_output(task_id))
-            worker.finished.connect(lambda exit_code=0, status=None: self.on_task_finished(task_id))
+            worker.readyReadStandardOutput.connect(
+                lambda: self.on_local_process_output(task_id)
+            )
+            worker.finished.connect(
+                lambda exit_code=0, status=None: self.on_task_finished(task_id)
+            )
             worker.start()
 
         self._switch_log_view(task_id)
@@ -353,37 +394,43 @@ class EnvManagerUI(QWidget):
         card.set_status(self.tr("运行中..."), "#009faa")
 
     def cancel_task(self, task_id):
-        if task_id not in self.tasks: return
+        if task_id not in self.tasks:
+            return
         task = self.tasks[task_id]
-        if task['status'] != 'running': return
+        if task["status"] != "running":
+            return
 
-        worker = task['worker']
-        self._log_color(f"\n[{self.tr('警告')}] {self.tr('用户取消了该任务')}。", "#e06c75", task_id)
+        worker = task["worker"]
+        self._log_color(
+            f"\n[{self.tr('警告')}] {self.tr('用户取消了该任务')}。", "#e06c75", task_id
+        )
 
-        if task['is_remote']:
-            if hasattr(worker, 'terminate'):
+        if task["is_remote"]:
+            if hasattr(worker, "terminate"):
                 worker.terminate()
                 worker.wait()
         else:
             if worker.state() != QProcess.NotRunning:
                 worker.kill()
 
-        task['status'] = 'cancelled'
-        task['card'].set_status(self.tr("已取消"), "#e06c75", finished=True)
+        task["status"] = "cancelled"
+        task["card"].set_status(self.tr("已取消"), "#e06c75", finished=True)
         self.on_task_finished(task_id, forced_status=self.tr("已取消"))
 
     def on_local_process_output(self, task_id):
-        if task_id not in self.tasks: return
+        if task_id not in self.tasks:
+            return
         task = self.tasks[task_id]
-        process = task['worker']
+        process = task["worker"]
         data = process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
         self.on_task_log(task_id, data)
 
     def on_task_log(self, task_id, text):
-        if task_id not in self.tasks: return
+        if task_id not in self.tasks:
+            return
 
         # 1. 存入缓冲区
-        self.tasks[task_id]['log'].append(text)
+        self.tasks[task_id]["log"].append(text)
 
         # 2. 如果当前正在看这个任务，立即显示
         if self.current_viewing_task_id == task_id:
@@ -404,46 +451,73 @@ class EnvManagerUI(QWidget):
         self.logEdit.moveCursor(QTextCursor.End)
 
     def on_task_finished(self, task_id, forced_status=None):
-        if task_id not in self.tasks: return
+        if task_id not in self.tasks:
+            return
         task = self.tasks[task_id]
 
-        if task['status'] == 'finished' and not forced_status:
+        if task["status"] == "finished" and not forced_status:
             return
 
         # 获取完整日志文本
-        full_log = "".join(task['log'])
-        exit_code = 0 if task['is_remote'] else task['worker'].exitCode()
+        full_log = "".join(task["log"])
+        exit_code = 0 if task["is_remote"] else task["worker"].exitCode()
 
         # 判定是否触发了元数据损坏错误
-        is_metadata_error = "uninstall-no-record-file" in full_log or "METADATA" in full_log
+        is_metadata_error = (
+            "uninstall-no-record-file" in full_log or "METADATA" in full_log
+        )
 
         status_text = forced_status or self.tr("完成")
-        color = "#e06c75" if (forced_status == self.tr("已取消") or exit_code != 0) else "#98c379"
+        color = (
+            "#e06c75"
+            if (forced_status == self.tr("已取消") or exit_code != 0)
+            else "#98c379"
+        )
 
         if exit_code != 0 and not forced_status:
             status_text = self.tr("失败")
 
             # --- 自动修复逻辑开始 ---
             if is_metadata_error:
-                self._log_color(f"\n[系统检测] 发现损坏的包元数据，正在尝试自动修复...", "#d19a66", task_id)
-                cleaned = self._cleanup_broken_package_metadata(full_log, task['env'].get('path', ''))
+                self._log_color(
+                    f"\n[系统检测] 发现损坏的包元数据，正在尝试自动修复...",
+                    "#d19a66",
+                    task_id,
+                )
+                cleaned = self._cleanup_broken_package_metadata(
+                    full_log, task["env"].get("path", "")
+                )
                 if cleaned:
                     for f in cleaned:
-                        self._log_color(f" -> 已移除损坏的目录: {f}", "#d19a66", task_id)
-                    self._log_color("修复完成，请尝试重新执行任务。", "#98c379", task_id)
-                    task['card'].set_status(self.tr("已修复，请重试"), "#d19a66", finished=True)
+                        self._log_color(
+                            f" -> 已移除损坏的目录: {f}", "#d19a66", task_id
+                        )
+                    self._log_color(
+                        "修复完成，请尝试重新执行任务。", "#98c379", task_id
+                    )
+                    task["card"].set_status(
+                        self.tr("已修复，请重试"), "#d19a66", finished=True
+                    )
                 else:
-                    self._log_color("未找到可清理的目录，请手动检查 site-packages。", "#e06c75", task_id)
+                    self._log_color(
+                        "未找到可清理的目录，请手动检查 site-packages。",
+                        "#e06c75",
+                        task_id,
+                    )
             # --- 自动修复逻辑结束 ---
 
-        task['status'] = 'finished'
+        task["status"] = "finished"
         if not is_metadata_error:  # 如果已经设为“已修复”，就不覆盖状态
-            task['card'].set_status(status_text, color, finished=True)
+            task["card"].set_status(status_text, color, finished=True)
 
         self._log_color(f"\n[{status_text}]", color, task_id)
 
         # 只有成功时才刷新列表，减少文件锁竞争
-        if exit_code == 0 and self.current_env_data and task['env']['name'] == self.current_env_data['name']:
+        if (
+            exit_code == 0
+            and self.current_env_data
+            and task["env"]["name"] == self.current_env_data["name"]
+        ):
             self.load_packages(self.current_env_data)
 
     def _on_task_item_clicked(self, item):
@@ -453,7 +527,7 @@ class EnvManagerUI(QWidget):
             return
 
         for tid, data in self.tasks.items():
-            if data['item'] == item:
+            if data["item"] == item:
                 self._switch_log_view(tid)
                 break
 
@@ -468,7 +542,7 @@ class EnvManagerUI(QWidget):
                 self._append_log_chunk(chunk)
         elif task_id in self.tasks:
             # 遍历历史记录，使用智能追加函数
-            for chunk in self.tasks[task_id]['log']:
+            for chunk in self.tasks[task_id]["log"]:
                 self._append_log_chunk(chunk)
 
     def _log_color(self, text, color, task_id=None):
@@ -512,7 +586,13 @@ class EnvManagerUI(QWidget):
     def install_uv_logic(self):
         # 修复权限报错：添加 -ExecutionPolicy Bypass
         if platform.system() == "Windows":
-            cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"]
+            cmd = [
+                "powershell",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "irm https://astral.sh/uv/install.ps1 | iex",
+            ]
         else:
             cmd = ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"]
 
@@ -524,18 +604,27 @@ class EnvManagerUI(QWidget):
         self.create_task(self.tr("安装 uv"), fake_env, process, is_remote=False)
 
     def run_pip_command(self, action=None, package_input=None, force_no_uv=False):
-        if not self.current_env_data: return
+        if not self.current_env_data:
+            return
 
         # === 关键修复：解决 Windows 文件占用 (OS Error 32) ===
         if platform.system() == "Windows":
-            if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+            if hasattr(self, "_pkg_thread") and self._pkg_thread.isRunning():
                 self._pkg_thread.terminate()
                 self._pkg_thread.wait()
                 self.pyVersionLabel.setText(self.tr("列表刷新已暂停，准备执行任务..."))
 
-        use_uv = (not force_no_uv) and self.uvSwitch.isChecked() and self.current_env_data["type"] == "local"
+        use_uv = (
+            (not force_no_uv)
+            and self.uvSwitch.isChecked()
+            and self.current_env_data["type"] == "local"
+        )
         if use_uv and not self.is_uv_installed():
-            res = MessageBox(self.tr("未检测到 uv"), self.tr("是否立即安装 uv 以启用加速功能？"), self).exec()
+            res = MessageBox(
+                self.tr("未检测到 uv"),
+                self.tr("是否立即安装 uv 以启用加速功能？"),
+                self,
+            ).exec()
             if res:
                 self.install_uv_logic()
             else:
@@ -547,10 +636,14 @@ class EnvManagerUI(QWidget):
         current_action = action or ui_action
         raw_input = package_input or self.packageEdit.text().strip()
 
-        if not raw_input and self.tr("卸载") not in current_action: return
+        if not raw_input and self.tr("卸载") not in current_action:
+            return
 
-        cmd_result = self._generate_pip_command(use_uv, current_action, ui_source, raw_input)
-        if not cmd_result: return
+        cmd_result = self._generate_pip_command(
+            use_uv, current_action, ui_source, raw_input
+        )
+        if not cmd_result:
+            return
         executable, args, upload_files = cmd_result
 
         display_name = f"{current_action} {raw_input}"
@@ -561,22 +654,32 @@ class EnvManagerUI(QWidget):
             if upload_files:
                 is_req = self.tr("Requirements") in current_action
                 worker = SSHUploadAndExecThread(
-                    self.current_env_data, upload_files, current_action, is_requirements=is_req
+                    self.current_env_data,
+                    upload_files,
+                    current_action,
+                    is_requirements=is_req,
                 )
-                self.create_task(display_name, self.current_env_data, worker, is_remote=True)
+                self.create_task(
+                    display_name, self.current_env_data, worker, is_remote=True
+                )
             else:
                 worker = SSHExecThread(self.current_env_data, args)
-                self.create_task(display_name, self.current_env_data, worker, is_remote=True)
+                self.create_task(
+                    display_name, self.current_env_data, worker, is_remote=True
+                )
         else:
             process = QProcess(self)
             process.setProcessChannelMode(QProcess.MergedChannels)
             if platform.system() == "Windows":
                 from PyQt5.QtCore import QProcessEnvironment
+
                 process.setProcessEnvironment(QProcessEnvironment.systemEnvironment())
 
             process.setProgram(executable)
             process.setArguments(args)
-            self.create_task(display_name, self.current_env_data, process, is_remote=False)
+            self.create_task(
+                display_name, self.current_env_data, process, is_remote=False
+            )
 
     def _generate_pip_command(self, use_uv, action, source, input_text):
         upload_files = None
@@ -625,7 +728,7 @@ class EnvManagerUI(QWidget):
             for p in paths:
                 if os.path.isdir(p):
                     for item in os.listdir(p):
-                        if item.lower().endswith(('.whl', '.tar.gz', '.zip')):
+                        if item.lower().endswith((".whl", ".tar.gz", ".zip")):
                             final_packages.append(os.path.join(p, item))
                 else:
                     final_packages.append(p)
@@ -639,7 +742,8 @@ class EnvManagerUI(QWidget):
 
     def _add_mirror_sources(self, cmd):
         mirrors = self.mgr.config.mirrors.value
-        if not mirrors: return
+        if not mirrors:
+            return
         for i, url in enumerate(mirrors):
             flag = "-i" if i == 0 else "--extra-index-url"
             parsed = urlparse(url)
@@ -648,7 +752,9 @@ class EnvManagerUI(QWidget):
 
     def _setup_package_table(self):
         self.packageTable.setColumnCount(3)
-        self.packageTable.setHorizontalHeaderLabels([self.tr("名称"), self.tr("版本"), self.tr("操作")])
+        self.packageTable.setHorizontalHeaderLabels(
+            [self.tr("名称"), self.tr("版本"), self.tr("操作")]
+        )
         self.packageTable.verticalHeader().hide()
         self.packageTable.setAlternatingRowColors(True)
         self.packageTable.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -662,13 +768,22 @@ class EnvManagerUI(QWidget):
         self.actionCombo.clear()
         if current_source == self.tr("在线搜索"):
             self.fileSelectBtn.hide()
-            self.actionCombo.addItems([self.tr("安装"), self.tr("强制重装"), self.tr("更新"), self.tr("卸载")])
+            self.actionCombo.addItems(
+                [self.tr("安装"), self.tr("强制重装"), self.tr("更新"), self.tr("卸载")]
+            )
             self.packageEdit.setPlaceholderText(self.tr("请输入包名，例如 numpy"))
         elif current_source == self.tr("本地文件"):
             self.fileSelectBtn.show()
             self.actionCombo.addItems(
-                [self.tr("安装 (Whl/Zip)"), self.tr("离线安装 (Whl/Zip)"), self.tr("Requirements 安装")])
-            self.packageEdit.setPlaceholderText(self.tr("请选择本地 .whl 或 requirements.txt 文件..."))
+                [
+                    self.tr("安装 (Whl/Zip)"),
+                    self.tr("离线安装 (Whl/Zip)"),
+                    self.tr("Requirements 安装"),
+                ]
+            )
+            self.packageEdit.setPlaceholderText(
+                self.tr("请选择本地 .whl 或 requirements.txt 文件...")
+            )
 
     def show_file_selection_menu(self):
         menu = RoundMenu(parent=self)
@@ -689,7 +804,10 @@ class EnvManagerUI(QWidget):
 
     def select_requirements_file(self):
         file, _ = QFileDialog.getOpenFileName(
-            self, self.tr("选择 Requirements 文件"), "", "Text Files (*.txt);;All Files (*)"
+            self,
+            self.tr("选择 Requirements 文件"),
+            "",
+            "Text Files (*.txt);;All Files (*)",
         )
         if file:
             self.packageEdit.setText(file)
@@ -697,7 +815,10 @@ class EnvManagerUI(QWidget):
 
     def select_local_files(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self, self.tr("选择安装包"), "", "Python Packages (*.whl *.tar.gz *.zip);All Files (*)"
+            self,
+            self.tr("选择安装包"),
+            "",
+            "Python Packages (*.whl *.tar.gz *.zip);All Files (*)",
         )
         if files:
             self.packageEdit.setText(";".join(files))
@@ -710,9 +831,15 @@ class EnvManagerUI(QWidget):
     def get_all_environments(self):
         all_envs = []
         for env in self.mgr.list_envs():
-            all_envs.append({"name": env, "type": "local", "path": str(self.mgr.get_python_exe(env))})
+            all_envs.append(
+                {
+                    "name": env,
+                    "type": "local",
+                    "path": str(self.mgr.get_python_exe(env)),
+                }
+            )
         if os.path.exists(self.ssh_config_file):
-            with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+            with open(self.ssh_config_file, "r", encoding="utf-8") as f:
                 ssh_list = json.load(f)
                 for env in ssh_list:
                     env["type"] = "ssh"
@@ -725,7 +852,9 @@ class EnvManagerUI(QWidget):
         envs = self.mgr.list_envs()
         for env in envs:
             path = str(self.mgr.get_python_exe(env))
-            self.envCombo.addItem(f"[Local] {env}", userData={"type": "local", "name": env, "path": path})
+            self.envCombo.addItem(
+                f"[Local] {env}", userData={"type": "local", "name": env, "path": path}
+            )
         last_selected = self.config.current_env_selected.value
         idx = self.envCombo.findText(f"[Local] {last_selected}")
         self.envCombo.setCurrentIndex(idx if idx >= 0 else 0)
@@ -733,9 +862,14 @@ class EnvManagerUI(QWidget):
         self.on_env_changed()
 
     def on_env_changed(self):
-        combo = self.envCombo if self.configStack.currentIndex() == 0 else self.remoteEnvCombo
+        combo = (
+            self.envCombo
+            if self.configStack.currentIndex() == 0
+            else self.remoteEnvCombo
+        )
         data = combo.currentData()
-        if not data: return
+        if not data:
+            return
         self.current_env_data = data
         self.current_env = data["name"]
 
@@ -746,21 +880,27 @@ class EnvManagerUI(QWidget):
             self.config.save_config()
         else:
             self.remoteDetailLabel.setText(
-                f"{self.tr('地址')}: {data['host']}:{data.get('port', 22)} | User: {data['user']}")
+                f"{self.tr('地址')}: {data['host']}:{data.get('port', 22)} | User: {data['user']}"
+            )
 
         self.load_packages(data)
 
     def load_packages(self, env_data):
-        if not env_data: return
+        if not env_data:
+            return
         for task in self.tasks.values():
-            if task['status'] == 'running' and not task['is_remote']:
+            if task["status"] == "running" and not task["is_remote"]:
                 self._log_color("> 任务执行中，暂缓刷新列表以防止文件冲突。", "#abb2bf")
                 return
         if isinstance(env_data, str):
-            env_data = {"type": "local", "name": env_data, "path": str(self.mgr.get_python_exe(env_data))}
+            env_data = {
+                "type": "local",
+                "name": env_data,
+                "path": str(self.mgr.get_python_exe(env_data)),
+            }
 
         self.pyVersionLabel.setText(self.tr("正在加载包列表..."))
-        if hasattr(self, '_pkg_thread') and self._pkg_thread.isRunning():
+        if hasattr(self, "_pkg_thread") and self._pkg_thread.isRunning():
             self._pkg_thread.terminate()
             self._pkg_thread.wait()
 
@@ -793,7 +933,7 @@ class EnvManagerUI(QWidget):
         self._pending_pkgs = pkgs
         self._current_populate_index = 0
         self._batch_size = 20
-        if hasattr(self, '_populate_timer'):
+        if hasattr(self, "_populate_timer"):
             self._populate_timer.stop()
         else:
             self._populate_timer = QTimer(self)
@@ -803,7 +943,7 @@ class EnvManagerUI(QWidget):
     def _populate_batch(self):
         start = self._current_populate_index
         end = min(start + self._batch_size, len(self._pending_pkgs))
-        font = QFont("Segoe UI", 9)
+        font = get_unified_font(9)
         gray_color = QColor(150, 150, 150)
         for i in range(start, end):
             pkg = self._pending_pkgs[i]
@@ -834,7 +974,9 @@ class EnvManagerUI(QWidget):
         ub.setToolTip(f"{self.tr('更新')} {name}")
         ub.setFixedSize(26, 26)
         ub.setIconSize(QSize(14, 14))
-        ub.clicked.connect(functools.partial(self.run_pip_command, self.tr("更新"), name))
+        ub.clicked.connect(
+            functools.partial(self.run_pip_command, self.tr("更新"), name)
+        )
         db = TransparentToolButton(FluentIcon.DELETE, bw)
         db.setToolTip(f"{self.tr('卸载')} {name}")
         db.setFixedSize(26, 26)
@@ -845,16 +987,20 @@ class EnvManagerUI(QWidget):
         return bw
 
     def on_uninstall_package_clicked(self, package_name):
-        if MessageBox(self.tr("确认"), f"{self.tr('确定卸载')} {package_name}?", self).exec():
+        if MessageBox(
+            self.tr("确认"), f"{self.tr('确定卸载')} {package_name}?", self
+        ).exec():
             self.run_pip_command(self.tr("卸载"), package_name)
 
     def on_search_text_changed(self, text):
-        if hasattr(self, '_search_timer'):
+        if hasattr(self, "_search_timer"):
             self._search_timer.stop()
         else:
             self._search_timer = QTimer(self)
             self._search_timer.setSingleShot(True)
-            self._search_timer.timeout.connect(lambda: self._do_search(self.searchEdit.text()))
+            self._search_timer.timeout.connect(
+                lambda: self._do_search(self.searchEdit.text())
+            )
         self._search_timer.start(200)
 
     def _do_search(self, text):
@@ -862,7 +1008,9 @@ class EnvManagerUI(QWidget):
         self.packageTable.setUpdatesEnabled(False)
         for r in range(self.packageTable.rowCount()):
             it = self.packageTable.item(r, 0)
-            self.packageTable.setRowHidden(r, t not in it.text().lower() if it else False)
+            self.packageTable.setRowHidden(
+                r, t not in it.text().lower() if it else False
+            )
         self.packageTable.setUpdatesEnabled(True)
 
     def on_mode_changed(self, mode):
@@ -878,7 +1026,7 @@ class EnvManagerUI(QWidget):
         self.remoteEnvCombo.clear()
         ssh_list = []
         if os.path.exists(self.ssh_config_file):
-            with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+            with open(self.ssh_config_file, "r", encoding="utf-8") as f:
                 ssh_list = json.load(f)
         for env in ssh_list:
             env["type"] = "ssh"
@@ -898,12 +1046,14 @@ class EnvManagerUI(QWidget):
             info = d.get_info()
 
             # 1. 显示状态提示，存入 self 防止提前销毁
-            self.stateTooltip = StateToolTip(self.tr("正在扫描远程环境"), self.tr("请稍候..."), self)
+            self.stateTooltip = StateToolTip(
+                self.tr("正在扫描远程环境"), self.tr("请稍候..."), self
+            )
             self.stateTooltip.show()
 
             # 2. 构造单行命令：兼容文件和目录搜索
             # 搜索当前路径及其下 4 层目录中名为 python 或 python3.x 的可执行文件
-            search_path = info['path'].rstrip('/')
+            search_path = info["path"].rstrip("/")
             # 使用原生 find 的逻辑：匹配包含 bin/python 的路径，不使用管道符
             cmd = f"find {search_path} -maxdepth 4 -type f -executable \( -name 'python' -o -name 'python3*' \)"
 
@@ -918,58 +1068,67 @@ class EnvManagerUI(QWidget):
                     collected_outputs.append(line.strip())
 
             def on_process_finished():
-                if hasattr(self, 'stateTooltip'):
+                if hasattr(self, "stateTooltip"):
                     self.stateTooltip.close()
 
                 found_paths = [
-                    p for p in collected_outputs
-                    if p.startswith('/') and not p.endswith('-config') and 'python' in p.lower()
+                    p
+                    for p in collected_outputs
+                    if p.startswith("/")
+                    and not p.endswith("-config")
+                    and "python" in p.lower()
                 ]
 
                 # 如果没有搜到有效的，兜底使用用户填的原始路径
                 if not found_paths:
-                    found_paths = [info['path']]
+                    found_paths = [info["path"]]
 
                 try:
                     ssh_list = []
                     if os.path.exists(self.ssh_config_file):
-                        with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+                        with open(self.ssh_config_file, "r", encoding="utf-8") as f:
                             ssh_list = json.load(f)
 
                     for p in found_paths:
                         new_entry = info.copy()
                         new_entry["path"] = p
 
-                        parts = p.split('/')
+                        parts = p.split("/")
 
                         # 命名逻辑：如果是从目录扫出来的，提取环境文件夹名
                         # 例如: /langchain/bin/python3.8 -> 名字提取为 langchain
-                        if p != info['path'] and len(parts) >= 3:
-                            if parts[-2] == 'bin':
+                        if p != info["path"] and len(parts) >= 3:
+                            if parts[-2] == "bin":
                                 env_name = parts[-3]  # langchain
                             else:
                                 env_name = parts[-2]
                             new_entry["name"] = env_name
                         else:
                             # 单文件模式或路径太短，用用户起的名字或文件名
-                            new_entry["name"] = info["name"] if info["name"] else parts[-1]
+                            new_entry["name"] = (
+                                info["name"] if info["name"] else parts[-1]
+                            )
 
                         # 排重：Host + Port + Path 唯一
                         is_duplicate = any(
-                            e['host'] == new_entry['host'] and
-                            e['port'] == new_entry['port'] and
-                            e['path'] == new_entry['path']
+                            e["host"] == new_entry["host"]
+                            and e["port"] == new_entry["port"]
+                            and e["path"] == new_entry["path"]
                             for e in ssh_list
                         )
 
                         if not is_duplicate:
                             ssh_list.append(new_entry)
 
-                    with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
+                    with open(self.ssh_config_file, "w", encoding="utf-8") as f:
                         json.dump(ssh_list, f, ensure_ascii=False, indent=4)
 
                     self.refresh_remote_envs()
-                    InfoBar.success(self.tr("扫描完成"), f"成功添加 {len(found_paths)} 个环境", parent=self)
+                    InfoBar.success(
+                        self.tr("扫描完成"),
+                        f"成功添加 {len(found_paths)} 个环境",
+                        parent=self,
+                    )
 
                 except Exception as e:
                     InfoBar.error(self.tr("保存失败"), str(e), parent=self)
@@ -979,40 +1138,51 @@ class EnvManagerUI(QWidget):
             self.scan_worker.finished_signal.connect(on_process_finished)
 
             # 如果 Worker 有错误信号也连上，防止连接失败导致卡死
-            if hasattr(self.scan_worker, 'error_signal'):
-                self.scan_worker.error_signal.connect(lambda err: (
-                    self.stateTooltip.get().close() if hasattr(self, 'stateTooltip') else None,
-                    InfoBar.error(self.tr("连接失败"), str(err), parent=self)
-                ))
+            if hasattr(self.scan_worker, "error_signal"):
+                self.scan_worker.error_signal.connect(
+                    lambda err: (
+                        self.stateTooltip.get().close()
+                        if hasattr(self, "stateTooltip")
+                        else None,
+                        InfoBar.error(self.tr("连接失败"), str(err), parent=self),
+                    )
+                )
 
             self.scan_worker.start()
 
     def edit_ssh_env_dialog(self):
-        if self.remoteEnvCombo.currentIndex() == -1: return
+        if self.remoteEnvCombo.currentIndex() == -1:
+            return
         old_data = self.remoteEnvCombo.currentData()
         d = SSHAddrDialog(self, data=old_data)
         if d.exec():
             new_info = d.get_info()
             if os.path.exists(self.ssh_config_file):
-                with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+                with open(self.ssh_config_file, "r", encoding="utf-8") as f:
                     ssh_list = json.load(f)
                 for i, env in enumerate(ssh_list):
-                    if env["name"] == old_data["name"] and env["host"] == old_data["host"]:
+                    if (
+                        env["name"] == old_data["name"]
+                        and env["host"] == old_data["host"]
+                    ):
                         ssh_list[i] = new_info
                         break
-                with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
+                with open(self.ssh_config_file, "w", encoding="utf-8") as f:
                     json.dump(ssh_list, f, ensure_ascii=False, indent=4)
                 self.refresh_remote_envs()
 
     def delete_ssh_env(self):
-        if self.remoteEnvCombo.currentIndex() == -1: return
+        if self.remoteEnvCombo.currentIndex() == -1:
+            return
         name = self.remoteEnvCombo.currentData()["name"]
-        if MessageBox(self.tr("确认"), f"{self.tr('确定删除 SSH 配置')} {name}?", self).exec():
+        if MessageBox(
+            self.tr("确认"), f"{self.tr('确定删除 SSH 配置')} {name}?", self
+        ).exec():
             if os.path.exists(self.ssh_config_file):
-                with open(self.ssh_config_file, 'r', encoding='utf-8') as f:
+                with open(self.ssh_config_file, "r", encoding="utf-8") as f:
                     ssh_list = json.load(f)
                 ssh_list = [e for e in ssh_list if e["name"] != name]
-                with open(self.ssh_config_file, 'w', encoding='utf-8') as f:
+                with open(self.ssh_config_file, "w", encoding="utf-8") as f:
                     json.dump(ssh_list, f, ensure_ascii=False, indent=4)
             self.refresh_remote_envs()
 
@@ -1028,11 +1198,17 @@ class EnvManagerUI(QWidget):
         self.run_pip_command(self.tr("安装"), pkgs_str, force_no_uv=True)
 
     def create_env(self, window=None):
-        v_dlg = CustomComboDialog(self.tr("选择 Python 版本"), list(self.config.python_versions.value), 0,
-                                  window or self)
+        v_dlg = CustomComboDialog(
+            self.tr("选择 Python 版本"),
+            list(self.config.python_versions.value),
+            0,
+            window or self,
+        )
         if v_dlg.exec_():
             ver = v_dlg.get_text()
-            n_dlg = CustomInputDialog(self.tr("环境名称"), currenttext=ver, parent=window or self)
+            n_dlg = CustomInputDialog(
+                self.tr("环境名称"), currenttext=ver, parent=window or self
+            )
             if n_dlg.exec_():
                 name = n_dlg.get_text().strip() or ver
                 self._log_color(f"> {self.tr('正在创建环境')} {name}...", "#abb2bf")
@@ -1042,16 +1218,23 @@ class EnvManagerUI(QWidget):
                     if result:
                         self.refresh_env_list()
                         self.env_changed.emit()
-                        self._log_color(f"> {self.tr('环境创建成功，正在切换')}...", "#98c379")
+                        self._log_color(
+                            f"> {self.tr('环境创建成功，正在切换')}...", "#98c379"
+                        )
                         self.change_env(name)
                         pkgs = self.config.default_packages.value
                         if pkgs:
-                            self._log_color(f"> {self.tr('检测到默认包配置，开始发布自动安装任务')}...", "#61afef")
+                            self._log_color(
+                                f"> {self.tr('检测到默认包配置，开始发布自动安装任务')}...",
+                                "#61afef",
+                            )
                             self.install_default_packages()
                         else:
-                            self._log_color(f"> {self.tr('未配置默认包，流程结束')}。", "#abb2bf")
+                            self._log_color(
+                                f"> {self.tr('未配置默认包，流程结束')}。", "#abb2bf"
+                            )
                     else:
-                        self._log_color(self.tr('环境创建失败'), "#e06c75")
+                        self._log_color(self.tr("环境创建失败"), "#e06c75")
 
                 try:
                     self.mgr.install_finished.disconnect()
@@ -1059,29 +1242,47 @@ class EnvManagerUI(QWidget):
                     pass
 
                 self.mgr.install_finished.connect(_on_creation_finished)
-                self.mgr.download_and_install(ver, env_name=name, log_callback=lambda m: self._log_color(m, "#abb2bf"))
-                st = StateToolTip(self.tr("正在安装"), self.tr("请稍候..."), window or self)
+                self.mgr.download_and_install(
+                    ver,
+                    env_name=name,
+                    log_callback=lambda m: self._log_color(m, "#abb2bf"),
+                )
+                st = StateToolTip(
+                    self.tr("正在安装"), self.tr("请稍候..."), window or self
+                )
                 st.show()
 
     def clone_env(self):
         envs = self.mgr.list_envs()
-        if not envs: return
+        if not envs:
+            return
         s_dlg = CustomComboDialog(self.tr("源环境"), envs, 0, self)
         if s_dlg.exec_():
             src = s_dlg.get_text()
-            t_dlg = CustomInputDialog(self.tr("新环境名称"), currenttext=f"{src}_clone", parent=self)
+            t_dlg = CustomInputDialog(
+                self.tr("新环境名称"), currenttext=f"{src}_clone", parent=self
+            )
             if t_dlg.exec_():
                 tar = t_dlg.get_text().strip()
-                self.mgr.clone_env(src, tar, log_callback=lambda m: self._log_color(m, "#abb2bf"))
+                self.mgr.clone_env(
+                    src, tar, log_callback=lambda m: self._log_color(m, "#abb2bf")
+                )
                 st = StateToolTip(self.tr("正在克隆"), self.tr("请稍候..."), self)
                 st.show()
                 self.mgr.install_finished.connect(
-                    lambda r: (st.close(), self.refresh_env_list(), self.env_changed.emit())
+                    lambda r: (
+                        st.close(),
+                        self.refresh_env_list(),
+                        self.env_changed.emit(),
+                    )
                 )
 
     def delete_env(self):
-        if not self.current_env: return
-        if MessageBox(self.tr("确认"), f"{self.tr('删除环境')} {self.current_env}?", self).exec():
+        if not self.current_env:
+            return
+        if MessageBox(
+            self.tr("确认"), f"{self.tr('删除环境')} {self.current_env}?", self
+        ).exec():
             self.mgr.remove_env(self.current_env)
             st = StateToolTip(self.tr("正在删除"), self.tr("请稍候..."), self)
             st.show()
@@ -1097,14 +1298,18 @@ class EnvManagerUI(QWidget):
         # 匹配规则 2: os error 2 (系统找不到指定的文件) 指向的 METADATA 路径
         patterns = [
             r"Cannot uninstall ([\w\-\.]+) None",
-            r"failed to open file `(.+?\.dist-info)\\METADATA`"
+            r"failed to open file `(.+?\.dist-info)\\METADATA`",
         ]
 
         # 兼容 Windows 与 macOS/Linux 的 site-packages 路径
         env_path_obj = Path(env_path)
         if env_path_obj.is_file():
             env_path_obj = env_path_obj.parent
-        env_root = env_path_obj.parent if env_path_obj.name in ("bin", "Scripts") else env_path_obj
+        env_root = (
+            env_path_obj.parent
+            if env_path_obj.name in ("bin", "Scripts")
+            else env_path_obj
+        )
 
         site_packages = None
         if platform.system() == "Windows":
@@ -1145,7 +1350,9 @@ class EnvManagerUI(QWidget):
                 if site_packages and os.path.exists(site_packages):
                     for folder in os.listdir(site_packages):
                         # 寻找该包对应的 .dist-info 文件夹
-                        if folder.lower().startswith(pkg_name) and folder.endswith(".dist-info"):
+                        if folder.lower().startswith(pkg_name) and folder.endswith(
+                            ".dist-info"
+                        ):
                             full_path = os.path.join(site_packages, folder)
                             try:
                                 shutil.rmtree(full_path)

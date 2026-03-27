@@ -437,6 +437,18 @@ def get_canvas_font(size=10, bold=False):
     return font
 
 
+def get_unified_font(size=10, bold=False):
+    """Get font with unified font family configured by user"""
+    try:
+        font_family = Settings.get_instance().canvas_font_selected.value
+    except Exception:
+        font_family = "Segoe UI"
+    font = QFont(font_family, size)
+    if bold:
+        font.setBold(True)
+    return font
+
+
 def str_to_bool(value):
     """可靠的布尔值转换"""
     if isinstance(value, bool):

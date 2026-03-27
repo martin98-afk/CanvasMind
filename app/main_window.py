@@ -28,7 +28,6 @@ from app.interfaces.component_market_interface import PluginManagerCenter
 from app.interfaces.exported_project_interface import ExportedProjectsPage
 from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
-from app.interfaces.settings_interface import SettingInterface
 from app.interfaces.update_checker import UpdateChecker
 from app.interfaces.workflow_manager_interface.main_widget import (
     WorkflowCanvasGalleryPage,
@@ -41,6 +40,7 @@ from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import LogPopupWidget
+from app.widgets.dialog_widget.setting_popup import SettingPopupWidget
 
 
 class LowCodeWindow(FluentWindow):
@@ -123,7 +123,6 @@ class LowCodeWindow(FluentWindow):
         self.develop_page = ComponentDeveloperPage(self)
         self.market_page = PluginManagerCenter(self)
         self.project_manager = ExportedProjectsPage(self)
-        self.setting_card = SettingInterface(self)
 
         # 信号连接
         self.workflow_manager.component_code_changed.connect(
@@ -190,10 +189,12 @@ class LowCodeWindow(FluentWindow):
             position=NavigationItemPosition.BOTTOM,
         )
 
-        self.addSubInterface(
-            self.setting_card,
-            FluentIcon.SETTING,
-            self.tr("系统设置"),
+        self.navigationInterface.addItem(
+            routeKey="settings",
+            icon=FluentIcon.SETTING,
+            text=self.tr("系统设置"),
+            onClick=self._on_settings_clicked,
+            selectable=True,
             position=NavigationItemPosition.BOTTOM,
         )
 
@@ -227,6 +228,12 @@ class LowCodeWindow(FluentWindow):
             and getattr(self.log_popup, "_follow_window", False)
         ):
             self.log_popup._update_position(self)
+        if (
+            hasattr(self, "settings_popup")
+            and self.settings_popup.isVisible()
+            and getattr(self.settings_popup, "_follow_window", False)
+        ):
+            self.settings_popup._update_position(self)
 
     def moveEvent(self, event):
         super().moveEvent(event)
@@ -236,12 +243,36 @@ class LowCodeWindow(FluentWindow):
             and getattr(self.log_popup, "_follow_window", False)
         ):
             self.log_popup._update_position(self)
+        if (
+            hasattr(self, "settings_popup")
+            and self.settings_popup.isVisible()
+            and getattr(self.settings_popup, "_follow_window", False)
+        ):
+            self.settings_popup._update_position(self)
 
     # endregion
 
     # region [7. 日志系统]
     def _setup_log_viewer(self):
         self.log_popup = LogPopupWidget(self)
+        self.settings_popup = SettingPopupWidget(self)
+
+    # endregion
+
+    # region [8. 设置弹窗]
+    def _on_settings_clicked(self):
+        if self.settings_popup.isVisible():
+            self.settings_popup.hidePopup()
+        else:
+            settings_item = self.navigationInterface.widget("settings")
+            if settings_item:
+                settings_button_rect = settings_item.rect()
+                settings_button_top_right = settings_item.mapToGlobal(
+                    QPoint(settings_button_rect.right(), settings_button_rect.top())
+                )
+                self.settings_popup.show_at_left(self, settings_button_top_right)
+                self.settings_popup.activateWindow()
+                self.settings_popup._follow_window = True
 
     # endregion
 
@@ -356,6 +387,7 @@ class LowCodeWindow(FluentWindow):
         重写关闭事件：弹出对话框询问用户
         """
         self.log_popup.hidePopup()
+        self.settings_popup.hidePopup()
 
         # 隐藏WebView防止遮挡弹窗
         self._hide_all_webviews()

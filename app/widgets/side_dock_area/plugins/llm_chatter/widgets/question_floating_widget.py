@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 from functools import partial
 
 from qfluentwidgets import CardWidget, PrimaryPushButton
+from app.utils.utils import get_unified_font
 
 
 class WrappedOptionButton(QPushButton):
@@ -37,14 +38,14 @@ class WrappedOptionButton(QPushButton):
         self.label = QLabel(text, self)
         self.label.setWordWrap(True)
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.label.setFont(QFont("Microsoft YaHei", 10))
+        self.label.setFont(get_unified_font(10))
         self.label.setStyleSheet("color: #f4f7fb; background: transparent;")
         self.label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
         layout.addWidget(self.label)
 
         self.hint_label = QLabel("点击选择", self)
-        self.hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.hint_label.setFont(get_unified_font(9))
         self.hint_label.setStyleSheet("color: #7dd3fc; background: transparent;")
         self.hint_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         layout.addWidget(self.hint_label, 0, Qt.AlignRight | Qt.AlignVCenter)
@@ -134,7 +135,7 @@ class WrappedCheckOption(QWidget):
         self.label = QLabel(text, self)
         self.label.setWordWrap(True)
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.label.setFont(QFont("Microsoft YaHei", 10))
+        self.label.setFont(get_unified_font(10))
         self.label.setStyleSheet("color: #f4f7fb; background: transparent;")
         self.label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
@@ -226,15 +227,15 @@ class QuestionFloatingWidget(CardWidget):
         header.setSpacing(10)
 
         self.icon_label = QLabel("?", self)
-        self.icon_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        self.icon_label.setFont(get_unified_font(14, True))
         self.icon_label.setStyleSheet("color: #7dd3fc;")
 
         self.title_label = QLabel("等待你的选择", self)
-        self.title_label.setFont(QFont("Microsoft YaHei", 11, QFont.Bold))
+        self.title_label.setFont(get_unified_font(11, True))
         self.title_label.setStyleSheet("color: #e6edf7;")
 
         self.mode_hint_label = QLabel("", self)
-        self.mode_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.mode_hint_label.setFont(get_unified_font(9))
         self.mode_hint_label.setStyleSheet(
             """
             color: #7dd3fc;
@@ -274,7 +275,7 @@ class QuestionFloatingWidget(CardWidget):
         header.addWidget(self.close_btn)
 
         self.question_label = QLabel("", self)
-        self.question_label.setFont(QFont("Microsoft YaHei", 10))
+        self.question_label.setFont(get_unified_font(10))
         self.question_label.setStyleSheet("color: #c8d1dd;")
         self.question_label.setWordWrap(True)
         self.question_label.setMinimumHeight(28)
@@ -289,7 +290,7 @@ class QuestionFloatingWidget(CardWidget):
         self.custom_entry_bar.setSpacing(8)
 
         self.custom_hint_label = QLabel("没有合适的选项？", self)
-        self.custom_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.custom_hint_label.setFont(get_unified_font(9))
         self.custom_hint_label.setStyleSheet("color: #8b95a7;")
 
         self.toggle_text_mode_btn = QPushButton("改为输入", self)
@@ -319,7 +320,7 @@ class QuestionFloatingWidget(CardWidget):
 
         self.text_input = QTextEdit(self)
         self.text_input.setPlaceholderText("输入你想补充的内容")
-        self.text_input.setFont(QFont("Microsoft YaHei", 10))
+        self.text_input.setFont(get_unified_font(10))
         self.text_input.setMaximumHeight(104)
         self.text_input.setVisible(False)
         self.text_input.textChanged.connect(self._update_submit_state)
@@ -343,7 +344,7 @@ class QuestionFloatingWidget(CardWidget):
         self.footer_layout.setSpacing(8)
 
         self.selection_hint_label = QLabel("", self)
-        self.selection_hint_label.setFont(QFont("Microsoft YaHei", 9))
+        self.selection_hint_label.setFont(get_unified_font(9))
         self.selection_hint_label.setStyleSheet("color: #8b95a7;")
 
         self.confirm_btn = PrimaryPushButton("提交", self)
