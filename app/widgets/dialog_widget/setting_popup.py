@@ -23,7 +23,7 @@ from qfluentwidgets import (
 
 from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.utils.config import Settings
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_unified_font
 
 
 class SettingDialog(QDialog):
@@ -96,7 +96,8 @@ class SettingDialog(QDialog):
         header_layout.setSpacing(8)
 
         title_label = StrongBodyLabel(self.tr("系统设置"))
-        title_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: bold;")
+        title_label.setFont(get_unified_font(14, True))
+        title_label.setStyleSheet("color: #ffffff;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
 
@@ -158,16 +159,14 @@ class SettingDialog(QDialog):
         footer_layout.setSpacing(2)
 
         app_name = StrongBodyLabel("CanvasMind")
-        app_name.setStyleSheet(
-            "color: #888888; font-size: 12px; background: transparent;"
-        )
+        app_name.setFont(get_unified_font(12, True))
+        app_name.setStyleSheet("color: #888888; background: transparent;")
         footer_layout.addWidget(app_name)
 
         version_text = self.tr("{}").format(self.cfg.current_version)
         version_label = BodyLabel(version_text)
-        version_label.setStyleSheet(
-            "color: #666666; font-size: 11px; background: transparent;"
-        )
+        version_label.setFont(get_unified_font(11))
+        version_label.setStyleSheet("color: #666666; background: transparent;")
         footer_layout.addWidget(version_label)
 
         nav_layout.addWidget(nav_footer)
@@ -181,8 +180,6 @@ class SettingDialog(QDialog):
                     border-radius: 6px;
                     text-align: left;
                     padding-left: 12px;
-                    font-size: 13px;
-                    font-weight: bold;
                 }
                 QPushButton:hover {
                     background-color: #3d3d3d;
@@ -252,6 +249,7 @@ class SettingDialog(QDialog):
             btn.setIconSize(QSize(18, 18))
 
         btn.setText("  " + text)
+        btn.setFont(get_unified_font(13, True))
         btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -260,8 +258,6 @@ class SettingDialog(QDialog):
                 border-radius: 6px;
                 text-align: left;
                 padding-left: 12px;
-                font-size: 13px;
-                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #3d3d3d;
@@ -287,8 +283,6 @@ class SettingDialog(QDialog):
                         border-radius: 6px;
                         text-align: left;
                         padding-left: 12px;
-                        font-size: 13px;
-                        font-weight: bold;
                     }
                     QPushButton:hover {
                         background-color: #1a8cd4;
@@ -304,8 +298,6 @@ class SettingDialog(QDialog):
                         border-radius: 6px;
                         text-align: left;
                         padding-left: 12px;
-                        font-size: 13px;
-                        font-weight: bold;
                     }
                     QPushButton:hover {
                         background-color: #3d3d3d;
