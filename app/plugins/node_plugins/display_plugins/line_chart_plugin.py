@@ -42,7 +42,8 @@ class ChartDisplayPlugin(DisplayPlugin):
         html_content = self._generate_html(port_name, data)
 
         if key not in node._inline_widgets:
-            widget = HtmlWidgetWrapper(parent=node.view, name=key, default=html_content, window=node.parent_window)
+            widget = HtmlWidgetWrapper(parent=node.view, name=key, window=node.parent_window)
+            widget.set_value(html_content)
             node._add_inline_widget(key, widget, tab='Visual')
         else:
             node._inline_widgets[key].set_value(html_content)
