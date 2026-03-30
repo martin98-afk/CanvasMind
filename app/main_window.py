@@ -40,7 +40,7 @@ from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import LogPopupWidget
-from app.widgets.dialog_widget.setting_popup import SettingPopupWidget
+from app.widgets.dialog_widget.setting_popup import SettingDialog
 
 
 class LowCodeWindow(FluentWindow):
@@ -255,7 +255,7 @@ class LowCodeWindow(FluentWindow):
     # region [7. 日志系统]
     def _setup_log_viewer(self):
         self.log_popup = LogPopupWidget(self)
-        self.settings_popup = SettingPopupWidget(self)
+        self.settings_popup = SettingDialog(self)
 
     # endregion
 
