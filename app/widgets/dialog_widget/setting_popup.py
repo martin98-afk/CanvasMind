@@ -420,6 +420,9 @@ class SettingDialog(QDialog):
             RangeSettingCard,
             OptionsSettingCard,
         )
+        from app.widgets.card_widget.provider_setting_card import (
+            ProviderListSettingCard,
+        )
 
         self.llmGroup = QWidget()
         self.llmGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -430,27 +433,17 @@ class SettingDialog(QDialog):
         group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         llmGroupLayout.addWidget(group_label)
 
-        self.llmModelCard = PrimaryPushSettingCard(
-            self.cfg.llm_model.value or "qwen/qwen3-30b-a3b",
-            get_icon("大模型"),
-            self.tr("默认模型"),
-            self.tr("选择默认使用的大模型"),
+        self.llmProviderCard = ProviderListSettingCard(
+            icon=get_icon("大模型"),
+            configItem=self.cfg.llm_saved_providers,
+            defaultProviderItem=self.cfg.llm_selected_model,
+            title=self.tr("已保存的服务商"),
+            content=self.tr("管理已配置的大模型服务商，可选择默认使用哪个"),
             parent=self.llmGroup,
+            home=self,
         )
-        self.llmModelCard.clicked.connect(
-            lambda: self._on_llm_model_clicked(self.llmModelCard.button)
-        )
-
-        self.llmApiBaseCard = PrimaryPushSettingCard(
-            self.cfg.llm_api_base.value or "http://127.0.0.1:1234/v1",
-            get_icon("API测试"),
-            self.tr("API Base"),
-            self.tr("大模型 API 地址"),
-            parent=self.llmGroup,
-        )
-        self.llmApiBaseCard.clicked.connect(
-            lambda: self._on_llm_api_base_clicked(self.llmApiBaseCard.button)
-        )
+        self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
+        self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
 
         self.llmThinkingCard = SwitchSettingCard(
             get_icon("智能体"),
@@ -461,68 +454,9 @@ class SettingDialog(QDialog):
         )
         self.cfg.llm_enable_thinking.valueChanged.connect(self.onConfigChanged)
 
-        llmGroupLayout.addWidget(self.llmModelCard)
-        llmGroupLayout.addWidget(self.llmApiBaseCard)
+        llmGroupLayout.addWidget(self.llmProviderCard)
         llmGroupLayout.addWidget(self.llmThinkingCard)
         layout.addWidget(self.llmGroup)
-
-    def _on_llm_model_clicked(self, button):
-        from qfluentwidgets import LineEdit, MessageBox, InfoBar
-        from PyQt5.QtCore import Qt
-
-        w = MessageBox(self.tr("输入默认模型"), "", self)
-        w.contentLabel.hide()
-
-        lineEdit = LineEdit(w)
-        lineEdit.setText(self.cfg.llm_model.value or "")
-        lineEdit.setFixedWidth(300)
-        lineEdit.setPlaceholderText("例如: qwen/qwen3-30b-a3b")
-
-        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
-        w.yesButton.setText(self.tr("保存"))
-        w.cancelButton.setText(self.tr("取消"))
-
-        if w.exec():
-            new_value = lineEdit.text().strip()
-            if new_value:
-                self.cfg.set(self.cfg.llm_model, new_value)
-                button.setText(new_value)
-                self.cfg.save_config()
-                self.configChanged.emit()
-                InfoBar.success(
-                    self.tr("设置已保存"),
-                    self.tr("默认模型已更新"),
-                    parent=self,
-                )
-
-    def _on_llm_api_base_clicked(self, button):
-        from qfluentwidgets import LineEdit, MessageBox, InfoBar
-        from PyQt5.QtCore import Qt
-
-        w = MessageBox(self.tr("输入 API Base"), "", self)
-        w.contentLabel.hide()
-
-        lineEdit = LineEdit(w)
-        lineEdit.setText(self.cfg.llm_api_base.value or "")
-        lineEdit.setFixedWidth(300)
-        lineEdit.setPlaceholderText("例如: http://127.0.0.1:1234/v1")
-
-        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
-        w.yesButton.setText(self.tr("保存"))
-        w.cancelButton.setText(self.tr("取消"))
-
-        if w.exec():
-            new_value = lineEdit.text().strip()
-            if new_value:
-                self.cfg.set(self.cfg.llm_api_base, new_value)
-                button.setText(new_value)
-                self.cfg.save_config()
-                self.configChanged.emit()
-                InfoBar.success(
-                    self.tr("设置已保存"),
-                    self.tr("API Base 已更新"),
-                    parent=self,
-                )
 
     def _setup_workflow_paths_settings(self, layout):
         from qfluentwidgets import FolderListSettingCard
@@ -927,7 +861,7 @@ class SettingDialog(QDialog):
         if event.type() == QEvent.MouseButtonPress:
             if not self.geometry().contains(event.globalPos()):
                 self.hidePopup()
-                return True
+                return False
         return super().eventFilter(obj, event)
 
     def showEvent(self, event):
