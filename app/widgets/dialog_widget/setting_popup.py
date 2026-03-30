@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QTimer
-from PyQt5.QtGui import QCursor
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QTimer, QEvent, QSize
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
@@ -9,14 +8,25 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
     QFrame,
+    QDialog,
+    QStackedWidget,
+    QPushButton,
 )
-from qfluentwidgets import StrongBodyLabel
+from qfluentwidgets import (
+    StrongBodyLabel,
+    TransparentPushButton,
+    BodyLabel,
+    PrimaryPushSettingCard,
+    SwitchSettingCard,
+    FluentIcon,
+)
 
+from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.utils.config import Settings
-from app.utils.utils import resource_path, get_icon
+from app.utils.utils import get_icon
 
 
-class SettingPopupWidget(QFrame):
+class SettingDialog(QDialog):
     configChanged = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -25,13 +35,14 @@ class SettingPopupWidget(QFrame):
         self._resizing = False
         self._start_pos = None
         self._start_width = None
-        self._min_width = 700
+        self._min_width = 750
         self._max_width = 1200
         self._base_x = 0
         self._resize_zone_width = 5
         self._follow_window = False
         self.cfg = Settings.get_instance()
         self._last_parent_pos = None
+        self._event_filter_installed = False
 
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -41,59 +52,156 @@ class SettingPopupWidget(QFrame):
         self.setup_ui()
 
     def setup_ui(self):
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(
             """
-            QFrame {
-                border: none;
-                background-color: #1e1e1e;
-                border-right: %dpx solid #404040;
+            SettingDialog {
+                background-color: transparent;
             }
         """
-            % self._resize_zone_width
         )
         self.setObjectName("settingPopup")
+        self.setContentsMargins(10, 10, 10, 10)
+
+        container = QFrame(self)
+        container.setObjectName("container")
+        container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        container.setStyleSheet(
+            """
+            QFrame#container {
+                background-color: #2b2b2b;
+                border-radius: 12px;
+                border: 1px solid #3d3d3d;
+            }
+        """
+        )
+        container.setAutoFillBackground(False)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.addWidget(container)
+
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
 
         header = QWidget()
-        header.setFixedHeight(32)
+        header.setFixedHeight(40)
         header.setStyleSheet(
-            "background-color: #1e1e1e; border-bottom: 1px solid #3c3c3c;"
+            "background-color: #2b2b2b; border-bottom: 1px solid #3d3d3d; border-top-left-radius: 12px; border-top-right-radius: 12px;"
         )
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(12, 0, 12, 0)
+        header_layout.setContentsMargins(16, 0, 12, 0)
         header_layout.setSpacing(8)
 
         title_label = StrongBodyLabel(self.tr("系统设置"))
-        title_label.setStyleSheet("color: white;")
+        title_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: bold;")
         header_layout.addWidget(title_label)
         header_layout.addStretch()
 
-        self.resize_grip = QWidget()
-        self.resize_grip.setFixedSize(20, 16)
-        self.resize_grip.setStyleSheet("""
-            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
-                stop:0 transparent, stop:0.5 #666666, stop:1 transparent);
+        self.close_btn = TransparentPushButton("✕")
+        self.close_btn.setFixedSize(32, 32)
+        self.close_btn.setStyleSheet("""
+            TransparentPushButton {
+                background-color: transparent;
+                color: #888888;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            TransparentPushButton:hover {
+                background-color: #ff5f56;
+                color: #ffffff;
+            }
         """)
-        header_layout.addWidget(self.resize_grip)
+        self.close_btn.clicked.connect(self.hidePopup)
+        header_layout.addWidget(self.close_btn)
 
-        main_layout.addWidget(header)
+        container_layout.addWidget(header)
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setStyleSheet("""
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background-color: #2b2b2b;")
+        content_layout = QHBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        self.nav_widget = QWidget()
+        self.nav_widget.setFixedWidth(180)
+        self.nav_widget.setStyleSheet("background-color: #252525;")
+        nav_layout = QVBoxLayout(self.nav_widget)
+        nav_layout.setContentsMargins(8, 16, 8, 8)
+        nav_layout.setSpacing(4)
+
+        self.nav_items = {}
+        self.nav_buttons = {}
+        categories = [
+            ("version", self.tr("通用"), "配置"),
+            ("llm", self.tr("大模型"), "大模型"),
+            ("workflow", self.tr("画布管理"), "画布管理"),
+            ("project", self.tr("项目管理"), "项目"),
+            ("runtime", self.tr("运行环境"), "运行环境"),
+            ("canvas_run", self.tr("画布运行"), "运行模式"),
+            ("canvas_io", self.tr("画布保存"), "自动保存"),
+            ("canvas_display", self.tr("画布显示"), "画布"),
+        ]
+        for key, label, icon_name in categories:
+            btn = self._create_nav_button(key, label, icon_name)
+            self.nav_buttons[key] = btn
+            nav_layout.addWidget(btn)
+        nav_layout.addStretch()
+
+        nav_footer = QWidget()
+        nav_footer.setStyleSheet("background-color: transparent;")
+        footer_layout = QVBoxLayout(nav_footer)
+        footer_layout.setContentsMargins(12, 0, 0, 0)
+        footer_layout.setSpacing(2)
+
+        app_name = StrongBodyLabel("CanvasMind")
+        app_name.setStyleSheet(
+            "color: #888888; font-size: 12px; background: transparent;"
+        )
+        footer_layout.addWidget(app_name)
+
+        version_text = self.tr("{}").format(self.cfg.current_version)
+        version_label = BodyLabel(version_text)
+        version_label.setStyleSheet(
+            "color: #666666; font-size: 11px; background: transparent;"
+        )
+        footer_layout.addWidget(version_label)
+
+        nav_layout.addWidget(nav_footer)
+
+        for btn in self.nav_buttons.values():
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #aaaaaa;
+                    border: none;
+                    border-radius: 6px;
+                    text-align: left;
+                    padding-left: 12px;
+                    font-size: 13px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #3d3d3d;
+                    color: #ffffff;
+                }
+            """)
+
+        self.content_stack = QStackedWidget()
+        self.content_stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.content_stack.setStyleSheet("""
             QScrollArea {
                 border: none;
-                background-color: #1e1e1e;
+                background-color: #2b2b2b;
             }
             QScrollBar:vertical {
                 border: none;
-                background: #1e1e1e;
-                width: 8px;
-                margin: 0px;
+                background: #2b2b2b;
+                width: 10px;
+                margin: 4px 2px 4px 2px;
             }
             QScrollBar::handle:vertical {
                 background: #555555;
@@ -106,55 +214,161 @@ class SettingPopupWidget(QFrame):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                 height: 0px;
             }
-            QScrollBar:horizontal {
-                border: none;
-                background: transparent;
-                height: 0px;
-            }
         """)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-        self.content_widget = QWidget()
-        self.content_widget.setObjectName("contentWidget")
-        self.content_widget.setStyleSheet("background-color: #1e1e1e; border: none;")
-        self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(20, 20, 28, 20)
-        self.content_layout.setSpacing(15)
-        self.content_layout.setSizeConstraint(QVBoxLayout.SetMaximumSize)
+        self.content_widgets = {}
+        self._create_content_pages()
 
-        self._setup_version_info(self.content_layout)
-        self._setup_workflow_paths_settings(self.content_layout)
-        self._setup_project_paths_settings(self.content_layout)
-        self._setup_runtime_env_settings(self.content_layout)
-        self._setup_canvas_run_settings(self.content_layout)
-        self._setup_canvas_io_settings(self.content_layout)
-        self._setup_canvas_display_settings(self.content_layout)
+        self._select_nav("version")
 
-        self.content_layout.addStretch(1)
-        self.scroll_area.setWidget(self.content_widget)
-        main_layout.addWidget(self.scroll_area)
+        content_layout.addWidget(self.nav_widget)
+        content_layout.addWidget(self.content_stack, 1)
 
-        self.resize(750, 500)
+        container_layout.addWidget(content_widget, 1)
+
+        self.resize(1000, 600)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        available_width = self.width() - self._resize_zone_width
-        if self.content_widget.maximumWidth() != available_width:
-            self.content_widget.setMaximumWidth(available_width)
+        self._update_content_width()
+
+    def _update_content_width(self):
+        nav_width = 180
+        scrollbar_width = 20
+        margin = 32
+        available = self.width() - nav_width - scrollbar_width - margin
+        for key, scroll in self.content_widgets.items():
+            if scroll.widget():
+                scroll.widget().setMaximumWidth(max(available, 500))
+
+    def _create_nav_button(self, key, text, icon_name=None):
+        btn = QPushButton()
+        btn.setFixedHeight(36)
+        btn.setCursor(Qt.PointingHandCursor)
+
+        if icon_name:
+            icon = get_icon(icon_name)
+            btn.setIcon(icon)
+            btn.setIconSize(QSize(18, 18))
+
+        btn.setText("  " + text)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #aaaaaa;
+                border: none;
+                border-radius: 6px;
+                text-align: left;
+                padding-left: 12px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #3d3d3d;
+                color: #ffffff;
+            }
+            QPushButton:pressed {
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+        """)
+        btn._nav_key = key
+        btn.clicked.connect(lambda: self._select_nav(btn._nav_key))
+        return btn
+
+    def _select_nav(self, key):
+        for k, btn in self.nav_buttons.items():
+            if k == key:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #0078d4;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 6px;
+                        text-align: left;
+                        padding-left: 12px;
+                        font-size: 13px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover {
+                        background-color: #1a8cd4;
+                        color: #ffffff;
+                    }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: transparent;
+                        color: #aaaaaa;
+                        border: none;
+                        border-radius: 6px;
+                        text-align: left;
+                        padding-left: 12px;
+                        font-size: 13px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover {
+                        background-color: #3d3d3d;
+                        color: #ffffff;
+                    }
+                """)
+        if key in self.content_widgets:
+            self.content_stack.setCurrentWidget(self.content_widgets[key])
+
+    def _create_content_pages(self):
+        keys = [
+            "version",
+            "llm",
+            "workflow",
+            "project",
+            "runtime",
+            "canvas_run",
+            "canvas_io",
+            "canvas_display",
+        ]
+        for key in keys:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+            content = QWidget()
+            content.setStyleSheet("background-color: #2b2b2b; border: none;")
+            content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            layout = QVBoxLayout(content)
+            layout.setContentsMargins(16, 16, 16, 16)
+            layout.setSpacing(16)
+
+            if key == "version":
+                self._setup_version_info(layout)
+            elif key == "llm":
+                self._setup_llm_settings(layout)
+            elif key == "workflow":
+                self._setup_workflow_paths_settings(layout)
+            elif key == "project":
+                self._setup_project_paths_settings(layout)
+            elif key == "runtime":
+                self._setup_runtime_env_settings(layout)
+            elif key == "canvas_run":
+                self._setup_canvas_run_settings(layout)
+            elif key == "canvas_io":
+                self._setup_canvas_io_settings(layout)
+            elif key == "canvas_display":
+                self._setup_canvas_display_settings(layout)
+
+            layout.addStretch(1)
+            scroll.setWidget(content)
+            self.content_widgets[key] = scroll
+            self.content_stack.addWidget(scroll)
 
     def _setup_version_info(self, layout):
-        from qfluentwidgets import PrimaryPushSettingCard, SwitchSettingCard, FluentIcon
-
         self.versionGroup = QWidget()
         self.versionGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         versionGroupLayout = QVBoxLayout(self.versionGroup)
         versionGroupLayout.setSpacing(10)
 
-        group_label = StrongBodyLabel(self.tr("版本信息"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label = StrongBodyLabel(self.tr("通用设置"))
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         versionGroupLayout.addWidget(group_label)
 
         copyright_text = self.tr("© 版权所有 2025 martin-afk. 当前版本：{}").format(
@@ -189,10 +403,134 @@ class SettingPopupWidget(QFrame):
         )
         self.cfg.auto_check_update.valueChanged.connect(self.onConfigChanged)
 
+        self.canvasFontCard = FontListSettingCard(
+            icon=get_icon("字体"),
+            fontListItem=self.cfg.canvas_font_list,
+            fontSelectedItem=self.cfg.canvas_font_selected,
+            title=self.tr("画布显示字体设置"),
+            content=self.tr("管理字体列表和选择当前字体"),
+            parent=self.versionGroup,
+            home=self,
+        )
+        self.canvasFontCard.fontChanged.connect(self.onConfigChanged)
+        self.canvasFontCard.fontSelectedChanged.connect(self.onConfigChanged)
+
         versionGroupLayout.addWidget(self.info_card)
         versionGroupLayout.addWidget(self.userNameCard)
         versionGroupLayout.addWidget(self.autoUpdateCard)
+        versionGroupLayout.addWidget(self.canvasFontCard)
         layout.addWidget(self.versionGroup)
+
+    def _setup_llm_settings(self, layout):
+        from qfluentwidgets import (
+            PrimaryPushSettingCard,
+            SwitchSettingCard,
+            RangeSettingCard,
+            OptionsSettingCard,
+        )
+
+        self.llmGroup = QWidget()
+        self.llmGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        llmGroupLayout = QVBoxLayout(self.llmGroup)
+        llmGroupLayout.setSpacing(10)
+
+        group_label = StrongBodyLabel(self.tr("大模型服务商"))
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
+        llmGroupLayout.addWidget(group_label)
+
+        self.llmModelCard = PrimaryPushSettingCard(
+            self.cfg.llm_model.value or "qwen/qwen3-30b-a3b",
+            get_icon("大模型"),
+            self.tr("默认模型"),
+            self.tr("选择默认使用的大模型"),
+            parent=self.llmGroup,
+        )
+        self.llmModelCard.clicked.connect(
+            lambda: self._on_llm_model_clicked(self.llmModelCard.button)
+        )
+
+        self.llmApiBaseCard = PrimaryPushSettingCard(
+            self.cfg.llm_api_base.value or "http://127.0.0.1:1234/v1",
+            get_icon("API测试"),
+            self.tr("API Base"),
+            self.tr("大模型 API 地址"),
+            parent=self.llmGroup,
+        )
+        self.llmApiBaseCard.clicked.connect(
+            lambda: self._on_llm_api_base_clicked(self.llmApiBaseCard.button)
+        )
+
+        self.llmThinkingCard = SwitchSettingCard(
+            get_icon("智能体"),
+            self.tr("启用思考过程"),
+            self.tr("是否让大模型输出思考过程"),
+            configItem=self.cfg.llm_enable_thinking,
+            parent=self.llmGroup,
+        )
+        self.cfg.llm_enable_thinking.valueChanged.connect(self.onConfigChanged)
+
+        llmGroupLayout.addWidget(self.llmModelCard)
+        llmGroupLayout.addWidget(self.llmApiBaseCard)
+        llmGroupLayout.addWidget(self.llmThinkingCard)
+        layout.addWidget(self.llmGroup)
+
+    def _on_llm_model_clicked(self, button):
+        from qfluentwidgets import LineEdit, MessageBox, InfoBar
+        from PyQt5.QtCore import Qt
+
+        w = MessageBox(self.tr("输入默认模型"), "", self)
+        w.contentLabel.hide()
+
+        lineEdit = LineEdit(w)
+        lineEdit.setText(self.cfg.llm_model.value or "")
+        lineEdit.setFixedWidth(300)
+        lineEdit.setPlaceholderText("例如: qwen/qwen3-30b-a3b")
+
+        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
+        w.yesButton.setText(self.tr("保存"))
+        w.cancelButton.setText(self.tr("取消"))
+
+        if w.exec():
+            new_value = lineEdit.text().strip()
+            if new_value:
+                self.cfg.set(self.cfg.llm_model, new_value)
+                button.setText(new_value)
+                self.cfg.save_config()
+                self.configChanged.emit()
+                InfoBar.success(
+                    self.tr("设置已保存"),
+                    self.tr("默认模型已更新"),
+                    parent=self,
+                )
+
+    def _on_llm_api_base_clicked(self, button):
+        from qfluentwidgets import LineEdit, MessageBox, InfoBar
+        from PyQt5.QtCore import Qt
+
+        w = MessageBox(self.tr("输入 API Base"), "", self)
+        w.contentLabel.hide()
+
+        lineEdit = LineEdit(w)
+        lineEdit.setText(self.cfg.llm_api_base.value or "")
+        lineEdit.setFixedWidth(300)
+        lineEdit.setPlaceholderText("例如: http://127.0.0.1:1234/v1")
+
+        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
+        w.yesButton.setText(self.tr("保存"))
+        w.cancelButton.setText(self.tr("取消"))
+
+        if w.exec():
+            new_value = lineEdit.text().strip()
+            if new_value:
+                self.cfg.set(self.cfg.llm_api_base, new_value)
+                button.setText(new_value)
+                self.cfg.save_config()
+                self.configChanged.emit()
+                InfoBar.success(
+                    self.tr("设置已保存"),
+                    self.tr("API Base 已更新"),
+                    parent=self,
+                )
 
     def _setup_workflow_paths_settings(self, layout):
         from qfluentwidgets import FolderListSettingCard
@@ -205,7 +543,7 @@ class SettingPopupWidget(QFrame):
         workflowGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("画布管理"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         workflowGroupLayout.addWidget(group_label)
 
         self.workflowPathsCard = FolderListSettingCard(
@@ -230,7 +568,7 @@ class SettingPopupWidget(QFrame):
         projectGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("项目管理"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         projectGroupLayout.addWidget(group_label)
 
         self.projectPathsCard = FolderListSettingCard(
@@ -254,7 +592,7 @@ class SettingPopupWidget(QFrame):
         runtimeGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("运行环境管理"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         runtimeGroupLayout.addWidget(group_label)
 
         self.pythonVersionsCard = PackageListSettingCard(
@@ -317,7 +655,7 @@ class SettingPopupWidget(QFrame):
         canvasGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("画布运行设置"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         canvasGroupLayout.addWidget(group_label)
 
         self.timeoutToggleCard = SwitchSettingCard(
@@ -332,8 +670,8 @@ class SettingPopupWidget(QFrame):
         self.nodeTimeoutCard = RangeSettingCard(
             self.cfg.node_run_timeout,
             get_icon("运行模式"),
-            self.tr("节点运行超时时间"),
-            self.tr("决定节点最长运行时间（秒），如果超过则会直接中止运行"),
+            self.tr("节点运行超时时间（秒）"),
+            self.tr("超时节点自动中止"),
             parent=self.canvasGroup,
         )
         self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
@@ -382,7 +720,7 @@ class SettingPopupWidget(QFrame):
         canvasIOGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("画布保存设置"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         canvasIOGroupLayout.addWidget(group_label)
 
         self.autoSaveCard = SwitchSettingCard(
@@ -413,7 +751,6 @@ class SettingPopupWidget(QFrame):
             RangeSettingCard,
             OptionsSettingCard,
         )
-        from app.widgets.card_widget.list_setting_card import FontListSettingCard
 
         self.canvasDisplayGroup = QWidget()
         self.canvasDisplayGroup.setSizePolicy(
@@ -423,7 +760,7 @@ class SettingPopupWidget(QFrame):
         canvasDisplayGroupLayout.setSpacing(10)
 
         group_label = StrongBodyLabel(self.tr("画布显示设置"))
-        group_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         canvasDisplayGroupLayout.addWidget(group_label)
 
         self.nodeAnimationCard = SwitchSettingCard(
@@ -491,24 +828,11 @@ class SettingPopupWidget(QFrame):
         )
         self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
 
-        self.canvasFontCard = FontListSettingCard(
-            icon=get_icon("画布"),
-            fontListItem=self.cfg.canvas_font_list,
-            fontSelectedItem=self.cfg.canvas_font_selected,
-            title=self.tr("画布显示字体设置"),
-            content=self.tr("管理字体列表和选择当前字体"),
-            parent=self.canvasDisplayGroup,
-            home=self,
-        )
-        self.canvasFontCard.fontChanged.connect(self.onConfigChanged)
-        self.canvasFontCard.fontSelectedChanged.connect(self.onConfigChanged)
-
         canvasDisplayGroupLayout.addWidget(self.nodeResizeMemoryCard)
         canvasDisplayGroupLayout.addWidget(self.PipeWidthCard)
         canvasDisplayGroupLayout.addWidget(self.NodeProxyCard)
         canvasDisplayGroupLayout.addWidget(self.nodeAnimationCard)
         canvasDisplayGroupLayout.addWidget(self.autoCollapseCard)
-        canvasDisplayGroupLayout.addWidget(self.canvasFontCard)
         canvasDisplayGroupLayout.addWidget(self.showGridCard)
         canvasDisplayGroupLayout.addWidget(self.pipelayoutCard)
         layout.addWidget(self.canvasDisplayGroup)
@@ -518,7 +842,6 @@ class SettingPopupWidget(QFrame):
             self._parent_widget.updater.check_update()
 
     def _on_user_name_clicked(self, button):
-        from PyQt5 import QtGui
         from PyQt5.QtCore import Qt
         from qfluentwidgets import LineEdit, MessageBox, InfoBar
 
@@ -548,7 +871,6 @@ class SettingPopupWidget(QFrame):
                 )
 
     def _on_miniconda_version_clicked(self, button):
-        from PyQt5 import QtGui
         from PyQt5.QtCore import Qt
         from qfluentwidgets import LineEdit, MessageBox, InfoBar
 
@@ -591,85 +913,48 @@ class SettingPopupWidget(QFrame):
         width = max(self._min_width, min(width, self._max_width))
         self.resize(width, self.height())
 
-    def mousePressEvent(self, event):
-        if (
-            event.button() == Qt.LeftButton
-            and event.pos().x() >= self.width() - self._resize_zone_width
-        ):
-            self._resizing = True
-            self._start_pos = event.globalPos()
-            self._start_width = self.width()
-            event.accept()
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        is_in_resize_zone = event.pos().x() >= self.width() - self._resize_zone_width
-
-        if is_in_resize_zone:
-            self.setCursor(Qt.SizeHorCursor)
-        else:
-            self.setCursor(Qt.ArrowCursor)
-
-        if self._resizing:
-            delta = event.globalPos() - self._start_pos
-            new_width = self._start_width + delta.x()
-            self.set_width(new_width)
-            event.accept()
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self._resizing = False
-        super().mouseReleaseEvent(event)
-
     def enterEvent(self, event):
         super().enterEvent(event)
-        mouse_pos = self.mapFromGlobal(QCursor.pos())
-        if mouse_pos.x() >= self.width() - self._resize_zone_width:
-            self.setStyleSheet(
-                """
-                QFrame {
-                    border: none;
-                    background-color: #1e1e1e;
-                    border-right: %dpx solid #0078D4;
-                }
-            """
-                % self._resize_zone_width
-            )
+        self._remove_event_filter()
 
     def leaveEvent(self, event):
-        if not self._resizing:
-            self.setStyleSheet(
-                """
-                QFrame {
-                    border: none;
-                    background-color: #1e1e1e;
-                    border-right: %dpx solid #404040;
-                }
-            """
-                % self._resize_zone_width
-            )
+        self._install_event_filter()
         super().leaveEvent(event)
+
+    def _install_event_filter(self):
+        if not self._event_filter_installed:
+            QApplication.instance().installEventFilter(self)
+            self._event_filter_installed = True
+
+    def _remove_event_filter(self):
+        if self._event_filter_installed:
+            QApplication.instance().removeEventFilter(self)
+            self._event_filter_installed = False
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonPress:
+            if not self.geometry().contains(event.globalPos()):
+                self.hidePopup()
+                return True
+        return super().eventFilter(obj, event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._install_event_filter()
+
+    def hideEvent(self, event):
+        self._remove_event_filter()
+        super().hideEvent(event)
 
     def show_at_left(self, parent_widget, button_top_right):
         self._parent_widget = parent_widget
-        self._follow_window = True
+        self._follow_window = False
 
-        nav_interface = parent_widget.navigationInterface
-        nav_right = nav_interface.rect().right()
-        nav_right_global = nav_interface.mapToGlobal(QPoint(nav_right, 0))
-        x = nav_right_global.x() + 5
-        self._base_x = x
-
-        parent_global_y = parent_widget.mapToGlobal(QPoint(0, 0)).y()
-        y = parent_global_y
-
-        popup_height = parent_widget.height()
-        screen = QApplication.desktop().screenGeometry(parent_widget)
-        if y + popup_height > screen.bottom():
-            popup_height = screen.bottom() - y - 10
-
-        self.move(x, y)
-        self.resize(750, popup_height)
+        self.resize(850, 600)
+        self.move(
+            (QApplication.desktop().screenGeometry().width() - self.width()) // 2,
+            (QApplication.desktop().screenGeometry().height() - self.height()) // 2,
+        )
         self.show()
         self.activateWindow()
 
@@ -695,10 +980,12 @@ class SettingPopupWidget(QFrame):
 
     def hidePopup(self):
         self._follow_window = False
+        self._remove_event_filter()
         self.hide()
 
     def deleteLater(self):
         if self._save_timer.isActive():
             self._save_timer.stop()
             self._perform_save_to_disk()
+        self._remove_event_filter()
         super().deleteLater()
