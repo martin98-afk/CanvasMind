@@ -244,6 +244,7 @@ class ComponentDevelopUISetUp:
 
     def _reload_component(self):
         full_path = self.parent.component_tree._current_editing_component
+        logger.info(f"[Reload] _reload_component called, full_path: {full_path}")
         if full_path:
             self.parent.component_tree.component_selected.emit(full_path)
             MessageManager.success("组件已重新加载", "", self.parent)
