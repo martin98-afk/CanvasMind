@@ -178,10 +178,10 @@ class PluginTemplateToolWindow(ToolWindow):
         return [
             {
                 "name": "流式输出 (节点展示)",
-                "desc": "流式输出结果并同步到端口。extra['display']=True 会在节点 UI 上显示实时结果，注意 params 的键必须与节点端口名一致。",
+                "desc": "流式输出结果并展示在节点上，当params的key与端口名一致时会将流式结果同步到对应端口中。",
                 "template": """
         self.emit_message(
-            method="stream.output",
+            method="stream_output",
             params={
                 "output1": {"data": "test", "data_type": "str", "plugin": "display_str"}, 
                 "output2": {"data": 1, "data_type": "list", "plugin": "display_list"},
@@ -194,7 +194,7 @@ class PluginTemplateToolWindow(ToolWindow):
                 "desc": "流式输出结果并同步到端口和变量，但不会触发节点 UI 的实时内容展示，适用于后台静默数据同步。",
                 "template": """
         self.emit_message(
-            method="stream.output",
+            method="stream_output",
             params={
                 "output1": {"data": "test", "data_type": "str"}, 
                 "output2": {"data": 1, "data_type": "list"}

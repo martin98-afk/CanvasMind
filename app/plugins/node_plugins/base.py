@@ -17,6 +17,7 @@ class BaseNodePlugin(ABC):
     plugin_name = ""
     plugin_desc = ""
     plugin_type = PluginType.NODE
+    plugin_category = "default"
     plugin_template = ""
 
     @abstractmethod
@@ -33,6 +34,7 @@ class BaseNodePlugin(ABC):
 
 class DisplayPlugin(BaseNodePlugin):
     """分类一：单向数据展示插件 (Node -> UI)"""
+    plugin_category = "display"
     def handle(self, node, params, msg=None):
         # 默认从 params 获取数据并渲染
         for port_name in params:
@@ -48,7 +50,7 @@ class DisplayPlugin(BaseNodePlugin):
 
 class InteractivePlugin(BaseNodePlugin):
     """分类二：双向交互插件 (Node <-> UI)"""
-
+    plugin_category = "interactive"
     def on_confirmed(self, result_data, env_data, response_file):
         is_ssh = env_data and env_data.get('type') == 'ssh'
         if is_ssh:
@@ -79,7 +81,7 @@ class InteractivePlugin(BaseNodePlugin):
 
 class VariableOperatePlugin(BaseNodePlugin):
     """分类三：变量操作插件 (Node -> Variable)"""
-
+    plugin_category = "operate"
     def handle(self, node, params, msg=None):
         # 默认从 params 获取数据并渲染
         self.operate(node, params)
