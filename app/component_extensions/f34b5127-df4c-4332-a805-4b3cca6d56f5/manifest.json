@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "运行时弹出交互窗口，供用户绘制蒙版。返回包含Alpha通道的RGBA图像和单独的Mask。",
   "category": "生成模型/图像重绘",
-  "updated_at": "2026-02-01 20:26:46",
+  "source_file": "..\\..\\components\\生成模型\\图像重绘\\f34b5127-df4c-4332-a805-4b3cca6d56f5.py",
+  "updated_at": "2026-03-31 09:07:46",
   "author": "black"
 }

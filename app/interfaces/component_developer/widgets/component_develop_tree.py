@@ -29,7 +29,7 @@ from qfluentwidgets import (
 
 from app.scan_components import ComponentScanner, resource_path
 from app.utils.config import Settings
-from app.utils.utils import get_icon, resource_path
+from app.utils.utils import get_icon, resource_path, get_pinyin_search_keys
 from app.widgets.dialog_widget.new_component_dialog import NewComponentDialog
 from app.widgets.basic_widget.category_filter import CategoryFilterDialog
 
@@ -57,6 +57,7 @@ class ComponentTreeWidget(TreeWidget):
         self._all_items: List[QTreeWidgetItem] = []
         self._current_editing_component = None
         self._selected_categories = set()
+        self._pinyin_cache: Dict[str, str] = {}
         self.setFocusPolicy(Qt.StrongFocus)
         self.setDragEnabled(True)
         self.setDragDropMode(QTreeWidget.DragOnly)
@@ -188,13 +189,14 @@ class ComponentTreeWidget(TreeWidget):
 
             self._all_items.append(comp_item)
 
+            self._pinyin_cache[full_path] = get_pinyin_search_keys(comp_name)
+
         self.expandAll()
 
     def filter_items(self, keyword: str):
-        """根据关键词过滤（支持多级展示）"""
+        """根据关键词过滤（支持多级展示和拼音搜索）"""
         keyword = keyword.strip().lower()
 
-        # 隐藏所有项
         for item in self._all_items:
             item.setHidden(True)
 
@@ -204,13 +206,23 @@ class ComponentTreeWidget(TreeWidget):
             return
 
         for item in self._all_items:
-            # 只在组件节点上匹配
             if not item.data(0, ROLE_IS_FOLDER):
-                name = item.text(0).lower()
-                full_path = (item.data(0, ROLE_FULL_PATH) or "").lower()
+                name = item.text(0)
+                full_path = item.data(0, ROLE_FULL_PATH) or ""
 
-                if keyword in name or keyword in full_path:
-                    # 匹配成功，递归显示并展开父节点
+                name_lower = name.lower()
+                full_path_lower = full_path.lower()
+
+                if keyword in name_lower or keyword in full_path_lower:
+                    curr = item
+                    while curr:
+                        curr.setHidden(False)
+                        curr.setExpanded(True)
+                        curr = curr.parent()
+                    continue
+
+                py_keys = self._pinyin_cache.get(full_path)
+                if py_keys and keyword in py_keys:
                     curr = item
                     while curr:
                         curr.setHidden(False)
