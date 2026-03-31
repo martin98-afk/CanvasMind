@@ -1390,7 +1390,7 @@ class BaseComponent(ABC):
         """验证输出是否包含所有必需的输出端口"""
         required_ports = [port.name for port in cls.outputs]
         for port in required_ports:
-            if port not in outputs:
+            if port is None or port not in outputs:
                 return False
         return True
 
