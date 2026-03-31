@@ -103,10 +103,7 @@ class KSampler(BaseComponent):
                 self.emit_message(
                     method="display_image",
                     params={
-                        "output": {
-                            "data": f"data:image/jpeg;base64,{img_str}",
-                            "data_type": "image"
-                        }
+                        "output": f"data:image/jpeg;base64,{img_str}"
                     }
                 )
         except Exception as e:
