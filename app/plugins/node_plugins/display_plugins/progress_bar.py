@@ -11,7 +11,7 @@ class ProgressDisplayPlugin(DisplayPlugin):
     # 模板演示：data 传入整数或浮点数，也可以传入带状态的字典
     plugin_template = """self.emit_message(
             method="display_progress",
-            params={"progress": {"data": {"current_value": 45, "min": 0, "max": 100}}}
+            params={"progress": {"current_value": 45, "min": 0, "max": 100}}
         )
 """
 

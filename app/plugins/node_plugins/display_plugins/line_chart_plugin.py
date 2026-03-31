@@ -13,7 +13,7 @@ class ChartDisplayPlugin(DisplayPlugin):
     plugin_desc = "用于在节点上展示指定echarts折现"
     plugin_template = """self.emit_message(
             method="display_list",
-            params={"training_loss": {"data": [1,2,3,4,5]},"accuracy": {"data": [5,6,7,8,9]},}
+            params={"training_loss": [1,2,3,4,5],"accuracy": [5,6,7,8,9]}
         )
 """
 
@@ -43,7 +43,6 @@ class ChartDisplayPlugin(DisplayPlugin):
 
         if key not in node._inline_widgets:
             widget = HtmlWidgetWrapper(parent=node.view, name=key, window=node.parent_window)
-            widget.set_value(html_content)
             node._add_inline_widget(key, widget, tab='Visual')
         else:
             node._inline_widgets[key].set_value(html_content)

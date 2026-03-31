@@ -19,7 +19,7 @@ class ImageDisplayPlugin(DisplayPlugin):
         b64_str = base64.b64encode(buffer.getvalue()).decode()
         self.emit_message(
             method="display_image",
-            params={"output": {"data": f"data:image/jpeg;base64,{b64_str}", "data_type": "image"}},
+            params={"output": f"data:image/jpeg;base64,{b64_str}"},
         )
 """
 

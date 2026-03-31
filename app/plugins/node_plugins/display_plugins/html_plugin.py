@@ -10,7 +10,7 @@ class ChartDisplayPlugin(DisplayPlugin):
     plugin_desc = "用于在节点上展示指定html内容"
     plugin_template ="""self.emit_message(
             method="display_html",
-            params={"content": {"data": "<html_content>"}}
+            params={"content": "<html_content>"}
         )
 """
 
@@ -19,7 +19,6 @@ class ChartDisplayPlugin(DisplayPlugin):
 
         if key not in node._inline_widgets:
             widget = HtmlWidgetWrapper(parent=node.view, name=key, window=node.parent_window)
-            widget.set_value(data)
             node._add_inline_widget(key, widget, tab='Visual')
         else:
             node._inline_widgets[key].set_value(data)

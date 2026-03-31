@@ -39,11 +39,23 @@ class HtmlWidget(QtWidgets.QWidget):
             self.view.setContextMenuPolicy(Qt.NoContextMenu)
             layout.addWidget(self.view, 0, QtCore.Qt.AlignCenter)
             # 初始加载
-            self.view.setHtml(self._html, QUrl("https://chart.local/"))
+            self.update_html(default_html)
         else:
             self.fallback = QtWidgets.QLabel("需 QtWebEngine 支持图表")
             self.fallback.setAlignment(Qt.AlignCenter)
             layout.addWidget(self.fallback)
+
+    def update_html(self, html: str):
+        # 修复：使用传入的 new_html 而不是旧的 self._html
+        self.view.setHtml(html, QUrl("https://chart.local/"))
+
+        # 根据内容动态调整 WebEngineView 的最小尺寸
+        content_w, content_h = self._extract_size_from_html(html)
+        self.view.setFixedSize(content_w, content_h)
+
+        self.sizeHintChanged.emit()
+        self.updateGeometry()
+        self.valueChanged.emit(html)
 
     def set_value(self, html: str):
         """修复：确保更新了内容并重新加载"""
@@ -54,16 +66,7 @@ class HtmlWidget(QtWidgets.QWidget):
         self._html = new_html  # 必须更新成员变量
 
         if HAS_WEBENGINE:
-            # 修复：使用传入的 new_html 而不是旧的 self._html
-            self.view.setHtml(self._html, QUrl("https://chart.local/"))
-
-            # 根据内容动态调整 WebEngineView 的最小尺寸
-            content_w, content_h = self._extract_size_from_html(self._html)
-            self.view.setFixedSize(content_w, content_h)
-
-            self.sizeHintChanged.emit()
-            self.updateGeometry()
-            self.valueChanged.emit(self._html)
+            self.update_html(new_html)
 
     def _extract_size_from_html(self, html: str):
         """从 HTML 提取尺寸，增加容错"""

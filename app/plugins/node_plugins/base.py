@@ -36,7 +36,9 @@ class DisplayPlugin(BaseNodePlugin):
     def handle(self, node, params, msg=None):
         # 默认从 params 获取数据并渲染
         for port_name in params:
-            data = params.get(port_name, {}).get("data")
+            data = params.get(port_name, {})
+            if isinstance(data, dict) and "data" in data:
+                data = data["data"]
             self.render(node, port_name, data)
 
     @abstractmethod

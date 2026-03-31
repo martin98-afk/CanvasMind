@@ -32,6 +32,6 @@ class Component(BaseComponent):
             # 使用特定格式通知主进程拦截
             self.emit_message(
                 method="display_image",
-                params={"file": {"data": file_path}}
+                params={"file": file_path}
             )
         return {"file": file_path}
