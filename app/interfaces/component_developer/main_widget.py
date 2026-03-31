@@ -4,7 +4,7 @@ import traceback
 import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtWidgets import QWidget, QTableWidgetItem
 from loguru import logger
 
@@ -329,6 +329,12 @@ class ComponentDeveloperPage(QWidget):
         else:
             logger.info(f"[Reload] file_modified_signal not available")
 
+    def _do_reload_component(self):
+        try:
+            self.ui_manager._reload_component()
+        finally:
+            self._is_reloading = False
+
     def _on_llm_file_modified(self, modified_path: str):
         logger.info(f"[Reload] _on_llm_file_modified called: {modified_path}")
         if not self.current_component_file:
@@ -343,9 +349,6 @@ class ComponentDeveloperPage(QWidget):
             logger.info(f"[Reload] current_path: {current_path}, modified: {modified}")
             if modified == current_path:
                 self._is_reloading = True
-                try:
-                    self.ui_manager._reload_component()
-                finally:
-                    self._is_reloading = False
+                QTimer.singleShot(5000, self._do_reload_component)
         except Exception as e:
             logger.error(f"[Reload] Error: {e}")
