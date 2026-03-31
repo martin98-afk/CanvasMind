@@ -3,14 +3,31 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget
 from loguru import logger
-from qfluentwidgets import TransparentToolButton, FluentIcon, RoundMenu, Action, BodyLabel, \
-    TransparentDropDownToolButton, MessageBox, SegmentedWidget
+from qfluentwidgets import (
+    TransparentToolButton,
+    FluentIcon,
+    RoundMenu,
+    Action,
+    BodyLabel,
+    TransparentDropDownToolButton,
+    MessageBox,
+    SegmentedWidget,
+)
 
-from app.interfaces.component_developer.constants import HIDE_SPLITTER_SIZES, DEFAULT_SPLITTER_SIZES
+from app.interfaces.component_developer.constants import (
+    HIDE_SPLITTER_SIZES,
+    DEFAULT_SPLITTER_SIZES,
+)
 from app.interfaces.component_developer.utils.message_manager import MessageManager
-from app.interfaces.component_developer.widgets.component_develop_tree import ComponentTreePanel
-from app.interfaces.component_developer.widgets.editor_tab_manager import ComponentTabManager
-from app.interfaces.component_developer.widgets.extension_file_manager import ExtensionFileManager
+from app.interfaces.component_developer.widgets.component_develop_tree import (
+    ComponentTreePanel,
+)
+from app.interfaces.component_developer.widgets.editor_tab_manager import (
+    ComponentTabManager,
+)
+from app.interfaces.component_developer.widgets.extension_file_manager import (
+    ExtensionFileManager,
+)
 from app.templates.component_templates import DEFAULT_NODE_TEMPLATE, default_templates
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
@@ -20,7 +37,6 @@ from app.scan_components import resource_path
 
 
 class ComponentDevelopUISetUp:
-
     def __init__(self, parent):
         self.parent = parent
         self.current_comp_uuid = None
@@ -59,7 +75,9 @@ class ComponentDevelopUISetUp:
         # Page 2: 扩展文件管理器
         self.file_manager = ExtensionFileManager(self.parent)
         self.file_manager.file_double_clicked.connect(self._on_file_open_request)
-        self.file_manager.set_root_path(str(Path(resource_path("app/component_extensions"))))
+        self.file_manager.set_root_path(
+            str(Path(resource_path("app/component_extensions")))
+        )
         self.left_stack.addWidget(self.file_manager)
 
         left_layout.addWidget(self.left_stack)
@@ -75,8 +93,11 @@ class ComponentDevelopUISetUp:
         self.tab_manager.runSignal.connect(self._run_component_code)
         self.tab_manager.cancelSignal.connect(self._cancel_edit)
         self.tab_manager.templateChangedSignal.connect(self._switch_template)
+        self.tab_manager.reloadSignal.connect(self._reload_component)
         # 初始化不可关闭的主代码编辑器
-        self.code_editor = CodeEditorWidget(self.parent, self.parent.package_manager.get_current_python_exe())
+        self.code_editor = CodeEditorWidget(
+            self.parent, self.parent.package_manager.get_current_python_exe()
+        )
         self.tab_manager.init_main_editor(self.code_editor, "未命名组件")
         middle_layout.addWidget(self.tab_manager)
         # 【兼容性挂载】将新组件挂载到 parent，防止旧代码报错
@@ -152,7 +173,8 @@ class ComponentDevelopUISetUp:
 
     def _update_file_manager_path(self, uuid_str):
         """刷新文件管理器的路径"""
-        if not uuid_str: return
+        if not uuid_str:
+            return
         try:
             ext_path = Path(resource_path("app/component_extensions")) / uuid_str
             self.segment.setCurrentItem("extension_files")
@@ -180,9 +202,13 @@ class ComponentDevelopUISetUp:
                 # 检查是否是代码编辑器
                 if hasattr(widget, "get_code"):
                     content = widget.get_code()
-                    with open(widget.property_file_path, 'w', encoding='utf-8') as f:
+                    with open(widget.property_file_path, "w", encoding="utf-8") as f:
                         f.write(content)
-                    MessageManager.success(self.parent.tr("文件已保存"), str(widget.property_file_path), self.parent)
+                    MessageManager.success(
+                        self.parent.tr("文件已保存"),
+                        str(widget.property_file_path),
+                        self.parent,
+                    )
                 else:
                     # 图片等只读资源忽略
                     pass
@@ -205,7 +231,9 @@ class ComponentDevelopUISetUp:
                 self.tab_manager.close_all_non_main_tabs()
             self.current_comp_uuid = None
             self.segment.setCurrentItem("component_list")
-            self.file_manager.set_root_path(str(Path(resource_path("app/component_extensions"))))
+            self.file_manager.set_root_path(
+                str(Path(resource_path("app/component_extensions")))
+            )
 
     def _switch_template(self, template_name, template_code):
         self._current_template_code = template_code
@@ -213,6 +241,14 @@ class ComponentDevelopUISetUp:
         self._current_component_code = template_code
         msg = self.parent.tr("已切换到模板: {}").format(template_name)
         MessageManager.success(msg, "", self.parent)
+
+    def _reload_component(self):
+        full_path = self.parent.component_tree._current_editing_component
+        if full_path:
+            self.parent.component_tree.component_selected.emit(full_path)
+            MessageManager.success("组件已重新加载", "", self.parent)
+        else:
+            MessageManager.warning("当前没有加载的组件", "", self.parent)
 
     def _run_component_code(self):
         self.side_dock_area.switch_to("多终端调试面板")
@@ -228,16 +264,25 @@ sys.path.insert(0, r"{extention_path}")
 """
         extention_path = rf"{(Path(resource_path('app/component_extensions')) / self.current_comp_uuid).resolve()}"
 
-        current_code = local_import.format(extention_path=extention_path) + self.code_editor.get_code()
+        current_code = (
+            local_import.format(extention_path=extention_path)
+            + self.code_editor.get_code()
+        )
         if not current_code.strip():
-            MessageManager.warning(self.parent.tr("代码编辑器为空，无法运行！"), "", self.parent)
+            MessageManager.warning(
+                self.parent.tr("代码编辑器为空，无法运行！"), "", self.parent
+            )
             return
 
-        current_console = self.side_dock_area.get_tool_instance("多终端调试面板").get_current_console()
+        current_console = self.side_dock_area.get_tool_instance(
+            "多终端调试面板"
+        ).get_current_console()
         if current_console:
             current_console.execute_code(current_code)
         else:
-            MessageManager.error(self.parent.tr("当前控制台未启动或无 kernel 客户端！"), "", self.parent)
+            MessageManager.error(
+                self.parent.tr("当前控制台未启动或无 kernel 客户端！"), "", self.parent
+            )
 
     def destroy_all(self):
         """彻底销毁 UI 所有动态创建的内容，防止内存泄漏"""

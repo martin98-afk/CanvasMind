@@ -2,9 +2,11 @@
 import os
 import cv2
 import numpy as np
+from datetime import datetime
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from PyQt5.QtCore import Qt, QUrl, QSize
+from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtGui import QImage, QPainter, QColor, QPen, QBrush, QPainterPath, QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
@@ -568,6 +570,7 @@ class ComfyConfigPanel(QtWidgets.QFrame):
 class PlayControlBar(QWidget):
     seekRequested = pyqtSignal(int)
     playPauseToggled = pyqtSignal(bool)
+    exportFrameRequested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -583,6 +586,11 @@ class PlayControlBar(QWidget):
         self.btn_play.setChecked(True)
         self.btn_play.setStyleSheet("color: white; border: none;")
 
+        self.btn_export = ToolButton(FluentIcon.SAVE)
+        self.btn_export.setFixedSize(22, 22)
+        self.btn_export.setStyleSheet("color: white; border: none;")
+        self.btn_export.setToolTip("导出当前帧")
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setStyleSheet("""
             QSlider::groove:horizontal { background: #333; height: 3px; border-radius: 2px; }
@@ -593,12 +601,14 @@ class PlayControlBar(QWidget):
         self.lbl_frames.setFixedWidth(60)
 
         layout.addWidget(self.btn_play)
+        layout.addWidget(self.btn_export)
         layout.addWidget(self.slider, 1)
         layout.addWidget(self.lbl_frames)
 
         self.btn_play.toggled.connect(self._on_btn_toggled)
         self.slider.sliderMoved.connect(self.seekRequested.emit)
         self.slider.sliderPressed.connect(lambda: self.playPauseToggled.emit(False))
+        self.btn_export.clicked.connect(self.exportFrameRequested.emit)
 
     def _on_btn_toggled(self, checked):
         self.btn_play.setIcon(FluentIcon.PAUSE if checked else FluentIcon.PLAY)
@@ -644,6 +654,7 @@ class VideoPlayWidget(QFrame):
         self.control_bar = PlayControlBar(self)
         self.control_bar.seekRequested.connect(self._seek_to_frame)
         self.control_bar.playPauseToggled.connect(self._toggle_playback)
+        self.control_bar.exportFrameRequested.connect(self._export_current_frame)
         self.layout.addWidget(self.control_bar)
 
         # 内部数据
@@ -750,6 +761,29 @@ class VideoPlayWidget(QFrame):
     def _update_speed(self, val):
         interval = max(10, int(self._base_interval / (val if val > 0 else 1.0)))
         self.playback_timer.setInterval(interval)
+
+    def _export_current_frame(self):
+        if not self._compressed_cache or self._current_idx >= len(
+            self._compressed_cache
+        ):
+            return
+
+        jpeg_bytes = self._compressed_cache[self._current_idx]
+        nparr = np.frombuffer(jpeg_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is None:
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_name = f"frame_{self._current_idx:04d}_{timestamp}.png"
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "导出当前帧", default_name, "PNG Files (*.png);;JPEG Files (*.jpg)"
+        )
+        if not file_path:
+            return
+
+        cv2.imwrite(file_path, frame)
 
     def resizeEvent(self, event):
         """当节点被拖大时，立即刷新当前帧的渲染尺寸"""

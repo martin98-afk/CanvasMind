@@ -36,6 +36,7 @@ class SSHExecutor(BaseExecutor):
                 timeout=15,
                 compress=True,
             )
+            ssh.get_transport().set_keepalive(10)
             sftp = ssh.open_sftp()
 
             remote_root = ctx.remote_root
@@ -99,7 +100,9 @@ class SSHExecutor(BaseExecutor):
             )
 
             last_log_pos = 0
-            is_ipython_mode = getattr(ctx.node.view, "current_mode", None) == "ipython" or getattr(ctx.node, "object_io", False)
+            is_ipython_mode = getattr(
+                ctx.node.view, "current_mode", None
+            ) == "ipython" or getattr(ctx.node, "object_io", False)
 
             if is_ipython_mode and ctx.kernel_manager:
                 ctx.kernel_manager.execute_code(remote_script_content, hidden=True)
@@ -202,11 +205,14 @@ class SSHExecutor(BaseExecutor):
                 ssh.exec_command(f"rm -rf {remote_run_dir}")
             except Exception:
                 pass
-            with sftp.open(log_path, "r") as f:
-                f.seek(last_log_pos)
-                new_data = f.read().decode("utf-8", errors="ignore")
-                if new_data:
-                    ctx.node._log_message(ctx.node.persistent_id, new_data)
+            try:
+                with sftp.open(log_path, "r") as f:
+                    f.seek(last_log_pos)
+                    new_data = f.read().decode("utf-8", errors="ignore")
+                    if new_data:
+                        ctx.node._log_message(ctx.node.persistent_id, new_data)
+            except OSError:
+                pass
 
             error_info = self.read_error(ctx)
             if error_info:
