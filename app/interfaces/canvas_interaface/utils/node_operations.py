@@ -692,7 +692,6 @@ class NodeOperations:
         try:
             cb_data = orjson.loads(cb_text)
         except:
-            logger.exception("Invalid clipboard data")
             return
         if "nodes" not in cb_data:
             return
