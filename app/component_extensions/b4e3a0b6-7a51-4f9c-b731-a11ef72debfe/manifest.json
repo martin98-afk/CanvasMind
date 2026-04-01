@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "自动初始化ComfyUI环境并设置显存管理策略",
   "category": "comfyui节点",
-  "updated_at": "2026-03-02 11:18:30",
+  "source_file": "..\\..\\components\\comfyui节点\\b4e3a0b6-7a51-4f9c-b731-a11ef72debfe.py",
+  "updated_at": "2026-04-01 08:46:50",
   "author": "black"
 }

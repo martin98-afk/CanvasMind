@@ -41,6 +41,8 @@ class Component(BaseComponent):
         return: 输出数据（key=输出端口名）
         """
         self.logger.info(params)
+        # 使用 prop1 属性获取拼接字符串
+        concat_str = params.prop1[1]
         return {
-            "output1": inputs.input1 + params.prop1[1]
+            "output1": inputs.input1 + concat_str
         }

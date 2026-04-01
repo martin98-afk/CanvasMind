@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QVBoxLayout,
@@ -31,26 +31,34 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
-NODE_CATEGORIES = ["内置", "display", "interactive", "operate"]
+NODE_CATEGORIES = ["全部", "内置", "display", "interactive", "operate"]
 
 
 class PluginCard(CardWidget):
+    ARROW_ICONS = {"collapsed": get_icon("折叠"), "expanded": get_icon("展开")}
+
     def __init__(self, name, desc, template, plugin_type, parent_window, parent=None):
         super().__init__(parent)
         self.parent_window = parent_window
         self.template_code = template.strip()
         self.plugin_type = plugin_type
+        self.is_expanded = False
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(12, 12, 12, 12)
         self.layout.setSpacing(8)
 
+        dark = isDarkTheme()
+
         header_layout = QHBoxLayout()
         header_layout.setSpacing(8)
 
+        self.toggle_button = TransparentToolButton(self.ARROW_ICONS["collapsed"], self)
+        self.toggle_button.setFixedSize(24, 24)
+        self.toggle_button.clicked.connect(self._on_toggle)
+
         type_badge = QLabel(plugin_type)
         type_badge.setObjectName("typeBadge")
-        dark = isDarkTheme()
         badge_color = "#4FC1FF" if dark else "#0066CC"
         badge_bg = "rgba(79, 193, 255, 0.15)" if dark else "rgba(0, 102, 204, 0.1)"
         type_badge.setStyleSheet(f"""
@@ -66,23 +74,8 @@ class PluginCard(CardWidget):
 
         self.title_label = StrongBodyLabel(name)
 
-        header_layout.addWidget(type_badge)
-        header_layout.addWidget(self.title_label, 1)
-        header_layout.addStretch()
-        self.layout.addLayout(header_layout)
-
-        if desc:
-            self.desc_label = CaptionLabel(desc)
-            self.desc_label.setWordWrap(True)
-            self.desc_label.setStyleSheet(
-                "color: rgba(255,255,255,0.5);" if dark else "color: rgba(0,0,0,0.5);"
-            )
-            self.layout.addWidget(self.desc_label)
-
-        self.setup_code_block()
-
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addStretch()
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(4)
 
         self.copy_btn = TransparentToolButton(FluentIcon.COPY, self)
         self.copy_btn.setFixedSize(28, 28)
@@ -94,9 +87,26 @@ class PluginCard(CardWidget):
         self.insert_btn.setToolTip("插入编辑器")
         self.insert_btn.clicked.connect(self._on_insert)
 
-        bottom_layout.addWidget(self.insert_btn)
-        bottom_layout.addWidget(self.copy_btn)
-        self.layout.addLayout(bottom_layout)
+        btn_layout.addWidget(self.insert_btn)
+        btn_layout.addWidget(self.copy_btn)
+
+        header_layout.addWidget(self.toggle_button)
+        header_layout.addWidget(type_badge)
+        header_layout.addWidget(self.title_label, 1)
+        header_layout.addLayout(btn_layout)
+        self.layout.addLayout(header_layout)
+
+        if desc:
+            self.desc_label = CaptionLabel(desc)
+            self.desc_label.setWordWrap(True)
+            self.desc_label.setStyleSheet(
+                "color: rgba(255,255,255,0.5);" if dark else "color: rgba(0,0,0,0.5);"
+            )
+            self.layout.addWidget(self.desc_label)
+
+        self.setup_code_block()
+        self.layout.addWidget(self.code_edit)
+        self.code_edit.setVisible(False)
 
     def setup_code_block(self):
         dark = isDarkTheme()
@@ -134,7 +144,22 @@ class PluginCard(CardWidget):
         """)
 
         self.code_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.layout.addWidget(self.code_edit)
+
+    def _on_toggle(self):
+        if self.is_expanded:
+            self.collapse()
+        else:
+            self.expand()
+
+    def expand(self):
+        self.is_expanded = True
+        self.code_edit.setVisible(True)
+        self.toggle_button.setIcon(self.ARROW_ICONS["expanded"])
+
+    def collapse(self):
+        self.is_expanded = False
+        self.code_edit.setVisible(False)
+        self.toggle_button.setIcon(self.ARROW_ICONS["collapsed"])
 
     def _on_copy(self):
         QApplication.clipboard().setText(self.template_code)
@@ -159,6 +184,7 @@ class PluginTemplateToolWindow(ToolWindow):
         self.plugin_manager = UnifiedPluginManager.get_instance()
         self.all_data = []
         self.current_type = "全部"
+        self.cards = []
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -200,17 +226,37 @@ class PluginTemplateToolWindow(ToolWindow):
         nav_widget = QWidget()
         nav_layout = QVBoxLayout(nav_widget)
         nav_layout.setContentsMargins(16, 0, 16, 8)
-        nav_layout.setSpacing(0)
+        nav_layout.setSpacing(8)
+
+        nav_top_row = QHBoxLayout()
+        nav_top_row.setSpacing(8)
 
         self.type_nav = SegmentedWidget(self)
 
         for name in NODE_CATEGORIES:
             self.type_nav.addItem(name, name)
-
         self.type_nav.setCurrentItem("全部")
         self.type_nav.currentItemChanged.connect(self.on_type_changed)
 
-        nav_layout.addWidget(self.type_nav)
+        batch_layout = QHBoxLayout()
+        batch_layout.setSpacing(4)
+
+        self.expand_all_btn = TransparentToolButton(get_icon("展开"), self)
+        self.expand_all_btn.setFixedSize(28, 28)
+        self.expand_all_btn.setToolTip("全部展开")
+        self.expand_all_btn.clicked.connect(self._on_expand_all)
+
+        self.collapse_all_btn = TransparentToolButton(get_icon("折叠"), self)
+        self.collapse_all_btn.setFixedSize(28, 28)
+        self.collapse_all_btn.setToolTip("全部折叠")
+        self.collapse_all_btn.clicked.connect(self._on_collapse_all)
+
+        batch_layout.addWidget(self.expand_all_btn)
+        batch_layout.addWidget(self.collapse_all_btn)
+
+        nav_top_row.addWidget(self.type_nav, 1)
+        nav_top_row.addLayout(batch_layout)
+        nav_layout.addLayout(nav_top_row)
         self.main_layout.addWidget(nav_widget)
 
     def setup_content(self):
@@ -282,6 +328,8 @@ class PluginTemplateToolWindow(ToolWindow):
         self.filter_plugins(self.search_edit.text())
 
     def display_cards(self, data_list):
+        self.cards = []
+
         while self.container_layout.count():
             item = self.container_layout.takeAt(0)
             if item.widget():
@@ -312,6 +360,7 @@ class PluginTemplateToolWindow(ToolWindow):
                     item.get("type", "未知"),
                     self,
                 )
+                self.cards.append(card)
                 self.container_layout.addWidget(card)
 
         self.container_layout.addStretch(1)
@@ -331,6 +380,14 @@ class PluginTemplateToolWindow(ToolWindow):
         ]
         self.display_cards(filtered)
 
+    def _on_expand_all(self):
+        for card in self.cards:
+            card.expand()
+
+    def _on_collapse_all(self):
+        for card in self.cards:
+            card.collapse()
+
     def insert_to_editor(self, text):
         if hasattr(self.homepage, "_handle_insert_code_from_llm"):
             self.homepage._handle_insert_code_from_llm(text)
@@ -338,7 +395,7 @@ class PluginTemplateToolWindow(ToolWindow):
                 "已插入",
                 "模板代码已添加到编辑器",
                 duration=1000,
-                position=InfoBarPosition.TOP_RIGHT,
+                position=InfoBarPosition.TOP,
                 parent=self.window(),
             )
         else:
