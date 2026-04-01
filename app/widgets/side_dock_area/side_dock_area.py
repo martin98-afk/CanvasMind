@@ -73,7 +73,7 @@ class ToolPopupDialog(QDialog):
         self._min_btn.clicked.connect(self.showMinimized)
         title_bar.add_popup_button(self._min_btn)
 
-        self._max_btn = ToolButton(FIF.ACCEPT, self)
+        self._max_btn = ToolButton(get_icon("放大"), self)
         self._max_btn.setFixedSize(24, 24)
         self._max_btn.setToolTip("最大化")
         self._max_btn.clicked.connect(self._toggle_maximize)
@@ -384,7 +384,7 @@ class SideDockArea(QWidget):
 
         btn.setVisible(False)
 
-        popup = ToolPopupDialog(instance, self)
+        popup = ToolPopupDialog(instance, None)
         popup.setRestoreInfo(tool_name, was_in_top, btn)
         popup.popupClosed.connect(self._on_popup_closed)
         self._popup_windows[tool_name] = popup
