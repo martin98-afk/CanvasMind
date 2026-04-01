@@ -16,6 +16,7 @@ class ToggleNavigationButton(NavigationToolButton):
     doubleClicked = pyqtSignal(str)
     toolHidden = pyqtSignal(str)
     toolMoveRequested = pyqtSignal(str, str)
+    toolPopupRequested = pyqtSignal(str)
 
     def __init__(self, icon, tool_name, parent=None):
         super().__init__(icon, parent)
@@ -88,6 +89,7 @@ class ToggleNavigationButton(NavigationToolButton):
         """)
         move_to_top = QAction("移动到顶部组", menu)
         move_to_bottom = QAction("移动到底部组", menu)
+        popup_window = QAction("转为弹窗显示", menu)
         hide_tool = QAction("隐藏工具", menu)
 
         move_to_top.triggered.connect(
@@ -96,10 +98,14 @@ class ToggleNavigationButton(NavigationToolButton):
         move_to_bottom.triggered.connect(
             lambda: self.toolMoveRequested.emit(self.tool_name, "bottom")
         )
+        popup_window.triggered.connect(
+            lambda: self.toolPopupRequested.emit(self.tool_name)
+        )
         hide_tool.triggered.connect(lambda: self.toolHidden.emit(self.tool_name))
 
         menu.addAction(move_to_top)
         menu.addAction(move_to_bottom)
+        menu.addAction(popup_window)
         menu.addAction(hide_tool)
         menu.exec_(e.globalPos())
 
@@ -183,6 +189,7 @@ class RightToolPanel(QFrame):
     bottomToolUnchecked = pyqtSignal(str)
     toolMoveRequested = pyqtSignal(str, str)
     toolHidden = pyqtSignal(str)
+    toolPopupRequested = pyqtSignal(str)
 
     def __init__(self, canvas_page, parent=None):
         super().__init__(parent)
@@ -277,6 +284,7 @@ class RightToolPanel(QFrame):
         btn.doubleClicked.connect(self._on_button_double_clicked)
         btn.toolHidden.connect(self._on_tool_hidden)
         btn.toolMoveRequested.connect(self._on_button_move_requested)
+        btn.toolPopupRequested.connect(self._on_tool_popup_requested)
 
         return btn
 
@@ -314,6 +322,9 @@ class RightToolPanel(QFrame):
 
     def _on_button_move_requested(self, tool_name, new_pos):
         self.toolMoveRequested.emit(tool_name, new_pos)
+
+    def _on_tool_popup_requested(self, tool_name):
+        self.toolPopupRequested.emit(tool_name)
 
     def add_button_to_layout(self, tool_name, position_str, force_checked=False):
         btn = self._button_by_name.get(tool_name)

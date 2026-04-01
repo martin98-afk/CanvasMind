@@ -183,9 +183,21 @@ class GlobalPanelWidget:
                 except:
                     preview = "<无法预览>"
 
-                # 只有文字变了才 set，避免闪烁
+                if (
+                    isinstance(new_value, str)
+                    and len(new_value) > 20
+                    and " " not in new_value
+                ):
+                    preview = self._insert_soft_break(preview)
+
                 if value_label.text() != preview:
                     value_label.setText(preview)
+
+    def _insert_soft_break(self, text: str) -> str:
+        if len(text) <= 20:
+            return text
+        mid = len(text) // 2
+        return text[:mid] + "\u200b" + text[mid:]
 
     # [新增] 辅助更新 Group 卡片
     def _update_parameter_group_card(self, card, new_value):
@@ -225,6 +237,8 @@ class GlobalPanelWidget:
             param_value = BodyLabel(param_value_text)
             param_value.setStyleSheet("color: #888888;")
             param_value.setWordWrap(True)
+            if isinstance(val, str) and len(val) > 20 and " " not in val:
+                param_value.setText(self._insert_soft_break(param_value.text()))
             param_row.addWidget(param_key)
             param_row.addWidget(param_value, 1)
             detail_layout.addLayout(param_row)
@@ -864,6 +878,8 @@ class GlobalPanelWidget:
                         )
                     except:
                         preview = "<无法预览>"
+                    if isinstance(value, str) and len(value) > 20 and " " not in value:
+                        preview = self._insert_soft_break(preview)
                     value_label.setText(preview)
         if not current_env and self.env_vars_layout.count() == 0:
             self.env_vars_layout.addWidget(BodyLabel("暂无环境变量"))
@@ -892,6 +908,8 @@ class GlobalPanelWidget:
         value_label = BodyLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
+        if isinstance(value, str) and len(value) > 20 and " " not in value:
+            value_label.setText(self._insert_soft_break(value_label.text()))
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
         del_btn.setIconSize(QSize(12, 12))
         del_btn.setFixedSize(16, 16)
@@ -984,6 +1002,8 @@ class GlobalPanelWidget:
                 param_value = BodyLabel(param_value_text)
                 param_value.setStyleSheet("color: #888888;")
                 param_value.setWordWrap(True)  # 启用换行
+                if isinstance(val, str) and len(val) > 20 and " " not in val:
+                    param_value.setText(self._insert_soft_break(param_value.text()))
                 param_row.addWidget(param_key)
                 param_row.addWidget(param_value, 1)
                 detail_layout.addLayout(param_row)
@@ -1060,6 +1080,8 @@ class GlobalPanelWidget:
         value_label = BodyLabel(preview)
         value_label.setWordWrap(True)
         value_label.setStyleSheet("color: #888888;")
+        if isinstance(value, str) and len(value) > 20 and " " not in value:
+            value_label.setText(self._insert_soft_break(value_label.text()))
         del_btn = TransparentToolButton(FluentIcon.CLOSE, self.parent_panel)
         del_btn.setIconSize(QSize(12, 12))
         del_btn.setFixedSize(16, 16)

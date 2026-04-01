@@ -182,25 +182,27 @@ class InlineTerminal(QTextEdit):
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
 
-        ansi_clean = re.compile(r'\x1b(\[[0-9;]*[A-Za-z]|\][^\x07]*\x07|\[[0-9;]*H|\[[0-9]*[JKJ]|\[[0-9]*;[0-9]*H|\=)')
-        color_pattern = re.compile(r'\x1b\[([\d;]*)m')
+        ansi_clean = re.compile(
+            r"\x1b(\[[0-9;]*[A-Za-z]|\][^\x07]*\x07|\[[0-9;]*H|\[[0-9]*[JKJ]|\[[0-9]*;[0-9]*H|\=)"
+        )
+        color_pattern = re.compile(r"\x1b\[([\d;]*)m")
 
-        text = ansi_clean.sub('', text)
+        text = ansi_clean.sub("", text)
 
         parts = color_pattern.split(text)
         current_fmt = QTextCharFormat()
         current_fmt.setForeground(QColor("#D4D4D4"))
 
         for part in parts:
-            if part.startswith('\x1b[') or not part:
-                codes = part.strip('\x1b[').strip('m').split(';')
+            if part.startswith("\x1b[") or not part:
+                codes = part.strip("\x1b[").strip("m").split(";")
                 for code in codes:
-                    if code in ('0', ''):
+                    if code in ("0", ""):
                         current_fmt = QTextCharFormat()
                         current_fmt.setForeground(QColor("#D4D4D4"))
-                    elif code == '1':
+                    elif code == "1":
                         current_fmt.setFontWeight(QFont.Bold)
-                    elif '30' <= code <= '37' or '90' <= code <= '97':
+                    elif "30" <= code <= "37" or "90" <= code <= "97":
                         current_fmt.setForeground(self._get_ansi_color(code))
             else:
                 cursor.insertText(part, current_fmt)
@@ -210,10 +212,22 @@ class InlineTerminal(QTextEdit):
 
     def _get_ansi_color(self, code):
         colors = {
-            "30": "#000000", "31": "#CD3131", "32": "#0DBC79", "33": "#E5E510",
-            "34": "#2472C8", "35": "#BC3FBC", "36": "#11A8CD", "37": "#E5E5E5",
-            "90": "#666666", "91": "#F14C4C", "92": "#23D18B", "93": "#F5F543",
-            "94": "#3B8EEA", "95": "#D670D6", "96": "#29B8DB", "97": "#FFFFFF",
+            "30": "#000000",
+            "31": "#CD3131",
+            "32": "#0DBC79",
+            "33": "#E5E510",
+            "34": "#2472C8",
+            "35": "#BC3FBC",
+            "36": "#11A8CD",
+            "37": "#E5E5E5",
+            "90": "#666666",
+            "91": "#F14C4C",
+            "92": "#23D18B",
+            "93": "#F5F543",
+            "94": "#3B8EEA",
+            "95": "#D670D6",
+            "96": "#29B8DB",
+            "97": "#FFFFFF",
         }
         return QColor(colors.get(code, "#D4D4D4"))
 
@@ -252,8 +266,6 @@ class ShellConsoleToolWindow(ToolWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self._create_toolbar()
-
         self.terminal = InlineTerminal()
         self.terminal.command_entered.connect(self._on_command_entered)
         self.terminal.interrupt_requested.connect(self._interrupt_process)
@@ -266,46 +278,31 @@ class ShellConsoleToolWindow(ToolWindow):
         self._start_shell()
         self._print_welcome()
 
-    def _create_toolbar(self):
-        toolbar = QWidget()
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(8, 4, 8, 4)
-        toolbar_layout.setSpacing(8)
-
-        self.title_label = QLabel("TERMINAL")
-        self.title_label.setStyleSheet("color: #AAAAAA; font-weight: bold; font-size: 10px;")
+    def _setup_title_bar(self):
+        title_bar = self.get_title_bar()
+        title_bar.set_title("Shell 命令行")
 
         self.cwd_label = QLabel(self._shorten_path(self.working_directory))
-        self.cwd_label.setStyleSheet("color: #666666; font-size: 10px;")
+        self.cwd_label.setObjectName("cwdLabel")
+        self.cwd_label.setStyleSheet(
+            "color: #888888; font-size: 12px; font-weight: normal;"
+        )
+        title_bar.insert_button(1, self.cwd_label)
 
         self.stop_btn = ToolButton(FluentIcon.PAUSE)
         self.stop_btn.setToolTip("中断当前命令 (Ctrl+C)")
-        self.stop_btn.setFixedSize(22, 22)
         self.stop_btn.clicked.connect(self._interrupt_process)
+        title_bar.add_button(self.stop_btn)
 
         self.clear_btn = ToolButton(FluentIcon.DELETE)
         self.clear_btn.setToolTip("清空屏幕")
-        self.clear_btn.setFixedSize(22, 22)
         self.clear_btn.clicked.connect(self._clear_terminal)
+        title_bar.add_button(self.clear_btn)
 
         self.restart_btn = ToolButton(FluentIcon.SYNC)
         self.restart_btn.setToolTip("重启会话")
-        self.restart_btn.setFixedSize(22, 22)
         self.restart_btn.clicked.connect(self._restart_shell)
-
-        toolbar_layout.addWidget(self.title_label)
-        toolbar_layout.addWidget(self.cwd_label)
-        toolbar_layout.addStretch()
-        toolbar_layout.addWidget(self.stop_btn)
-        toolbar_layout.addWidget(self.clear_btn)
-        toolbar_layout.addWidget(self.restart_btn)
-
-        toolbar.setStyleSheet("""
-            QWidget { background-color: #252526; border-bottom: 1px solid #333333; }
-            QPushButton { background: transparent; border: none; border-radius: 2px; }
-            QPushButton:hover { background-color: #37373D; }
-        """)
-        self.layout().addWidget(toolbar)
+        title_bar.add_button(self.restart_btn)
 
     def _shorten_path(self, path):
         if len(path) > 50:
@@ -404,7 +401,9 @@ class ShellConsoleToolWindow(ToolWindow):
                 os.chdir(path)
                 self.working_directory = os.getcwd()
                 self.cwd_label.setText(self._shorten_path(self.working_directory))
-                self.process.write(f"cd \"{self.working_directory}\"\n".encode(self.encoding))
+                self.process.write(
+                    f'cd "{self.working_directory}"\n'.encode(self.encoding)
+                )
                 self._update_prompt()
                 return
 

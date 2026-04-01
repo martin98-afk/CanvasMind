@@ -4,8 +4,9 @@
   "name": "路径测试",
   "version": "1.0.0",
   "api_version": "2.0",
-  "description": "",
+  "description": "处理路径参数，支持文件路径解析和转换",
   "category": "测试组件",
-  "updated_at": "2026-02-02 20:17:17",
+  "source_file": "..\\..\\components\\测试组件\\2e059ce5-4c21-4cb4-940a-165eaeeb2e58.py",
+  "updated_at": "2026-03-31 20:38:37",
   "author": "black"
 }

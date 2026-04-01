@@ -8,12 +8,25 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QWidget, QLabel,
-    QApplication
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QSizePolicy,
+    QWidget,
+    QLabel,
+    QApplication,
 )
 from qfluentwidgets import (
-    InfoBar, InfoBarPosition, PushButton, BodyLabel, SearchLineEdit, 
-    ToggleToolButton, ScrollArea, FlowLayout, SimpleCardWidget, FluentIcon
+    InfoBar,
+    InfoBarPosition,
+    PushButton,
+    BodyLabel,
+    SearchLineEdit,
+    ToggleToolButton,
+    ScrollArea,
+    FlowLayout,
+    SimpleCardWidget,
+    FluentIcon,
 )
 
 from app.utils.icon_name_map import ICON_NAME_TO_FILE
@@ -29,12 +42,14 @@ class LazyIconLoader:
             self.builtin_icons_cache = []
             for icon_enum in FluentIcon:
                 if isinstance(icon_enum, Enum):
-                    self.builtin_icons_cache.append({
-                        "icon": icon_enum.icon(),
-                        "name": icon_enum.value,
-                        "path": f"builtin:{icon_enum.name}",
-                        "is_builtin": True
-                    })
+                    self.builtin_icons_cache.append(
+                        {
+                            "icon": icon_enum.icon(),
+                            "name": icon_enum.value,
+                            "path": f"builtin:{icon_enum.name}",
+                            "is_builtin": True,
+                        }
+                    )
             self.builtin_icons_loaded = True
         return self.builtin_icons_cache
 
@@ -44,6 +59,7 @@ class IconSelectorPopup(QWidget):
     图标选择器 Popup 窗口
     发射信号: icon_selected(icon_path)
     """
+
     icon_selected = pyqtSignal(str)
 
     def __init__(self, parent, icons_dir=None):
@@ -51,9 +67,11 @@ class IconSelectorPopup(QWidget):
         self.icons_dir = icons_dir
         self.selected_icon_path = ""
 
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setWindowFlags(
+            Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(600, 450)
+        self.setFixedSize(550, 450)
 
         self.icon_loader = LazyIconLoader()
         self.all_icon_items = []
@@ -114,7 +132,9 @@ class IconSelectorPopup(QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll_area.setStyleSheet("background: transparent; border: 1px solid #404040; border-radius: 8px;")
+        scroll_area.setStyleSheet(
+            "background: transparent; border: 1px solid #404040; border-radius: 8px;"
+        )
 
         self.icon_container = QWidget()
         self.icon_container.setStyleSheet("background: transparent;")
@@ -129,10 +149,10 @@ class IconSelectorPopup(QWidget):
         bottom_layout = QHBoxLayout()
         bottom_layout.addStretch()
 
-        self.cancel_btn = PushButton('取消', self)
+        self.cancel_btn = PushButton("取消", self)
         self.cancel_btn.clicked.connect(self.close)
 
-        self.confirm_btn = PushButton('确定', self)
+        self.confirm_btn = PushButton("确定", self)
         self.confirm_btn.clicked.connect(self._on_confirm)
 
         bottom_layout.addWidget(self.cancel_btn)
@@ -145,23 +165,26 @@ class IconSelectorPopup(QWidget):
         self._clear_icon_layout()
         self.all_icon_items.clear()
 
-        self.all_icon_items.append({
-            "icon": FluentIcon.APPLICATION.icon(),
-            "name": "无图标",
-            "path": "",
-            "is_builtin": False
-        })
+        self.all_icon_items.append(
+            {
+                "icon": FluentIcon.APPLICATION.icon(),
+                "name": "无图标",
+                "path": "",
+                "is_builtin": False,
+            }
+        )
 
-        icon_files = [(name, f":/icons/{icon}") for name, icon in ICON_NAME_TO_FILE.items()]
+        icon_files = [
+            (name, f":/icons/{icon}") for name, icon in ICON_NAME_TO_FILE.items()
+        ]
         for name, p in icon_files:
-            pixmap = QPixmap(str(p)).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pixmap = QPixmap(str(p)).scaled(
+                64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
             icon = QIcon(pixmap)
-            self.all_icon_items.append({
-                "icon": icon,
-                "name": name,
-                "path": p,
-                "is_builtin": False
-            })
+            self.all_icon_items.append(
+                {"icon": icon, "name": name, "path": p, "is_builtin": False}
+            )
 
         builtin_icons = self.icon_loader.get_builtin_icons()
         self.all_icon_items.extend(builtin_icons)
@@ -194,7 +217,7 @@ class IconSelectorPopup(QWidget):
         btn.setFixedSize(64, 64)
         btn.setIconSize(QSize(48, 48))
         btn.setToolTip(name)
-        btn.setProperty('icon_path', path)
+        btn.setProperty("icon_path", path)
         btn.clicked.connect(self._on_icon_clicked)
         item_layout.addWidget(btn, alignment=Qt.AlignCenter)
 
@@ -216,6 +239,7 @@ class IconSelectorPopup(QWidget):
             path = self.icon_buttons[sender]
             self.selected_icon_path = path
             from loguru import logger
+
             logger.info(f"Icon clicked, selected_path: {path}")
             for btn in self.icon_buttons.keys():
                 btn.setChecked(btn == sender)
@@ -242,13 +266,13 @@ class IconSelectorPopup(QWidget):
             return
 
         filtered_items = [
-            item for item in self.all_icon_items
-            if search_text in item["name"].lower()
+            item for item in self.all_icon_items if search_text in item["name"].lower()
         ]
         self._refresh_icon_display(filtered_items)
 
     def _upload_icon(self):
         from PyQt5.QtWidgets import QFileDialog
+
         file_path, _ = QFileDialog.getOpenFileName(
             self, "选择图标", "", "Images (*.png *.jpg *.jpeg *.svg)"
         )
@@ -258,6 +282,7 @@ class IconSelectorPopup(QWidget):
 
         if not self.icons_dir:
             from app.scan_components import resource_path
+
             self.icons_dir = resource_path("app/component_extensions/custom_icons")
 
         if not os.path.exists(self.icons_dir):
@@ -274,9 +299,16 @@ class IconSelectorPopup(QWidget):
             if self.icon_search.text():
                 self._perform_icon_search()
 
-            InfoBar.success("成功", "图标上传成功", parent=self, position=InfoBarPosition.TOP_RIGHT)
+            InfoBar.success(
+                "成功", "图标上传成功", parent=self, position=InfoBarPosition.TOP_RIGHT
+            )
         except Exception as e:
-            InfoBar.error("错误", f"上传失败: {e}", parent=self, position=InfoBarPosition.TOP_RIGHT)
+            InfoBar.error(
+                "错误",
+                f"上传失败: {e}",
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+            )
 
     def _on_confirm(self):
         self.icon_selected.emit(self.selected_icon_path)
@@ -286,9 +318,12 @@ class IconSelectorPopup(QWidget):
         pos = widget.mapToGlobal(QPoint(0, widget.height()))
         screen = QApplication.primaryScreen().availableGeometry()
 
-        x = pos.x()
+        btn_right = widget.mapToGlobal(QPoint(widget.width(), widget.height())).x()
+        x = btn_right - self.width()
         y = pos.y()
 
+        if x < screen.left():
+            x = screen.left() + 5
         if x + self.width() > screen.right():
             x = screen.right() - self.width() - 5
 

@@ -13,7 +13,7 @@ class ChartDisplayPlugin(DisplayPlugin):
     plugin_desc = "用于在节点上展示指定echarts折现"
     plugin_template = """self.emit_message(
             method="display_list",
-            params={"training_loss": {"data": [1,2,3,4,5]},"accuracy": {"data": [5,6,7,8,9]},}
+            params={"training_loss": [1,2,3,4,5],"accuracy": [5,6,7,8,9]}
         )
 """
 

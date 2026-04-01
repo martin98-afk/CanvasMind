@@ -1,16 +1,23 @@
 # log_tool_window.py
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
-from qfluentwidgets import SingleDirectionScrollArea, TransparentToolButton, FluentIcon, \
-    StrongBodyLabel
+from qfluentwidgets import (
+    SingleDirectionScrollArea,
+    TransparentToolButton,
+    FluentIcon,
+    StrongBodyLabel,
+)
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.plugins.canvas_node_log.collapsible_card import CollapsibleLogCard
+from app.widgets.side_dock_area.plugins.canvas_node_log.collapsible_card import (
+    CollapsibleLogCard,
+)
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 
 class LogToolWindow(ToolWindow):
     """画布节点运行日志工具窗口 (包含画布系统日志)"""
+
     name = "模型日志"
     icon = get_icon("运行记录")
     default_position = DockPosition.BOTTOM
@@ -20,32 +27,7 @@ class LogToolWindow(ToolWindow):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        title_container = QWidget(self)
-        title_layout = QHBoxLayout(title_container)
-        title_layout.setContentsMargins(3, 3, 3, 3)
-        title_layout.setSpacing(3)
-        self.title_label = StrongBodyLabel(self.tr("运行日志:"))
-        title_layout.addWidget(self.title_label)
-        title_layout.addStretch()
-        # 折叠展开按钮
-        self.expand_button = TransparentToolButton(get_icon("expand_all"), self)
-        self.expand_button.setFixedSize(28, 28)
-        self.expand_button.setToolTip(self.tr("展开所有日志"))
-        self.expand_button.clicked.connect(self._expand_all)
-        title_layout.addWidget(self.expand_button)
-        self.collapse_button = TransparentToolButton(get_icon("collapse_all"), self)
-        self.collapse_button.setFixedSize(28, 28)
-        self.collapse_button.setToolTip(self.tr("折叠所有日志"))
-        self.collapse_button.clicked.connect(self._collapse_all)
-        title_layout.addWidget(self.collapse_button)
-        # 清空按钮
-        self.clear_button = TransparentToolButton(FluentIcon.DELETE, self)
-        self.clear_button.setFixedSize(28, 28)
-        self.clear_button.setToolTip(self.tr("清空记录"))
-        self.clear_button.clicked.connect(self._clear_logs)
 
-        title_layout.addWidget(self.clear_button)
-        layout.addWidget(title_container)
         # 日志滚动区域
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -74,6 +56,25 @@ class LogToolWindow(ToolWindow):
         self.run_cards = {}  # {run_id: card}
         self.current_run_id = None
 
+    def _setup_title_bar(self):
+        title_bar = self.get_title_bar()
+        title_bar.set_title("模型日志")
+
+        self.expand_button = TransparentToolButton(get_icon("expand_all"), self)
+        self.expand_button.setToolTip(self.tr("展开所有日志"))
+        self.expand_button.clicked.connect(self._expand_all)
+        title_bar.add_button(self.expand_button)
+
+        self.collapse_button = TransparentToolButton(get_icon("collapse_all"), self)
+        self.collapse_button.setToolTip(self.tr("折叠所有日志"))
+        self.collapse_button.clicked.connect(self._collapse_all)
+        title_bar.add_button(self.collapse_button)
+
+        self.clear_button = TransparentToolButton(FluentIcon.DELETE, self)
+        self.clear_button.setToolTip(self.tr("清空记录"))
+        self.clear_button.clicked.connect(self._clear_logs)
+        title_bar.add_button(self.clear_button)
+
     def showEvent(self, event):
         self._collapse_all()
         QTimer.singleShot(10, self._expand_all)
@@ -89,7 +90,9 @@ class LogToolWindow(ToolWindow):
         # 创建新卡片
         if run_id not in self.run_cards:
             card = CollapsibleLogCard(run_id, parent=self.container)
-            card.doubleClicked.connect(lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip()))
+            card.doubleClicked.connect(
+                lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip())
+            )
             self.run_cards[run_id] = card
             self.log_layout.addWidget(card)  # ← 直接加到 layout
             QTimer.singleShot(10, self._scroll_to_bottom)
@@ -101,8 +104,12 @@ class LogToolWindow(ToolWindow):
     def push_log(self, run_id: str, line: str):
         if run_id not in self.run_cards:
             # 容错：自动创建（但最好先 start_run）系统日志，标题淡蓝色
-            card = CollapsibleLogCard(run_id, title_color="color: #4A90E2;", parent=self.container)
-            card.doubleClicked.connect(lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip()))
+            card = CollapsibleLogCard(
+                run_id, title_color="color: #4A90E2;", parent=self.container
+            )
+            card.doubleClicked.connect(
+                lambda id=run_id: self.cardDoubleClicked.emit(id.split("@")[0].strip())
+            )
             self.run_cards[run_id] = card
             self.log_layout.addWidget(card)
             self._enforce_max_runs()
@@ -127,9 +134,12 @@ class LogToolWindow(ToolWindow):
             old_card.deleteLater()
 
     def _scroll_to_bottom(self):
-        QTimer.singleShot(10, lambda: self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum()
-        ))
+        QTimer.singleShot(
+            10,
+            lambda: self.scroll_area.verticalScrollBar().setValue(
+                self.scroll_area.verticalScrollBar().maximum()
+            ),
+        )
 
     def _expand_all(self):
         for run_id, card in self.run_cards.items():

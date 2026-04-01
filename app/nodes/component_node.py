@@ -249,7 +249,7 @@ def create_node_class(full_path, file_path, parent_window=None):
         def get_current_code(self):
             current_version = self.get_property("_version")
             if current_version == "latest":
-                with open(self.FILE_PATH, "r", encoding="utf-8") as f:
+                with open(ComponentScanner().get_component_by_uuid(self.uuid)._source_file, "r", encoding="utf-8") as f:
                     current_code = f.read()
             else:
                 current_code = None

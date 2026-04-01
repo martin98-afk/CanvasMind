@@ -118,7 +118,7 @@ class DynamicComponent(BaseComponent):
             preview_b64 = self._image_to_base64(masked_image_rgba, fmt="PNG")
             self.emit_message(
                 method="display_image",
-                params={"output": {"data": preview_b64, "data_type": "image"}},
+                params={"output": preview_b64},
             )
 
         return {

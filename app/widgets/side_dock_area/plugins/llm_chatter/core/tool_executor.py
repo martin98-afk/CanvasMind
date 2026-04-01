@@ -228,3 +228,10 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools._set_stage_callback = callback
             logger.info("[ToolExecutor] Stage callback attached to BuiltinTools")
+
+    @property
+    def file_modified_signal(self):
+        """获取文件修改信号，用于连接"""
+        if self._builtin_tools:
+            return self._builtin_tools.fileModified
+        return None

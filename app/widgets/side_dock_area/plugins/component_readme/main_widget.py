@@ -3,7 +3,7 @@ import os
 import markdown
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QVBoxLayout, QTextBrowser, QFrame
-from qfluentwidgets import (StrongBodyLabel, FluentIcon, CaptionLabel)
+from qfluentwidgets import StrongBodyLabel, FluentIcon, CaptionLabel
 
 from app.utils.utils import resource_path
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
@@ -16,46 +16,39 @@ class NodeDocToolWindow(ToolWindow):
 
     def setup_ui(self):
         """初始化UI结构，硬编码为深色主题"""
-        # 设置整个窗口背景色
         self.setStyleSheet("background-color: #202020; border: none;")
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # --- 顶部标题栏 ---
-        self.header_widget = QFrame()
-        self.header_widget.setStyleSheet("background-color: #282828;")  # 标题栏稍微亮一点
-        header_layout = QVBoxLayout(self.header_widget)
-        header_layout.setContentsMargins(20, 15, 20, 10)
-
-        self.node_name_label = StrongBodyLabel("未选择节点")
-        self.node_name_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #FFFFFF;")
-
-        self.uuid_label = CaptionLabel("请在画布中选中节点以查看文档")
-        self.uuid_label.setStyleSheet("color: #AAAAAA;")
-
-        header_layout.addWidget(self.node_name_label)
-        header_layout.addWidget(self.uuid_label)
-
-        # 分割线
-        self.line = QFrame()
-        self.line.setFixedHeight(1)
-        self.line.setStyleSheet("background-color: #333333;")
-
         # --- 文档显示区 ---
         self.doc_view = QTextBrowser()
         self.doc_view.setOpenExternalLinks(True)
         self.doc_view.setFrameShape(QFrame.NoFrame)
-        # 强制设置背景透明（继承窗口的深色背景）
         self.doc_view.setStyleSheet("background-color: transparent;")
 
-        # 应用固定的深色 Markdown CSS
         self.doc_view.document().setDefaultStyleSheet(self._get_dark_markdown_css())
 
-        self.main_layout.addWidget(self.header_widget)
-        self.main_layout.addWidget(self.line)
         self.main_layout.addWidget(self.doc_view)
+
+    def _setup_title_bar(self):
+        title_bar = self.get_title_bar()
+        title_bar.set_title("节点说明")
+
+        self.node_name_label = StrongBodyLabel("未选择节点")
+        self.node_name_label.setObjectName("nodeNameLabel")
+        self.node_name_label.setStyleSheet(
+            "font-size: 13px; font-weight: bold; color: #e0e0e0;"
+        )
+        title_bar.insert_button(1, self.node_name_label)
+
+        self.uuid_label = CaptionLabel("请在画布中选中节点以查看文档")
+        self.uuid_label.setObjectName("uuidLabel")
+        self.uuid_label.setStyleSheet(
+            "font-size: 11px; color: #888888; font-weight: normal;"
+        )
+        title_bar.insert_button(2, self.uuid_label)
 
     def _get_dark_markdown_css(self):
         """固定的深色主题 CSS"""
@@ -146,7 +139,9 @@ class NodeDocToolWindow(ToolWindow):
 
         if not node_uuid:
             self.uuid_label.setText("UUID 缺失")
-            self.doc_view.setHtml("<p style='text-align:center; color:gray; margin-top:20px;'>该节点无组件 UUID</p>")
+            self.doc_view.setHtml(
+                "<p style='text-align:center; color:gray; margin-top:20px;'>该节点无组件 UUID</p>"
+            )
             return
 
         self.uuid_label.setText(f"组件ID: {node_uuid}")
@@ -161,7 +156,9 @@ class NodeDocToolWindow(ToolWindow):
                     content = f.read()
 
                 # 2. Markdown 渲染 (包含 extra 扩展以支持表格)
-                html_content = markdown.markdown(content, extensions=['extra', 'fenced_code', 'nl2br'])
+                html_content = markdown.markdown(
+                    content, extensions=["extra", "fenced_code", "nl2br"]
+                )
 
                 # 3. 设置图片搜索基准路径
                 base_url = QUrl.fromLocalFile(base_dir + os.path.sep)
@@ -171,7 +168,9 @@ class NodeDocToolWindow(ToolWindow):
                 self.doc_view.setHtml(html_content)
 
             except Exception as e:
-                self.doc_view.setHtml(f"<p style='color:#FF5555; padding:20px;'>渲染失败: {str(e)}</p>")
+                self.doc_view.setHtml(
+                    f"<p style='color:#FF5555; padding:20px;'>渲染失败: {str(e)}</p>"
+                )
         else:
             self.doc_view.setHtml(f"""
                 <div style='text-align: center; margin-top: 50px; color: #666666;'>

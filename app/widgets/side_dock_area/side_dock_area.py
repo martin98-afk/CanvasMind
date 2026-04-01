@@ -1,13 +1,23 @@
 # -*- coding: utf-8 -*-
 from typing import Type, Optional, Dict
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QHBoxLayout
+from PyQt5.QtCore import Qt, QSize, QTimer, QRectF, QEvent, pyqtSignal
+from PyQt5.QtWidgets import (
+    QWidget,
+    QStackedWidget,
+    QHBoxLayout,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
+)
+from PyQt5.QtGui import QPainter, QColor
+from qfluentwidgets import isDarkTheme, ToolButton, IconWidget, FluentIcon as FIF
 
 from .button_bar import RightToolPanel
 from .registry import SideDockRegistry
-from .tool_window import DockPosition, ToolWindow
+from .tool_window import DockPosition, ToolWindow, ToolWindowTitleBar
 from ..basic_widget.splitter import ModernSplitter
+from ...utils.utils import get_icon
 
 
 class AdaptiveStackedWidget(QStackedWidget):
@@ -20,12 +30,221 @@ class AdaptiveStackedWidget(QStackedWidget):
         return current.minimumSizeHint() if current else QSize(0, 0)
 
 
+class ToolPopupDialog(QDialog):
+    popupClosed = pyqtSignal(str, bool, object)
+
+    def __init__(self, tool_instance: ToolWindow, parent=None):
+        super().__init__(parent)
+        self.tool_instance = tool_instance
+        self._drag_pos = None
+        self._is_maximized = False
+        self._restore_tool_name = None
+        self._restore_was_in_top = False
+        self._restore_btn = None
+        self._normal_geometry = None
+        self._is_closing = False
+        self.setWindowTitle(tool_instance.name)
+        self.setWindowFlags(
+            Qt.Dialog | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
+        )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setMinimumSize(400, 300)
+        self.setSizeGripEnabled(True)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        title_bar = tool_instance.get_title_bar()
+        title_bar.set_compact(False)
+        title_bar.show()
+        title_bar.clear_popup_buttons()
+        title_bar.popupRequested.disconnect()
+        title_bar.popupRequested.connect(self.close)
+        self._popup_btn = title_bar._popup_btn
+        self._popup_btn.setIcon(FIF.CLOSE)
+        self._popup_btn.setToolTip("关闭")
+        self._switch_btn = title_bar._switch_layout_btn
+        self._switch_btn.hide()
+
+        self._min_btn = ToolButton(FIF.MINIMIZE, self)
+        self._min_btn.setFixedSize(24, 24)
+        self._min_btn.setToolTip("最小化")
+        self._min_btn.clicked.connect(self.showMinimized)
+        title_bar.add_popup_button(self._min_btn)
+
+        self._max_btn = ToolButton(get_icon("放大"), self)
+        self._max_btn.setFixedSize(24, 24)
+        self._max_btn.setToolTip("最大化")
+        self._max_btn.clicked.connect(self._toggle_maximize)
+        title_bar.add_popup_button(self._max_btn)
+
+        main_layout.addWidget(title_bar)
+        main_layout.addWidget(tool_instance, 1)
+
+        self.destroyed.connect(self._on_destroyed)
+
+    def _toggle_maximize(self):
+        if self._is_maximized:
+            self.showNormal()
+            self._is_maximized = False
+            if self._normal_geometry:
+                self.restoreGeometry(self._normal_geometry)
+        else:
+            self._normal_geometry = self.saveGeometry()
+            self.showMaximized()
+            self._is_maximized = True
+
+    def setRestoreInfo(self, tool_name, was_in_top, btn):
+        self._restore_tool_name = tool_name
+        self._restore_was_in_top = was_in_top
+        self._restore_btn = btn
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._restore_geometry()
+        self.tool_instance.show()
+
+    def _restore_geometry(self):
+        from PyQt5.QtCore import QSettings
+
+        settings = QSettings("WorkFlowGUI", "ToolPopup")
+        key = f"popup_geometry_{self.tool_instance.name}"
+        geometry = settings.value(key)
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.resize(600, 450)
+            self._center_on_screen()
+
+    def _save_geometry(self):
+        from PyQt5.QtCore import QSettings
+
+        settings = QSettings("WorkFlowGUI", "ToolPopup")
+        key = f"popup_geometry_{self.tool_instance.name}"
+        settings.setValue(key, self.saveGeometry())
+
+    def _center_on_screen(self):
+        from PyQt5.QtWidgets import QApplication
+
+        screen = QApplication.primaryScreen()
+        if screen:
+            rect = screen.availableGeometry()
+            x = (rect.width() - self.width()) // 2 + rect.x()
+            y = (rect.height() - self.height()) // 2 + rect.y()
+            self.move(x, y)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        if self._is_closing:
+            event.accept()
+            return
+        self._is_closing = True
+        self._save_geometry()
+        self._restore_title_bar()
+        self.popupClosed.emit(
+            self._restore_tool_name, self._restore_was_in_top, self._restore_btn
+        )
+        self.deleteLater()
+        super().closeEvent(event)
+
+    def _restore_title_bar(self):
+        title_bar = self.tool_instance.get_title_bar()
+        if not title_bar:
+            return
+        try:
+            title_bar.popupRequested.disconnect()
+        except:
+            pass
+        tool_name = self.tool_instance.name
+        homepage = self.tool_instance.homepage
+        title_bar.popupRequested.connect(lambda: homepage._handle_tool_popup(tool_name))
+        self._popup_btn.setIcon(get_icon("弹出窗"))
+        self._popup_btn.setToolTip("弹出窗口")
+        self._switch_btn.show()
+        title_bar.clear_popup_buttons()
+
+    def eventFilter(self, obj, event):
+        if obj == self._popup_btn and event.type() == QEvent.Enter:
+            self._popup_btn.setStyleSheet(
+                "background-color: #e81123; border-radius: 4px;"
+            )
+        elif obj == self._popup_btn and event.type() == QEvent.Leave:
+            self._popup_btn.setStyleSheet("")
+        return super().eventFilter(obj, event)
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            title_bar = self.tool_instance.get_title_bar()
+            if title_bar and event.y() < title_bar.height():
+                self._toggle_maximize()
+                event.accept()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        if isDarkTheme():
+            bg_color = QColor(38, 38, 38)
+            border_color = QColor(55, 55, 55)
+            shadow_color = QColor(0, 0, 0, 120)
+        else:
+            bg_color = QColor(245, 245, 245)
+            border_color = QColor(200, 200, 200)
+            shadow_color = QColor(0, 0, 0, 50)
+
+        painter.setBrush(shadow_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(4, 4, self.width() - 4, self.height() - 4, 10, 10)
+
+        painter.setBrush(bg_color)
+        painter.setPen(border_color)
+        painter.drawRoundedRect(0, 0, self.width() - 4, self.height() - 4, 10, 10)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            title_bar = self.tool_instance.get_title_bar()
+            if title_bar and event.y() < title_bar.height():
+                self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+                event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self._drag_pos:
+            self.move(event.globalPos() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+        if event.button() == Qt.LeftButton:
+            self._save_geometry()
+        super().mouseReleaseEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._save_geometry()
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        if self._is_maximized:
+            return
+        self._save_geometry()
+
+    def _on_destroyed(self):
+        if hasattr(self.tool_instance, "set_allowed_update"):
+            self.tool_instance.set_allowed_update(False)
+
+
 class SideDockArea(QWidget):
     def __init__(self, page, context_id):
         super().__init__()
         self.page = page
         self.context_id = context_id
         self._instances: Dict[str, ToolWindow] = {}
+        self._popup_windows: Dict[str, ToolPopupDialog] = {}
 
         self.setUpdatesEnabled(False)
 
@@ -55,6 +274,7 @@ class SideDockArea(QWidget):
             self.tool_panel.bottomToolUnchecked.connect(self._hide_bottom_tool)
             self.tool_panel.toolMoveRequested.connect(self._handle_tool_reposition)
             self.tool_panel.toolHidden.connect(self._handle_tool_hidden)
+            self.tool_panel.toolPopupRequested.connect(self._handle_tool_popup)
 
             main_layout.addWidget(self.splitter)
 
@@ -76,8 +296,15 @@ class SideDockArea(QWidget):
 
         was_visible = instance.isVisible()
 
-        self.top_stack.removeWidget(instance)
-        self.bottom_stack.removeWidget(instance)
+        container = getattr(instance, "_dock_container", None)
+        if container:
+            self.top_stack.removeWidget(container)
+            self.bottom_stack.removeWidget(container)
+        else:
+            self.top_stack.removeWidget(instance)
+            self.bottom_stack.removeWidget(instance)
+
+        instance._dock_container = None
 
         self.tool_panel.add_button_to_layout(
             tool_name, pos_str, force_checked=was_visible
@@ -90,13 +317,89 @@ class SideDockArea(QWidget):
 
     def _handle_tool_hidden(self, tool_name):
         """处理工具隐藏"""
+        if tool_name in self._popup_windows:
+            popup = self._popup_windows.pop(tool_name)
+            popup.close()
+            popup.deleteLater()
+
         instance = self.get_tool_instance(tool_name)
         if instance:
-            self.top_stack.removeWidget(instance)
-            self.bottom_stack.removeWidget(instance)
+            container = getattr(instance, "_dock_container", None)
+            if container:
+                self.top_stack.removeWidget(container)
+                self.bottom_stack.removeWidget(container)
+                instance._dock_container = None
+            else:
+                self.top_stack.removeWidget(instance)
+                self.bottom_stack.removeWidget(instance)
             if hasattr(instance, "set_allowed_update"):
                 instance.set_allowed_update(False)
         self._update_splitter()
+
+    def _handle_tool_popup(self, tool_name):
+        """处理工具弹窗显示"""
+        if tool_name in self._popup_windows:
+            popup = self._popup_windows[tool_name]
+            popup.show()
+            popup.raise_()
+            popup.activateWindow()
+            return
+
+        btn = self.tool_panel._button_by_name.get(tool_name)
+        if not btn:
+            return
+
+        instance = self.get_tool_instance(tool_name)
+        if not instance:
+            return
+
+        was_checked = btn.isChecked()
+        was_in_top = btn in self.tool_panel._top_buttons
+
+        container = getattr(instance, "_dock_container", None)
+        if container:
+            container.hide()
+            if self.top_stack.indexOf(container) >= 0:
+                self.top_stack.removeWidget(container)
+            if self.bottom_stack.indexOf(container) >= 0:
+                self.bottom_stack.removeWidget(container)
+            instance._dock_container = None
+        else:
+            instance.hide()
+            if self.top_stack.indexOf(instance) >= 0:
+                self.top_stack.removeWidget(instance)
+            if self.bottom_stack.indexOf(instance) >= 0:
+                self.bottom_stack.removeWidget(instance)
+
+        instance.setParent(None)
+        instance.show()
+
+        if was_checked:
+            btn.setChecked(False)
+            if was_in_top:
+                self._top_visible = False
+            else:
+                self._bottom_visible = False
+            self._update_splitter()
+
+        btn.setVisible(False)
+
+        popup = ToolPopupDialog(instance, None)
+        popup.setRestoreInfo(tool_name, was_in_top, btn)
+        popup.popupClosed.connect(self._on_popup_closed)
+        self._popup_windows[tool_name] = popup
+        popup.resize(600, 900)
+        popup.show()
+
+    def _on_popup_closed(self, tool_name, was_in_top, btn):
+        """弹窗关闭后恢复侧边栏显示"""
+        self._popup_windows.pop(tool_name, None)
+        btn.setVisible(True)
+        btn.setChecked(True)
+        if was_in_top:
+            self._show_top_tool(tool_name)
+        else:
+            self._show_bottom_tool(tool_name)
 
     def switch_to(self, tool_name):
         view = self.get_tool_instance(tool_name)
@@ -108,9 +411,19 @@ class SideDockArea(QWidget):
         view = self.get_tool_instance(tool_name)
         if hasattr(view, "set_allowed_update"):
             view.set_allowed_update(True)
-        if self.top_stack.indexOf(view) == -1:
-            self.top_stack.addWidget(view)
-        self.top_stack.setCurrentWidget(view)
+
+        container = self._get_or_create_dock_container(view)
+        title_bar = container.title_bar
+
+        try:
+            title_bar.popupRequested.disconnect()
+        except:
+            pass
+        title_bar.popupRequested.connect(lambda: self._handle_tool_popup(tool_name))
+
+        if self.top_stack.indexOf(container) == -1:
+            self.top_stack.addWidget(container)
+        self.top_stack.setCurrentWidget(container)
         self.top_stack.show()
         self._top_visible = True
         self._update_splitter()
@@ -127,9 +440,19 @@ class SideDockArea(QWidget):
         view = self.get_tool_instance(tool_name)
         if hasattr(view, "set_allowed_update"):
             view.set_allowed_update(True)
-        if self.bottom_stack.indexOf(view) == -1:
-            self.bottom_stack.addWidget(view)
-        self.bottom_stack.setCurrentWidget(view)
+
+        container = self._get_or_create_dock_container(view)
+        title_bar = container.title_bar
+
+        try:
+            title_bar.popupRequested.disconnect()
+        except:
+            pass
+        title_bar.popupRequested.connect(lambda: self._handle_tool_popup(tool_name))
+
+        if self.bottom_stack.indexOf(container) == -1:
+            self.bottom_stack.addWidget(container)
+        self.bottom_stack.setCurrentWidget(container)
         self.bottom_stack.show()
         self._bottom_visible = True
         self._update_splitter()
@@ -141,6 +464,43 @@ class SideDockArea(QWidget):
         self.bottom_stack.hide()
         self._bottom_visible = False
         self._update_splitter()
+
+    def _get_or_create_dock_container(self, view):
+        if hasattr(view, "_dock_container") and view._dock_container:
+            return view._dock_container
+
+        title_bar = view.get_title_bar()
+        if not title_bar:
+            view._init_title_bar()
+            title_bar = view.get_title_bar()
+
+        title_bar.set_compact(False)
+        title_bar.show()
+
+        container = QWidget()
+        container.title_bar = title_bar
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(title_bar)
+        layout.addWidget(view)
+
+        view._dock_container = container
+        container._view = view
+
+        view.switchLayoutRequested.connect(lambda: self._on_tool_switch_layout(view))
+
+        return container
+
+    def _on_tool_switch_layout(self, view):
+        tool_name = view.name
+        btn = self.tool_panel._button_by_name.get(tool_name)
+        if not btn:
+            return
+
+        is_in_top = btn in self.tool_panel._top_buttons
+        new_pos = "bottom" if is_in_top else "top"
+        self._handle_tool_reposition(tool_name, new_pos)
 
     def _update_splitter(self):
         if self.last_content_visible and not (
@@ -222,8 +582,14 @@ class SideDockArea(QWidget):
             self.tool_panel.bottomToolUnchecked.disconnect(self._hide_bottom_tool)
             self.tool_panel.toolMoveRequested.disconnect(self._handle_tool_reposition)
             self.tool_panel.toolHidden.disconnect(self._handle_tool_hidden)
+            self.tool_panel.toolPopupRequested.disconnect(self._handle_tool_popup)
         except:
             pass
+
+        for name, popup in list(self._popup_windows.items()):
+            popup.close()
+            popup.deleteLater()
+        self._popup_windows.clear()
 
         for name, instance in self._instances.items():
             if hasattr(instance, "cleanup"):

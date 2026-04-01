@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+from PyQt5.QtCore import QObject, pyqtSignal, QMetaObject, Qt
 
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
@@ -16,10 +17,13 @@ from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_tools import (
 )
 
 
-class BuiltinTools:
+class BuiltinTools(QObject):
     """内置工具集，整合所有工具模块"""
 
+    fileModified = pyqtSignal(str)
+
     def __init__(self, homepage=None, workdir: str = None):
+        super().__init__(homepage)
         self.homepage = homepage
 
         if workdir:
@@ -79,12 +83,26 @@ class BuiltinTools:
         return self._file_tools.read_file(filePath, offset, limit)
 
     def write_file(self, filePath: str, content: str):
-        return self._file_tools.write_file(filePath, content)
+        result = self._file_tools.write_file(filePath, content)
+        if result.success:
+            resolved_path = self._file_tools._resolve_path(filePath)
+            logger.info(
+                f"[BuiltinTools] write_file success, emitting fileModified: {resolved_path}"
+            )
+            self.fileModified.emit(str(resolved_path))
+        return result
 
     def edit_file(
         self, filePath: str, oldString: str, newString: str, replaceAll: bool = False
     ):
-        return self._file_tools.edit_file(filePath, oldString, newString, replaceAll)
+        result = self._file_tools.edit_file(filePath, oldString, newString, replaceAll)
+        if result.success:
+            resolved_path = self._file_tools._resolve_path(filePath)
+            logger.info(
+                f"[BuiltinTools] edit_file success, emitting fileModified: {resolved_path}"
+            )
+            self.fileModified.emit(str(resolved_path))
+        return result
 
     def grep_files(self, pattern: str, path: str = None, include: str = None):
         return self._file_tools.grep_files(pattern, path, include)
@@ -96,13 +114,27 @@ class BuiltinTools:
         return self._file_tools.list_directory(path)
 
     def apply_patch(self, filePath: str, patch_content: str):
-        return self._file_tools.apply_patch(filePath, patch_content)
+        result = self._file_tools.apply_patch(filePath, patch_content)
+        if result.success:
+            resolved_path = self._file_tools._resolve_path(filePath)
+            logger.info(
+                f"[BuiltinTools] apply_patch success, emitting fileModified: {resolved_path}"
+            )
+            self.fileModified.emit(str(resolved_path))
+        return result
 
     def diff_files(self, file1: str, file2: str = None, use_git: bool = False):
         return self._file_tools.diff_files(file1, file2, use_git)
 
     def multi_edit(self, filePath: str, edits: List[Dict]):
-        return self._file_tools.multi_edit(filePath, edits)
+        result = self._file_tools.multi_edit(filePath, edits)
+        if result.success:
+            resolved_path = self._file_tools._resolve_path(filePath)
+            logger.info(
+                f"[BuiltinTools] multi_edit success, emitting fileModified: {resolved_path}"
+            )
+            self.fileModified.emit(str(resolved_path))
+        return result
 
     def execute_bash(self, command: str, timeout: int = 120):
         return self._terminal_tools.execute_bash(command, timeout)

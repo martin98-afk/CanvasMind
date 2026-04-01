@@ -10,7 +10,7 @@ class TextDisplayPlugin(DisplayPlugin):
     plugin_desc = "用于在节点上展示指定文本"
     plugin_template = """self.emit_message(
             method="display_str",
-            params={"training_loss": {"data": "preview_text"}}
+            params={"training_loss": "preview_text"}
         )
 """
 

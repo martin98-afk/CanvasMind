@@ -16,7 +16,7 @@ class ImageGalleryDisplayPlugin(DisplayPlugin):
     # 将其全部转换为 Base64 列表传回前端
     plugin_template = """self.emit_message(
             method="display_image_gallery",
-            params={"output": {"data": ["img1.png", "img2.png"], "data_type": "image_list"}},
+            params={"output": ["img1.png", "img2.png"]},
         )
 """
 

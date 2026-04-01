@@ -259,8 +259,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
 
         self.setStyleSheet("""
             OpenAIChatToolWindow {
