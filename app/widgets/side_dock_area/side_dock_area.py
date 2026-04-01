@@ -45,7 +45,10 @@ class ToolPopupDialog(QDialog):
         self._is_closing = False
         self.setWindowTitle(tool_instance.name)
         self.setWindowFlags(
-            Qt.Dialog | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
+            Qt.Dialog
+            | Qt.FramelessWindowHint
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMinimumSize(400, 300)
