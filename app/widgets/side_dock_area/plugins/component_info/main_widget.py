@@ -204,7 +204,7 @@ class ComponentInfoWindow(ToolWindow):
 
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(4, 14, 4, 4)
+        self.content_layout.setContentsMargins(4, 4, 4, 4)
         self.content_layout.setSpacing(0)
 
         # 创建卡片

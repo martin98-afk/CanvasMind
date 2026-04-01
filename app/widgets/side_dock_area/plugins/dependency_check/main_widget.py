@@ -13,10 +13,21 @@ except ImportError:
 
 from PyQt5.QtCore import Qt, QTimer, QProcess, QSize
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QHeaderView, QAbstractItemView, QTableWidgetItem
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QAbstractItemView,
+    QTableWidgetItem,
+)
 from qfluentwidgets import (
-    TableWidget, PrimaryPushButton, TransparentToolButton,
-    StrongBodyLabel, FluentIcon, CaptionLabel, IndeterminateProgressRing
+    TableWidget,
+    PrimaryPushButton,
+    TransparentToolButton,
+    StrongBodyLabel,
+    FluentIcon,
+    CaptionLabel,
+    IndeterminateProgressRing,
 )
 
 from app.interfaces.package_manager_interface import PackageListThread
@@ -24,7 +35,9 @@ from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-from app.widgets.side_dock_area.plugins.dependency_check.remote_install_thread import RemoteInstallThread
+from app.widgets.side_dock_area.plugins.dependency_check.remote_install_thread import (
+    RemoteInstallThread,
+)
 
 
 class DependencyToolWindow(ToolWindow):
@@ -43,42 +56,23 @@ class DependencyToolWindow(ToolWindow):
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(8)
 
-        # --- 顶部标题栏 ---
-        header_layout = QHBoxLayout()
-        title_v_layout = QVBoxLayout()
-        self.title_label = StrongBodyLabel(self.tr("流程依赖分析"))
-        self.status_label = CaptionLabel(self.tr("正在初始化..."))
-        title_v_layout.addWidget(self.title_label)
-        title_v_layout.addWidget(self.status_label)
-
-        self.loading_ring = IndeterminateProgressRing(self)
-        self.loading_ring.setFixedSize(28, 28)
-        self.loading_ring.hide()
-
-        header_layout.addLayout(title_v_layout)
-        header_layout.addWidget(self.loading_ring)
-        header_layout.addStretch()
-
-        self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
-        self.refresh_btn.setToolTip(self.tr("重新扫描环境"))
-        self.refresh_btn.clicked.connect(self.run_check)
-
-        self.install_all_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, self.tr("修复"), self)
-        self.install_all_btn.setFixedSize(120, 30)
-        self.install_all_btn.hide()
-        self.install_all_btn.clicked.connect(self.install_all_missing)
-
-        header_layout.addWidget(self.refresh_btn)
-        header_layout.addWidget(self.install_all_btn)
-        self.main_layout.addLayout(header_layout)
-
         # --- 表格配置 ---
         self.table = TableWidget(self)
         self.table.setMinimumWidth(400)
         self.table.setColumnCount(5)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)  # 允许选中行
-        self.table.itemDoubleClicked.connect(self._on_table_double_clicked)  # 绑定双击事件
-        self.table.setHorizontalHeaderLabels([self.tr("包名"), self.tr("需求汇总"), self.tr("当前版本"), self.tr("状态"), self.tr("操作")])
+        self.table.itemDoubleClicked.connect(
+            self._on_table_double_clicked
+        )  # 绑定双击事件
+        self.table.setHorizontalHeaderLabels(
+            [
+                self.tr("包名"),
+                self.tr("需求汇总"),
+                self.tr("当前版本"),
+                self.tr("状态"),
+                self.tr("操作"),
+            ]
+        )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
@@ -96,15 +90,42 @@ class DependencyToolWindow(ToolWindow):
 
         QTimer.singleShot(500, self.run_check)
 
+    def _setup_title_bar(self):
+        title_bar = self.get_title_bar()
+        title_bar.set_title("依赖检查")
+
+        self.status_label = CaptionLabel(self.tr("正在初始化..."))
+        self.status_label.setObjectName("statusLabel")
+        title_bar.insert_button(1, self.status_label)
+
+        self.loading_ring = IndeterminateProgressRing(self)
+        self.loading_ring.setFixedSize(20, 20)
+        self.loading_ring.hide()
+        title_bar.insert_button(2, self.loading_ring)
+
+        self.refresh_btn = TransparentToolButton(FluentIcon.SYNC, self)
+        self.refresh_btn.setToolTip(self.tr("重新扫描环境"))
+        self.refresh_btn.clicked.connect(self.run_check)
+        title_bar.add_button(self.refresh_btn)
+
+        self.install_all_btn = PrimaryPushButton(
+            FluentIcon.DOWNLOAD, self.tr("修复"), self
+        )
+        self.install_all_btn.setFixedSize(80, 26)
+        self.install_all_btn.hide()
+        self.install_all_btn.clicked.connect(self.install_all_missing)
+        title_bar.add_button(self.install_all_btn)
+
     def _get_log_window(self):
         """安全获取 LogToolWindow 实例"""
-        return getattr(self.homepage, 'log_window', None)
+        return getattr(self.homepage, "log_window", None)
 
     def get_current_python_exe(self):
         return self.homepage.env_data
 
     def run_check(self):
-        if self.loading_ring.isVisible(): return
+        if self.loading_ring.isVisible():
+            return
         env_data = self.get_current_python_exe()
         if not env_data:
             self.status_label.setText(self.tr("未选择环境"))
@@ -121,7 +142,9 @@ class DependencyToolWindow(ToolWindow):
         try:
             match = re.search(r"\[.*\]", stdout, re.S)
             data = json.loads(match.group(0)) if match else []
-            self.installed_pkgs = {p['name'].lower().replace('_', '-'): p['version'] for p in data}
+            self.installed_pkgs = {
+                p["name"].lower().replace("_", "-"): p["version"] for p in data
+            }
             self.compare_dependencies()
         finally:
             self.loading_ring.hide()
@@ -139,18 +162,23 @@ class DependencyToolWindow(ToolWindow):
         nodes = self.homepage.graph.all_nodes()
 
         for node in nodes:
-            if "StatusDynamicNode_" not in node.model.type_: continue
+            if "StatusDynamicNode_" not in node.model.type_:
+                continue
             comp_cls = ComponentScanner().get_component_by_uuid(node.uuid)
-            if not comp_cls or not hasattr(comp_cls, 'requirements'): continue
+            if not comp_cls or not hasattr(comp_cls, "requirements"):
+                continue
 
             reqs = [r.strip() for r in comp_cls.requirements.split(",") if r.strip()]
             for req_str in reqs:
                 match = re.match(r"^([a-zA-Z0-9\-_\.]+)(.*)$", req_str)
                 if match:
-                    name = match.group(1).lower().replace('_', '-')
+                    name = match.group(1).lower().replace("_", "-")
                     spec = match.group(2).strip()
-                    if name not in self.req_summary: self.req_summary[name] = {"node_data": []}
-                    self.req_summary[name]["node_data"].append({"node_name": node.name(), "spec": spec, "node_obj": node})
+                    if name not in self.req_summary:
+                        self.req_summary[name] = {"node_data": []}
+                    self.req_summary[name]["node_data"].append(
+                        {"node_name": node.name(), "spec": spec, "node_obj": node}
+                    )
 
         fix_list = []
         error_count = 0
@@ -158,9 +186,15 @@ class DependencyToolWindow(ToolWindow):
         for row, (name, info) in enumerate(self.req_summary.items()):
             self.table.insertRow(row)
             current_v_str = self.installed_pkgs.get(name)
-            combined_spec_str = ",".join(sorted(list(set(d['spec'] for d in info['node_data'] if d['spec']))))
+            combined_spec_str = ",".join(
+                sorted(list(set(d["spec"] for d in info["node_data"] if d["spec"])))
+            )
 
-            status_text, status_color, action_widget = self.tr("就绪"), Qt.darkGreen, None
+            status_text, status_color, action_widget = (
+                self.tr("就绪"),
+                Qt.darkGreen,
+                None,
+            )
 
             if SpecifierSet and Version:
                 try:
@@ -168,24 +202,37 @@ class DependencyToolWindow(ToolWindow):
                     if not current_v_str:
                         status_text, status_color = self.tr("缺失"), Qt.red
                         fix_list.append(f"{name}{combined_spec_str}")
-                        action_widget = self._make_btn(FluentIcon.DOWNLOAD, self.tr("安装"), name, combined_spec_str)
+                        action_widget = self._make_btn(
+                            FluentIcon.DOWNLOAD,
+                            self.tr("安装"),
+                            name,
+                            combined_spec_str,
+                        )
                     elif not c_spec.contains(current_v_str, prereleases=True):
                         status_text, status_color = self.tr("不匹配"), QColor("#D83B01")
                         fix_list.append(f"{name}{combined_spec_str}")
-                        action_widget = self._make_btn(FluentIcon.SYNC, self.tr("修复"), name, combined_spec_str)
+                        action_widget = self._make_btn(
+                            FluentIcon.SYNC, self.tr("修复"), name, combined_spec_str
+                        )
                     else:
                         action_widget = self._make_ok_icon()
                 except:
                     status_text, status_color = self.tr("格式错误"), Qt.red
 
             self.table.setItem(row, 0, QTableWidgetItem(name))
-            self.table.setItem(row, 1, QTableWidgetItem(combined_spec_str or self.tr("无限制")))
-            self.table.setItem(row, 2, QTableWidgetItem(current_v_str or self.tr("未安装")))
+            self.table.setItem(
+                row, 1, QTableWidgetItem(combined_spec_str or self.tr("无限制"))
+            )
+            self.table.setItem(
+                row, 2, QTableWidgetItem(current_v_str or self.tr("未安装"))
+            )
             s_item = QTableWidgetItem(status_text)
             s_item.setForeground(status_color)
             self.table.setItem(row, 3, s_item)
-            if action_widget: self.table.setCellWidget(row, 4, action_widget)
-            if status_text != self.tr("就绪"): error_count += 1
+            if action_widget:
+                self.table.setCellWidget(row, 4, action_widget)
+            if status_text != self.tr("就绪"):
+                error_count += 1
 
         self.table.setUpdatesEnabled(True)
         self._update_ui_state(error_count, fix_list)
@@ -205,7 +252,9 @@ class DependencyToolWindow(ToolWindow):
     def _update_ui_state(self, error_count, fix_list):
         self._temp_fix_list = fix_list
         if error_count > 0:
-            self.status_label.setText(self.tr("环境异常: {error_count} 项").format(error_count=error_count))
+            self.status_label.setText(
+                self.tr("环境异常: {error_count} 项").format(error_count=error_count)
+            )
             self.status_label.setStyleSheet("color: #E81123;")
             self.install_all_btn.setVisible(len(fix_list) > 0)
         else:
@@ -217,30 +266,41 @@ class DependencyToolWindow(ToolWindow):
 
     def install_packages(self, pkg_specs):
         env_data = self.get_current_python_exe()
-        if not env_data: return
+        if not env_data:
+            return
 
         # 1. 构造 Pip 命令 (禁用进度条以防乱码)
-        cmd = ["-m", "pip", "install"] + pkg_specs + ["--upgrade", "--progress-bar", "off"]
+        cmd = (
+            ["-m", "pip", "install"]
+            + pkg_specs
+            + ["--upgrade", "--progress-bar", "off"]
+        )
         mirrors = self.config.mirrors.value
         if mirrors:
             for m in mirrors:
-                cmd.extend(["--extra-index-url", m, "--trusted-host", urlparse(m).hostname])
+                cmd.extend(
+                    ["--extra-index-url", m, "--trusted-host", urlparse(m).hostname]
+                )
 
         # 2. 初始化日志
         self.current_run_id = f"依赖修复@{uuid.uuid4().hex[:8]}"
         log_win = self._get_log_window()
         if log_win:
             log_win.start_run(self.current_run_id)
-            log_win.push_log(self.current_run_id, f">>> 开始安装: {' '.join(pkg_specs)}")
+            log_win.push_log(
+                self.current_run_id, f">>> 开始安装: {' '.join(pkg_specs)}"
+            )
 
         self.loading_ring.show()
         self.status_label.setText(self.tr("正在执行安装，详情请查看日志窗口..."))
         self.setEnabled(False)
 
-        if isinstance(env_data, dict) and env_data.get('type') == 'ssh':
+        if isinstance(env_data, dict) and env_data.get("type") == "ssh":
             self._remote_thread = RemoteInstallThread(env_data, cmd)
             self._remote_thread.line_received.connect(self._on_log_received)
-            self._remote_thread.finished_signal.connect(self._on_remote_install_finished)
+            self._remote_thread.finished_signal.connect(
+                self._on_remote_install_finished
+            )
             self._remote_thread.start()
         else:
             self._process = QProcess(self)
@@ -250,7 +310,9 @@ class DependencyToolWindow(ToolWindow):
             self._process.setProcessEnvironment(env)
             self._process.setProcessChannelMode(QProcess.MergedChannels)
             # 2. 增加启动失败的监听
-            self._process.errorOccurred.connect(lambda err: self._on_log_received(f"进程错误: {err}\n"))
+            self._process.errorOccurred.connect(
+                lambda err: self._on_log_received(f"进程错误: {err}\n")
+            )
             self._process.readyReadStandardOutput.connect(self._handle_local_stdout)
             self._process.finished.connect(self._on_install_finished)
 
@@ -258,13 +320,14 @@ class DependencyToolWindow(ToolWindow):
 
     def _handle_local_stdout(self):
         """处理本地进程输出"""
-        data = self._process.readAllStandardOutput().data().decode('utf-8', 'ignore')
+        data = self._process.readAllStandardOutput().data().decode("utf-8", "ignore")
         for line in data.splitlines():
             self._on_log_received(line + "\n")
 
     def _on_log_received(self, line):
         """统一日志分发"""
-        if not line.strip(): return
+        if not line.strip():
+            return
         log_win = self._get_log_window()
         if log_win:
             log_win.push_log(self.current_run_id, line)
@@ -274,10 +337,12 @@ class DependencyToolWindow(ToolWindow):
         self.loading_ring.hide()
         log_win = self._get_log_window()
         if not success:
-            if log_win: log_win.on_error(self.current_run_id)
+            if log_win:
+                log_win.on_error(self.current_run_id)
             self.status_label.setText(self.tr("远程安装失败"))
         else:
-            if log_win: log_win.on_finished(self.current_run_id)
+            if log_win:
+                log_win.on_finished(self.current_run_id)
             self.status_label.setText(self.tr("安装完成，正在刷新..."))
             QTimer.singleShot(1000, self.run_check)
 
@@ -286,15 +351,17 @@ class DependencyToolWindow(ToolWindow):
         self.loading_ring.hide()
         log_win = self._get_log_window()
         if self._process.exitCode() != 0:
-            if log_win: log_win.on_error(self.current_run_id)
+            if log_win:
+                log_win.on_error(self.current_run_id)
             self.status_label.setText(self.tr("本地安装失败"))
         else:
-            if log_win: log_win.on_finished(self.current_run_id)
+            if log_win:
+                log_win.on_finished(self.current_run_id)
             self.status_label.setText(self.tr("安装完成，正在刷新..."))
             QTimer.singleShot(1000, self.run_check)
 
     def install_all_missing(self):
-        if hasattr(self, '_temp_fix_list') and self._temp_fix_list:
+        if hasattr(self, "_temp_fix_list") and self._temp_fix_list:
             self.install_packages(self._temp_fix_list)
 
     def _on_table_double_clicked(self, item):
@@ -307,9 +374,9 @@ class DependencyToolWindow(ToolWindow):
 
         pkg_name = pkg_name_item.text()
 
-        if hasattr(self, 'req_summary') and pkg_name in self.req_summary:
+        if hasattr(self, "req_summary") and pkg_name in self.req_summary:
             # 提取所有相关的节点对象
-            nodes = [d['node_obj'] for d in self.req_summary[pkg_name]['node_data']]
+            nodes = [d["node_obj"] for d in self.req_summary[pkg_name]["node_data"]]
             self._highlight_nodes_in_graph(nodes)
 
     def _highlight_nodes_in_graph(self, nodes):
@@ -328,8 +395,8 @@ class DependencyToolWindow(ToolWindow):
 
         # 3. 视觉聚焦 (自动缩放/平移以显示所有选中节点)
         # 假设你的 graph 对象有 fit_to_selection 或类似方法
-        if hasattr(graph, 'fit_to_selection'):
+        if hasattr(graph, "fit_to_selection"):
             graph.fit_to_selection()
-        elif hasattr(graph, 'viewer'):
+        elif hasattr(graph, "viewer"):
             # 兼容某些框架的 viewer 居中
             graph.viewer().zoom_to_nodes(nodes)

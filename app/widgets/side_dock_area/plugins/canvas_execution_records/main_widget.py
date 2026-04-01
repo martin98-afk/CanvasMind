@@ -2,12 +2,21 @@
 
 from PyQt5.QtCore import QTimer, pyqtSlot
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout
-from qfluentwidgets import (SingleDirectionScrollArea, TransparentToolButton, FluentIcon,
-                            StrongBodyLabel)
+from qfluentwidgets import (
+    SingleDirectionScrollArea,
+    TransparentToolButton,
+    FluentIcon,
+    StrongBodyLabel,
+)
 
-from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import ExecutionManager
+from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_manager import (
+    ExecutionManager,
+)
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_result_card import ExecutionResultCard
+from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_result_card import (
+    ExecutionResultCard,
+)
+
 # 假设这些是你项目中的工具类引用，如果没有可以替换为标准 PyQt 组件
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
@@ -16,6 +25,7 @@ class ExecutionHistoryWindow(ToolWindow):
     """
     画布执行历史记录窗口
     """
+
     name = "任务记录"
     icon = get_icon("任务队列")  # 使用合适的图标
     default_position = DockPosition.BOTTOM
@@ -25,19 +35,6 @@ class ExecutionHistoryWindow(ToolWindow):
         # 标题栏
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-
-        title_container = QWidget(self)
-        title_layout = QHBoxLayout(title_container)
-        title_layout.setContentsMargins(10, 5, 10, 5)
-        self.title_label = StrongBodyLabel(self.tr("任务队列:"))
-        title_layout.addWidget(self.title_label)
-        title_layout.addStretch()
-
-        self.clear_btn = TransparentToolButton(FluentIcon.DELETE, self)
-        self.clear_btn.setToolTip(self.tr("清空记录"))
-        self.clear_btn.clicked.connect(self._clear_all)
-        title_layout.addWidget(self.clear_btn)
-        layout.addWidget(title_container)
 
         # 滚动区域
         self.scroll_area = SingleDirectionScrollArea(self)
@@ -62,6 +59,15 @@ class ExecutionHistoryWindow(ToolWindow):
         self.ui_ticker.setInterval(1000)
         self.ui_ticker.timeout.connect(self._update_running_timers)
         self.ui_ticker.start()
+
+    def _setup_title_bar(self):
+        title_bar = self.get_title_bar()
+        title_bar.set_title("任务记录")
+
+        self.clear_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        self.clear_btn.setToolTip(self.tr("清空记录"))
+        self.clear_btn.clicked.connect(self._clear_all)
+        title_bar.add_button(self.clear_btn)
 
     @property
     def execution_manager(self):
