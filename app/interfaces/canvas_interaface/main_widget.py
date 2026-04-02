@@ -327,6 +327,7 @@ class CanvasPage(QWidget):
         return self.environment_manager.get_current_python_exe()
 
     def start_from_template(self):
+        self.ui_manager.nav_panel.setVisible(True)
         self.ui_manager.nav_panel.start_from_template()
         self.ui_manager.splitter.setSizes(TEMPLATE_START_SIZES)
 
