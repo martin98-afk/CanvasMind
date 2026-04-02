@@ -141,12 +141,18 @@ class TopicSummaryTask(QRunnable):
                 api_key=self.llm_config.get("API_KEY", ""),
                 base_url=self.llm_config.get("API_URL"),
             )
-            resp = client.chat.completions.create(
-                model=self.llm_config.get("模型名称", "gpt-4o"),
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=1000,
-            )
+
+            from .retry_helper import create_api_call_with_retry
+
+            def create_task():
+                return client.chat.completions.create(
+                    model=self.llm_config.get("模型名称", "gpt-4o"),
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=1000,
+                )
+
+            resp = create_api_call_with_retry(client, create_task)
             raw_response = resp.choices[0].message.content.strip()
             json_match = re.search(r"\{[^{}]*\}", raw_response, re.DOTALL)
             if json_match:
@@ -208,12 +214,18 @@ class TitleGenerationTask(QRunnable):
                 api_key=self.llm_config.get("API_KEY", ""),
                 base_url=self.llm_config.get("API_URL"),
             )
-            resp = client.chat.completions.create(
-                model=self.llm_config.get("模型名称", "gpt-4o"),
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=100,
-            )
+
+            from .retry_helper import create_api_call_with_retry
+
+            def create_task():
+                return client.chat.completions.create(
+                    model=self.llm_config.get("模型名称", "gpt-4o"),
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=100,
+                )
+
+            resp = create_api_call_with_retry(client, create_task)
             raw_title = resp.choices[0].message.content.strip()
             self.callback(raw_title)
         except Exception as e:
@@ -436,7 +448,30 @@ class OpenAIChatWorker(QThread):
             req_kwargs.pop("stream", None)
             self.stream = False
 
-        response = client.chat.completions.create(**req_kwargs)
+        max_retries = 3
+        retry_delay = 5
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(**req_kwargs)
+                break
+            except Exception as e:
+                last_error = e
+                from openai import RateLimitError, APIError
+
+                is_rate_limit = isinstance(e, RateLimitError)
+                is_server_overload = isinstance(e, APIError) and "2064" in str(e)
+
+                if (is_rate_limit or is_server_overload) and attempt < max_retries - 1:
+                    wait_time = retry_delay * (attempt + 1)
+                    logger.warning(
+                        f"[API] {'RateLimit' if is_rate_limit else 'ServerOverload'} error, "
+                        f"retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(wait_time)
+                    continue
+                raise
 
         tool_calls_found = self._process_response(response)
 

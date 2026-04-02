@@ -139,12 +139,12 @@ class SettingDialog(QDialog):
         categories = [
             ("version", self.tr("通用"), "配置"),
             ("llm", self.tr("大模型"), "大模型"),
-            ("workflow", self.tr("画布管理"), "画布管理"),
-            ("project", self.tr("项目管理"), "项目"),
+            ("path", self.tr("路径管理"), "画布管理"),
             ("runtime", self.tr("运行环境"), "运行环境"),
             ("canvas_run", self.tr("画布运行"), "运行模式"),
             ("canvas_io", self.tr("画布保存"), "自动保存"),
             ("canvas_display", self.tr("画布显示"), "画布"),
+            ("shortcuts", self.tr("快捷键"), "快捷键"),
         ]
         for key, label, icon_name in categories:
             btn = self._create_nav_button(key, label, icon_name)
@@ -311,12 +311,12 @@ class SettingDialog(QDialog):
         keys = [
             "version",
             "llm",
-            "workflow",
-            "project",
+            "path",
             "runtime",
             "canvas_run",
             "canvas_io",
             "canvas_display",
+            "shortcuts",
         ]
         for key in keys:
             scroll = QScrollArea()
@@ -335,10 +335,8 @@ class SettingDialog(QDialog):
                 self._setup_version_info(layout)
             elif key == "llm":
                 self._setup_llm_settings(layout)
-            elif key == "workflow":
-                self._setup_workflow_paths_settings(layout)
-            elif key == "project":
-                self._setup_project_paths_settings(layout)
+            elif key == "path":
+                self._setup_path_management_settings(layout)
             elif key == "runtime":
                 self._setup_runtime_env_settings(layout)
             elif key == "canvas_run":
@@ -347,6 +345,8 @@ class SettingDialog(QDialog):
                 self._setup_canvas_io_settings(layout)
             elif key == "canvas_display":
                 self._setup_canvas_display_settings(layout)
+            elif key == "shortcuts":
+                self._setup_shortcuts_settings(layout)
 
             layout.addStretch(1)
             scroll.setWidget(content)
@@ -458,55 +458,103 @@ class SettingDialog(QDialog):
         llmGroupLayout.addWidget(self.llmThinkingCard)
         layout.addWidget(self.llmGroup)
 
-    def _setup_workflow_paths_settings(self, layout):
+    def _setup_path_management_settings(self, layout):
         from qfluentwidgets import FolderListSettingCard
 
-        self.workflowPathsGroup = QWidget()
-        self.workflowPathsGroup.setSizePolicy(
+        self.pathManagementGroup = QWidget()
+        self.pathManagementGroup.setSizePolicy(
             QSizePolicy.Preferred, QSizePolicy.Preferred
         )
-        workflowGroupLayout = QVBoxLayout(self.workflowPathsGroup)
-        workflowGroupLayout.setSpacing(10)
+        pathGroupLayout = QVBoxLayout(self.pathManagementGroup)
+        pathGroupLayout.setSpacing(10)
 
-        group_label = StrongBodyLabel(self.tr("画布管理"))
+        group_label = StrongBodyLabel(self.tr("路径管理"))
         group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        workflowGroupLayout.addWidget(group_label)
+        pathGroupLayout.addWidget(group_label)
+
+        canvas_label = StrongBodyLabel(self.tr("画布路径管理"))
+        canvas_label.setStyleSheet(
+            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
+        )
+        pathGroupLayout.addWidget(canvas_label)
 
         self.workflowPathsCard = FolderListSettingCard(
             configItem=self.cfg.workflow_paths,
             title=self.tr("本地画布路径"),
             content=self.tr("管理多个画布工作目录"),
             directory="./",
-            parent=self.workflowPathsGroup,
+            parent=self.pathManagementGroup,
         )
         self.cfg.workflow_paths.valueChanged.connect(self.onConfigChanged)
-        workflowGroupLayout.addWidget(self.workflowPathsCard)
-        layout.addWidget(self.workflowPathsGroup)
+        pathGroupLayout.addWidget(self.workflowPathsCard)
 
-    def _setup_project_paths_settings(self, layout):
-        from qfluentwidgets import FolderListSettingCard
-
-        self.projectPathsGroup = QWidget()
-        self.projectPathsGroup.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
+        project_label = StrongBodyLabel(self.tr("项目路径管理"))
+        project_label.setStyleSheet(
+            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
         )
-        projectGroupLayout = QVBoxLayout(self.projectPathsGroup)
-        projectGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("项目管理"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        projectGroupLayout.addWidget(group_label)
+        pathGroupLayout.addWidget(project_label)
 
         self.projectPathsCard = FolderListSettingCard(
             configItem=self.cfg.project_paths,
             title=self.tr("本地项目路径"),
             content=self.tr("管理多个项目工作目录"),
             directory="./",
-            parent=self.projectPathsGroup,
+            parent=self.pathManagementGroup,
         )
         self.cfg.project_paths.valueChanged.connect(self.onConfigChanged)
-        projectGroupLayout.addWidget(self.projectPathsCard)
-        layout.addWidget(self.projectPathsGroup)
+        pathGroupLayout.addWidget(self.projectPathsCard)
+        layout.addWidget(self.pathManagementGroup)
+
+    def _setup_shortcuts_settings(self, layout):
+        from qfluentwidgets import BodyLabel
+
+        self.shortcutsGroup = QWidget()
+        self.shortcutsGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        shortcutsGroupLayout = QVBoxLayout(self.shortcutsGroup)
+        shortcutsGroupLayout.setSpacing(10)
+
+        group_label = StrongBodyLabel(self.tr("画布快捷键"))
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
+        shortcutsGroupLayout.addWidget(group_label)
+
+        shortcuts = [
+            ("Ctrl + 左键", "取消选点"),
+            ("Shift + 左键", "扩展选点"),
+            ("Alt + Shift + 左键拖拽", "切除连接管线"),
+            ("Ctrl + R", "运行选中节点"),
+            ("Delete", "删除选中节点"),
+            ("Ctrl + C", "复制选中节点"),
+            ("Ctrl + V", "黏贴选中节点"),
+            ("Ctrl + S", "保存画布"),
+            ("Ctrl + Z", "撤销"),
+            ("Ctrl + Y", "重做"),
+        ]
+
+        for keys, description in shortcuts:
+            shortcut_item = QWidget()
+            shortcut_item.setStyleSheet(
+                "background-color: #333333; border-radius: 6px; padding: 8px 12px;"
+            )
+            shortcut_layout = QHBoxLayout(shortcut_item)
+            shortcut_layout.setContentsMargins(12, 6, 12, 6)
+
+            keys_label = BodyLabel(keys)
+            keys_label.setFont(get_unified_font(12, True))
+            keys_label.setStyleSheet(
+                "color: #4fc3f7; background: transparent; min-width: 180px;"
+            )
+
+            desc_label = BodyLabel(description)
+            desc_label.setFont(get_unified_font(12))
+            desc_label.setStyleSheet("color: #e0e0e0; background: transparent;")
+
+            shortcut_layout.addWidget(keys_label)
+            shortcut_layout.addStretch()
+            shortcut_layout.addWidget(desc_label)
+
+            shortcutsGroupLayout.addWidget(shortcut_item)
+
+        layout.addWidget(self.shortcutsGroup)
 
     def _setup_runtime_env_settings(self, layout):
         from qfluentwidgets import PrimaryPushSettingCard

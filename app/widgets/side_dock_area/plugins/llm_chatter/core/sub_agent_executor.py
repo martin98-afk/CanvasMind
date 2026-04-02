@@ -198,12 +198,17 @@ class SubAgentExecutor(QThread):
                 timeout=30.0,
             )
 
-            resp = client.chat.completions.create(
-                model=model,
-                messages=summary_messages,
-                temperature=0.3,
-                max_tokens=4000,
-            )
+            from ..utils.retry_helper import create_api_call_with_retry
+
+            def create_summary():
+                return client.chat.completions.create(
+                    model=model,
+                    messages=summary_messages,
+                    temperature=0.3,
+                    max_tokens=4000,
+                )
+
+            resp = create_api_call_with_retry(client, create_summary)
 
             return resp.choices[0].message.content.strip()
 
@@ -262,7 +267,12 @@ class SubAgentExecutor(QThread):
             timeout=120.0,
         )
 
-        response = client.chat.completions.create(**req_kwargs, tools=tools)
+        from ..utils.retry_helper import create_api_call_with_retry
+
+        def create_completion():
+            return client.chat.completions.create(**req_kwargs, tools=tools)
+
+        response = create_api_call_with_retry(client, create_completion)
 
         full_response = ""
         tool_calls_found = []
@@ -420,12 +430,17 @@ class SubAgentExecutor(QThread):
                 timeout=60.0,
             )
 
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=4000,
-            )
+            from ..utils.retry_helper import create_api_call_with_retry
+
+            def create_summary():
+                return client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=4000,
+                )
+
+            resp = create_api_call_with_retry(client, create_summary)
 
             return resp.choices[0].message.content.strip()
 
