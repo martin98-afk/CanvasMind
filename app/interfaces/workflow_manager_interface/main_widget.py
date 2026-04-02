@@ -73,12 +73,12 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._known_files: Set[Path] = set()
         self._file_info_map: Dict[str, dict] = {}
         self._refresh_pending = False
+        self._recommendation_engine_built = False
         self.recommendation_engine = NodeRecommendationEngine()
 
         self._view_mode = VIEW_MODE_GRID
 
         self._setup_ui()
-        self.build_recommendation_engine()
         self.load_workflows()
 
     def _get_workflow_dir(self):
@@ -102,10 +102,10 @@ class WorkflowCanvasGalleryPage(QWidget):
         top_bar = QHBoxLayout()
         top_bar.setSpacing(12)
         top_bar.setContentsMargins(0, 0, 0, 0)
-
+        top_bar.addSpacing(60)
         self.search_line_edit = SearchLineEdit(self)
         self.search_line_edit.setPlaceholderText(self.tr("搜索..."))
-        self.search_line_edit.setFixedWidth(200)
+        self.search_line_edit.setFixedWidth(350)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
         self.search_line_edit.searchSignal.connect(self._on_search_changed)
         self.search_line_edit.clearSignal.connect(self._on_search_changed)
@@ -127,6 +127,8 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.sort_order_button.clicked.connect(self._on_sort_order_changed)
         top_bar.addWidget(self.sort_order_button)
         self.view_segment = SegmentedWidget(self)
+        self.view_segment.setFixedHeight(28)
+        self.view_segment.setFixedWidth(120)
         self.view_segment.addItem("grid", self.tr("网格"), icon=get_icon("网格"))
         self.view_segment.addItem("list", self.tr("列表"), icon=get_icon("列表"))
         self.view_segment.setCurrentItem("grid")
@@ -136,24 +138,24 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         top_bar.addStretch()
         self.new_btn = TransparentPushButton(self.tr("新建"), self, FluentIcon.ADD)
-        self.new_btn.setIconSize(QSize(16, 16))
+        self.new_btn.setIconSize(QSize(20, 20))
         self.new_btn.clicked.connect(lambda: self.new_canvas())
         top_bar.addWidget(self.new_btn)
 
         self.template_btn = TransparentPushButton(
             self.tr("从模板创建"), self, FluentIcon.DOWNLOAD
         )
-        self.template_btn.setIconSize(QSize(16, 16))
+        self.template_btn.setIconSize(QSize(20, 20))
         self.template_btn.clicked.connect(lambda: self.new_canvas(from_template=True))
         top_bar.addWidget(self.template_btn)
 
         self.import_btn = TransparentPushButton(
             self.tr("导入"), self, get_icon("导入文件")
         )
-        self.import_btn.setIconSize(QSize(16, 16))
+        self.import_btn.setIconSize(QSize(20, 20))
         self.import_btn.clicked.connect(lambda: self.import_canvas())
         top_bar.addWidget(self.import_btn)
-        top_bar.addSpacing(50)
+        top_bar.addSpacing(70)
         self.grid_container = QWidget()
         self.grid_layout = QVBoxLayout(self.grid_container)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
@@ -218,6 +220,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.preview_panel.set_workflow(workflow_path, file_info)
 
     def build_recommendation_engine(self):
+        if self._recommendation_engine_built:
+            return
+        self._recommendation_engine_built = True
         component_map, _ = ComponentScanner().get_components()
         self.recommendation_engine._recommendation_cache.clear()
         self.recommendation_engine._build_index(component_map)
