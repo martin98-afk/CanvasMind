@@ -19,16 +19,20 @@ class GeminiMultimodalComponent(BaseComponent):
     name = "Gemini 多模态生成"
     category = "API调用/多模态生成"
     description = "调用 Google Gemini 模型进行多模态内容生成和分析"
-    requirements = "requests"
+    requirements = "requests,Pillow"
 
     inputs = [
-        PortDefinition(name="prompt", label="文本提示词", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
-        PortDefinition(name="image", label="输入图片(可选)", type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
+        PortDefinition(name="prompt", label="文本提示词",
+                       type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),
+        PortDefinition(name="image", label="输入图片(可选)",
+                       type=ArgumentType.IMAGE, connection=ConnectionType.SINGLE),
     ]
-    
+
     outputs = [
-        PortDefinition(name="output_text", label="生成的文本", type=ArgumentType.TEXT),
-        PortDefinition(name="output_image", label="生成的图像(可选)", type=ArgumentType.IMAGE),
+        PortDefinition(name="output_text", label="生成的文本",
+                       type=ArgumentType.TEXT),
+        PortDefinition(name="output_image", label="生成的图像(可选)",
+                       type=ArgumentType.IMAGE),
     ]
 
     properties = {
@@ -72,7 +76,8 @@ class GeminiMultimodalComponent(BaseComponent):
         import base64
         import io
         from PIL import Image
-        
+        from pathlib import Path
+
         # 1. 获取参数和输入
         api_key = params.get("api_key")
         if not api_key:
@@ -80,7 +85,7 @@ class GeminiMultimodalComponent(BaseComponent):
 
         prompt = inputs.get("prompt", "")
         image = inputs.get("image")
-            
+
         model = params.get("model", "gemini-2.0-flash-exp")
         mode = params.get("mode", "text")
         temperature = params.get("temperature", 0.9)
@@ -89,27 +94,28 @@ class GeminiMultimodalComponent(BaseComponent):
 
         # 2. 构建请求
         url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
-        
+
         headers = {
             'Content-Type': 'application/json'
         }
-        
+
         # 构建内容
         contents = []
-        
+
         # 如果有图片，先添加图片
         if image:
             # 将 PIL Image 转为 base64
             if isinstance(image, Image.Image):
                 img_byte_arr = io.BytesIO()
                 image.save(img_byte_arr, format='PNG')
-                img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+                img_base64 = base64.b64encode(
+                    img_byte_arr.getvalue()).decode('utf-8')
             elif isinstance(image, str) and Path(image).exists():
                 with open(image, 'rb') as f:
                     img_base64 = base64.b64encode(f.read()).decode('utf-8')
             else:
                 img_base64 = image
-                
+
             contents.append({
                 "parts": [
                     {
@@ -120,7 +126,7 @@ class GeminiMultimodalComponent(BaseComponent):
                     }
                 ]
             })
-        
+
         # 添加文本提示
         if prompt:
             # 如果已经有内容（图片），追加到最后一个 part
@@ -132,7 +138,7 @@ class GeminiMultimodalComponent(BaseComponent):
                         {"text": prompt}
                     ]
                 })
-        
+
         data = {
             "contents": contents,
             "generationConfig": {
@@ -144,16 +150,17 @@ class GeminiMultimodalComponent(BaseComponent):
 
         # 3. 发送请求
         self.logger.info(f"正在发送 Gemini 请求，模型: {model}, 模式: {mode}")
-        
+
         # 如果是图像生成模式
         if mode == "image":
             # Gemini 2.0 支持图像生成
             data["generationConfig"]["responseModalities"] = ["image", "text"]
-        
+
         try:
-            response = requests.post(url, headers=headers, json=data, timeout=120)
+            response = requests.post(
+                url, headers=headers, json=data, timeout=120)
             response_json = response.json()
-            
+
             # 错误处理
             if response.status_code != 200:
                 if "error" in response_json:
@@ -165,13 +172,13 @@ class GeminiMultimodalComponent(BaseComponent):
             candidates = response_json.get("candidates", [])
             if not candidates:
                 raise Exception("API 未返回有效数据")
-            
+
             content = candidates[0].get("content", {})
             parts = content.get("parts", [])
-            
+
             result_text = ""
             result_image = None
-            
+
             for part in parts:
                 if "text" in part:
                     result_text += part["text"]
@@ -180,14 +187,14 @@ class GeminiMultimodalComponent(BaseComponent):
                     img_data = part["inlineData"]["data"]
                     img_bytes = base64.b64decode(img_data)
                     result_image = Image.open(io.BytesIO(img_bytes))
-            
+
             self.logger.info(f"生成成功")
-            
+
             # 构建输出
             output = {"output_text": result_text}
             if result_image:
                 output["output_image"] = result_image
-                
+
             return output
 
         except Exception as e:

@@ -29,42 +29,39 @@ class ActionCard(SimpleCardWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 30, 20, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(12, 16, 12, 16)
+        layout.setSpacing(10)
 
         title = BodyLabel(self.tr("创建画布"))
-        title.setFont(get_unified_font(16, True))
+        title.setFont(get_unified_font(13, True))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
         layout.addWidget(CardSeparator())
-        # 按钮布局
+
         btn_container = QWidget(self)
         btn_layout = QVBoxLayout(btn_container)
-        btn_layout.setSpacing(20)
+        btn_layout.setSpacing(8)
 
-        # 新建按钮
         create_btn = PushButton(
             text=self.tr("新建画布"), icon=FluentIcon.ADD, parent=self
         )
         create_btn.clicked.connect(lambda: self.home.new_canvas())
-        create_btn.setIconSize(QSize(22, 22))
-        create_btn.setFont(get_unified_font(14))
+        create_btn.setIconSize(QSize(16, 16))
+        create_btn.setFont(get_unified_font(12))
 
-        # 可选：更多按钮（如模板等）
         template_btn = PushButton(
             text=self.tr("从模板创建"), icon=get_icon("从模板创建"), parent=self
         )
         template_btn.clicked.connect(lambda: self.home.new_canvas(from_template=True))
-        template_btn.setIconSize(QSize(22, 22))
-        template_btn.setFont(get_unified_font(14))
+        template_btn.setIconSize(QSize(16, 16))
+        template_btn.setFont(get_unified_font(12))
 
-        # 导入按钮
         import_btn = PushButton(
             text=self.tr("导入画布"), icon=get_icon("导入文件"), parent=self
         )
         import_btn.clicked.connect(lambda: self.home.import_canvas())
-        import_btn.setIconSize(QSize(22, 22))
-        import_btn.setFont(get_unified_font(14))
+        import_btn.setIconSize(QSize(16, 16))
+        import_btn.setFont(get_unified_font(12))
 
         btn_layout.addWidget(create_btn)
         btn_layout.addWidget(template_btn)

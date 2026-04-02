@@ -55,6 +55,7 @@
     <file>全选.svg</file>
     <file>关联规则.svg</file>
     <file>分类决策树.svg</file>
+    <file>列表.svg</file>
     <file>删除变量.svg</file>
     <file>升序.svg</file>
     <file>参数提取器-F.svg</file>
@@ -132,6 +133,7 @@
     <file>绿色运行.svg</file>
     <file>缩小.svg</file>
     <file>缩放.svg</file>
+    <file>网格.svg</file>
     <file>网络爬虫.svg</file>
     <file>自动保存.svg</file>
     <file>自定义变量.svg</file>
