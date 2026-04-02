@@ -17,6 +17,7 @@ class WorkflowScheduler(QObject):
     - 条件分支节点可动态禁用下游
     - 调度器自动跳过 disabled 节点及其下游
     """
+
     finished = pyqtSignal()
     error = pyqtSignal(str)
     cancelled = pyqtSignal()
@@ -26,11 +27,11 @@ class WorkflowScheduler(QObject):
     node_vars_changed = pyqtSignal()
 
     def __init__(
-            self,
-            graph,
-            component_map: Dict[str, Any],
-            get_python_exe: Callable[[], Optional[str]],
-            parent=None
+        self,
+        graph,
+        component_map: Dict[str, Any],
+        get_python_exe: Callable[[], Optional[str]],
+        parent=None,
     ):
         super().__init__(parent)
         self.parent = parent
@@ -51,37 +52,50 @@ class WorkflowScheduler(QObject):
         self.node_status_changed.emit(node.id, status)
 
     def update_node_variable(self, name, value, policy):
-        """静默更新，不发送信号"""
+        """静默更新，不发送信号
+
+        收集(Collect)：始终转为列表追加，每次更新作为独立元素
+            首次收集：value → [value]
+            后续收集：[a, b] + c → [a, b, c]
+        合并(Merge)：同类型数据合并
+            列表 + 列表：extend
+            字符串 + 字符串：拼接
+            数值 + 数值：相加
+            字典 + 字典：merge
+        """
         node_var_obj = self.parent.global_variables.node_vars.get(name)
         if not node_var_obj:
             return
 
         if policy == "更新":
             node_var_obj.value = value
-        elif policy == "追加":
-            # 这里的类型判断可以优化：根据 node_var_obj 的类型直接操作，减少猜测
+        elif policy == "收集":
             curr = node_var_obj.value
-            if isinstance(curr, str):
-                node_var_obj.value = curr + str(value)
-            elif isinstance(curr, list):
-                if isinstance(value, list):
-                    curr.extend(value)  # 使用 extend 比 + 性能好，原地修改
-                else:
-                    curr.append(value)
-            elif isinstance(curr, dict) and isinstance(value, dict):
-                curr.update(value)  # 原地修改
+            if isinstance(curr, list):
+                curr.append(value)
+            elif curr is None:
+                node_var_obj.value = [value]
             else:
-                node_var_obj.value = value  # 兜底覆盖
+                node_var_obj.value = [curr, value]
+        elif policy == "合并":
+            curr = node_var_obj.value
+            if isinstance(curr, list) and isinstance(value, list):
+                curr.extend(value)
+            elif isinstance(curr, str) and isinstance(value, str):
+                node_var_obj.value = curr + value
+            elif isinstance(curr, (int, float)) and isinstance(value, (int, float)):
+                node_var_obj.value = curr + value
+            elif isinstance(curr, dict) and isinstance(value, dict):
+                curr.update(value)
+            else:
+                node_var_obj.value = value
 
     def get_executable_nodes(self, nodes=[]):
         """获取所有顶层可执行节点（排除循环内部节点）"""
         all_nodes = self.graph.all_nodes() if len(nodes) == 0 else nodes
 
         # 找出顶层循环 Backdrop
-        loop_backdrops = [
-            n for n in all_nodes
-            if isinstance(n, BackdropNode)
-        ]
+        loop_backdrops = [n for n in all_nodes if isinstance(n, BackdropNode)]
 
         loop_internal_nodes = set()
         for backdrop in loop_backdrops:
@@ -260,21 +274,26 @@ class WorkflowScheduler(QObject):
                 nodes=nodes,  # 传入拓扑序
                 python_exe=self.get_python_exe(),
                 kernel_manager=self.kernel_manager,
-                scheduler=self
+                scheduler=self,
             )
             self._executor.signals.log_start.connect(self.parent.log_window.start_run)
             self._executor.signals.log_message.connect(self.parent.log_window.push_log)
             self._executor.signals.log_error.connect(self.parent.log_window.on_error)
-            self._executor.signals.log_finished.connect(self.parent.log_window.on_finished)
+            self._executor.signals.log_finished.connect(
+                self.parent.log_window.on_finished
+            )
             self._executor.component_map = self.component_map
             self._executor.signals.backdrop_finished.connect(self.backdrop_finished)
             self._executor.signals.finished.connect(self._on_finished)
-            self._executor.signals.error.connect(lambda message: self._on_error(message, nodes))
+            self._executor.signals.error.connect(
+                lambda message: self._on_error(message, nodes)
+            )
 
             QThreadPool.globalInstance().start(self._executor)
 
         except Exception as e:
             import traceback
+
             logger.error(traceback.format_exc())
             self.error.emit(f"启动执行器失败: {str(e)}")
 
@@ -295,7 +314,7 @@ class WorkflowScheduler(QObject):
             self._executor.resume()
 
     def is_paused(self) -> bool:
-        if self._executor and hasattr(self._executor, 'ctx'):
+        if self._executor and hasattr(self._executor, "ctx"):
             return self._executor.ctx.is_paused()
         return False
 

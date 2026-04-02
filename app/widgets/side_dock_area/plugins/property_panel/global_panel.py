@@ -767,10 +767,18 @@ class GlobalPanelWidget:
         )
         menu.addAction(
             Action(
-                get_icon("追加"),
-                "追加",
+                get_icon("收集"),
+                "收集",
                 triggered=lambda checked=False,
-                btn=strategy_combo: self.change_node_var_strategy("追加", btn),
+                btn=strategy_combo: self.change_node_var_strategy("收集", btn),
+            )
+        )
+        menu.addAction(
+            Action(
+                get_icon("合并"),
+                "合并",
+                triggered=lambda checked=False,
+                btn=strategy_combo: self.change_node_var_strategy("合并", btn),
             )
         )
         strategy_combo.setMenu(menu)

@@ -1,6 +1,8 @@
 import datetime
 import re
 
+from PyQt5.QtCore import QTimer
+
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base.status_node import NodeStatus
 
@@ -82,6 +84,8 @@ def execute_node(
                     scheduler.update_node_variable(
                         var_key, result, var_obj.update_policy
                     )
+                    if node.parent_window.property_panel and len(node.graph.selected_nodes()) == 0:
+                        QTimer.singleShot(100, lambda: node.parent_window.property_panel.update_properties)
 
         if is_log_node:
             log_finish_func(run_id)
