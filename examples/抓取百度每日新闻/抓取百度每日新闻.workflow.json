@@ -1471,16 +1471,6 @@
         }
       },
       "custom": {
-        "MiniMax (月之暗面)": {
-          "value": {
-            "模型名称": "MiniMax-M2.5",
-            "API_URL": "https://api.minimax.chat/v1",
-            "获取地址": "点击获取API Key →",
-            "API_KEY": "sk-cp-CsnU7nm-pKoZadYp4gVARrsQ33GrL7Tb2gN5adkU-a7rcfnfzxb9liFjxmGdU7Ypu_A08dAQOi8HLCeOSiCU2WqmWu2whl2j50wZgIHbZjIqp_maVDmjY34",
-            "温度": 0.7,
-            "最大Token": 196337
-          }
-        },
         "CM_DINGTALK_CONF": {
           "value": {
             "dd_webhook": "https://oapi.dingtalk.com/robot/send?access_token=ec5de02739a509e0320fad07fb1c2defe69ceaa495de4df380b0d3f55745847b",

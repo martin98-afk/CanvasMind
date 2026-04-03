@@ -6,6 +6,7 @@
   "api_version": "2.0",
   "description": "使用指定模型和条件对潜空间进行降噪采样，生成最终图像潜变量",
   "category": "comfyui节点/基础节点",
-  "updated_at": "2026-02-21 11:45:38",
+  "source_file": "..\\..\\components\\comfyui节点\\基础节点\\0aef64b4-0e57-4756-8d8a-10fcbf49724d.py",
+  "updated_at": "2026-04-04 00:15:41",
   "author": "black"
 }
