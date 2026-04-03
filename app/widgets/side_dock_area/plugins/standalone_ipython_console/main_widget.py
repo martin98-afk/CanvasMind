@@ -8,7 +8,7 @@ from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 class IPythonConsoleToolWindow(ToolWindow):
     name = "IPython 控制台"
     icon = get_icon("ipython")
-    singleton = True
+    singleton = False
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["运行画布"]
     display_order = 60

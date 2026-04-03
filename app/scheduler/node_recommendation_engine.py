@@ -9,6 +9,7 @@ from typing import Optional
 from PyQt5.QtCore import QRunnable, pyqtSlot, QObject, pyqtSignal
 
 from app.components.base import ArgumentType, BaseComponent
+from app.scan_components import ComponentScanner
 from app.utils.utils import resource_path
 
 
@@ -94,7 +95,7 @@ class NodeRecommendationEngine:
         self._input_to_components = self._input_to_components | {k: list(set(v)) for k, v in self._input_to_components.items()}
 
     def get_recommendations_sync(self, node_full_path: str):
-        comp_cls = self.component_map.get(node_full_path)
+        comp_cls = ComponentScanner().get_component(node_full_path)
         if not comp_cls:
             return []
 

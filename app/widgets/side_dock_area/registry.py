@@ -2,6 +2,9 @@
 import os
 import importlib
 from typing import Dict, Type, Optional, List, Callable, Any
+
+from loguru import logger
+
 from .tool_window import ToolWindow, DockPosition, PluginManifest, PluginProtocol
 
 
@@ -65,8 +68,9 @@ class SideDockRegistry:
                                 cls.register(
                                     cat, attr.name, attr, attr.default_position
                                 )
+                logger.debug(f"[SideDockRegistry] Loaded plugin {plugin_dir}")
             except Exception as e:
-                print(f"[SideDockRegistry] Failed to load plugin {plugin_dir}: {e}")
+                logger.exception(f"[SideDockRegistry] Failed to load plugin {plugin_dir}: {e}")
 
     @classmethod
     def register(

@@ -93,6 +93,8 @@ if __name__ == "__main__":
     from PyQt5 import QtGui, QtCore
     from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
     from PyQt5.QtGui import QPalette, QColor
+    from qtconsole.rich_jupyter_widget import RichJupyterWidget
+    from sshtunnel import SSHTunnelForwarder  # 导入线程级隧道库
 
     from app.utils import icons_rc
     from app.widgets.custom_nodegraphqt.nodegraphqt_patcher import patch_nodegraphqt
