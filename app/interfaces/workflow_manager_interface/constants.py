@@ -23,6 +23,9 @@ from app.widgets.side_dock_area.plugins.shell_console.main_widget import (
 from app.widgets.side_dock_area.plugins.standalone_ipython_console.ipython_console import (
     IPythonConsoleToolWindow,
 )
+from app.widgets.side_dock_area.plugins.sqlite_database.main_widget import (
+    SQLiteDatabaseWindow,
+)
 from app.widgets.side_dock_area.registry import SideDockRegistry
 from app.widgets.side_dock_area.tool_window import DockPosition
 
@@ -45,3 +48,6 @@ SideDockRegistry.register(
 )
 SideDockRegistry.register(category, ExecutionHistoryWindow.name, ExecutionHistoryWindow)
 SideDockRegistry.register(category, LogToolWindow.name, LogToolWindow)
+SideDockRegistry.register(
+    category, SQLiteDatabaseWindow.name, SQLiteDatabaseWindow, DockPosition.BOTTOM
+)

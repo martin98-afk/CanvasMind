@@ -8,6 +8,7 @@ class SideDockRegistry:
     _registries: Dict[str, Dict[str, "DockEntry"]] = {}
     _plugin_classes: Dict[str, Type[ToolWindow]] = {}
     _active_plugins: Dict[str, Any] = {}
+    _plugin_states: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -30,6 +31,13 @@ class SideDockRegistry:
         else:
             window_class.position = position
         entries[name] = DockEntry(window_class, position)
+        if context_id not in cls._plugin_states:
+            cls._plugin_states[context_id] = {}
+        if name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][name] = {
+                "enabled": True,
+                "position": position.value if position else DockPosition.HIDDEN.value,
+            }
 
     @classmethod
     def register_plugin(cls, context_id: str, plugin_cls: Type[ToolWindow]):
@@ -79,8 +87,66 @@ class SideDockRegistry:
         return cls._registries.get(context_id, {}).copy()
 
     @classmethod
+    def get_all_entries(cls, context_id: str) -> Dict[str, "DockEntry"]:
+        return cls._registries.get(context_id, {}).copy()
+
+    @classmethod
     def clear_context(cls, context_id: str):
         cls._registries.pop(context_id, None)
+
+    @classmethod
+    def set_plugin_enabled(cls, context_id: str, plugin_name: str, enabled: bool):
+        if context_id not in cls._plugin_states:
+            cls._plugin_states[context_id] = {}
+        if plugin_name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][plugin_name] = {}
+        cls._plugin_states[context_id][plugin_name]["enabled"] = enabled
+
+    @classmethod
+    def is_plugin_enabled(cls, context_id: str, plugin_name: str) -> bool:
+        state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
+        return state.get("enabled", True)
+
+    @classmethod
+    def set_plugin_position(
+        cls, context_id: str, plugin_name: str, position: DockPosition
+    ):
+        if context_id not in cls._plugin_states:
+            cls._plugin_states[context_id] = {}
+        if plugin_name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][plugin_name] = {}
+        cls._plugin_states[context_id][plugin_name]["position"] = position.value
+
+        if context_id in cls._registries and plugin_name in cls._registries[context_id]:
+            cls._registries[context_id][plugin_name].position = position
+
+    @classmethod
+    def get_plugin_position(cls, context_id: str, plugin_name: str) -> DockPosition:
+        state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
+        pos_value = state.get("position", DockPosition.HIDDEN.value)
+        return DockPosition(pos_value)
+
+    @classmethod
+    def get_plugin_state(cls, context_id: str, plugin_name: str) -> Dict[str, Any]:
+        return cls._plugin_states.get(context_id, {}).get(
+            plugin_name,
+            {
+                "enabled": True,
+                "position": DockPosition.HIDDEN.value,
+            },
+        )
+
+    @classmethod
+    def get_all_plugin_states(cls, context_id: str) -> Dict[str, Dict[str, Any]]:
+        return cls._plugin_states.get(context_id, {}).copy()
+
+    @classmethod
+    def load_states_from_config(cls, config: Dict[str, Dict[str, Any]]):
+        cls._plugin_states = config.copy()
+
+    @classmethod
+    def save_states_to_config(cls) -> Dict[str, Dict[str, Any]]:
+        return cls._plugin_states.copy()
 
 
 def side_dock_plugin(

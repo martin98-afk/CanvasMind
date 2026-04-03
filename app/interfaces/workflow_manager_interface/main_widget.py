@@ -142,7 +142,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         top_bar.addWidget(self.view_segment)
 
         top_bar.addStretch()
-        self.new_btn = TransparentPushButton(self.tr("新建"), self, FluentIcon.ADD)
+        self.new_btn = TransparentPushButton(self.tr("新建画布"), self, FluentIcon.ADD)
         self.new_btn.setIconSize(QSize(20, 20))
         self.new_btn.clicked.connect(lambda: self.new_canvas())
         top_bar.addWidget(self.new_btn)
@@ -155,12 +155,12 @@ class WorkflowCanvasGalleryPage(QWidget):
         top_bar.addWidget(self.template_btn)
 
         self.import_btn = TransparentPushButton(
-            self.tr("导入"), self, get_icon("导入文件")
+            self.tr("导入画布"), self, get_icon("导入文件")
         )
         self.import_btn.setIconSize(QSize(20, 20))
         self.import_btn.clicked.connect(lambda: self.import_canvas())
         top_bar.addWidget(self.import_btn)
-        top_bar.addSpacing(70)
+        top_bar.addSpacing(150)
         self.grid_container = QWidget()
         self.grid_layout = QVBoxLayout(self.grid_container)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)

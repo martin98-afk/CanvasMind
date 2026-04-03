@@ -264,7 +264,7 @@ class InterventionDialog(MessageBoxBase):
             w = TextEdit()
             w.setPlaceholderText(info.get("placeholder", ""))
             w.setText(str(default) if default else "")
-            w.setFixedHeight(100)
+            w.setFixedHeight(150)
             return w
 
         else:  # text

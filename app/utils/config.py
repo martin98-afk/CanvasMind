@@ -63,7 +63,18 @@ class Settings(QConfig):
                 cls._instance.load(CONFIG_FILE)
             except:
                 logger.exception("无法加载配置文件")
+            cls._instance._load_side_dock_plugin_states()
         return cls._instance
+
+    def _load_side_dock_plugin_states(self):
+        try:
+            from app.widgets.side_dock_area.registry import SideDockRegistry
+
+            saved_states = self.side_dock_plugins.value
+            if saved_states:
+                SideDockRegistry.load_states_from_config(saved_states)
+        except Exception:
+            pass
 
     @classmethod
     def save_config(cls):
@@ -296,6 +307,9 @@ class Settings(QConfig):
     llm_selected_model = ConfigItem("LLM", "SelectedModel", "")
     # 启用的技能列表
     llm_enabled_skills = ConfigItem("LLM", "EnabledSkills", [])
+
+    # ========== 侧边栏插件配置 ==========
+    side_dock_plugins = ConfigItem("SideDock", "Plugins", {})
 
     # ========== 云组件库API ==========
     STEIN_URL = ConfigItem(
