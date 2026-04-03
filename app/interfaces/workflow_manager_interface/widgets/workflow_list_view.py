@@ -21,6 +21,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.utils.utils import get_icon, get_unified_font
+from app.interfaces.workflow_manager_interface.utils.utils import ThumbnailCache
 
 
 class WorkflowListItem(QWidget):
@@ -36,6 +37,7 @@ class WorkflowListItem(QWidget):
         self.workflow_path = workflow_path
         self.file_info = file_info
         self.is_selected = False
+        self._load_cancelled = False
         self._setup_ui()
         self._apply_file_info()
         self._load_thumbnail_delayed()
@@ -76,22 +78,48 @@ class WorkflowListItem(QWidget):
         self.size_label.setFixedWidth(80)
         layout.addWidget(self.size_label)
 
+        self.folder_size_label = CaptionLabel()
+        self.folder_size_label.setFont(get_unified_font(11))
+        self.folder_size_label.setStyleSheet("background: transparent; color: #888;")
+        self.folder_size_label.setFixedWidth(80)
+        layout.addWidget(self.folder_size_label)
+
     def _load_thumbnail_delayed(self):
         def load():
+            if self._load_cancelled:
+                return
             try:
                 workflow_name = ".".join(self.workflow_path.stem.split(".")[:-1])
                 preview_path = self.workflow_path.parent / f"{workflow_name}.png"
-                if preview_path.exists():
+                if not preview_path.exists():
+                    return
+
+                cache_key = f"{preview_path}_list_40x40"
+                cached = ThumbnailCache.get(cache_key)
+                if cached and not cached.isNull():
+                    if not self._load_cancelled:
+                        self.thumbnail_label.setPixmap(cached.copy())
+                    return
+
+                if ThumbnailCache.is_loading(cache_key):
+                    return
+
+                ThumbnailCache.set_loading(cache_key, True)
+
+                try:
                     pixmap = QPixmap(str(preview_path))
-                    if not pixmap.isNull():
+                    if not pixmap.isNull() and not self._load_cancelled:
                         scaled = pixmap.scaled(
                             40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation
                         )
+                        ThumbnailCache.put(cache_key, scaled.copy())
                         self.thumbnail_label.setPixmap(scaled)
+                finally:
+                    ThumbnailCache.set_loading(cache_key, False)
             except Exception:
                 pass
 
-        QTimer.singleShot(100, load)
+        QTimer.singleShot(50, load)
 
     def _apply_file_info(self):
         if self.file_info:
@@ -106,6 +134,27 @@ class WorkflowListItem(QWidget):
             self.mtime_label.setText("--")
             self.ctime_label.setText("--")
             self.size_label.setText("--")
+        folder_size = self._calc_folder_size()
+        if folder_size > 0:
+            if folder_size > 1024 * 1024:
+                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
+            elif folder_size > 1024:
+                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
+            else:
+                self.folder_size_label.setText(f"{folder_size} B")
+        else:
+            self.folder_size_label.setText("--")
+
+    def _calc_folder_size(self) -> int:
+        try:
+            total = 0
+            folder = self.workflow_path.parent
+            for f in folder.rglob("*"):
+                if f.is_file():
+                    total += f.stat().st_size
+            return total
+        except Exception:
+            return 0
 
     def update_file_info(self, file_info: Dict):
         self.file_info = file_info
@@ -175,6 +224,14 @@ class WorkflowListItem(QWidget):
         elif action == delete_action:
             self._on_delete()
 
+    def hideEvent(self, event):
+        self._load_cancelled = True
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        self._load_cancelled = False
+        super().showEvent(event)
+
 
 class WorkflowListView(QWidget):
     current_changed = pyqtSignal(Path)
@@ -236,10 +293,15 @@ class WorkflowListView(QWidget):
         ctime_header.setFixedWidth(140)
         header_layout.addWidget(ctime_header)
 
-        size_header = CaptionLabel(self.tr("大小"))
+        size_header = CaptionLabel(self.tr("文件大小"))
         size_header.setStyleSheet("color: #666; font-weight: 600;")
         size_header.setFixedWidth(80)
         header_layout.addWidget(size_header)
+
+        folder_size_header = CaptionLabel(self.tr("文件夹"))
+        folder_size_header.setStyleSheet("color: #666; font-weight: 600;")
+        folder_size_header.setFixedWidth(80)
+        header_layout.addWidget(folder_size_header)
 
         header_layout.addStretch()
 

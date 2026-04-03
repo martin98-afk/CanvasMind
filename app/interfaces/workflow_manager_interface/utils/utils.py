@@ -1,21 +1,48 @@
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Dict
 
-from PyQt5.QtCore import QThread, pyqtSignal, QMutexLocker, QMutex
+from PyQt5.QtCore import QThread, pyqtSignal, QMutexLocker, QMutex, QTimer
+from PyQt5.QtGui import QPixmap, QPixmapCache
+
+
+class ThumbnailCache:
+    _cache: Dict[str, QPixmap] = {}
+    _loading: Dict[str, bool] = {}
+
+    @classmethod
+    def get(cls, key: str) -> Optional[QPixmap]:
+        if key in cls._cache:
+            return cls._cache[key]
+        return None
+
+    @classmethod
+    def put(cls, key: str, pixmap: QPixmap):
+        if not pixmap.isNull():
+            cls._cache[key] = pixmap
+            QPixmapCache.insert(key, pixmap)
+
+    @classmethod
+    def is_loading(cls, key: str) -> bool:
+        return cls._loading.get(key, False)
+
+    @classmethod
+    def set_loading(cls, key: str, loading: bool):
+        cls._loading[key] = loading
 
 
 def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
     """将旧版平铺结构自动迁移到新版：每个画布一个子文件夹"""
     for root in workflow_dirs:
         legacy_files = [
-            f for f in root.iterdir()
-            if f.is_file() and f.suffix == '.json' and f.name.endswith('.workflow.json')
+            f
+            for f in root.iterdir()
+            if f.is_file() and f.suffix == ".json" and f.name.endswith(".workflow.json")
         ]
         for wf_file in legacy_files:
             name = wf_file.stem
-            if name.endswith('.workflow'):
+            if name.endswith(".workflow"):
                 name = name[:-9]
             if not name:
                 continue
@@ -88,11 +115,15 @@ class WorkflowFileInfoScanner(QThread):
             try:
                 stat = wf_path.stat()
                 file_info_map[str(wf_path)] = {
-                    'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
-                    'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
-                    'size_kb': stat.st_size // 1024,
-                    'mtime_ts': stat.st_mtime,
-                    'ctime_ts': stat.st_ctime,
+                    "ctime": datetime.fromtimestamp(stat.st_ctime).strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
+                    "mtime": datetime.fromtimestamp(stat.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
+                    "size_kb": stat.st_size // 1024,
+                    "mtime_ts": stat.st_mtime,
+                    "ctime_ts": stat.st_ctime,
                 }
             except Exception:
                 pass

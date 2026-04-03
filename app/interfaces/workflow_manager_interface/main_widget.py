@@ -47,6 +47,7 @@ from app.interfaces.workflow_manager_interface.widgets.workflow_preview_panel im
     WorkflowPreviewPanel,
 )
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+from app.server_manager.cloud_bakup.canvas_cloud_manager import CanvasCloudManager
 
 VIEW_MODE_GRID = "grid"
 VIEW_MODE_LIST = "list"
@@ -75,6 +76,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._refresh_pending = False
         self._recommendation_engine_built = False
         self.recommendation_engine = NodeRecommendationEngine()
+        self._canvas_cloud_mgr = CanvasCloudManager()
 
         self._view_mode = VIEW_MODE_GRID
 
@@ -106,6 +108,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.search_line_edit = SearchLineEdit(self)
         self.search_line_edit.setPlaceholderText(self.tr("搜索..."))
         self.search_line_edit.setFixedWidth(350)
+        self._search_debounce_timer = QTimer(self)
+        self._search_debounce_timer.setSingleShot(True)
+        self._search_debounce_timer.timeout.connect(self._do_search)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
         self.search_line_edit.searchSignal.connect(self._on_search_changed)
         self.search_line_edit.clearSignal.connect(self._on_search_changed)
@@ -374,6 +379,9 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def _on_search_changed(self, text: str):
         self._filter_text = text.strip().lower()
+        self._search_debounce_timer.start(300)
+
+    def _do_search(self):
         self._apply_sort_and_filter_and_refresh()
 
     def _on_sort_changed(self, index=None):
@@ -641,6 +649,43 @@ class WorkflowCanvasGalleryPage(QWidget):
             self._schedule_refresh()
         except Exception as e:
             InfoBar.error(self.tr("删除失败"), str(e), parent=self)
+
+    def backup_workflow_to_cloud(self, file_path: Path):
+        try:
+            folder = file_path.parent
+            workflow_name = folder.name
+            json_path = file_path
+            image_path = folder / f"{workflow_name}.png"
+
+            meta_info = {
+                "id": workflow_name,
+                "name": workflow_name,
+                "category": "默认",
+                "description": "",
+                "version": "1.0.0",
+            }
+
+            success = self._canvas_cloud_mgr.add_canvas(
+                meta_info=meta_info,
+                json_path=str(json_path),
+                image_path=str(image_path) if image_path.exists() else None,
+            )
+
+            if success:
+                InfoBar.success(
+                    self.tr("备份成功"),
+                    self.tr("画布 '{}' 已备份到云端").format(workflow_name),
+                    parent=self,
+                )
+            else:
+                InfoBar.error(
+                    self.tr("备份失败"),
+                    self.tr("云端返回失败，请检查网络和配置"),
+                    parent=self,
+                )
+        except Exception as e:
+            logger.error(f"Backup workflow failed: {e}")
+            InfoBar.error(self.tr("备份失败"), str(e), parent=self)
 
     def _on_canvas_saved(self, workflow_path: Path):
         try:

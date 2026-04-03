@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
+import shutil
 
 from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QPixmap, QFont
@@ -151,6 +152,21 @@ class WorkflowPreviewPanel(CardWidget):
         self.btn_layout.addWidget(self.copy_btn)
         self.btn_layout.addWidget(self.rename_btn)
         self.btn_layout.addWidget(self.delete_btn)
+
+        self.clear_cache_btn = QPushButton(self.tr("清除缓存"), self)
+        self.clear_cache_btn.setIcon(FluentIcon.DELETE.icon())
+        self.clear_cache_btn.setIconSize(QSize(16, 16))
+        self.clear_cache_btn.setStyleSheet(btn_style)
+        self.clear_cache_btn.clicked.connect(self._on_clear_cache_clicked)
+
+        self.backup_btn = QPushButton(self.tr("备份"), self)
+        self.backup_btn.setIcon(FluentIcon.UPDATE.icon())
+        self.backup_btn.setIconSize(QSize(16, 16))
+        self.backup_btn.setStyleSheet(btn_style)
+        self.backup_btn.clicked.connect(self._on_backup_clicked)
+
+        self.btn_layout.addWidget(self.clear_cache_btn)
+        self.btn_layout.addWidget(self.backup_btn)
         layout.addLayout(self.btn_layout)
 
         self._set_buttons_enabled(False)
@@ -257,6 +273,53 @@ class WorkflowPreviewPanel(CardWidget):
             and hasattr(self._gallery_page, "delete_workflow")
         ):
             self._gallery_page.delete_workflow(self.current_workflow_path)
+
+    def _on_clear_cache_clicked(self):
+        if not self.current_workflow_path:
+            return
+        folder = self.current_workflow_path.parent
+        workflow_name = ".".join(self.current_workflow_path.stem.split(".")[:-1])
+        protected_names = {f"{workflow_name}.png", f"{workflow_name}.workflow.json"}
+
+        deleted_count = 0
+        try:
+            for item in folder.iterdir():
+                if item.is_file():
+                    continue
+                if item.name not in protected_names:
+                    shutil.rmtree(item)
+                    deleted_count += 1
+                else:
+                    for subitem in item.rglob("*"):
+                        if subitem.is_file() and subitem.name not in protected_names:
+                            subitem.unlink()
+                            deleted_count += 1
+        except Exception as e:
+            from loguru import logger
+
+            logger.error(f"Clear cache failed: {e}")
+            return
+
+        from qfluentwidgets import InfoBar
+
+        if deleted_count > 0:
+            InfoBar.success(
+                self.tr("清除成功"),
+                self.tr(f"已删除 {deleted_count} 个缓存项"),
+                parent=self,
+            )
+        else:
+            InfoBar.info(
+                self.tr("无需清理"), self.tr("没有找到可清理的缓存"), parent=self
+            )
+
+    def _on_backup_clicked(self):
+        if not self.current_workflow_path:
+            return
+        if self._gallery_page and hasattr(
+            self._gallery_page, "backup_workflow_to_cloud"
+        ):
+            self._gallery_page.backup_workflow_to_cloud(self.current_workflow_path)
 
     def _show_preview_dialog(self):
         if not self.current_workflow_path:
