@@ -1,19 +1,32 @@
 import uuid
 from loguru import logger
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import (
-    QLabel, QVBoxLayout, QWidget, QStackedWidget
+from PyQt5 import sip
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget, QStackedWidget
+from qfluentwidgets import (
+    TabBar,
+    ComboBox,
+    CommandBar,
+    Action,
+    FluentIcon,
+    TabCloseButtonDisplayMode,
 )
-from qfluentwidgets import TabBar, ComboBox, CommandBar, Action, FluentIcon, TabCloseButtonDisplayMode
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from app.server_manager.ipython_server.ipython_kernel_manager import IPythonKernelManager, LocalConnectWorker
-from app.server_manager.ipython_server.remote_ipython_kernel import RemoteIPythonKernelManager, RemoteConnectWorker
+from app.server_manager.ipython_server.ipython_kernel_manager import (
+    IPythonKernelManager,
+    LocalConnectWorker,
+)
+from app.server_manager.ipython_server.remote_ipython_kernel import (
+    RemoteIPythonKernelManager,
+    RemoteConnectWorker,
+)
 from app.utils.utils import get_icon
 
 
 class EnvironmentSelector(QWidget):
     """环境选择器：支持本地和 SSH 环境"""
+
     env_changed = pyqtSignal(dict)  # 改为发送字典
 
     def __init__(self, parent=None, package_manager=None):
@@ -72,9 +85,13 @@ class EmbeddedIPythonConsole(QWidget):
         commandBar = CommandBar()
         if package_manager is not None:
             title_label = QLabel(" 环境选择: ")
-            title_label.setStyleSheet("font: 12px 'Segoe UI', 'Microsoft YaHei'; color: white;")
+            title_label.setStyleSheet(
+                "font: 12px 'Segoe UI', 'Microsoft YaHei'; color: white;"
+            )
             commandBar.addWidget(title_label)
-            self.env_selector = EnvironmentSelector(parent=self, package_manager=package_manager)
+            self.env_selector = EnvironmentSelector(
+                parent=self, package_manager=package_manager
+            )
             commandBar.addWidget(self.env_selector)
             commandBar.addSeparator()
             # 绑定环境切换信号
@@ -87,7 +104,7 @@ class EmbeddedIPythonConsole(QWidget):
         # 3. 控制台
         self.console = RichJupyterWidget()
         self.console.setStyleSheet("background-color: transparent;")
-        self.console.set_default_style(colors='linux')
+        self.console.set_default_style(colors="linux")
         self.console.banner = "IPython Console (Ready)\n"
         self.layout.addWidget(self.console)
 
@@ -137,26 +154,40 @@ class EmbeddedIPythonConsole(QWidget):
         else:
             self.is_connecting = True
         self.stop_kernel()  # 先停止旧的
-        self.env_selector.combo.setCurrentText(f"[{env_data['type'].upper()}] {env_data['name']}")
-        env_type = env_data.get('type', 'local')
+        self.env_selector.combo.setCurrentText(
+            f"[{env_data['type'].upper()}] {env_data['name']}"
+        )
+        env_type = env_data.get("type", "local")
         success = False
         # 1. 禁用界面组件，防止重复点击
         self.env_selector.setEnabled(False)
-        if env_type == 'ssh':
-            self.console._append_plain_text(f"[*] 正在通过 SSH 连接远程内核: {env_data['host']}...\n")
+        if env_type == "ssh":
+            self.console._append_plain_text(
+                f"[*] 正在通过 SSH 连接远程内核: {env_data['host']}...\n"
+            )
             self.console._append_plain_text("[*] 准备建立异步连接...\n")
 
             # 2. 启动后台线程
             self.worker = RemoteConnectWorker(self.remote_km, env_data)
-            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
+            self.worker.status_update.connect(
+                lambda msg: self.console._append_plain_text(f"[*] {msg}\n")
+                if self.console and not sip.isdeleted(self.console._control)
+                else None
+            )
             self.worker.finished.connect(self._on_kernel_started)
             self.worker.start()
             self.current_km = self.remote_km
         else:
-            self.console._append_plain_text(f"[*] 正在启动本地环境: {env_data['name']}...\n")
+            self.console._append_plain_text(
+                f"[*] 正在启动本地环境: {env_data['name']}...\n"
+            )
 
             self.worker = LocalConnectWorker(self.local_km, env_data.get("path"))
-            self.worker.status_update.connect(lambda msg: self.console._append_plain_text(f"[*] {msg}\n"))
+            self.worker.status_update.connect(
+                lambda msg: self.console._append_plain_text(f"[*] {msg}\n")
+                if self.console and not sip.isdeleted(self.console._control)
+                else None
+            )
             self.worker.finished.connect(self._on_kernel_started)
             self.worker.start()
             self.current_km = self.local_km
@@ -173,16 +204,20 @@ class EmbeddedIPythonConsole(QWidget):
 
     def restart_kernel(self):
         env_data = self.env_selector.get_current_env_data()
-        if env_data: self.start_kernel(env_data)
+        if env_data:
+            self.start_kernel(env_data)
 
     def stop_kernel(self):
         # 停止所有可能的残留内核
-        if self.local_km.is_alive(): self.local_km.shutdown_kernel()
-        if hasattr(self.remote_km, 'shutdown_kernel'): self.remote_km.shutdown_kernel()
+        if self.local_km.is_alive():
+            self.local_km.shutdown_kernel()
+        if hasattr(self.remote_km, "shutdown_kernel"):
+            self.remote_km.shutdown_kernel()
         self.current_km = None
 
     def execute_code(self, code, hidden=False):
-        if self.current_km: self.console.execute(code, hidden)
+        if self.current_km:
+            self.console.execute(code, hidden)
 
     def interrupt_kernel(self):
         return self.current_km.interrupt_kernel() if self.current_km else False
@@ -194,7 +229,9 @@ class EmbeddedIPythonConsole(QWidget):
 class IPythonConsoleManager(QWidget):
     """控制台标签管理器 - 适配多内核并行及 ID 访问"""
 
-    def __init__(self, parent=None, package_manager=None, var_explorer=None, init_console=True):
+    def __init__(
+        self, parent=None, package_manager=None, var_explorer=None, init_console=True
+    ):
         super().__init__(parent)
         self.package_manager = package_manager
         self.var_explorer = var_explorer
@@ -249,7 +286,7 @@ class IPythonConsoleManager(QWidget):
         # 获取当前选中的环境信息用于显示标题
         current_env = console_widget.env_selector.get_current_env_data()
         console_widget.start_kernel(current_env)
-        env_display = current_env['name'] if current_env else "Unknown"
+        env_display = current_env["name"] if current_env else "Unknown"
         tab_title = tab_name if tab_name else f"Console ({env_display})"
 
         index = self.stacked_widget.addWidget(console_widget)

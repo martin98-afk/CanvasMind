@@ -8,7 +8,7 @@ from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 class IPythonConsoleToolWindow(ToolWindow):
     name = "IPython 控制台"
     icon = get_icon("ipython")
-    singleton = False
+    singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["运行画布"]
     display_order = 60
@@ -20,6 +20,9 @@ class IPythonConsoleToolWindow(ToolWindow):
             self.homepage, self.homepage.parent.package_manager
         )
         layout.addWidget(self.console)
+        current_env = self.console.env_selector.get_current_env_data()
+        if current_env:
+            self.console.start_kernel(current_env)
 
     @property
     def kernel_manager(self):
