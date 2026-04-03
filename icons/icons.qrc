@@ -55,11 +55,13 @@
     <file>全选.svg</file>
     <file>关联规则.svg</file>
     <file>分类决策树.svg</file>
+    <file>列表.svg</file>
     <file>删除变量.svg</file>
     <file>升序.svg</file>
     <file>参数提取器-F.svg</file>
     <file>取消选择.svg</file>
     <file>变量.svg</file>
+    <file>合并.svg</file>
     <file>同心圆.svg</file>
     <file>向下拆分.svg</file>
     <file>向右拆分.svg</file>
@@ -92,6 +94,8 @@
     <file>折叠.svg</file>
     <file>插件市场.svg</file>
     <file>插入.svg</file>
+    <file>收起侧边栏.svg</file>
+    <file>收集.svg</file>
     <file>放大.svg</file>
     <file>数据分析-流量分析.svg</file>
     <file>数据库操作.svg</file>
@@ -130,6 +134,7 @@
     <file>绿色运行.svg</file>
     <file>缩小.svg</file>
     <file>缩放.svg</file>
+    <file>网格.svg</file>
     <file>网络爬虫.svg</file>
     <file>自动保存.svg</file>
     <file>自定义变量.svg</file>
@@ -147,7 +152,6 @@
     <file>运行记录.svg</file>
     <file>返回上级目录.svg</file>
     <file>远程重启.svg</file>
-    <file>追加.svg</file>
     <file>追踪.svg</file>
     <file>适应屏幕.svg</file>
     <file>逻辑回归A.svg</file>

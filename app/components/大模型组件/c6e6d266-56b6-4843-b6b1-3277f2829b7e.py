@@ -163,6 +163,7 @@ class Component(BaseComponent):
                         "message":"",
                         "schema":{
                             "reply": {
+                                "type": "long_text", 
                                 "label": "当前生成结果",
                                 "default": reply
                             }

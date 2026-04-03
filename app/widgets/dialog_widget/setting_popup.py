@@ -43,13 +43,22 @@ class SettingDialog(QDialog):
         self.cfg = Settings.get_instance()
         self._last_parent_pos = None
         self._event_filter_installed = False
+        self._plugin_cards = {}
 
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
         self._save_timer.setInterval(500)
         self._save_timer.timeout.connect(self._perform_save_to_disk)
 
+        self._load_plugin_states_from_config()
         self.setup_ui()
+
+    def _load_plugin_states_from_config(self):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+
+        saved_states = self.cfg.side_dock_plugins.value
+        if saved_states:
+            SideDockRegistry.load_states_from_config(saved_states)
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
@@ -145,6 +154,7 @@ class SettingDialog(QDialog):
             ("canvas_io", self.tr("画布保存"), "自动保存"),
             ("canvas_display", self.tr("画布显示"), "画布"),
             ("shortcuts", self.tr("快捷键"), "快捷键"),
+            ("sidebar_plugins", self.tr("侧边栏插件"), "收起侧边栏"),
         ]
         for key, label, icon_name in categories:
             btn = self._create_nav_button(key, label, icon_name)
@@ -317,6 +327,7 @@ class SettingDialog(QDialog):
             "canvas_io",
             "canvas_display",
             "shortcuts",
+            "sidebar_plugins",
         ]
         for key in keys:
             scroll = QScrollArea()
@@ -347,6 +358,8 @@ class SettingDialog(QDialog):
                 self._setup_canvas_display_settings(layout)
             elif key == "shortcuts":
                 self._setup_shortcuts_settings(layout)
+            elif key == "sidebar_plugins":
+                self._setup_sidebar_plugins_settings(layout)
 
             layout.addStretch(1)
             scroll.setWidget(content)
@@ -810,6 +823,181 @@ class SettingDialog(QDialog):
         canvasDisplayGroupLayout.addWidget(self.showGridCard)
         canvasDisplayGroupLayout.addWidget(self.pipelayoutCard)
         layout.addWidget(self.canvasDisplayGroup)
+
+    def _setup_sidebar_plugins_settings(self, layout):
+        from qfluentwidgets import (
+            ComboBox,
+        )
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+        from app.widgets.side_dock_area.tool_window import DockPosition
+
+        self.sideDockPluginsGroup = QWidget()
+        self.sideDockPluginsGroup.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Preferred
+        )
+        sideDockGroupLayout = QVBoxLayout(self.sideDockPluginsGroup)
+        sideDockGroupLayout.setSpacing(10)
+
+        group_label = StrongBodyLabel(self.tr("侧边栏插件管理"))
+        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
+        sideDockGroupLayout.addWidget(group_label)
+
+        info_label = BodyLabel(self.tr("管理侧边栏插件的启用状态和显示位置"))
+        info_label.setStyleSheet("color: #888888; font-size: 12px;")
+        sideDockGroupLayout.addWidget(info_label)
+
+        self._plugin_cards = {}
+
+        context_ids = [
+            "运行画布",
+            "组件开发",
+            "项目管理",
+        ]
+
+        for context_id in context_ids:
+            entries = SideDockRegistry.get_all_entries(context_id)
+            if not entries:
+                continue
+
+            context_label = StrongBodyLabel(context_id)
+            context_label.setStyleSheet(
+                "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 12px;"
+            )
+            sideDockGroupLayout.addWidget(context_label)
+
+            for plugin_name, entry in entries.items():
+                plugin_card = self._create_plugin_card(
+                    context_id, plugin_name, entry, self.sideDockPluginsGroup
+                )
+                sideDockGroupLayout.addWidget(plugin_card)
+                self._plugin_cards[f"{context_id}/{plugin_name}"] = plugin_card
+
+        layout.addWidget(self.sideDockPluginsGroup)
+
+    def _create_plugin_card(self, context_id, plugin_name, entry, parent):
+        from qfluentwidgets import ComboBox, SwitchButton
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+        from app.widgets.side_dock_area.tool_window import DockPosition
+
+        state = SideDockRegistry.get_plugin_state(context_id, plugin_name)
+        is_enabled = state.get("enabled", True)
+        position_value = state.get("position", DockPosition.HIDDEN.value)
+
+        card = QWidget(parent)
+        card.setFixedHeight(50)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        card.setStyleSheet("""
+            QWidget {
+                background-color: #333333;
+                border-radius: 6px;
+            }
+        """)
+        card_layout = QHBoxLayout(card)
+        card_layout.setContentsMargins(16, 8, 16, 8)
+        card_layout.setSpacing(12)
+
+        name_label = BodyLabel(plugin_name)
+        name_label.setStyleSheet("color: #e0e0e0; font-size: 13px; min-width: 120px;")
+        card_layout.addWidget(name_label, 0, Qt.AlignLeft)
+
+        card_layout.addStretch(1)
+
+        position_label = BodyLabel(self.tr("位置:"))
+        position_label.setStyleSheet("color: #888888; font-size: 12px;")
+        card_layout.addWidget(position_label, 0, Qt.AlignRight)
+
+        position_combo = ComboBox()
+        position_combo.setFixedWidth(100)
+        position_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border: 1px solid #0078d4;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                selection-background-color: #0078d4;
+            }
+        """)
+        position_combo.addItems([self.tr("顶部"), self.tr("底部"), self.tr("隐藏")])
+        position_map = {
+            DockPosition.TOP.value: 0,
+            DockPosition.BOTTOM.value: 1,
+            DockPosition.HIDDEN.value: 2,
+        }
+        position_combo.setCurrentIndex(position_map.get(position_value, 2))
+        position_combo._context_id = context_id
+        position_combo._plugin_name = plugin_name
+        position_combo.currentIndexChanged.connect(
+            lambda idx, combo=position_combo: self._on_plugin_position_changed(
+                combo, idx
+            )
+        )
+        card_layout.addWidget(position_combo, 0, Qt.AlignRight)
+
+        enable_switch = SwitchButton()
+        enable_switch.setChecked(is_enabled)
+        enable_switch.setFixedWidth(50)
+        enable_switch._context_id = context_id
+        enable_switch._plugin_name = plugin_name
+        enable_switch.checkedChanged.connect(
+            lambda checked, sw=enable_switch: self._on_plugin_enabled_changed(
+                sw, checked
+            )
+        )
+        card_layout.addWidget(enable_switch, 0, Qt.AlignRight)
+
+        return card
+
+    def _on_plugin_enabled_changed(self, switch_card, checked):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+
+        context_id = switch_card._context_id
+        plugin_name = switch_card._plugin_name
+        SideDockRegistry.set_plugin_enabled(context_id, plugin_name, checked)
+        self._save_plugin_states()
+        self.onConfigChanged()
+
+    def _on_plugin_position_changed(self, combo, index):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+        from app.widgets.side_dock_area.tool_window import DockPosition
+
+        context_id = combo._context_id
+        plugin_name = combo._plugin_name
+
+        position_map = {
+            0: DockPosition.TOP,
+            1: DockPosition.BOTTOM,
+            2: DockPosition.HIDDEN,
+        }
+        new_position = position_map.get(index, DockPosition.HIDDEN)
+        SideDockRegistry.set_plugin_position(context_id, plugin_name, new_position)
+        self._save_plugin_states()
+        self.onConfigChanged()
+
+    def _save_plugin_states(self):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+
+        all_states = {}
+        for key in self._plugin_cards.keys():
+            context_id, plugin_name = key.split("/", 1)
+            if context_id not in all_states:
+                all_states[context_id] = {}
+            all_states[context_id][plugin_name] = SideDockRegistry.get_plugin_state(
+                context_id, plugin_name
+            )
+
+        self.cfg.set(self.cfg.side_dock_plugins, all_states, save=True)
 
     def _on_check_update(self):
         if self._parent_widget and hasattr(self._parent_widget, "updater"):

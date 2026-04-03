@@ -240,7 +240,17 @@ class SendableTextEdit(QTextEdit):
 
             cursor = self.textCursor()
             cursor.insertText(insert_text)
+            self.setTextCursor(cursor)
             self._on_text_changed()
             event.acceptProposedAction()
         else:
             super().dropEvent(event)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        QTimer.singleShot(0, self._ensure_cursor_visible)
+
+    def _ensure_cursor_visible(self):
+        cursor = self.textCursor()
+        if cursor.position() > 0:
+            self.ensureCursorVisible()

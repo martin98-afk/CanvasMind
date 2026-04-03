@@ -529,13 +529,14 @@ class SideDockArea(QWidget):
     def _load_plugins(self, context_id):
         top_classes = []
         for name, entry in SideDockRegistry.get_all(context_id).items():
-            # 先创建按钮
+            if not SideDockRegistry.is_plugin_enabled(context_id, name):
+                continue
+            current_position = SideDockRegistry.get_plugin_position(context_id, name)
             self.tool_panel.create_button(entry.cls)
-            # 再按初始位置摆放按钮
-            pos_str = "top" if entry.position == DockPosition.TOP else "bottom"
+            pos_str = "top" if current_position == DockPosition.TOP else "bottom"
             self.tool_panel.add_button_to_layout(name, pos_str)
 
-            if entry.position == DockPosition.TOP:
+            if current_position == DockPosition.TOP:
                 top_classes.append(entry.cls)
 
         if top_classes:

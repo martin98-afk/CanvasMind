@@ -1551,6 +1551,9 @@ class OpenAIChatToolWindow(ToolWindow):
             if worker:
                 worker.cancel()
 
+        if self.input_area:
+            self.input_area.setFocus()
+
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
@@ -1606,6 +1609,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self.history_manager:
             self._save_current_session_to_history()
+
+        if self.input_area:
+            self.input_area.setFocus()
 
     def _sync_current_assistant_card_to_session(self):
         if self._history_preview_messages is not None:
@@ -1730,6 +1736,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._chat_engine:
             self._chat_engine.provide_question_answer(answer)
 
+        if self.input_area:
+            self.input_area.setFocus()
+
     def _on_question_cancelled(self):
         """用户关闭问题窗口时，返回空答案让大模型继续"""
         if not self._question_tool_call_id:
@@ -1739,6 +1748,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._chat_engine:
             self._chat_engine.provide_question_answer("")
+
+        if self.input_area:
+            self.input_area.setFocus()
 
     def _on_agent_switched(self, agent_name: str):
         """智能体切换回调 - 丝滑切换，不清空对话"""
@@ -1937,6 +1949,8 @@ class OpenAIChatToolWindow(ToolWindow):
             duration=2000,
             parent=self,
         )
+        if self.input_area:
+            self.input_area.setFocus()
 
     def _create_context_menu(self):
         self._context_menu_actions = {}

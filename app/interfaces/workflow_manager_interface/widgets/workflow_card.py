@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QWidget
 from qfluentwidgets import (
@@ -17,6 +17,7 @@ from qfluentwidgets import (
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.utils.utils import get_icon, get_unified_font
+from app.interfaces.workflow_manager_interface.utils.utils import ThumbnailCache
 
 
 class ActionCard(SimpleCardWidget):
@@ -29,42 +30,39 @@ class ActionCard(SimpleCardWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 30, 20, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(12, 16, 12, 16)
+        layout.setSpacing(10)
 
         title = BodyLabel(self.tr("创建画布"))
-        title.setFont(get_unified_font(16, True))
+        title.setFont(get_unified_font(13, True))
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
         layout.addWidget(CardSeparator())
-        # 按钮布局
+
         btn_container = QWidget(self)
         btn_layout = QVBoxLayout(btn_container)
-        btn_layout.setSpacing(20)
+        btn_layout.setSpacing(8)
 
-        # 新建按钮
         create_btn = PushButton(
             text=self.tr("新建画布"), icon=FluentIcon.ADD, parent=self
         )
         create_btn.clicked.connect(lambda: self.home.new_canvas())
-        create_btn.setIconSize(QSize(22, 22))
-        create_btn.setFont(get_unified_font(14))
+        create_btn.setIconSize(QSize(16, 16))
+        create_btn.setFont(get_unified_font(12))
 
-        # 可选：更多按钮（如模板等）
         template_btn = PushButton(
             text=self.tr("从模板创建"), icon=get_icon("从模板创建"), parent=self
         )
         template_btn.clicked.connect(lambda: self.home.new_canvas(from_template=True))
-        template_btn.setIconSize(QSize(22, 22))
-        template_btn.setFont(get_unified_font(14))
+        template_btn.setIconSize(QSize(16, 16))
+        template_btn.setFont(get_unified_font(12))
 
-        # 导入按钮
         import_btn = PushButton(
             text=self.tr("导入画布"), icon=get_icon("导入文件"), parent=self
         )
         import_btn.clicked.connect(lambda: self.home.import_canvas())
-        import_btn.setIconSize(QSize(22, 22))
-        import_btn.setFont(get_unified_font(14))
+        import_btn.setIconSize(QSize(16, 16))
+        import_btn.setFont(get_unified_font(12))
 
         btn_layout.addWidget(create_btn)
         btn_layout.addWidget(template_btn)
@@ -86,14 +84,15 @@ class WorkflowCard(CardWidget):
         self.image_label = None
         self._image_loader = None
         self._image_thread = None
+        self._load_cancelled = False
+        self._preview_loaded = False
+        self._cache_key = f"card_{file_path}" if file_path else None
 
-        # 设置卡片尺寸范围
         self.setFixedSize(400, 330)
         self.setBorderRadius(12)
 
         self.workflow_name = ".".join(file_path.stem.split(".")[:-1])
         self._setup_ui()
-        # ✅ 点击卡片任意位置打开画布
         self.setCursor(Qt.PointingHandCursor)
 
     def _setup_ui(self):
@@ -121,10 +120,7 @@ class WorkflowCard(CardWidget):
         layout.addWidget(self.image_label, 0, Qt.AlignCenter)
 
         preview_path = self._get_preview_path()
-        if preview_path.exists():
-            self._load_and_scale_preview(preview_path)
-        else:
-            self._create_placeholder()
+        QTimer.singleShot(0, lambda: self._load_preview_async(preview_path))
 
         # 信息栏
         bottom_layout = QHBoxLayout()
@@ -192,29 +188,53 @@ class WorkflowCard(CardWidget):
         bottom_layout.addLayout(btn_layout)
         layout.addLayout(bottom_layout)
 
-    def _load_and_scale_preview(self, preview_path: Path):
-        """加载并缩放预览图到统一尺寸（300x180）"""
-        try:
-            pixmap = QPixmap(str(preview_path))
-            if pixmap.isNull():
-                self._create_placeholder()
+    def _load_preview_async(self, preview_path: Path):
+        """异步加载预览图，使用缓存"""
+        if self._load_cancelled:
+            return
+
+        cache_key = f"{preview_path}_card_330x220"
+        cached = ThumbnailCache.get(cache_key)
+        if cached and not cached.isNull():
+            if not self._load_cancelled:
+                self.image_label.setPixmap(cached.copy())
+                self.image_label.setFixedSize(cached.width(), cached.height())
+                self._preview_loaded = True
+            return
+
+        if ThumbnailCache.is_loading(cache_key):
+            return
+
+        ThumbnailCache.set_loading(cache_key, True)
+
+        def load():
+            if self._load_cancelled:
+                ThumbnailCache.set_loading(cache_key, False)
                 return
+            try:
+                pixmap = QPixmap(str(preview_path))
+                if not pixmap.isNull():
+                    scaled = pixmap.scaled(
+                        330, 220, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
+                    )
+                    ThumbnailCache.put(cache_key, scaled.copy())
+                    if not self._load_cancelled:
+                        self.image_label.setPixmap(scaled)
+                        self.image_label.setFixedSize(scaled.width(), scaled.height())
+                        self._preview_loaded = True
+                else:
+                    if not self._load_cancelled:
+                        QTimer.singleShot(0, self._create_placeholder)
+            except Exception:
+                if not self._load_cancelled:
+                    QTimer.singleShot(0, self._create_placeholder)
+            finally:
+                ThumbnailCache.set_loading(cache_key, False)
 
-            # 保持宽高比，居中裁剪（或用 Qt.KeepAspectRatio）
-            scaled_pixmap = pixmap.scaled(
-                330, 220, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
-            )
-
-            # 如果你想强制填满（可能变形），用：
-            # scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-
-            self.image_label.setPixmap(scaled_pixmap)
-            self.image_label.setFixedSize(scaled_pixmap.width(), scaled_pixmap.height())
-        except Exception:
-            self._create_placeholder()
+        QTimer.singleShot(50, load)
 
     def _create_placeholder(self):
-        """创建“无预览图”占位"""
+        """创建"无预览图"占位"""
         self.image_label.setText(self.tr("无预览图"))
         self.image_label.setStyleSheet("""
             color: #999;
@@ -223,19 +243,20 @@ class WorkflowCard(CardWidget):
             border: 1px dashed #e0e0e0;
             font-size: 12px;
         """)
-        self.image_label.setFixedSize(300, 180)  # ✅ 统一占位尺寸
+        self.image_label.setFixedSize(300, 180)
 
     def _get_preview_path(self) -> Path:
         return self.file_path.parent / f"{self.workflow_name}.png"
 
     def refresh_preview(self):
+        if self._load_cancelled:
+            return
         preview_path = self._get_preview_path()
         if preview_path.exists():
-            self._load_and_scale_preview(preview_path)
+            self._load_preview_async(preview_path)
         else:
             self._create_placeholder()
 
-    # ✅ 点击卡片任意位置打开画布
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._on_open_clicked()
@@ -259,10 +280,31 @@ class WorkflowCard(CardWidget):
             self.home.edit_workflow(self.file_path)
 
     def closeEvent(self, event):
+        self._load_cancelled = True
         if self._image_thread and self._image_thread.isRunning():
             self._image_thread.quit()
             self._image_thread.wait()
         super().closeEvent(event)
+
+    def hideEvent(self, event):
+        self._load_cancelled = True
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        self._load_cancelled = False
+        super().showEvent(event)
+        needs_load = False
+        if not self._preview_loaded:
+            needs_load = True
+        elif self.image_label.pixmap() is None or self.image_label.pixmap().isNull():
+            needs_load = True
+
+        if needs_load:
+            preview_path = self._get_preview_path()
+            if preview_path.exists():
+                self._load_preview_async(preview_path)
+            else:
+                self._create_placeholder()
 
     def sizeHint(self):
         default_width = 320

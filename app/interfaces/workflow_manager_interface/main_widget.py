@@ -4,28 +4,56 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Set
 
-from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QSize, QEvent, QObject
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QFileDialog, QFrame, QHBoxLayout
+from PyQt5.QtCore import QEasingCurve, QTimer, QThread, Qt, pyqtSignal, QSize
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QSplitter,
+    QStackedWidget,
+)
 from loguru import logger
 from qfluentwidgets import (
-    FlowLayout, InfoBar, SmoothScrollArea,
-    PipsPager, PipsScrollButtonDisplayMode, ComboBox, CaptionLabel, SearchLineEdit, TransparentToggleToolButton
+    FlowLayout,
+    InfoBar,
+    SmoothScrollArea,
+    ComboBox,
+    CaptionLabel,
+    SearchLineEdit,
+    TransparentToggleToolButton,
+    SegmentedWidget,
+    FluentIcon,
+    TransparentPushButton,
 )
 
 from .constants import *
 from app.interfaces.canvas_interaface import CanvasPage
-from app.interfaces.workflow_manager_interface.utils.utils import _migrate_legacy_workflow_structure, \
-    WorkflowFileInfoScanner, _normalize_canvas_folder
+from app.interfaces.workflow_manager_interface.utils.utils import (
+    _migrate_legacy_workflow_structure,
+    WorkflowFileInfoScanner,
+    _normalize_canvas_folder,
+)
 from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_pinyin_search_keys
-from app.interfaces.workflow_manager_interface.widgets.workflow_card import WorkflowCard, ActionCard
+from app.interfaces.workflow_manager_interface.widgets.workflow_card import WorkflowCard
+from app.interfaces.workflow_manager_interface.widgets.workflow_list_view import (
+    WorkflowListView,
+)
+from app.interfaces.workflow_manager_interface.widgets.workflow_preview_panel import (
+    WorkflowPreviewPanel,
+)
 from app.widgets.dialog_widget.custom_messagebox import CustomInputDialog
+from app.server_manager.cloud_bakup.canvas_cloud_manager import CanvasCloudManager
+
+VIEW_MODE_GRID = "grid"
+VIEW_MODE_LIST = "list"
 
 
-
-class WorkflowCanvasGalleryPage(QWidget, QObject):
+class WorkflowCanvasGalleryPage(QWidget):
     scan_finished = pyqtSignal(list, dict)
     component_code_changed = pyqtSignal(str, str)
     exported_projects_changed = pyqtSignal(str, str)
@@ -41,28 +69,19 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.opened_workflows = {}
         self._is_loading = False
         self._filter_text = ""
-        self.page_size = 12
-        self.fixed_card_count = 1
-        self.current_page = 0
-        self.total_pages = 1
         self.all_workflow_paths: List[Path] = []
         self._card_map: Dict[Path, WorkflowCard] = {}
         self._known_files: Set[Path] = set()
         self._file_info_map: Dict[str, dict] = {}
-        self._fixed_card: ActionCard = None
         self._refresh_pending = False
+        self._recommendation_engine_built = False
         self.recommendation_engine = NodeRecommendationEngine()
-        self._last_wheel_time = 0
-        self._wheel_threshold = 100
+        self._canvas_cloud_mgr = CanvasCloudManager()
+
+        self._view_mode = VIEW_MODE_GRID
 
         self._setup_ui()
-        self._create_fixed_card()
-        self.build_recommendation_engine()
         self.load_workflows()
-
-    def _create_fixed_card(self):
-        if self._fixed_card is None:
-            self._fixed_card = ActionCard(parent=self)
 
     def _get_workflow_dir(self):
         wf_dirs = []
@@ -80,46 +99,71 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        main_layout.setSpacing(16)
 
         top_bar = QHBoxLayout()
-        top_bar.setSpacing(16)
-        top_bar.setContentsMargins(50, 0, 70, 0)
-
-        # 国际化标签
-        sort_label = CaptionLabel(self.tr("排序字段："), self)
-        self.sort_field_combo = ComboBox(self)
-        self.sort_field_combo.addItems([
-            self.tr("修改时间"),
-            self.tr("创建时间"),
-            self.tr("画布名称")
-        ])
-        self.sort_field_combo.setCurrentIndex(0)
-        self.sort_field_combo.setFixedWidth(100)
-        self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
-
-        self.sort_order_button = TransparentToggleToolButton(self)
-        self.sort_order_button.setIcon(get_icon("降序"))
-        self.sort_order_button.setIconSize(QSize(20, 20))
-        self.sort_order_button.setChecked(False)
-        self.sort_order_button.setToolTip(self.tr("点击切换排序方向"))
-        self.sort_order_button.clicked.connect(self._on_sort_order_changed)
-
+        top_bar.setSpacing(12)
+        top_bar.setContentsMargins(0, 0, 0, 0)
+        top_bar.addSpacing(60)
         self.search_line_edit = SearchLineEdit(self)
-        self.search_line_edit.setPlaceholderText(self.tr("搜索画布名称..."))
-        self.search_line_edit.setFixedWidth(220)
+        self.search_line_edit.setPlaceholderText(self.tr("搜索..."))
+        self.search_line_edit.setFixedWidth(350)
+        self._search_debounce_timer = QTimer(self)
+        self._search_debounce_timer.setSingleShot(True)
+        self._search_debounce_timer.timeout.connect(self._do_search)
         self.search_line_edit.textChanged.connect(self._on_search_changed)
         self.search_line_edit.searchSignal.connect(self._on_search_changed)
         self.search_line_edit.clearSignal.connect(self._on_search_changed)
+        top_bar.addWidget(self.search_line_edit)
+
+        self.sort_field_combo = ComboBox(self)
+        self.sort_field_combo.addItems(
+            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称")]
+        )
+        self.sort_field_combo.setCurrentIndex(0)
+        self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
+        top_bar.addWidget(self.sort_field_combo)
+
+        self.sort_order_button = TransparentToggleToolButton(self)
+        self.sort_order_button.setIcon(get_icon("降序"))
+        self.sort_order_button.setIconSize(QSize(16, 16))
+        self.sort_order_button.setChecked(False)
+        self.sort_order_button.setToolTip(self.tr("降序"))
+        self.sort_order_button.clicked.connect(self._on_sort_order_changed)
+        top_bar.addWidget(self.sort_order_button)
+        self.view_segment = SegmentedWidget(self)
+        self.view_segment.setFixedHeight(28)
+        self.view_segment.setFixedWidth(120)
+        self.view_segment.addItem("grid", self.tr("网格"), icon=get_icon("网格"))
+        self.view_segment.addItem("list", self.tr("列表"), icon=get_icon("列表"))
+        self.view_segment.setCurrentItem("grid")
+        self.view_segment.currentItemChanged.connect(self._on_view_mode_changed)
+        top_bar.addSpacing(8)
+        top_bar.addWidget(self.view_segment)
 
         top_bar.addStretch()
-        top_bar.addWidget(self.search_line_edit)
-        top_bar.addWidget(sort_label)
-        top_bar.addWidget(self.sort_field_combo)
-        top_bar.addWidget(self.sort_order_button)
+        self.new_btn = TransparentPushButton(self.tr("新建画布"), self, FluentIcon.ADD)
+        self.new_btn.setIconSize(QSize(20, 20))
+        self.new_btn.clicked.connect(lambda: self.new_canvas())
+        top_bar.addWidget(self.new_btn)
 
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(20)
+        self.template_btn = TransparentPushButton(
+            self.tr("从模板创建"), self, FluentIcon.DOWNLOAD
+        )
+        self.template_btn.setIconSize(QSize(20, 20))
+        self.template_btn.clicked.connect(lambda: self.new_canvas(from_template=True))
+        top_bar.addWidget(self.template_btn)
+
+        self.import_btn = TransparentPushButton(
+            self.tr("导入画布"), self, get_icon("导入文件")
+        )
+        self.import_btn.setIconSize(QSize(20, 20))
+        self.import_btn.clicked.connect(lambda: self.import_canvas())
+        top_bar.addWidget(self.import_btn)
+        top_bar.addSpacing(150)
+        self.grid_container = QWidget()
+        self.grid_layout = QVBoxLayout(self.grid_container)
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = SmoothScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
@@ -127,7 +171,6 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.viewport().installEventFilter(self)
 
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
@@ -139,52 +182,53 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self.flow_layout.setHorizontalSpacing(30)
 
         self.scroll_area.setWidget(self.scroll_widget)
+        self.grid_layout.addWidget(self.scroll_area)
 
-        self.pips_pager = PipsPager(Qt.Vertical)
-        self.pips_pager.setPageNumber(1)
-        self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
-        self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setFixedWidth(10)
+        self.list_container = QWidget()
+        self.list_container.hide()
+        self.list_layout = QHBoxLayout(self.list_container)
+        self.list_layout.setContentsMargins(0, 0, 0, 0)
+        self.list_layout.setSpacing(0)
 
-        content_layout.addWidget(self.scroll_area, 1)
-        content_layout.addWidget(self.pips_pager, 0)
+        self.workflow_list_view = WorkflowListView(self)
+        self.workflow_list_view.current_changed.connect(self._on_list_selection_changed)
+
+        self.preview_panel = WorkflowPreviewPanel(self)
+        self.preview_panel.setMinimumWidth(400)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.workflow_list_view)
+        splitter.addWidget(self.preview_panel)
+        splitter.setSizes([600, 300])
+        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(1, 1)
+
+        self.list_layout.addWidget(splitter)
+
+        self.content_container = QStackedWidget()
+        self.content_container.addWidget(self.grid_container)
+        self.content_container.addWidget(self.list_container)
 
         main_layout.addLayout(top_bar)
-        main_layout.addLayout(content_layout)
+        main_layout.addWidget(self.content_container, 1)
 
-    def eventFilter(self, obj, event):
-        if obj == self.scroll_area.viewport() and event.type() == QEvent.Wheel:
-            from PyQt5.QtCore import QTime
-            current_time = QTime.currentTime().msecsSinceStartOfDay()
-            if current_time - self._last_wheel_time < self._wheel_threshold:
-                return True
-            self._last_wheel_time = current_time
+    def _on_view_mode_changed(self, mode: str):
+        if mode == "grid":
+            self._view_mode = VIEW_MODE_GRID
+            self.content_container.setCurrentWidget(self.grid_container)
+            QTimer.singleShot(10, self._refresh_grid_view)
+        else:
+            self._view_mode = VIEW_MODE_LIST
+            self.content_container.setCurrentWidget(self.list_container)
 
-            scrollbar = self.scroll_area.verticalScrollBar()
-            current_value = scrollbar.value()
-            max_value = scrollbar.maximum()
-            min_value = scrollbar.minimum()
-
-            if (current_value >= max_value - 5 and event.angleDelta().y() < 0) or \
-                    (max_value == 0 and event.angleDelta().y() < 0 and self.current_page < self.total_pages - 1):
-                if self.current_page < self.total_pages - 1:
-                    new_page_index = self.current_page + 1
-                    self.pips_pager.setCurrentIndex(new_page_index)
-                    QTimer.singleShot(5, lambda: scrollbar.setValue(min_value))
-                    return True
-
-            elif (current_value <= min_value + 5 and event.angleDelta().y() > 0) or \
-                    (max_value == 0 and event.angleDelta().y() > 0 and self.current_page > 0):
-                if self.current_page > 0:
-                    new_page_index = self.current_page - 1
-                    self.pips_pager.setCurrentIndex(new_page_index)
-                    QTimer.singleShot(5, lambda: scrollbar.setValue(scrollbar.maximum()))
-                    return True
-
-        return super().eventFilter(obj, event)
+    def _on_list_selection_changed(self, workflow_path: Path):
+        file_info = self._file_info_map.get(str(workflow_path))
+        self.preview_panel.set_workflow(workflow_path, file_info)
 
     def build_recommendation_engine(self):
+        if self._recommendation_engine_built:
+            return
+        self._recommendation_engine_built = True
         component_map, _ = ComponentScanner().get_components()
         self.recommendation_engine._recommendation_cache.clear()
         self.recommendation_engine._build_index(component_map)
@@ -199,31 +243,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             self.sort_order_button.setToolTip(self.tr("当前：降序（点击切换为升序）"))
         self._on_sort_changed()
 
-    def _calculate_cards_per_page(self) -> int:
-        if not self.scroll_area or self.scroll_area.viewport().width() <= 0:
-            return 12
-
-        card_width = 320
-        if self._card_map:
-            sample_card = next(iter(self._card_map.values()))
-            if sample_card.width() > 50:
-                card_width = sample_card.width()
-        elif self._fixed_card and self._fixed_card.width() > 50:
-            card_width = self._fixed_card.width()
-
-        margins = self.flow_layout.contentsMargins()
-        spacing = self.flow_layout.horizontalSpacing()
-        available_width = self.scroll_area.viewport().width() - margins.left() - margins.right()
-
-        if available_width <= card_width:
-            cards_per_row = 1
-        else:
-            cards_per_row = max(1, int((available_width + spacing) / (card_width + spacing)))
-
-        return cards_per_row * 3
-
     def _schedule_refresh(self):
-        if not hasattr(self, '_refresh_timer'):
+        if not hasattr(self, "_refresh_timer"):
             self._refresh_timer = QTimer(self)
             self._refresh_timer.setSingleShot(True)
             self._refresh_timer.timeout.connect(self._load_workflows_safe)
@@ -240,7 +261,7 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         _migrate_legacy_workflow_structure(self.workflow_dir)
 
         if self._is_loading:
-            if hasattr(self, '_scanner') and hasattr(self, '_thread'):
+            if hasattr(self, "_scanner") and hasattr(self, "_thread"):
                 try:
                     self._scanner.stop()
                     self._thread.quit()
@@ -260,9 +281,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
-    def _on_detailed_scan_finished(self, workflow_files: List[Path], file_info_map: dict):
+    def _on_detailed_scan_finished(
+        self, workflow_files: List[Path], file_info_map: dict
+    ):
         self._is_loading = False
-        if hasattr(self, '_refresh_timer') and self._refresh_timer.isActive():
+        if hasattr(self, "_refresh_timer") and self._refresh_timer.isActive():
             return
 
         old_file_info_map = self._file_info_map.copy()
@@ -272,72 +295,29 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         for wf_path in workflow_files:
             if wf_path not in self._card_map:
                 try:
-                    card = WorkflowCard(wf_path, self, self._file_info_map.get(str(wf_path)))
+                    card = WorkflowCard(
+                        wf_path, self, self._file_info_map.get(str(wf_path))
+                    )
                     card.hide()
                     self._card_map[wf_path] = card
                 except Exception:
                     import traceback
+
                     traceback.print_exc()
 
         for wf_path, card in self._card_map.items():
             old_info = old_file_info_map.get(str(wf_path))
             new_info = self._file_info_map.get(str(wf_path))
             if old_info and new_info:
-                if (old_info.get('mtime_ts') != new_info.get('mtime_ts') or
-                        old_info.get('ctime_ts') != new_info.get('ctime_ts')):
+                if old_info.get("mtime_ts") != new_info.get("mtime_ts") or old_info.get(
+                    "ctime_ts"
+                ) != new_info.get("ctime_ts"):
                     card.update_file_info(new_info)
             elif new_info:
                 card.update_file_info(new_info)
 
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
-
-    def _show_page(self, page_index: int):
-        self.current_page = page_index
-
-        if self._fixed_card is None:
-            self._create_fixed_card()
-
-        self._fixed_card.hide()
-        for card in self._card_map.values():
-            card.hide()
-
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-
-        if page_index == 0:
-            self.flow_layout.addWidget(self._fixed_card)
-            self._fixed_card.show()
-
-            workflow_slots = self.page_size - self.fixed_card_count
-            workflow_to_show = self.all_workflow_paths[:workflow_slots]
-            for wf_path in workflow_to_show:
-                card = self._card_map.get(wf_path)
-                if card is not None:
-                    self.flow_layout.addWidget(card)
-                    card.show()
-        else:
-            first_page_count = max(0, self.page_size - self.fixed_card_count)
-            start = first_page_count + (page_index - 1) * self.page_size
-            end = start + self.page_size
-            workflow_to_show = self.all_workflow_paths[start:end]
-            for wf_path in workflow_to_show:
-                card = self._card_map.get(wf_path)
-                if card is not None:
-                    self.flow_layout.addWidget(card)
-                    card.show()
-
-        self.scroll_widget.adjustSize()
-
-    def _on_page_changed(self, index: int):
-        self._show_page(index)
-
-    def _on_search_changed(self, text: str):
-        self._filter_text = text.strip().lower()
-        self._apply_sort_and_filter_and_refresh()
-
-    def _on_sort_changed(self, index=None):
-        self._apply_sort_and_filter_and_refresh()
 
     def _apply_sort_and_filter_and_refresh(self):
         if self._is_loading:
@@ -352,8 +332,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             file_with_info = []
             for wf_path in self._known_files:
                 info = self._file_info_map.get(str(wf_path), {})
-                ctime_ts = info.get('ctime_ts', 0)
-                mtime_ts = info.get('mtime_ts', 0)
+                ctime_ts = info.get("ctime_ts", 0)
+                mtime_ts = info.get("mtime_ts", 0)
                 name = wf_path.parent.name
                 if self._filter_text:
                     if name not in self._pinyin_cache:
@@ -375,69 +355,84 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             file_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
-        self.page_size = self._calculate_cards_per_page()
-        total_workflow = len(self.all_workflow_paths)
-        if total_workflow == 0:
-            self.total_pages = 1
-        else:
-            first_page_workflow_slots = max(0, self.page_size - self.fixed_card_count)
-            if first_page_workflow_slots <= 0:
-                self.total_pages = 1
-            else:
-                remaining = total_workflow - first_page_workflow_slots
-                if remaining <= 0:
-                    self.total_pages = 1
-                else:
-                    self.total_pages = 1 + ((remaining + self.page_size - 1) // self.page_size)
+        self._refresh_grid_view()
+        self._refresh_list_view()
 
-        self.pips_pager.setPageNumber(self.total_pages)
-        target_page = min(self.current_page, self.total_pages - 1)
-        self._show_page(target_page)
+    def _refresh_grid_view(self):
+        for card in self._card_map.values():
+            card.hide()
+
+        while self.flow_layout.count():
+            self.flow_layout.takeAt(0)
+
+        for wf_path in self.all_workflow_paths:
+            card = self._card_map.get(wf_path)
+            if card is not None:
+                self.flow_layout.addWidget(card)
+                card.show()
+
+        self.flow_layout.invalidate()
+        QTimer.singleShot(0, self.scroll_widget.update)
+
+    def _refresh_list_view(self):
+        self.workflow_list_view.set_file_info_map(self._file_info_map)
+        self.workflow_list_view.refresh(self.all_workflow_paths)
+
+    def _on_search_changed(self, text: str):
+        self._filter_text = text.strip().lower()
+        self._search_debounce_timer.start(300)
+
+    def _do_search(self):
+        self._apply_sort_and_filter_and_refresh()
+
+    def _on_sort_changed(self, index=None):
+        self._apply_sort_and_filter_and_refresh()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        QTimer.singleShot(100, self._on_resize)
 
-    def _on_resize(self):
-        if self._is_loading:
-            return
-        new_page_size = self._calculate_cards_per_page()
-        if new_page_size != self.page_size:
-            self.page_size = new_page_size
-            self._apply_sort_and_filter_and_refresh()
-
-    # ================== 业务逻辑 ==================
+    def showEvent(self, event):
+        super().showEvent(event)
 
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:
-            canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
+            canvas_page = CanvasPage(
+                self.parent_window, object_name=file_path, manager=self
+            )
             canvas_page.property_panel.set_allowed_update(False)
             canvas_page.load_full_workflow(file_path)
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
-                    self._schedule_refresh()
+                    self._schedule_refresh(),
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
-            # "模型" 是图标名，通常不需要翻译，但 label 参数 file_path.parent.name 是动态的
-            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
+            self.parent_window.addSubInterface(
+                canvas_page, get_icon("模型"), file_path.parent.name, parent=self
+            )
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
 
     def new_canvas(self, window=None, from_template=False):
-        name_dialog = CustomInputDialog(self.tr("新建画布"), self.tr("请输入画布名称"), parent=window or self)
+        name_dialog = CustomInputDialog(
+            self.tr("新建画布"), self.tr("请输入画布名称"), parent=window or self
+        )
         if not name_dialog.exec():
             return
         base_name = name_dialog.get_text().strip()
         if not base_name:
-            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=window or self)
+            InfoBar.warning(
+                self.tr("名称无效"), self.tr("画布名称不能为空"), parent=window or self
+            )
             return
 
         counter = 0
         while True:
-            canvas_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
+            canvas_folder = self.workflow_dir[0] / (
+                base_name if counter == 0 else f"{base_name}_{counter}"
+            )
             if not (canvas_folder / f"{base_name}.workflow.json").exists():
                 break
             counter += 1
@@ -446,21 +441,25 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         file_path = canvas_folder / f"{canvas_folder.name}.workflow.json"
 
         if file_path not in self.opened_workflows:
-            canvas_page = CanvasPage(self.parent_window, object_name=file_path, manager=self)
-            canvas_page._deferred_initialization(),
+            canvas_page = CanvasPage(
+                self.parent_window, object_name=file_path, manager=self
+            )
+            (canvas_page._deferred_initialization(),)
             canvas_page.environment_manager.load_env_combos()
             canvas_page.property_panel.set_allowed_update(True)
             canvas_page.property_panel.update_properties(None)
             canvas_page.canvas_deleted.connect(
                 lambda: (
                     self.opened_workflows.pop(file_path, None),
-                    self._schedule_refresh()
+                    self._schedule_refresh(),
                 )
             )
             canvas_page.canvas_saved.connect(self._on_canvas_saved)
             if from_template:
                 canvas_page.start_from_template()
-            self.parent_window.addSubInterface(canvas_page, get_icon("模型"), file_path.parent.name, parent=self)
+            self.parent_window.addSubInterface(
+                canvas_page, get_icon("模型"), file_path.parent.name, parent=self
+            )
             self.opened_workflows[file_path] = canvas_page
 
         self.parent_window.switchTo(self.opened_workflows[file_path])
@@ -468,27 +467,33 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
 
     def import_canvas(self):
         folder_path = QFileDialog.getExistingDirectory(
-            self,
-            self.tr("选择要导入的画布文件夹"),
-            str(self.workflow_dir[0])
+            self, self.tr("选择要导入的画布文件夹"), str(self.workflow_dir[0])
         )
         if not folder_path:
             return
 
         src_folder = Path(folder_path)
         if not src_folder.is_dir():
-            InfoBar.error(self.tr("无效目录"), self.tr("请选择有效的画布文件夹"), parent=self)
+            InfoBar.error(
+                self.tr("无效目录"), self.tr("请选择有效的画布文件夹"), parent=self
+            )
             return
 
         wf_files = list(src_folder.glob("*.workflow.json"))
         if not wf_files:
-            InfoBar.error(self.tr("无效画布"), self.tr("所选文件夹中未找到 .workflow.json 文件"), parent=self)
+            InfoBar.error(
+                self.tr("无效画布"),
+                self.tr("所选文件夹中未找到 .workflow.json 文件"),
+                parent=self,
+            )
             return
 
         base_name = src_folder.name
         counter = 0
         while True:
-            dest_folder = self.workflow_dir[0] / (base_name if counter == 0 else f"{base_name}_{counter}")
+            dest_folder = self.workflow_dir[0] / (
+                base_name if counter == 0 else f"{base_name}_{counter}"
+            )
             if not dest_folder.exists():
                 break
             counter += 1
@@ -502,27 +507,41 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 if f.is_file():
                     os.utime(f, (now, now))
 
-            InfoBar.success(self.tr("导入成功"), self.tr("已导入画布 “{}”").format(dest_folder.name), parent=self)
+            InfoBar.success(
+                self.tr("导入成功"),
+                self.tr('已导入画布 "{}"').format(dest_folder.name),
+                parent=self,
+            )
             self._schedule_refresh()
 
         except Exception as e:
-            InfoBar.error(self.tr("导入失败"), self.tr("无法复制文件夹：{}").format(e), parent=self)
+            InfoBar.error(
+                self.tr("导入失败"),
+                self.tr("无法复制文件夹：{}").format(e),
+                parent=self,
+            )
 
     def edit_workflow(self, src_path: Path):
         src_folder = src_path.parent
         old_name = src_folder.name
 
-        dialog = CustomInputDialog(self.tr("重命名画布"), self.tr("请输入新名称"), old_name, self)
+        dialog = CustomInputDialog(
+            self.tr("重命名画布"), self.tr("请输入新名称"), old_name, self
+        )
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
         if not new_name:
-            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self)
+            InfoBar.warning(
+                self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self
+            )
             return
 
         counter = 0
         while True:
-            new_folder = self.workflow_dir[0] / (new_name if counter == 0 else f"{new_name}_{counter}")
+            new_folder = self.workflow_dir[0] / (
+                new_name if counter == 0 else f"{new_name}_{counter}"
+            )
             if not new_folder.exists():
                 break
             counter += 1
@@ -541,11 +560,19 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 old_card.hide()
                 old_card.deleteLater()
 
+            if src_path in self.workflow_list_view._item_widgets:
+                widget = self.workflow_list_view._item_widgets.pop(src_path)
+                widget.deleteLater()
+
             old_name_key = src_path.parent.name
             if old_name_key in self._pinyin_cache:
                 del self._pinyin_cache[old_name_key]
 
-            InfoBar.success(self.tr("重命名成功"), self.tr("已重命名为 {}").format(new_name), parent=self)
+            InfoBar.success(
+                self.tr("重命名成功"),
+                self.tr("已重命名为 {}").format(new_name),
+                parent=self,
+            )
             self._schedule_refresh()
         except Exception as e:
             InfoBar.error(self.tr("重命名失败"), str(e), parent=self)
@@ -554,17 +581,23 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         src_folder = src_path.parent
         old_name = src_folder.name
 
-        dialog = CustomInputDialog(self.tr("复制画布"), self.tr("请输入新画布名称"), old_name + "_copy", self)
+        dialog = CustomInputDialog(
+            self.tr("复制画布"), self.tr("请输入新画布名称"), old_name + "_copy", self
+        )
         if not dialog.exec():
             return
         new_name = dialog.get_text().strip()
         if not new_name:
-            InfoBar.warning(self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self)
+            InfoBar.warning(
+                self.tr("名称无效"), self.tr("画布名称不能为空"), parent=self
+            )
             return
 
         counter = 0
         while True:
-            new_folder = self.workflow_dir[0] / (new_name if counter == 0 else f"{new_name}_{counter}")
+            new_folder = self.workflow_dir[0] / (
+                new_name if counter == 0 else f"{new_name}_{counter}"
+            )
             if not new_folder.exists():
                 break
             counter += 1
@@ -573,7 +606,9 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             shutil.copytree(src_folder, new_folder)
             _normalize_canvas_folder(new_folder)
 
-            InfoBar.success(self.tr("复制成功"), self.tr("已创建 {}").format(new_name), parent=self)
+            InfoBar.success(
+                self.tr("复制成功"), self.tr("已创建 {}").format(new_name), parent=self
+            )
             self._schedule_refresh()
         except Exception as e:
             InfoBar.error(self.tr("复制失败"), str(e), parent=self)
@@ -582,9 +617,8 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         from qfluentwidgets import MessageBox
 
         name = file_path.parent.name
-        # 使用 tr() 格式化确认消息
         title = self.tr("确认删除")
-        content = self.tr("确定要删除画布 \"{}\" 吗？\n此操作不可恢复！").format(name)
+        content = self.tr('确定要删除画布 "{}" 吗？\n此操作不可恢复！').format(name)
 
         w = MessageBox(title, content, self)
         if not w.exec():
@@ -593,7 +627,11 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
         try:
             shutil.rmtree(file_path.parent)
 
-            InfoBar.success(self.tr("删除成功"), self.tr("画布 '{}' 已删除").format(name), parent=self)
+            InfoBar.success(
+                self.tr("删除成功"),
+                self.tr("画布 '{}' 已删除").format(name),
+                parent=self,
+            )
 
             if file_path in self.opened_workflows:
                 self.parent_window.removeInterface(self.opened_workflows[file_path])
@@ -605,19 +643,67 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
                 old_card.hide()
                 old_card.deleteLater()
 
+            if file_path in self.workflow_list_view._item_widgets:
+                widget = self.workflow_list_view._item_widgets.pop(file_path)
+                widget.deleteLater()
+
             self._schedule_refresh()
         except Exception as e:
             InfoBar.error(self.tr("删除失败"), str(e), parent=self)
+
+    def backup_workflow_to_cloud(self, file_path: Path):
+        try:
+            folder = file_path.parent
+            workflow_name = folder.name
+            json_path = file_path
+            image_path = folder / f"{workflow_name}.png"
+
+            meta_info = {
+                "id": workflow_name,
+                "name": workflow_name,
+                "category": "默认",
+                "description": "",
+                "version": "1.0.0",
+            }
+
+            success = self._canvas_cloud_mgr.add_canvas(
+                meta_info=meta_info,
+                json_path=str(json_path),
+                image_path=str(image_path) if image_path.exists() else None,
+            )
+
+            if success:
+                InfoBar.success(
+                    self.tr("备份成功"),
+                    self.tr("画布 '{}' 已备份到云端").format(workflow_name),
+                    parent=self,
+                )
+            else:
+                InfoBar.error(
+                    self.tr("备份失败"),
+                    self.tr("云端返回失败，请检查网络和配置"),
+                    parent=self,
+                )
+        except Exception as e:
+            logger.error(f"Backup workflow failed: {e}")
+            InfoBar.error(self.tr("备份失败"), str(e), parent=self)
+
+    def refresh_workflow_folder_size(self, file_path: Path):
+        self.workflow_list_view.refresh_folder_size(file_path)
 
     def _on_canvas_saved(self, workflow_path: Path):
         try:
             stat = workflow_path.stat()
             file_info = {
-                'ctime': datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M"),
-                'mtime': datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
-                'size_kb': stat.st_size // 1024,
-                'mtime_ts': stat.st_mtime,
-                'ctime_ts': stat.st_ctime,
+                "ctime": datetime.fromtimestamp(stat.st_ctime).strftime(
+                    "%Y-%m-%d %H:%M"
+                ),
+                "mtime": datetime.fromtimestamp(stat.st_mtime).strftime(
+                    "%Y-%m-%d %H:%M"
+                ),
+                "size_kb": stat.st_size // 1024,
+                "mtime_ts": stat.st_mtime,
+                "ctime_ts": stat.st_ctime,
             }
             self._file_info_map[str(workflow_path)] = file_info
             card = self._card_map.get(workflow_path)
@@ -627,5 +713,5 @@ class WorkflowCanvasGalleryPage(QWidget, QObject):
             logger.error(f"Update card info failed: {e}")
 
         card = self._card_map.get(workflow_path)
-        if card and hasattr(card, 'refresh_preview'):
+        if card and hasattr(card, "refresh_preview"):
             card.refresh_preview()
