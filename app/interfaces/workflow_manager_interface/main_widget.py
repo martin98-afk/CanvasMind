@@ -198,9 +198,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.workflow_list_view)
         splitter.addWidget(self.preview_panel)
-        splitter.setSizes([600, 400])
+        splitter.setSizes([600, 100])
         splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(1, 1)
 
         self.list_layout.addWidget(splitter)
 
@@ -686,6 +686,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         except Exception as e:
             logger.error(f"Backup workflow failed: {e}")
             InfoBar.error(self.tr("备份失败"), str(e), parent=self)
+
+    def refresh_workflow_folder_size(self, file_path: Path):
+        self.workflow_list_view.refresh_folder_size(file_path)
 
     def _on_canvas_saved(self, workflow_path: Path):
         try:

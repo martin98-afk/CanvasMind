@@ -101,9 +101,6 @@ class WorkflowPreviewPanel(CardWidget):
 
         layout.addLayout(self.info_grid)
 
-        self.btn_layout = QHBoxLayout()
-        self.btn_layout.setSpacing(8)
-
         btn_style = """
             QPushButton {
                 background-color: rgba(255, 255, 255, 0.1);
@@ -124,11 +121,21 @@ class WorkflowPreviewPanel(CardWidget):
             }
         """
 
+        self.btn_layout = QHBoxLayout()
+        self.btn_layout.setSpacing(8)
+        self.btn_layout.setContentsMargins(0, 8, 0, 0)
+
         self.open_btn = QPushButton(self.tr("打开"), self)
         self.open_btn.setIcon(FluentIcon.LINK.icon())
         self.open_btn.setIconSize(QSize(16, 16))
         self.open_btn.setStyleSheet(btn_style)
         self.open_btn.clicked.connect(self._on_open_clicked)
+
+        self.open_folder_btn = QPushButton(self.tr("打开所在位置"), self)
+        self.open_folder_btn.setIcon(FluentIcon.FOLDER.icon())
+        self.open_folder_btn.setIconSize(QSize(16, 16))
+        self.open_folder_btn.setStyleSheet(btn_style)
+        self.open_folder_btn.clicked.connect(self._on_open_folder_clicked)
 
         self.copy_btn = QPushButton(self.tr("复制"), self)
         self.copy_btn.setIcon(FluentIcon.COPY.icon())
@@ -148,10 +155,11 @@ class WorkflowPreviewPanel(CardWidget):
         self.delete_btn.setStyleSheet(btn_style)
         self.delete_btn.clicked.connect(self._on_delete_clicked)
 
-        self.btn_layout.addWidget(self.open_btn)
-        self.btn_layout.addWidget(self.copy_btn)
-        self.btn_layout.addWidget(self.rename_btn)
-        self.btn_layout.addWidget(self.delete_btn)
+        separator = QWidget()
+        separator.setFixedWidth(1)
+        separator.setStyleSheet(
+            "background-color: rgba(255,255,255,0.1); margin: 0 4px;"
+        )
 
         self.clear_cache_btn = QPushButton(self.tr("清除缓存"), self)
         self.clear_cache_btn.setIcon(FluentIcon.DELETE.icon())
@@ -160,13 +168,19 @@ class WorkflowPreviewPanel(CardWidget):
         self.clear_cache_btn.clicked.connect(self._on_clear_cache_clicked)
 
         self.backup_btn = QPushButton(self.tr("备份"), self)
-        self.backup_btn.setIcon(FluentIcon.UPDATE.icon())
+        self.backup_btn.setIcon(get_icon("upload"))
         self.backup_btn.setIconSize(QSize(16, 16))
         self.backup_btn.setStyleSheet(btn_style)
         self.backup_btn.clicked.connect(self._on_backup_clicked)
 
-        self.btn_layout.addWidget(self.clear_cache_btn)
+        self.btn_layout.addWidget(self.open_btn)
+        self.btn_layout.addWidget(self.open_folder_btn)
         self.btn_layout.addWidget(self.backup_btn)
+        self.btn_layout.addWidget(self.copy_btn)
+        self.btn_layout.addWidget(self.rename_btn)
+        self.btn_layout.addWidget(separator)
+        self.btn_layout.addWidget(self.clear_cache_btn)
+        self.btn_layout.addWidget(self.delete_btn)
         layout.addLayout(self.btn_layout)
 
         self._set_buttons_enabled(False)
@@ -182,9 +196,12 @@ class WorkflowPreviewPanel(CardWidget):
 
     def _set_buttons_enabled(self, enabled: bool):
         self.open_btn.setEnabled(enabled)
+        self.open_folder_btn.setEnabled(enabled)
         self.copy_btn.setEnabled(enabled)
         self.rename_btn.setEnabled(enabled)
         self.delete_btn.setEnabled(enabled)
+        self.clear_cache_btn.setEnabled(enabled)
+        self.backup_btn.setEnabled(enabled)
 
     def set_workflow(
         self, workflow_path: Optional[Path], file_info: Optional[Dict[str, Any]] = None
@@ -250,6 +267,14 @@ class WorkflowPreviewPanel(CardWidget):
         ):
             self._gallery_page.open_canvas(self.current_workflow_path)
 
+    def _on_open_folder_clicked(self):
+        if not self.current_workflow_path:
+            return
+        import subprocess
+
+        folder = str(self.current_workflow_path)
+        subprocess.run(f'explorer /select,"{folder}"', shell=True)
+
     def _on_copy_clicked(self):
         if (
             self.current_workflow_path
@@ -308,6 +333,12 @@ class WorkflowPreviewPanel(CardWidget):
                 self.tr(f"已删除 {deleted_count} 个缓存项"),
                 parent=self,
             )
+            if self._gallery_page and hasattr(
+                self._gallery_page, "refresh_workflow_folder_size"
+            ):
+                self._gallery_page.refresh_workflow_folder_size(
+                    self.current_workflow_path
+                )
         else:
             InfoBar.info(
                 self.tr("无需清理"), self.tr("没有找到可清理的缓存"), parent=self

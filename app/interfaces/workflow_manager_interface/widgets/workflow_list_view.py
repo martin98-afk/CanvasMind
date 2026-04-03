@@ -156,6 +156,18 @@ class WorkflowListItem(QWidget):
         except Exception:
             return 0
 
+    def refresh_folder_size(self):
+        folder_size = self._calc_folder_size()
+        if folder_size > 0:
+            if folder_size > 1024 * 1024:
+                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
+            elif folder_size > 1024:
+                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
+            else:
+                self.folder_size_label.setText(f"{folder_size} B")
+        else:
+            self.folder_size_label.setText("--")
+
     def update_file_info(self, file_info: Dict):
         self.file_info = file_info
         self._apply_file_info()
@@ -342,6 +354,10 @@ class WorkflowListView(QWidget):
                 self.content_layout.insertWidget(i, widget)
 
         self.content_layout.update()
+
+    def refresh_folder_size(self, workflow_path: Path):
+        if workflow_path in self._item_widgets:
+            self._item_widgets[workflow_path].refresh_folder_size()
 
     def add_workflow(self, workflow_path: Path):
         if workflow_path in self._item_widgets:
