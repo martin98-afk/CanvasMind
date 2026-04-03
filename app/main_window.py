@@ -41,7 +41,6 @@ from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import LogPopupWidget
 from app.widgets.dialog_widget.setting_popup import SettingDialog
-from app.widgets.side_dock_area.registry import SideDockRegistry
 
 
 class LowCodeWindow(FluentWindow):
@@ -94,8 +93,6 @@ class LowCodeWindow(FluentWindow):
         # ------------启动监听器
         ComponentUsageTracker()  # 日志使用情况监督
         ComponentScanner()  # 日志实时监控服务
-        # ------------侧边栏插件加载
-        SideDockRegistry.discover_plugins()
 
         # ------------插件预加载
         plugin_manager = UnifiedPluginManager.get_instance()
