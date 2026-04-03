@@ -93,6 +93,7 @@ class LowCodeWindow(FluentWindow):
         # ------------启动监听器
         ComponentUsageTracker()  # 日志使用情况监督
         ComponentScanner()  # 日志实时监控服务
+
         # ------------插件预加载
         plugin_manager = UnifiedPluginManager.get_instance()
 

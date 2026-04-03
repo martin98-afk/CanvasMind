@@ -19,7 +19,7 @@ class ConditioningZeroOut(BaseComponent):
     name = "条件零化"
     category = "comfyui节点/基础节点"
     description = "将条件向量的所有值置零，用于生成无条件引导或中和条件影响"
-    requirements = "comfy,torch"
+    requirements = "#comfy,torch"
     inputs = [
         PortDefinition(name="conditioning", label="条件向量", type=ArgumentType.OBJECT, sub_type="Conditioning", connection=ConnectionType.SINGLE),
     ]

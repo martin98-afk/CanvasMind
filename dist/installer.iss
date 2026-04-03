@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "CanvasMind"
-#define MyAppVersion "v0.4.1"
+#define MyAppVersion "v0.4.2"
 #define MyAppPublisher "Jinshan Psychiatric Hospital"
 #define MyAppURL "https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/"
 #define MyAppExeName "CanvasMind.exe"

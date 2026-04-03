@@ -179,6 +179,8 @@ class PluginTemplateToolWindow(ToolWindow):
     name = "插件模板库"
     icon = ":/icons/组件.png"
     default_position = DockPosition.TOP
+    CATEGORIES = ["运行画布", "组件开发"]
+    display_order = 50
 
     def setup_ui(self):
         self.plugin_manager = UnifiedPluginManager.get_instance()

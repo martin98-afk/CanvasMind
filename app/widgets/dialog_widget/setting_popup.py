@@ -825,11 +825,7 @@ class SettingDialog(QDialog):
         layout.addWidget(self.canvasDisplayGroup)
 
     def _setup_sidebar_plugins_settings(self, layout):
-        from qfluentwidgets import (
-            ComboBox,
-        )
         from app.widgets.side_dock_area.registry import SideDockRegistry
-        from app.widgets.side_dock_area.tool_window import DockPosition
 
         self.sideDockPluginsGroup = QWidget()
         self.sideDockPluginsGroup.setSizePolicy(
@@ -842,7 +838,7 @@ class SettingDialog(QDialog):
         group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         sideDockGroupLayout.addWidget(group_label)
 
-        info_label = BodyLabel(self.tr("管理侧边栏插件的启用状态和显示位置"))
+        info_label = BodyLabel(self.tr("修改数值调整插件显示顺序，数值越小越靠前"))
         info_label.setStyleSheet("color: #888888; font-size: 12px;")
         sideDockGroupLayout.addWidget(info_label)
 
@@ -886,6 +882,8 @@ class SettingDialog(QDialog):
         card = QWidget(parent)
         card.setFixedHeight(50)
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        card._plugin_name = plugin_name
+        card._context_id = context_id
         card.setStyleSheet("""
             QWidget {
                 background-color: #333333;
@@ -946,6 +944,8 @@ class SettingDialog(QDialog):
         card_layout.addWidget(position_combo, 0, Qt.AlignRight)
 
         enable_switch = SwitchButton()
+        enable_switch.setOnText("")
+        enable_switch.setOffText("")
         enable_switch.setChecked(is_enabled)
         enable_switch.setFixedWidth(50)
         enable_switch._context_id = context_id

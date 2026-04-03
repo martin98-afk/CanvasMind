@@ -405,6 +405,12 @@ class SideDockArea(QWidget):
             self._show_bottom_tool(tool_name)
 
     def switch_to(self, tool_name):
+        if tool_name in self._popup_windows:
+            popup = self._popup_windows[tool_name]
+            popup.show()
+            popup.raise_()
+            popup.activateWindow()
+            return
         view = self.get_tool_instance(tool_name)
         if view is None:
             return
@@ -528,7 +534,7 @@ class SideDockArea(QWidget):
 
     def _load_plugins(self, context_id):
         top_classes = []
-        for name, entry in SideDockRegistry.get_all(context_id).items():
+        for name, entry in SideDockRegistry.get_all_entries(context_id).items():
             if not SideDockRegistry.is_plugin_enabled(context_id, name):
                 continue
             current_position = SideDockRegistry.get_plugin_position(context_id, name)

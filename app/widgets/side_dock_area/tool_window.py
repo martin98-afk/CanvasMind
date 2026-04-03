@@ -198,6 +198,7 @@ class ToolWindow(QWidget):
     icon = None
     singleton = True
     default_position: DockPosition = DockPosition.HIDDEN
+    display_order: int = 999
 
     _manifest: Optional[PluginManifest] = None
 

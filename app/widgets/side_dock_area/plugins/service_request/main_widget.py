@@ -5,15 +5,34 @@ import time
 from PyQt5.QtCore import Qt, QThreadPool, QRegExp, QSize
 from PyQt5.QtGui import QColor, QSyntaxHighlighter, QTextCharFormat, QFont
 from PyQt5.QtWidgets import (
-    QFrame, QVBoxLayout, QWidget, QHBoxLayout, QStackedWidget,
-    QLabel, QSizePolicy, QTextEdit
+    QFrame,
+    QVBoxLayout,
+    QWidget,
+    QHBoxLayout,
+    QStackedWidget,
+    QLabel,
+    QSizePolicy,
+    QTextEdit,
 )
 from qfluentwidgets import (
-    LineEdit, SpinBox, DoubleSpinBox, CheckBox, SwitchButton,
-    PrimaryPushButton, PushButton, BodyLabel, StrongBodyLabel,
-    CardWidget, SegmentedWidget, InfoBar, InfoBarPosition,
-    SmoothScrollArea, ToolButton, FluentIcon as FIF,
-    TextEdit, ComboBox
+    LineEdit,
+    SpinBox,
+    DoubleSpinBox,
+    CheckBox,
+    SwitchButton,
+    PrimaryPushButton,
+    PushButton,
+    BodyLabel,
+    StrongBodyLabel,
+    CardWidget,
+    SegmentedWidget,
+    InfoBar,
+    InfoBarPosition,
+    SmoothScrollArea,
+    ToolButton,
+    FluentIcon as FIF,
+    TextEdit,
+    ComboBox,
 )
 
 # 假设这些是你项目中的原有引用，保持不变
@@ -36,10 +55,10 @@ class JsonHighlighter(QSyntaxHighlighter):
         self.rules.append((QRegExp(r':\s*"[^"\\]*"'), fmt_str))
         fmt_num = QTextCharFormat()
         fmt_num.setForeground(QColor("#B5CEA8"))  # Number: Green
-        self.rules.append((QRegExp(r':\s*-?\d+(\.\d+)?'), fmt_num))
+        self.rules.append((QRegExp(r":\s*-?\d+(\.\d+)?"), fmt_num))
         fmt_bool = QTextCharFormat()
         fmt_bool.setForeground(QColor("#569CD6"))  # Bool: Dark Blue
-        self.rules.append((QRegExp(r':\s*(true|false|null)'), fmt_bool))
+        self.rules.append((QRegExp(r":\s*(true|false|null)"), fmt_bool))
 
     def highlightBlock(self, text):
         for pattern, format in self.rules:
@@ -47,8 +66,12 @@ class JsonHighlighter(QSyntaxHighlighter):
             index = expression.indexIn(text)
             while index >= 0:
                 length = expression.matchedLength()
-                if expression.pattern().startswith(r':\s*'):
-                    self.setFormat(index + text[index:].find(text[index:].strip()[0]), length, format)
+                if expression.pattern().startswith(r":\s*"):
+                    self.setFormat(
+                        index + text[index:].find(text[index:].strip()[0]),
+                        length,
+                        format,
+                    )
                 else:
                     self.setFormat(index, length, format)
                 index = expression.indexIn(text, index + length)
@@ -59,6 +82,8 @@ class ServiceTestTool(ToolWindow):
     name = "API 调试台"
     icon = get_icon("API测试")
     default_position = DockPosition.TOP
+    CATEGORIES = ["项目管理"]
+    display_order = 20
     thread_pool = QThreadPool.globalInstance()
 
     def setup_ui(self):
@@ -211,7 +236,9 @@ class ServiceTestTool(ToolWindow):
 
         self.url_edit = LineEdit()
         self.url_edit.setPlaceholderText("服务地址 URL")
-        self.url_edit.setReadOnly(True)  # 通常由refresh传入，设为只读避免误改，也可设为可写
+        self.url_edit.setReadOnly(
+            True
+        )  # 通常由refresh传入，设为只读避免误改，也可设为可写
         top_layout.addWidget(self.url_edit, 1)
 
         self.send_btn = PrimaryPushButton("发送请求")
@@ -231,13 +258,17 @@ class ServiceTestTool(ToolWindow):
         else:
             # 切换到 JSON 模式：自动将表单数据同步过去
             form_data = self._get_data_from_form()
-            self.json_edit.setPlainText(json.dumps(form_data, indent=4, ensure_ascii=False))
+            self.json_edit.setPlainText(
+                json.dumps(form_data, indent=4, ensure_ascii=False)
+            )
             self.input_stack.setCurrentIndex(1)
 
     def _create_input_widget(self, key, cfg):
         """生成表单项，包含类型标签和输入框"""
         container = QWidget()
-        container.setStyleSheet("background-color: rgba(255, 255, 255, 0.03); border-radius: 6px;")
+        container.setStyleSheet(
+            "background-color: rgba(255, 255, 255, 0.03); border-radius: 6px;"
+        )
         layout = QHBoxLayout(container)
         layout.setContentsMargins(12, 8, 12, 8)
 
@@ -324,7 +355,9 @@ class ServiceTestTool(ToolWindow):
             # 默认切回表单模式，并初始化 JSON 视图
             self.input_mode_tabs.setCurrentItem("Form")
             # 预填充 JSON（方便用户直接点开看）
-            self.json_edit.setPlainText(json.dumps(self._get_data_from_form(), indent=4, ensure_ascii=False))
+            self.json_edit.setPlainText(
+                json.dumps(self._get_data_from_form(), indent=4, ensure_ascii=False)
+            )
 
         else:
             self.service_url = None
@@ -358,7 +391,8 @@ class ServiceTestTool(ToolWindow):
             # 从 JSON 编辑器获取
             try:
                 text = self.json_edit.toPlainText()
-                if not text.strip(): return {}
+                if not text.strip():
+                    return {}
                 return json.loads(text)
             except json.JSONDecodeError as e:
                 raise ValueError(f"JSON 格式错误: {e}")
@@ -368,7 +402,9 @@ class ServiceTestTool(ToolWindow):
             text = self.json_edit.toPlainText()
             if text:
                 obj = json.loads(text)
-                self.json_edit.setPlainText(json.dumps(obj, indent=4, ensure_ascii=False))
+                self.json_edit.setPlainText(
+                    json.dumps(obj, indent=4, ensure_ascii=False)
+                )
         except:
             pass
 
@@ -382,17 +418,18 @@ class ServiceTestTool(ToolWindow):
             pass
 
     def _send_request(self):
-        if not self.service_url: return
+        if not self.service_url:
+            return
 
         try:
             payload = self._get_current_payload()
         except ValueError as e:
             InfoBar.error(
-                title='参数错误',
+                title="参数错误",
                 content=str(e),
                 position=InfoBarPosition.TOP,
                 parent=self,
-                duration=3000
+                duration=3000,
             )
             return
 
@@ -403,7 +440,9 @@ class ServiceTestTool(ToolWindow):
 
         # 强制更新一下 JSON 视图，确保两边一致（如果是在表单模式下发送）
         if self.input_mode_tabs.currentItem().text() == "表单填写":
-            self.json_edit.setPlainText(json.dumps(payload, indent=4, ensure_ascii=False))
+            self.json_edit.setPlainText(
+                json.dumps(payload, indent=4, ensure_ascii=False)
+            )
 
         worker = RequestWorker(self.service_url, payload)
         worker.signals.success.connect(self._on_request_success)
@@ -442,14 +481,15 @@ class ServiceTestTool(ToolWindow):
     def _clear_form(self):
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
+            if item.widget():
+                item.widget().deleteLater()
         self.input_widgets.clear()
 
     def _load_spec(self, project_path):
         # ... (保持原来的加载逻辑)
         spec_path = os.path.join(project_path, "project_spec.json")
         try:
-            with open(spec_path, 'r', encoding='utf-8') as f:
+            with open(spec_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except:
             return {"inputs": {}}

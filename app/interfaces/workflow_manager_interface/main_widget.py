@@ -28,7 +28,6 @@ from qfluentwidgets import (
     TransparentPushButton,
 )
 
-from .constants import *
 from app.interfaces.canvas_interaface import CanvasPage
 from app.interfaces.workflow_manager_interface.utils.utils import (
     _migrate_legacy_workflow_structure,

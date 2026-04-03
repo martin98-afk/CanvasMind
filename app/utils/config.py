@@ -58,6 +58,7 @@ class Settings(QConfig):
         """获取配置实例（单例模式）"""
         if cls._instance is None:
             cls._instance = cls()
+            cls._instance._init_side_dock_plugins()
             CONFIG_FILE = "app.config"
             try:
                 cls._instance.load(CONFIG_FILE)
@@ -65,6 +66,14 @@ class Settings(QConfig):
                 logger.exception("无法加载配置文件")
             cls._instance._load_side_dock_plugin_states()
         return cls._instance
+
+    def _init_side_dock_plugins(self):
+        try:
+            from app.widgets.side_dock_area.registry import SideDockRegistry
+
+            SideDockRegistry.discover_plugins()
+        except Exception as e:
+            logger.error(f"[Settings] Failed to discover side dock plugins: {e}")
 
     def _load_side_dock_plugin_states(self):
         try:
@@ -129,7 +138,7 @@ class Settings(QConfig):
             json.dump(self.toDict(), f, ensure_ascii=False, indent=4)
 
     # 版本信息
-    current_version = "v0.4.1"
+    current_version = "v0.4.2"
     user_name = ConfigItem("General", "UserName", str(uuid4().hex))
     # 通用设置
     auto_check_update = ConfigItem("General", "AutoCheckUpdate", True, BoolValidator())

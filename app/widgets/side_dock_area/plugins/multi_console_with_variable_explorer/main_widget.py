@@ -6,14 +6,19 @@ from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole, IPythonConsoleManager
+from app.widgets.ipython_console.ipython_console import (
+    EmbeddedIPythonConsole,
+    IPythonConsoleManager,
+)
 
 
 class MultiConsoleToolWindow(ToolWindow):
     name = "多终端调试面板"
     icon = get_icon("调试")
     singleton = True
-    default_position = DockPosition.BOTTOM  # 放在底部
+    default_position = DockPosition.BOTTOM
+    CATEGORIES = ["组件开发"]
+    display_order = 20
     _var_explorer = None
     _console_manager = None
 
@@ -22,11 +27,14 @@ class MultiConsoleToolWindow(ToolWindow):
         central_layout.setContentsMargins(0, 0, 0, 0)
         # 创建变量浏览器
         self._var_explorer = VariableExplorerWidget(
-            parent=self, kernel_manager=None  # 先不设置内核管理器
+            parent=self,
+            kernel_manager=None,  # 先不设置内核管理器
         )
         # 创建Console管理器
         self._console_manager = IPythonConsoleManager(
-            parent=self, package_manager=self.homepage.package_manager, var_explorer=self._var_explorer
+            parent=self,
+            package_manager=self.homepage.package_manager,
+            var_explorer=self._var_explorer,
         )
 
         # 创建垂直分割器

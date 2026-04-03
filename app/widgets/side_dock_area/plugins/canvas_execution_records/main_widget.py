@@ -27,8 +27,10 @@ class ExecutionHistoryWindow(ToolWindow):
     """
 
     name = "任务记录"
-    icon = get_icon("任务队列")  # 使用合适的图标
+    icon = get_icon("任务队列")
     default_position = DockPosition.BOTTOM
+    CATEGORIES = ["运行画布"]
+    display_order = 80
     cards = {}  # {execution_id: ExecutionResultCard}
 
     def setup_ui(self):
