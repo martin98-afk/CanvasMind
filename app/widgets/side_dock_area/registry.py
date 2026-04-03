@@ -92,6 +92,7 @@ class SideDockRegistry:
             cls._plugin_states[context_id][name] = {
                 "enabled": True,
                 "position": position.value if position else DockPosition.HIDDEN.value,
+                "display_order": getattr(window_class, "display_order", 999),
             }
 
     @classmethod
@@ -143,7 +144,17 @@ class SideDockRegistry:
 
     @classmethod
     def get_all_entries(cls, context_id: str) -> Dict[str, "DockEntry"]:
-        return cls._registries.get(context_id, {}).copy()
+        entries = cls._registries.get(context_id, {}).copy()
+        for name, entry in entries.items():
+            saved_order = (
+                cls._plugin_states.get(context_id, {})
+                .get(name, {})
+                .get("display_order")
+            )
+            if saved_order is not None:
+                entry.display_order = saved_order
+        sorted_entries = dict(sorted(entries.items(), key=lambda x: x[1].display_order))
+        return sorted_entries
 
     @classmethod
     def clear_context(cls, context_id: str):
@@ -182,12 +193,29 @@ class SideDockRegistry:
         return DockPosition(pos_value)
 
     @classmethod
+    def set_plugin_display_order(cls, context_id: str, plugin_name: str, order: int):
+        if context_id not in cls._plugin_states:
+            cls._plugin_states[context_id] = {}
+        if plugin_name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][plugin_name] = {}
+        cls._plugin_states[context_id][plugin_name]["display_order"] = order
+
+        if context_id in cls._registries and plugin_name in cls._registries[context_id]:
+            cls._registries[context_id][plugin_name].display_order = order
+
+    @classmethod
+    def get_plugin_display_order(cls, context_id: str, plugin_name: str) -> int:
+        state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
+        return state.get("display_order", 999)
+
+    @classmethod
     def get_plugin_state(cls, context_id: str, plugin_name: str) -> Dict[str, Any]:
         return cls._plugin_states.get(context_id, {}).get(
             plugin_name,
             {
                 "enabled": True,
                 "position": DockPosition.HIDDEN.value,
+                "display_order": 999,
             },
         )
 
@@ -233,3 +261,4 @@ class DockEntry:
     def __init__(self, cls: Type[ToolWindow], position: DockPosition):
         self.cls = cls
         self.position = position
+        self.display_order = getattr(cls, "display_order", 999)

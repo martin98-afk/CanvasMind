@@ -18,6 +18,7 @@ class MultiConsoleToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["组件开发"]
+    display_order = 20
     _var_explorer = None
     _console_manager = None
 

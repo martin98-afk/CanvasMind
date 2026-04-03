@@ -101,6 +101,7 @@ class OpenAIChatToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["运行画布", "组件开发", "项目管理"]
+    display_order = 30
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None

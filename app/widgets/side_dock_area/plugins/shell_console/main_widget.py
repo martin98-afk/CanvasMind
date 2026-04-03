@@ -253,6 +253,7 @@ class ShellConsoleToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["运行画布"]
+    display_order = 70
 
     def __init__(self, page, button):
         self.process = None

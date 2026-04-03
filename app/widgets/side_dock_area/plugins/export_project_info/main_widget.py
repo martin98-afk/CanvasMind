@@ -15,6 +15,7 @@ class ProjectInfoTool(ToolWindow):
     icon = get_icon("配置")
     default_position = DockPosition.TOP
     CATEGORIES = ["项目管理"]
+    display_order = 10
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)

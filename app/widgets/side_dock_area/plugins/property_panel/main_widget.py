@@ -11,6 +11,7 @@ class PropertyToolWindow(ToolWindow):
     icon = get_icon("属性面板")
     default_position = DockPosition.TOP
     CATEGORIES = ["运行画布"]
+    display_order = 10
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

@@ -83,6 +83,7 @@ class ServiceTestTool(ToolWindow):
     icon = get_icon("API测试")
     default_position = DockPosition.TOP
     CATEGORIES = ["项目管理"]
+    display_order = 20
     thread_pool = QThreadPool.globalInstance()
 
     def setup_ui(self):

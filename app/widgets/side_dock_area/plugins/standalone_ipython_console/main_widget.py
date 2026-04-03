@@ -11,6 +11,7 @@ class IPythonConsoleToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["运行画布"]
+    display_order = 60
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

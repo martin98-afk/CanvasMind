@@ -125,6 +125,7 @@ class ProjectLogTool(ToolWindow):
     icon = get_icon("日志")
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["项目管理"]
+    display_order = 30
     project_path = None
 
     def __init__(self, parent=None, button=None):

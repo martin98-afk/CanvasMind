@@ -184,6 +184,7 @@ class ComponentInfoWindow(ToolWindow):
     icon = get_icon("配置")
     default_position = DockPosition.TOP
     CATEGORIES = ["组件开发"]
+    display_order = 10
     _first_show = False
     _name_edit = None
     _category_edit = None

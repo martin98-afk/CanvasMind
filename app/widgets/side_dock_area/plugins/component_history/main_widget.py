@@ -19,6 +19,7 @@ class ComponentHistoryToolWindow(ToolWindow):
     singleton = True
     default_position = DockPosition.BOTTOM
     CATEGORIES = ["组件开发"]
+    display_order = 30
     _history_table = None
     _usage_table = None
     strategy_changed = pyqtSignal(str, str, str)  # canvas_path, node_name, new_strategy

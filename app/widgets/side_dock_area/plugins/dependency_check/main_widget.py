@@ -45,6 +45,7 @@ class DependencyToolWindow(ToolWindow):
     icon = get_icon("依赖包")
     default_position = DockPosition.TOP
     CATEGORIES = ["运行画布"]
+    display_order = 40
 
     def setup_ui(self):
         self.config = Settings.get_instance()

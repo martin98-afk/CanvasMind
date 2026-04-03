@@ -534,7 +534,7 @@ class SideDockArea(QWidget):
 
     def _load_plugins(self, context_id):
         top_classes = []
-        for name, entry in SideDockRegistry.get_all(context_id).items():
+        for name, entry in SideDockRegistry.get_all_entries(context_id).items():
             if not SideDockRegistry.is_plugin_enabled(context_id, name):
                 continue
             current_position = SideDockRegistry.get_plugin_position(context_id, name)
