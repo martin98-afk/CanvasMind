@@ -194,11 +194,12 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.workflow_list_view.current_changed.connect(self._on_list_selection_changed)
 
         self.preview_panel = WorkflowPreviewPanel(self)
+        self.preview_panel.setMinimumWidth(400)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.workflow_list_view)
         splitter.addWidget(self.preview_panel)
-        splitter.setSizes([600, 100])
+        splitter.setSizes([600, 300])
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
 

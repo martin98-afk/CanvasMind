@@ -76,10 +76,15 @@ class WorkflowPreviewPanel(CardWidget):
         self.mtime_val = BodyLabel()
         self.mtime_val.setStyleSheet("color: #ccc;")
 
-        self.size_key = CaptionLabel(self.tr("大小"))
+        self.size_key = CaptionLabel(self.tr("画布文件大小"))
         self.size_key.setStyleSheet("color: #888;")
         self.size_val = BodyLabel()
         self.size_val.setStyleSheet("color: #ccc;")
+
+        self.cache_size_key = CaptionLabel(self.tr("本地缓存大小"))
+        self.cache_size_key.setStyleSheet("color: #888;")
+        self.cache_size_val = BodyLabel()
+        self.cache_size_val.setStyleSheet("color: #ccc;")
 
         self.path_key = CaptionLabel(self.tr("路径"))
         self.path_key.setStyleSheet("color: #888;")
@@ -95,6 +100,9 @@ class WorkflowPreviewPanel(CardWidget):
         row += 1
         self.info_grid.addWidget(self.size_key, row, 0)
         self.info_grid.addWidget(self.size_val, row, 1)
+        row += 1
+        self.info_grid.addWidget(self.cache_size_key, row, 0)
+        self.info_grid.addWidget(self.cache_size_val, row, 1)
         row += 1
         self.info_grid.addWidget(self.path_key, row, 0)
         self.info_grid.addWidget(self.path_val, row, 1)
@@ -121,21 +129,18 @@ class WorkflowPreviewPanel(CardWidget):
             }
         """
 
-        self.btn_layout = QHBoxLayout()
-        self.btn_layout.setSpacing(8)
+        self.btn_layout = QVBoxLayout()
+        self.btn_layout.setSpacing(6)
         self.btn_layout.setContentsMargins(0, 8, 0, 0)
+
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(8)
 
         self.open_btn = QPushButton(self.tr("打开"), self)
         self.open_btn.setIcon(FluentIcon.LINK.icon())
         self.open_btn.setIconSize(QSize(16, 16))
         self.open_btn.setStyleSheet(btn_style)
         self.open_btn.clicked.connect(self._on_open_clicked)
-
-        self.open_folder_btn = QPushButton(self.tr("打开所在位置"), self)
-        self.open_folder_btn.setIcon(FluentIcon.FOLDER.icon())
-        self.open_folder_btn.setIconSize(QSize(16, 16))
-        self.open_folder_btn.setStyleSheet(btn_style)
-        self.open_folder_btn.clicked.connect(self._on_open_folder_clicked)
 
         self.copy_btn = QPushButton(self.tr("复制"), self)
         self.copy_btn.setIcon(FluentIcon.COPY.icon())
@@ -155,17 +160,19 @@ class WorkflowPreviewPanel(CardWidget):
         self.delete_btn.setStyleSheet(btn_style)
         self.delete_btn.clicked.connect(self._on_delete_clicked)
 
-        separator = QWidget()
-        separator.setFixedWidth(1)
-        separator.setStyleSheet(
-            "background-color: rgba(255,255,255,0.1); margin: 0 4px;"
-        )
+        row1_layout.addWidget(self.open_btn)
+        row1_layout.addWidget(self.copy_btn)
+        row1_layout.addWidget(self.rename_btn)
+        row1_layout.addWidget(self.delete_btn)
 
-        self.clear_cache_btn = QPushButton(self.tr("清除缓存"), self)
-        self.clear_cache_btn.setIcon(FluentIcon.DELETE.icon())
-        self.clear_cache_btn.setIconSize(QSize(16, 16))
-        self.clear_cache_btn.setStyleSheet(btn_style)
-        self.clear_cache_btn.clicked.connect(self._on_clear_cache_clicked)
+        row2_layout = QHBoxLayout()
+        row2_layout.setSpacing(8)
+
+        self.open_folder_btn = QPushButton(self.tr("打开所在位置"), self)
+        self.open_folder_btn.setIcon(FluentIcon.FOLDER.icon())
+        self.open_folder_btn.setIconSize(QSize(16, 16))
+        self.open_folder_btn.setStyleSheet(btn_style)
+        self.open_folder_btn.clicked.connect(self._on_open_folder_clicked)
 
         self.backup_btn = QPushButton(self.tr("备份"), self)
         self.backup_btn.setIcon(get_icon("upload"))
@@ -173,14 +180,18 @@ class WorkflowPreviewPanel(CardWidget):
         self.backup_btn.setStyleSheet(btn_style)
         self.backup_btn.clicked.connect(self._on_backup_clicked)
 
-        self.btn_layout.addWidget(self.open_btn)
-        self.btn_layout.addWidget(self.open_folder_btn)
-        self.btn_layout.addWidget(self.backup_btn)
-        self.btn_layout.addWidget(self.copy_btn)
-        self.btn_layout.addWidget(self.rename_btn)
-        self.btn_layout.addWidget(separator)
-        self.btn_layout.addWidget(self.clear_cache_btn)
-        self.btn_layout.addWidget(self.delete_btn)
+        self.clear_cache_btn = QPushButton(self.tr("清除缓存"), self)
+        self.clear_cache_btn.setIcon(FluentIcon.DELETE.icon())
+        self.clear_cache_btn.setIconSize(QSize(16, 16))
+        self.clear_cache_btn.setStyleSheet(btn_style)
+        self.clear_cache_btn.clicked.connect(self._on_clear_cache_clicked)
+
+        row2_layout.addWidget(self.open_folder_btn)
+        row2_layout.addWidget(self.backup_btn)
+        row2_layout.addWidget(self.clear_cache_btn)
+
+        self.btn_layout.addLayout(row1_layout)
+        self.btn_layout.addLayout(row2_layout)
         layout.addLayout(self.btn_layout)
 
         self._set_buttons_enabled(False)
@@ -191,6 +202,7 @@ class WorkflowPreviewPanel(CardWidget):
         self.ctime_val.setText("")
         self.mtime_val.setText("")
         self.size_val.setText("")
+        self.cache_size_val.setText("")
         self.path_val.setText("")
         self._set_buttons_enabled(False)
 
@@ -224,7 +236,7 @@ class WorkflowPreviewPanel(CardWidget):
             if size_kb > 1024:
                 self.size_val.setText(f"{size_kb / 1024:.1f} MB")
             else:
-                self.size_val.setText(f"{size_kb} KB")
+                self.size_val.setText(f"{size_kb} KB" if size_kb > 0 else "--")
         else:
             try:
                 stat = workflow_path.stat()
@@ -238,13 +250,32 @@ class WorkflowPreviewPanel(CardWidget):
                 if size_kb > 1024:
                     self.size_val.setText(f"{size_kb / 1024:.1f} MB")
                 else:
-                    self.size_val.setText(f"{size_kb} KB")
+                    self.size_val.setText(f"{size_kb} KB" if size_kb > 0 else "--")
             except Exception:
                 self.ctime_val.setText("未知")
                 self.mtime_val.setText("未知")
-                self.size_val.setText("未知")
+                self.size_val.setText("--")
 
         self.path_val.setText(str(workflow_path.parent))
+        self._refresh_cache_size()
+
+    def _refresh_cache_size(self):
+        if not self.current_workflow_path:
+            return
+        folder = self.current_workflow_path.parent
+        total_size = 0
+        try:
+            for f in folder.rglob("*"):
+                if f.is_file():
+                    total_size += f.stat().st_size
+        except Exception:
+            pass
+        if total_size > 1024 * 1024:
+            self.cache_size_val.setText(f"{total_size / (1024 * 1024):.1f} MB")
+        elif total_size > 1024:
+            self.cache_size_val.setText(f"{total_size / 1024:.1f} KB")
+        else:
+            self.cache_size_val.setText(f"{total_size} B")
 
     def _load_preview_delayed(self, workflow_path: Path):
         def load():
@@ -333,6 +364,7 @@ class WorkflowPreviewPanel(CardWidget):
                 self.tr(f"已删除 {deleted_count} 个缓存项"),
                 parent=self,
             )
+            self._refresh_cache_size()
             if self._gallery_page and hasattr(
                 self._gallery_page, "refresh_workflow_folder_size"
             ):
