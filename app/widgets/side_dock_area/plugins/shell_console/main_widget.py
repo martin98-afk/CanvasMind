@@ -252,6 +252,7 @@ class ShellConsoleToolWindow(ToolWindow):
     icon = get_icon("shell")
     singleton = True
     default_position = DockPosition.BOTTOM
+    CATEGORIES = ["运行画布"]
 
     def __init__(self, page, button):
         self.process = None

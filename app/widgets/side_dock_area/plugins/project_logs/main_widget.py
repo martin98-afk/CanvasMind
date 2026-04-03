@@ -6,9 +6,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import Qt, QFileSystemWatcher, QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QTextEdit
-from qfluentwidgets import (
-    StrongBodyLabel, setFont, TextEdit
-)
+from qfluentwidgets import StrongBodyLabel, setFont, TextEdit
 from watchfiles import watch, Change
 
 from app.utils.utils import ansi_to_html, get_icon
@@ -18,15 +16,16 @@ from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 
 class LogCardForTool(QWidget):
     """简化版 CollapsibleLogCard，用于日志工具，固定展开"""
+
     LEVEL_COLORS = {
-        'DEBUG': '#808080',
-        'INFO': '#9cdcfe',
-        'WARNING': '#ffcb6b',
-        'WARN': '#ffcb6b',
-        'ERROR': '#f44747',
-        'Error': '#f44747',
-        'CRITICAL': '#f44747',
-        'SUCCESS': '#32cd32',
+        "DEBUG": "#808080",
+        "INFO": "#9cdcfe",
+        "WARNING": "#ffcb6b",
+        "WARN": "#ffcb6b",
+        "ERROR": "#f44747",
+        "Error": "#f44747",
+        "CRITICAL": "#f44747",
+        "SUCCESS": "#32cd32",
     }
 
     def __init__(self, title: str, parent=None):
@@ -49,7 +48,9 @@ class LogCardForTool(QWidget):
         font.setFamily("Consolas")  # 或 "Courier New", "Fira Code", "JetBrains Mono"
         font.setPointSize(10)
         self.log_text.setFont(font)
-        self.log_text.setStyleSheet("border: none; color: #d4d4d4; background-color: #1e1e1e; border-radius: 4px; padding: 8px;")
+        self.log_text.setStyleSheet(
+            "border: none; color: #d4d4d4; background-color: #1e1e1e; border-radius: 4px; padding: 8px;"
+        )
         self.log_text.setReadOnly(True)
         self.log_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.log_text.setSizeAdjustPolicy(TextEdit.AdjustToContents)
@@ -71,20 +72,25 @@ class LogCardForTool(QWidget):
             # 再检测日志级别，覆盖颜色（优先级更高）
             color = "#d4d4d4"
             for level, col in self.LEVEL_COLORS.items():
-                if re.search(rf'\b{level}\b', line, re.IGNORECASE):
+                if re.search(rf"\b{level}\b", line, re.IGNORECASE):
                     color = col
                     break
             # 提取纯文本用于显示（但保留 HTML 标签）
-            html_lines.append(f'<pre style="color:{color}; margin:0; padding:0;">{line_html}</pre>')
+            html_lines.append(
+                f'<pre style="color:{color}; margin:0; padding:0;">{line_html}</pre>'
+            )
 
         full_html = "\n".join(html_lines)
         self.log_text.setHtml(full_html)
         # 滚动到底部
-        self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+        self.log_text.verticalScrollBar().setValue(
+            self.log_text.verticalScrollBar().maximum()
+        )
 
 
 class LogWatcherThread(QThread):
     """后台线程，使用 watchfiles 监听日志文件变化"""
+
     file_changed = pyqtSignal(str)  # 发出变更的文件路径
 
     def __init__(self, service_log_path: str, run_log_path: str, parent=None):
@@ -118,10 +124,11 @@ class ProjectLogTool(ToolWindow):
     name = "项目日志"
     icon = get_icon("日志")
     default_position = DockPosition.BOTTOM
+    CATEGORIES = ["项目管理"]
     project_path = None
 
     def __init__(self, parent=None, button=None):
-        super().__init__(parent,  button)
+        super().__init__(parent, button)
         self.setObjectName("ProjectLogTool")
         self._watcher_thread = None  # 用于管理后台线程
 
@@ -149,7 +156,7 @@ class ProjectLogTool(ToolWindow):
         if not path or not os.path.exists(path):
             return ""
         try:
-            with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
                 return f.read()
         except Exception:
             return ""

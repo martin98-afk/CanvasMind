@@ -13,7 +13,8 @@ from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
 class ProjectInfoTool(ToolWindow):
     name = "项目基本信息"
     icon = get_icon("配置")
-    default_position = DockPosition.TOP  # ← 默认放在顶部
+    default_position = DockPosition.TOP
+    CATEGORIES = ["项目管理"]
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)
@@ -23,13 +24,15 @@ class ProjectInfoTool(ToolWindow):
     def _load_spec(self, project_path):
         spec_path = os.path.join(project_path, "project_spec.json")
         try:
-            with open(spec_path, 'r', encoding='utf-8') as f:
+            with open(spec_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             return {"inputs": {}}
 
     def refresh(self, project_path):
-        project_path = Path(project_path) if isinstance(project_path, str) else project_path
+        project_path = (
+            Path(project_path) if isinstance(project_path, str) else project_path
+        )
         self.spec = self._load_spec(project_path)
         # 清空旧内容
         while self.main_layout.count():
@@ -41,7 +44,7 @@ class ProjectInfoTool(ToolWindow):
 
         if md_path.exists():
             try:
-                with open(md_path, 'r', encoding='utf-8') as f:
+                with open(md_path, "r", encoding="utf-8") as f:
                     md_content = f.read()
             except:
                 md_content = "—"

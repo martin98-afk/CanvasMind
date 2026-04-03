@@ -44,6 +44,7 @@ class DependencyToolWindow(ToolWindow):
     name = "依赖检查"
     icon = get_icon("依赖包")
     default_position = DockPosition.TOP
+    CATEGORIES = ["运行画布"]
 
     def setup_ui(self):
         self.config = Settings.get_instance()

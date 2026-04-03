@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import importlib
 from typing import Dict, Type, Optional, List, Callable, Any
 from .tool_window import ToolWindow, DockPosition, PluginManifest, PluginProtocol
 
@@ -9,11 +11,62 @@ class SideDockRegistry:
     _plugin_classes: Dict[str, Type[ToolWindow]] = {}
     _active_plugins: Dict[str, Any] = {}
     _plugin_states: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    _discovered: bool = False
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
+
+    @classmethod
+    def discover_plugins(cls, base_path: str = None):
+        if cls._discovered:
+            return
+        cls._discovered = True
+
+        if base_path is None:
+            base_path = os.path.join(os.path.dirname(__file__), "plugins")
+
+        if not os.path.exists(base_path):
+            return
+
+        for plugin_dir in os.listdir(base_path):
+            plugin_path = os.path.join(base_path, plugin_dir)
+            if not os.path.isdir(plugin_path):
+                continue
+
+            main_widget_path = os.path.join(plugin_path, "main_widget.py")
+            if not os.path.exists(main_widget_path):
+                continue
+
+            try:
+                module_name = (
+                    f"app.widgets.side_dock_area.plugins.{plugin_dir}.main_widget"
+                )
+                spec = importlib.util.spec_from_file_location(
+                    module_name, main_widget_path
+                )
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if (
+                        isinstance(attr, type)
+                        and issubclass(attr, ToolWindow)
+                        and attr is not ToolWindow
+                        and attr is not PluginProtocol
+                    ):
+                        categories = getattr(attr, "CATEGORIES", None)
+                        if categories is None and hasattr(attr, "CATEGORY"):
+                            categories = [attr.CATEGORY]
+                        if categories:
+                            for cat in categories:
+                                cls.register(
+                                    cat, attr.name, attr, attr.default_position
+                                )
+            except Exception as e:
+                print(f"[SideDockRegistry] Failed to load plugin {plugin_dir}: {e}")
 
     @classmethod
     def register(
@@ -26,6 +79,8 @@ class SideDockRegistry:
         if context_id not in cls._registries:
             cls._registries[context_id] = {}
         entries = cls._registries[context_id]
+        if name in entries:
+            return
         if position is None:
             position = window_class.default_position
         else:

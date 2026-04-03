@@ -9,7 +9,8 @@ from app.widgets.side_dock_area.plugins.property_panel import PropertyPanel
 class PropertyToolWindow(ToolWindow):
     name = "属性面板"
     icon = get_icon("属性面板")
-    default_position = DockPosition.TOP  # ← 默认放在顶部
+    default_position = DockPosition.TOP
+    CATEGORIES = ["运行画布"]
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

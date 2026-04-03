@@ -96,6 +96,7 @@ class SQLiteDatabaseWindow(ToolWindow):
     name = "SQLite数据库"
     icon = get_icon("数据库操作")
     default_position = DockPosition.BOTTOM
+    CATEGORIES = ["运行画布"]
 
     def setup_ui(self):
         self.db_manager = DatabaseManager()

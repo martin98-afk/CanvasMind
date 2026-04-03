@@ -21,6 +21,7 @@ class LogToolWindow(ToolWindow):
     name = "模型日志"
     icon = get_icon("运行记录")
     default_position = DockPosition.BOTTOM
+    CATEGORIES = ["运行画布"]
     MAX_RUNS = 50
     cardDoubleClicked = pyqtSignal(str)
 

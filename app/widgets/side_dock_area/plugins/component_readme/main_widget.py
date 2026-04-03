@@ -13,6 +13,7 @@ class NodeDocToolWindow(ToolWindow):
     name = "节点说明"
     icon = FluentIcon.INFO
     default_position = DockPosition.TOP
+    CATEGORIES = ["运行画布"]
 
     def setup_ui(self):
         """初始化UI结构，硬编码为深色主题"""

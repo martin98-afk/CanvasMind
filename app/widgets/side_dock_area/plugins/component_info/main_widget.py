@@ -183,6 +183,7 @@ class ComponentInfoWindow(ToolWindow):
     name = "组件属性面板"
     icon = get_icon("配置")
     default_position = DockPosition.TOP
+    CATEGORIES = ["组件开发"]
     _first_show = False
     _name_edit = None
     _category_edit = None
@@ -338,6 +339,7 @@ class ComponentInfoWindow(ToolWindow):
 
     def _select_icon(self):
         from loguru import logger
+
         uuid_str = self._get_component_uuid()
         logger.info(f"_select_icon called, uuid: {uuid_str}")
         if not uuid_str:
@@ -356,15 +358,16 @@ class ComponentInfoWindow(ToolWindow):
         icon_dir.mkdir(parents=True, exist_ok=True)
 
         icons_dir = str(icon_dir)
-        
+
         self._icon_selector = IconSelectorPopup(self, icons_dir)
         self._icon_selector.icon_selected.connect(self._on_icon_selected)
         self._icon_selector.show_at_widget(self._icon_button)
 
     def _on_icon_selected(self, icon_path):
         from loguru import logger
+
         logger.info(f"_on_icon_selected called with path: {icon_path}")
-        
+
         if not icon_path:
             self._update_icon_preview()
             return
@@ -385,6 +388,7 @@ class ComponentInfoWindow(ToolWindow):
 
         if icon_path.startswith("builtin:") or icon_path.startswith(":/icons/"):
             from loguru import logger
+
             ext = ".png"
             if icon_path.startswith(":/icons/"):
                 logger.info(f"Processing custom icon: {icon_path}")
@@ -399,6 +403,7 @@ class ComponentInfoWindow(ToolWindow):
             else:
                 from PyQt5.QtGui import QIcon
                 from qfluentwidgets import FluentIcon
+
                 builtin_name = icon_path.replace("builtin:", "")
                 for ficon in FluentIcon:
                     if ficon.name == builtin_name:
@@ -423,6 +428,7 @@ class ComponentInfoWindow(ToolWindow):
 
     def _update_icon_preview(self, icon_path=None):
         from loguru import logger
+
         logger.info(f"_update_icon_preview called with: {icon_path}")
         if icon_path and Path(icon_path).exists():
             logger.info(f"Icon file exists, loading pixmap")
