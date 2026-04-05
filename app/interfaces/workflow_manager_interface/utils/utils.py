@@ -1,9 +1,17 @@
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Callable
 
-from PyQt5.QtCore import QThread, pyqtSignal, QMutexLocker, QMutex, QTimer
+from PyQt5.QtCore import (
+    QThread,
+    pyqtSignal,
+    QMutexLocker,
+    QMutex,
+    QObject,
+    QRunnable,
+    QThreadPool,
+)
 from PyQt5.QtGui import QPixmap, QPixmapCache
 
 
@@ -30,6 +38,104 @@ class ThumbnailCache:
     @classmethod
     def set_loading(cls, key: str, loading: bool):
         cls._loading[key] = loading
+
+
+class _FolderSizeWorkerSignals(QObject):
+    finished = pyqtSignal(str, int)
+
+
+class _FolderSizeWorker(QRunnable):
+    def __init__(self, folder: Path):
+        super().__init__()
+        self.folder = folder
+        self.signals = _FolderSizeWorkerSignals()
+
+    def run(self):
+        total = 0
+        try:
+            for item in self.folder.rglob("*"):
+                if item.is_file():
+                    total += item.stat().st_size
+        except Exception:
+            total = 0
+        self.signals.finished.emit(str(self.folder), total)
+
+
+class FolderSizeCache:
+    _cache: Dict[str, int] = {}
+    _callbacks: Dict[str, List[Callable[[int], None]]] = {}
+    _loading: Dict[str, bool] = {}
+    _thread_pool = QThreadPool.globalInstance()
+
+    @classmethod
+    def get(cls, folder: Path) -> Optional[int]:
+        return cls._cache.get(str(folder))
+
+    @classmethod
+    def invalidate(cls, folder: Path):
+        key = str(folder)
+        cls._cache.pop(key, None)
+        cls._callbacks.pop(key, None)
+        cls._loading.pop(key, None)
+
+    @classmethod
+    def request(cls, folder: Path, callback: Callable[[int], None]):
+        key = str(folder)
+        cached = cls._cache.get(key)
+        if cached is not None:
+            callback(cached)
+            return
+
+        cls._callbacks.setdefault(key, []).append(callback)
+        if cls._loading.get(key):
+            return
+
+        cls._loading[key] = True
+        worker = _FolderSizeWorker(folder)
+        worker.signals.finished.connect(cls._on_finished)
+        cls._thread_pool.start(worker)
+
+    @classmethod
+    def _on_finished(cls, folder_key: str, total: int):
+        cls._cache[folder_key] = total
+        cls._loading[folder_key] = False
+        callbacks = cls._callbacks.pop(folder_key, [])
+        for callback in callbacks:
+            try:
+                callback(total)
+            except Exception:
+                pass
+
+
+def iter_workflow_files(workflow_dirs: List[Path]) -> List[Path]:
+    """仅扫描根目录和一级画布目录，避免深入 workspace 等大目录。"""
+    workflow_files: List[Path] = []
+
+    for root in workflow_dirs:
+        if not root.exists():
+            continue
+
+        try:
+            for entry in root.iterdir():
+                if entry.is_file() and entry.name.endswith(".workflow.json"):
+                    workflow_files.append(entry)
+                    continue
+
+                if not entry.is_dir():
+                    continue
+
+                expected = entry / f"{entry.name}.workflow.json"
+                if expected.exists():
+                    workflow_files.append(expected)
+                    continue
+
+                fallback = next(entry.glob("*.workflow.json"), None)
+                if fallback is not None:
+                    workflow_files.append(fallback)
+        except Exception:
+            continue
+
+    return workflow_files
 
 
 def _migrate_legacy_workflow_structure(workflow_dirs: List[Path]):
@@ -101,11 +207,8 @@ class WorkflowFileInfoScanner(QThread):
         if should_stop:
             return
 
-        workflow_files = []
+        workflow_files = iter_workflow_files(self.workflow_dir)
         file_info_map = {}
-        for path in self.workflow_dir:
-            if path.exists():
-                workflow_files.extend(list(path.rglob("*.workflow.json")))
 
         for wf_path in workflow_files:
             with QMutexLocker(self._mutex):

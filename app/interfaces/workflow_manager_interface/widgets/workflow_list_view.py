@@ -21,7 +21,10 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.utils.utils import get_icon, get_unified_font
-from app.interfaces.workflow_manager_interface.utils.utils import ThumbnailCache
+from app.interfaces.workflow_manager_interface.utils.utils import (
+    ThumbnailCache,
+    FolderSizeCache,
+)
 
 
 class WorkflowListItem(QWidget):
@@ -134,39 +137,33 @@ class WorkflowListItem(QWidget):
             self.mtime_label.setText("--")
             self.ctime_label.setText("--")
             self.size_label.setText("--")
-        folder_size = self._calc_folder_size()
-        if folder_size > 0:
-            if folder_size > 1024 * 1024:
-                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
-            elif folder_size > 1024:
-                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
-            else:
-                self.folder_size_label.setText(f"{folder_size} B")
-        else:
-            self.folder_size_label.setText("--")
+        self.folder_size_label.setText("...")
+        self._request_folder_size()
 
-    def _calc_folder_size(self) -> int:
-        try:
-            total = 0
-            folder = self.workflow_path.parent
-            for f in folder.rglob("*"):
-                if f.is_file():
-                    total += f.stat().st_size
-            return total
-        except Exception:
-            return 0
+    def _request_folder_size(self):
+        folder = self.workflow_path.parent
+
+        def update(folder_size: int):
+            if self._load_cancelled:
+                return
+            if folder_size > 0:
+                if folder_size > 1024 * 1024:
+                    self.folder_size_label.setText(
+                        f"{folder_size / (1024 * 1024):.1f} MB"
+                    )
+                elif folder_size > 1024:
+                    self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
+                else:
+                    self.folder_size_label.setText(f"{folder_size} B")
+            else:
+                self.folder_size_label.setText("--")
+
+        FolderSizeCache.request(folder, update)
 
     def refresh_folder_size(self):
-        folder_size = self._calc_folder_size()
-        if folder_size > 0:
-            if folder_size > 1024 * 1024:
-                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
-            elif folder_size > 1024:
-                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
-            else:
-                self.folder_size_label.setText(f"{folder_size} B")
-        else:
-            self.folder_size_label.setText("--")
+        FolderSizeCache.invalidate(self.workflow_path.parent)
+        self.folder_size_label.setText("...")
+        self._request_folder_size()
 
     def update_file_info(self, file_info: Dict):
         self.file_info = file_info

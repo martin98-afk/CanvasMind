@@ -25,6 +25,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.utils.utils import get_icon, get_unified_font
+from app.interfaces.workflow_manager_interface.utils.utils import FolderSizeCache
 
 
 class WorkflowPreviewPanel(CardWidget):
@@ -263,19 +264,19 @@ class WorkflowPreviewPanel(CardWidget):
         if not self.current_workflow_path:
             return
         folder = self.current_workflow_path.parent
-        total_size = 0
-        try:
-            for f in folder.rglob("*"):
-                if f.is_file():
-                    total_size += f.stat().st_size
-        except Exception:
-            pass
-        if total_size > 1024 * 1024:
-            self.cache_size_val.setText(f"{total_size / (1024 * 1024):.1f} MB")
-        elif total_size > 1024:
-            self.cache_size_val.setText(f"{total_size / 1024:.1f} KB")
-        else:
-            self.cache_size_val.setText(f"{total_size} B")
+        self.cache_size_val.setText("...")
+
+        def update(total_size: int):
+            if self.current_workflow_path is None or self.current_workflow_path.parent != folder:
+                return
+            if total_size > 1024 * 1024:
+                self.cache_size_val.setText(f"{total_size / (1024 * 1024):.1f} MB")
+            elif total_size > 1024:
+                self.cache_size_val.setText(f"{total_size / 1024:.1f} KB")
+            else:
+                self.cache_size_val.setText(f"{total_size} B")
+
+        FolderSizeCache.request(folder, update)
 
     def _load_preview_delayed(self, workflow_path: Path):
         def load():
@@ -364,6 +365,7 @@ class WorkflowPreviewPanel(CardWidget):
                 self.tr(f"已删除 {deleted_count} 个缓存项"),
                 parent=self,
             )
+            FolderSizeCache.invalidate(folder)
             self._refresh_cache_size()
             if self._gallery_page and hasattr(
                 self._gallery_page, "refresh_workflow_folder_size"
