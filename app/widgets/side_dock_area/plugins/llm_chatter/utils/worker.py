@@ -241,6 +241,7 @@ class OpenAIChatWorker(QThread):
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
     finished_with_messages = pyqtSignal(list)
+    compaction_status_changed = pyqtSignal(dict)
     tool_call_started = pyqtSignal(str, str, dict, str)
     tool_result_received = pyqtSignal(str, str, dict, object)
     question_asked = pyqtSignal(str, str, list, bool)
@@ -282,6 +283,16 @@ class OpenAIChatWorker(QThread):
         self._previewed_tool_call_ids = set()
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
+        self._last_compaction_state = {
+            "active": False,
+            "source": "worker",
+            "kind": "",
+            "original_count": len(messages or []),
+            "summarized_count": 0,
+            "kept_count": len(messages or []),
+            "summary_count": 0,
+            "note": "",
+        }
 
     def cancel(self):
         self._is_cancelled = True
@@ -312,12 +323,16 @@ class OpenAIChatWorker(QThread):
     def run(self):
         try:
             current_messages = self.messages.copy()
+            self._emit_compaction_status(self._last_compaction_state)
 
             while not self._is_cancelled:
                 if self._is_cancelled:
                     return
 
-                compacted_messages = self._maybe_compact_messages(current_messages)
+                compacted_messages, compaction_state = self._maybe_compact_messages(
+                    current_messages
+                )
+                self._emit_compaction_status(compaction_state)
                 if compacted_messages != current_messages:
                     current_messages = compacted_messages
                     self.finished_with_messages.emit(current_messages)
@@ -398,6 +413,22 @@ class OpenAIChatWorker(QThread):
                 message["round_id"] = round_id
 
         return message
+
+    def _emit_compaction_status(self, state: Dict):
+        normalized = {
+            "active": bool((state or {}).get("active", False)),
+            "source": (state or {}).get("source", "worker"),
+            "kind": (state or {}).get("kind", ""),
+            "original_count": int((state or {}).get("original_count", 0) or 0),
+            "summarized_count": int((state or {}).get("summarized_count", 0) or 0),
+            "kept_count": int((state or {}).get("kept_count", 0) or 0),
+            "summary_count": int((state or {}).get("summary_count", 0) or 0),
+            "note": str((state or {}).get("note", "") or ""),
+        }
+        if normalized == self._last_compaction_state:
+            return
+        self._last_compaction_state = normalized
+        self.compaction_status_changed.emit(dict(normalized))
 
     def _sanitize_messages_for_api(self, messages: List[Dict]) -> List[Dict]:
         sanitized: List[Dict[str, Any]] = []
@@ -692,21 +723,31 @@ class OpenAIChatWorker(QThread):
         resp = create_api_call_with_retry(client, create_task)
         return (resp.choices[0].message.content or "").strip()
 
-    def _maybe_compact_messages(self, messages: List[Dict]) -> List[Dict]:
+    def _maybe_compact_messages(self, messages: List[Dict]) -> tuple[List[Dict], Dict]:
+        inactive_state = {
+            "active": False,
+            "source": "worker",
+            "kind": "",
+            "original_count": len(messages or []),
+            "summarized_count": 0,
+            "kept_count": len(messages or []),
+            "summary_count": 0,
+            "note": "",
+        }
         if len(messages) < 10:
-            return messages
+            return messages, inactive_state
 
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
         limit = self._infer_context_limit(model)
         threshold = int(limit * 0.7)
         if self._estimate_message_tokens(messages) <= threshold:
-            return messages
+            return messages, inactive_state
 
         system_message = messages[0] if messages and messages[0].get("role") == "system" else None
         start_idx = 1 if system_message else 0
         body = messages[start_idx:]
         if len(body) < 8:
-            return messages
+            return messages, inactive_state
 
         split_idx = max(2, int(len(body) * 0.65))
         old_messages = body[:split_idx]
@@ -715,7 +756,7 @@ class OpenAIChatWorker(QThread):
             recent_messages = body[-4:]
             old_messages = body[:-4]
         if not old_messages:
-            return messages
+            return messages, inactive_state
 
         try:
             summary = self._summarize_old_messages(old_messages, recent_messages)
@@ -744,7 +785,16 @@ class OpenAIChatWorker(QThread):
         logger.info(
             f"[Compaction] Compacted {len(old_messages)} messages into summary, kept {len(recent_messages)} recent messages"
         )
-        return compacted
+        return compacted, {
+            "active": True,
+            "source": "worker",
+            "kind": "runtime",
+            "original_count": len(messages or []),
+            "summarized_count": len(old_messages),
+            "kept_count": len(recent_messages),
+            "summary_count": 1,
+            "note": f"运行中压缩了 {len(old_messages)} 条较早消息",
+        }
 
     def _process_response(self, response):
         self.full_response = ""

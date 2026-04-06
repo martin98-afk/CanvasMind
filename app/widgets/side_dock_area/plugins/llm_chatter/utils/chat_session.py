@@ -18,6 +18,20 @@ class ChatSession:
         self.last_updated: str = self.created_at
         self.message_count: int = len(self.messages)
         self.task_state = TaskSessionState()
+        self.compaction_state: Dict = self._default_compaction_state()
+
+    @staticmethod
+    def _default_compaction_state() -> Dict:
+        return {
+            "active": False,
+            "source": "",
+            "kind": "",
+            "original_count": 0,
+            "summarized_count": 0,
+            "kept_count": 0,
+            "summary_count": 0,
+            "note": "",
+        }
 
     def get_context_messages(self) -> List[Dict[str, str]]:
         return self.messages.copy()
@@ -60,12 +74,22 @@ class ChatSession:
     def set_topic_summary(self, summary: str):
         self.topic_summary = summary
 
+    def set_compaction_state(self, state: Optional[Dict] = None):
+        merged = self._default_compaction_state()
+        if state:
+            merged.update(state)
+        self.compaction_state = merged
+
+    def reset_compaction_state(self):
+        self.compaction_state = self._default_compaction_state()
+
     def get_recent_messages(self, count: int = 10) -> List[Dict]:
         return self.messages[-count:] if self.messages else []
 
     def clear(self):
         self.messages.clear()
         self.topic_summary = ""
+        self.reset_compaction_state()
         self._update_timestamp()
 
     def to_dict(self) -> Dict:
@@ -76,6 +100,7 @@ class ChatSession:
             "created_at": self.created_at,
             "last_updated": self.last_updated,
             "message_count": self.message_count,
+            "compaction_state": self.compaction_state,
             "task_state": {
                 "current_agent": self.task_state.current_agent,
                 "current_goal": self.task_state.current_goal,
@@ -101,6 +126,7 @@ class ChatSession:
         )
         session.last_updated = data.get("last_updated", session.created_at)
         session.message_count = len(session.messages)
+        session.set_compaction_state(data.get("compaction_state"))
         task_state_data = data.get("task_state", {})
         for field_name, value in task_state_data.items():
             if hasattr(session.task_state, field_name):

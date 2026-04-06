@@ -101,6 +101,28 @@ class ChatEngine:
         self._callbacks: Dict[str, Callable] = {}
         self._current_agent: Optional[str] = "plan"
 
+    def _make_compaction_state(
+        self,
+        active: bool = False,
+        source: str = "history",
+        kind: str = "",
+        original_count: int = 0,
+        summarized_count: int = 0,
+        kept_count: int = 0,
+        summary_count: int = 0,
+        note: str = "",
+    ) -> Dict[str, Any]:
+        return {
+            "active": bool(active),
+            "source": source,
+            "kind": kind,
+            "original_count": int(original_count or 0),
+            "summarized_count": int(summarized_count or 0),
+            "kept_count": int(kept_count or 0),
+            "summary_count": int(summary_count or 0),
+            "note": note or "",
+        }
+
     def _get_agent_manager(self):
         return self._agent_manager
 
@@ -257,6 +279,7 @@ class ChatEngine:
 
         user_points = []
         assistant_points = []
+        tool_points = []
         for msg in messages:
             role = msg.get("role")
             content = _normalize_message_content(msg.get("content", ""))
@@ -268,6 +291,9 @@ class ChatEngine:
                 user_points.append(snippet)
             elif role == "assistant":
                 assistant_points.append(snippet)
+            elif role == "tool":
+                tool_name = msg.get("name") or msg.get("tool_call_id") or "tool"
+                tool_points.append(f"{tool_name}: {snippet}")
 
         if user_points:
             summary_lines.append("### User Requests")
@@ -277,6 +303,11 @@ class ChatEngine:
         if assistant_points:
             summary_lines.append("### Assistant Progress")
             for idx, item in enumerate(assistant_points[-6:], 1):
+                summary_lines.append(f"{idx}. {item}")
+
+        if tool_points:
+            summary_lines.append("### Tool Results")
+            for idx, item in enumerate(tool_points[-6:], 1):
                 summary_lines.append(f"{idx}. {item}")
 
         summary_lines.append(
@@ -351,12 +382,15 @@ class ChatEngine:
         self,
         history_messages: List[Dict[str, Any]],
         history_budget: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         if not history_messages or history_budget <= 0:
-            return []
+            return [], self._make_compaction_state()
 
         if estimate_tokens_from_messages(history_messages) <= history_budget:
-            return history_messages
+            return history_messages, self._make_compaction_state(
+                original_count=len(history_messages),
+                kept_count=len(history_messages),
+            )
 
         recent_messages: List[Dict[str, Any]] = []
         recent_tokens = 0
@@ -379,20 +413,61 @@ class ChatEngine:
             elif include_open_tool_exchange and has_tool_calls:
                 include_open_tool_exchange = False
 
-        return recent_messages
+        if len(recent_messages) == len(history_messages):
+            return recent_messages, self._make_compaction_state(
+                original_count=len(history_messages),
+                kept_count=len(recent_messages),
+            )
+
+        compacted = history_messages[: len(history_messages) - len(recent_messages)]
+        compact_summary = self._summarize_compacted_messages(compacted)
+        if not compact_summary:
+            return recent_messages, self._make_compaction_state(
+                original_count=len(history_messages),
+                kept_count=len(recent_messages),
+            )
+
+        summary_message = {"role": "assistant", "content": compact_summary}
+        result_messages = [summary_message] + recent_messages
+
+        while (
+            len(result_messages) > 1
+            and estimate_tokens_from_messages(result_messages) > history_budget
+        ):
+            if len(recent_messages) > 1:
+                recent_messages.pop(0)
+                result_messages = [summary_message] + recent_messages
+                continue
+
+            summary_message["content"] = self._trim_message_content(
+                summary_message["content"], 800
+            )
+            result_messages = [summary_message]
+            break
+
+        return result_messages, self._make_compaction_state(
+            active=True,
+            source="history",
+            kind="structured",
+            original_count=len(history_messages),
+            summarized_count=len(compacted),
+            kept_count=len(recent_messages),
+            summary_count=1,
+            note=f"已压缩 {len(compacted)} 条含工具历史消息",
+        )
 
     def _compact_history_messages(
         self,
         history_messages: List[Dict[str, Any]],
         history_budget: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         if not history_messages or history_budget <= 0:
-            return []
+            return [], self._make_compaction_state()
 
         normalized = self._normalize_history_messages(history_messages)
 
         if not normalized:
-            return []
+            return [], self._make_compaction_state()
 
         if self._has_structured_tool_history(normalized):
             return self._compact_structured_history_messages(normalized, history_budget)
@@ -403,7 +478,10 @@ class ChatEngine:
             )
 
         if estimate_tokens_from_messages(normalized) <= history_budget:
-            return normalized
+            return normalized, self._make_compaction_state(
+                original_count=len(normalized),
+                kept_count=len(normalized),
+            )
 
         recent_messages: List[Dict[str, str]] = []
         recent_tokens = 0
@@ -421,12 +499,18 @@ class ChatEngine:
                 break
 
         if len(recent_messages) == len(normalized):
-            return recent_messages
+            return recent_messages, self._make_compaction_state(
+                original_count=len(normalized),
+                kept_count=len(recent_messages),
+            )
 
         compacted = normalized[: len(normalized) - len(recent_messages)]
         compact_summary = self._summarize_compacted_messages(compacted)
         if not compact_summary:
-            return recent_messages
+            return recent_messages, self._make_compaction_state(
+                original_count=len(normalized),
+                kept_count=len(recent_messages),
+            )
 
         summary_message = {
             "role": "assistant",
@@ -449,7 +533,16 @@ class ChatEngine:
             result_messages = [summary_message]
             break
 
-        return result_messages
+        return result_messages, self._make_compaction_state(
+            active=True,
+            source="history",
+            kind="plain",
+            original_count=len(normalized),
+            summarized_count=len(compacted),
+            kept_count=len(recent_messages),
+            summary_count=1,
+            note=f"已压缩 {len(compacted)} 条较早消息",
+        )
 
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
@@ -600,9 +693,10 @@ class ChatEngine:
         final_user_text = task_prelude + context_text + latest_user_message
 
         available_history_budget = max_context_tokens - estimate_tokens(final_user_text) - 200
-        history_for_api = self._compact_history_messages(
+        history_for_api, compaction_state = self._compact_history_messages(
             history_messages, available_history_budget
         )
+        session.set_compaction_state(compaction_state)
         messages.extend(history_for_api)
 
         if supports_vision and context_provider:
@@ -698,7 +792,12 @@ class ChatEngine:
         session = session or self._session_manager.get_current_session()
         llm_config = llm_config or self._get_model_config()
         if not session or not llm_config:
-            return {"used_tokens": 0, "budget_tokens": 0, "percent": 0}
+            return {
+                "used_tokens": 0,
+                "budget_tokens": 0,
+                "percent": 0,
+                "compaction": self._make_compaction_state(),
+            }
 
         messages = self._build_messages(session, llm_config)
         budget_tokens = max(1, self._get_context_budget(llm_config))
@@ -708,6 +807,7 @@ class ChatEngine:
             "used_tokens": used_tokens,
             "budget_tokens": budget_tokens,
             "percent": percent,
+            "compaction": dict(getattr(session, "compaction_state", {}) or {}),
         }
 
     def _start_worker(
@@ -759,6 +859,9 @@ class ChatEngine:
         self._current_worker.finished_with_content.connect(self._on_worker_finished)
         self._current_worker.finished_with_messages.connect(
             self._on_worker_messages_updated
+        )
+        self._current_worker.compaction_status_changed.connect(
+            self._on_worker_compaction_status_changed
         )
         self._current_worker.question_asked.connect(self._on_question_asked)
         self._current_worker.permission_approval_requested.connect(
@@ -822,6 +925,12 @@ class ChatEngine:
     def _on_worker_messages_updated(self, messages: List[Dict]):
         self._emit("messages_updated", messages)
 
+    def _on_worker_compaction_status_changed(self, state: Dict[str, Any]):
+        session = self._session_manager.get_current_session()
+        if session:
+            session.set_compaction_state(state)
+        self._emit("compaction_status_changed", state)
+
     def _on_error(self, error: str):
         self._is_streaming = False
         session = self._session_manager.get_current_session()
@@ -839,4 +948,3 @@ class ChatEngine:
     def provide_question_answer(self, answer: str):
         if self._current_worker and hasattr(self._current_worker, "provide_answer"):
             self._current_worker.provide_answer(answer)
-
