@@ -12,6 +12,10 @@ from openai import (
     OpenAI,
 )
 
+from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
+    get_provider_profile,
+)
+
 
 class TopicSummaryTask(QRunnable):
     """异步生成话题摘要任务 - 支持增量摘要和长期记忆判断"""
@@ -254,6 +258,8 @@ class OpenAIChatWorker(QThread):
         get_stage_prompt=None,
         stage_changed_callback=None,
         permission_check_callback=None,
+        compaction_prompt: str = "",
+        compaction_config: Dict = None,
     ):
         super().__init__()
         self.messages = messages
@@ -265,6 +271,8 @@ class OpenAIChatWorker(QThread):
         self.get_stage_prompt = get_stage_prompt
         self.stage_changed_callback = stage_changed_callback
         self.permission_check_callback = permission_check_callback
+        self.compaction_prompt = compaction_prompt
+        self.compaction_config = compaction_config or {}
         self.full_response = ""
         self._is_cancelled = False
         self._question_pending = None
@@ -272,6 +280,8 @@ class OpenAIChatWorker(QThread):
         self._permission_pending = None
         self._permission_approved = False
         self._previewed_tool_call_ids = set()
+        self._current_tool_calls = []
+        self._tool_calls_buffer = {}
 
     def cancel(self):
         self._is_cancelled = True
@@ -310,15 +320,18 @@ class OpenAIChatWorker(QThread):
                     return
 
                 iteration += 1
-                tool_results = self._make_api_call(current_messages)
+                current_messages = self._maybe_compact_messages(current_messages)
+                tool_calls_found = self._make_api_call(current_messages)
 
                 if self._is_cancelled:
                     return
 
-                if tool_results == "FINISH":
+                if not tool_calls_found:
                     self.finished_with_content.emit(self.full_response)
                     self.finished_with_messages.emit(current_messages)
                     return
+
+                tool_results = self._execute_all_tools()
 
                 if tool_results is None:
                     while self._pending_answer is None and not self._is_cancelled:
@@ -347,6 +360,18 @@ class OpenAIChatWorker(QThread):
                     self._pending_answer = None
                     continue
 
+                if not tool_results:
+                    current_messages.append(
+                        {
+                            "role": "assistant",
+                            "content": self.full_response,
+                            "tool_calls": self._current_tool_calls,
+                        }
+                    )
+                    self.finished_with_content.emit(self.full_response)
+                    self.finished_with_messages.emit(current_messages)
+                    return
+
                 current_messages.append(
                     {
                         "role": "assistant",
@@ -354,8 +379,7 @@ class OpenAIChatWorker(QThread):
                         "tool_calls": self._current_tool_calls,
                     }
                 )
-                if isinstance(tool_results, list):
-                    current_messages.extend(tool_results)
+                current_messages.extend(tool_results)
 
                 self._check_and_notify_stage_change()
 
@@ -369,7 +393,7 @@ class OpenAIChatWorker(QThread):
             logger.exception("请求失败!")
             self._handle_error(e)
 
-    def _make_api_call(self, messages: List[Dict]):
+    def _make_api_call(self, messages: List[Dict]) -> bool:
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
@@ -424,6 +448,11 @@ class OpenAIChatWorker(QThread):
             else:
                 extra_body[en_key] = value
 
+        if "max_tokens" in req_kwargs:
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
+                model, req_kwargs["max_tokens"]
+            )
+
         if extra_body:
             req_kwargs["extra_body"] = extra_body
 
@@ -473,28 +502,187 @@ class OpenAIChatWorker(QThread):
                     continue
                 raise
 
-        tool_calls_found = self._process_response(response)
+        return self._process_response(response)
 
-        if not tool_calls_found:
-            return "FINISH"
+    def _estimate_message_tokens(self, messages: List[Dict]) -> int:
+        total_chars = 0
+        for msg in messages:
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                total_chars += len(content)
+            elif isinstance(content, list):
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+                    for value in block.values():
+                        if isinstance(value, str):
+                            total_chars += len(value)
+            for tc in msg.get("tool_calls", []):
+                if not isinstance(tc, dict):
+                    continue
+                for value in tc.values():
+                    if isinstance(value, str):
+                        total_chars += len(value)
+        return int(total_chars / 3.5)
 
-        tool_results = self._execute_all_tools()
+    def _infer_context_limit(self, model: str) -> int:
+        profile = get_provider_profile(self.llm_config)
+        return int(profile.get("context_limit", 128000))
 
-        if tool_results is None:
-            return None
+    def _cap_max_output_tokens(self, model: str, requested: int) -> int:
+        try:
+            requested_int = int(requested)
+        except Exception:
+            return requested
+        profile = get_provider_profile(self.llm_config)
+        cap = int(profile.get("max_output_tokens", requested_int))
+        if profile.get("family") == "openai":
+            model_name = (model or "").lower()
+            if "gpt-4-turbo" in model_name:
+                cap = min(cap, 4096)
+            elif "o1" in model_name or "o3" in model_name:
+                cap = max(cap, min(requested_int, 32768))
+        return min(requested_int, cap)
 
-        if tool_results:
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": self.full_response,
-                    "tool_calls": self._current_tool_calls,
-                }
-            )
-            messages.extend(tool_results)
-            return self._make_api_call(messages)
+    def _build_compaction_messages(
+        self, old_messages: List[Dict], recent_messages: List[Dict]
+    ) -> List[Dict]:
+        transcript_lines = []
+        for msg in old_messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                content = "\n".join(text_parts)
+            transcript_lines.append(f"[{role}] {str(content)[:1800]}")
 
-        return "FINISH"
+        recent_hint = []
+        for msg in recent_messages[-4:]:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                content = "\n".join(text_parts)
+            recent_hint.append(f"[{role}] {str(content)[:400]}")
+
+        prompt = (
+            "请压缩较早的对话上下文，生成一个后续可继续执行编码任务的摘要。\n\n"
+            "要求：\n"
+            "1. 保留任务目标、已做决定、相关文件、关键工具结果、未完成事项。\n"
+            "2. 删除重复探索和无关寒暄。\n"
+            "3. 输出简洁 Markdown，不要使用 JSON。\n"
+            "4. 如果最近消息与旧消息有潜在冲突，请明确标出。\n\n"
+            "【较早对话】\n"
+            + "\n".join(transcript_lines)
+            + "\n\n【最近保留消息提示】\n"
+            + "\n".join(recent_hint)
+        )
+
+        return [
+            {
+                "role": "system",
+                "content": self.compaction_prompt
+                or "你是一个上下文压缩助手，负责提炼编码任务继续执行所需的摘要。",
+            },
+            {"role": "user", "content": prompt},
+        ]
+
+    def _summarize_old_messages(
+        self, old_messages: List[Dict], recent_messages: List[Dict]
+    ) -> str:
+        api_key = self.llm_config.get("API_KEY", "").strip()
+        base_url = self.llm_config.get("API_URL") or None
+        model = str(
+            self.compaction_config.get("model")
+            or self.llm_config.get("模型名称", "gpt-4o")
+        )
+
+        client = OpenAI(
+            api_key=api_key
+            if api_key and self.llm_config.get("认证方式", "bearer") != "none"
+            else "dummy",
+            base_url=base_url,
+            timeout=60.0,
+        )
+
+        req_kwargs = {
+            "model": model,
+            "messages": self._build_compaction_messages(old_messages, recent_messages),
+            "stream": False,
+            "max_tokens": self._cap_max_output_tokens(model, 1800),
+            "temperature": self.compaction_config.get("temperature", 0.1),
+        }
+        top_p = self.compaction_config.get("top_p")
+        if top_p is not None:
+            req_kwargs["top_p"] = top_p
+
+        from .retry_helper import create_api_call_with_retry
+
+        def create_task():
+            return client.chat.completions.create(**req_kwargs)
+
+        resp = create_api_call_with_retry(client, create_task)
+        return (resp.choices[0].message.content or "").strip()
+
+    def _maybe_compact_messages(self, messages: List[Dict]) -> List[Dict]:
+        if len(messages) < 10:
+            return messages
+
+        model = str(self.llm_config.get("模型名称", "gpt-4o"))
+        limit = self._infer_context_limit(model)
+        threshold = int(limit * 0.7)
+        if self._estimate_message_tokens(messages) <= threshold:
+            return messages
+
+        system_message = messages[0] if messages and messages[0].get("role") == "system" else None
+        start_idx = 1 if system_message else 0
+        body = messages[start_idx:]
+        if len(body) < 8:
+            return messages
+
+        split_idx = max(2, int(len(body) * 0.65))
+        old_messages = body[:split_idx]
+        recent_messages = body[split_idx:]
+        if len(recent_messages) < 4:
+            recent_messages = body[-4:]
+            old_messages = body[:-4]
+        if not old_messages:
+            return messages
+
+        try:
+            summary = self._summarize_old_messages(old_messages, recent_messages)
+        except Exception as exc:
+            logger.warning(f"[Compaction] AI compaction failed, falling back: {exc}")
+            summary = ""
+
+        if not summary:
+            clipped_old = []
+            for msg in old_messages[-6:]:
+                content = str(msg.get("content", ""))[:300]
+                clipped_old.append(f"- [{msg.get('role', 'unknown')}] {content}")
+            summary = "## Earlier Conversation Summary\n" + "\n".join(clipped_old)
+
+        summary_message = {
+            "role": "assistant",
+            "content": "## Earlier Conversation Summary\n" + summary
+            if not summary.startswith("## Earlier Conversation Summary")
+            else summary,
+        }
+
+        compacted = ([system_message] if system_message else []) + [
+            summary_message,
+            *recent_messages,
+        ]
+        logger.info(
+            f"[Compaction] Compacted {len(old_messages)} messages into summary, kept {len(recent_messages)} recent messages"
+        )
+        return compacted
 
     def _process_response(self, response):
         self.full_response = ""

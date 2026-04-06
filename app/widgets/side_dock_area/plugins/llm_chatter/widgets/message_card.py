@@ -744,10 +744,14 @@ class CodeWebViewer(QWebEngineView):
                     const tag = e.target.closest('.context-tag');
                     if (tag) console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
                 }});
-                window.onload = () => {{
+                document.addEventListener('DOMContentLoaded', () => {{
                     console.log('pywebview_ready');
+                    reportHeight();
                     new ResizeObserver(() => requestAnimationFrame(reportHeight)).observe(document.body);
-                }};
+                }});
+                window.addEventListener('load', () => {{
+                    reportHeight();
+                }});
                 window.pywebview = {{ reportHeight: reportHeight }};
             </script>
         </body>

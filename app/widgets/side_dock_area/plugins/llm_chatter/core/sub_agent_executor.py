@@ -12,6 +12,10 @@ from loguru import logger
 from PyQt5.QtCore import QThread, pyqtSignal, QCoreApplication
 from openai import OpenAI
 
+from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
+    get_provider_profile,
+)
+
 
 class SubAgentExecutor(QThread):
     """子智能体执行器 - 独立线程运行子智能体任务"""
@@ -258,6 +262,11 @@ class SubAgentExecutor(QThread):
             else:
                 extra_body[en_key] = value
 
+        if "max_tokens" in req_kwargs:
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
+                model, req_kwargs["max_tokens"]
+            )
+
         if extra_body:
             req_kwargs["extra_body"] = extra_body
 
@@ -329,6 +338,19 @@ class SubAgentExecutor(QThread):
                             pass
 
         return full_response, tool_calls_found
+
+    def _cap_max_output_tokens(self, model: str, requested: int) -> int:
+        try:
+            requested_int = int(requested)
+        except Exception:
+            return requested
+        profile = get_provider_profile(self.llm_config)
+        cap = int(profile.get("max_output_tokens", requested_int))
+        if profile.get("family") == "openai":
+            model_name = (model or "").lower()
+            if "o1" in model_name or "o3" in model_name:
+                cap = max(cap, min(requested_int, 32768))
+        return min(requested_int, cap)
 
     def _execute_tools(self, tool_calls: List[Dict]) -> Optional[List[Dict]]:
         """执行工具调用"""

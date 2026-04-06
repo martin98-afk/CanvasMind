@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -81,9 +82,14 @@ class HistoryManager:
         self.canvas_name = canvas_name
         self.history_dir = Path("canvas_files") / "workflows" / canvas_name
         self.history_file = self.history_dir / f"llm_history.json"
+        self.daily_dir = self.history_dir / "daily"
+        self.latest_session_file = self.history_dir / "session_latest.json"
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self.daily_dir.mkdir(parents=True, exist_ok=True)
         self._history_sessions: List[Dict] = self._load_history()
         self._topic_summaries: Dict[str, str] = {}
+        self._daily_limit = 5
+        self._history_limit = 100
 
     def _load_history(self) -> List[Dict]:
         if self.history_file.exists():
@@ -109,9 +115,22 @@ class HistoryManager:
             return
 
         merged_messages = merge_session_messages(messages)
+        session_record = self._build_session_record(merged_messages, title)
+
+        self._history_sessions.insert(0, session_record)
+        self._history_sessions = self._history_sessions[: self._history_limit]
+        self._save_to_disk()
+        self._save_latest_and_daily(session_record)
+
+    def _build_session_record(
+        self, merged_messages: List[Dict], title: str = None, session_id: str = None
+    ) -> Dict:
+        now = datetime.now()
+        saved_at = now.strftime("%Y-%m-%d %H:%M:%S")
+        session_id = session_id or uuid.uuid4().hex[:8]
 
         last_msg_time = merged_messages[-1].get(
-            "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+            "timestamp", now.strftime("%Y-%m-%d %H:%M")
         )
         if not title:
             for msg in merged_messages:
@@ -130,16 +149,51 @@ class HistoryManager:
             else:
                 title = "新对话"
 
-        self._history_sessions.insert(
-            0,
-            {
-                "title": title,
-                "last_time": last_msg_time,
-                "messages": merged_messages,
-                "message_count": self._count_conversation_pairs(merged_messages),
-            },
+        return {
+            "session_id": session_id,
+            "saved_at": saved_at,
+            "title": title,
+            "last_time": last_msg_time,
+            "messages": merged_messages,
+            "message_count": self._count_conversation_pairs(merged_messages),
+        }
+
+    def _save_latest_and_daily(self, session_record: Dict):
+        try:
+            with open(self.latest_session_file, "w", encoding="utf-8") as f:
+                json.dump(
+                    serialize_for_json(session_record),
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+        except Exception:
+            pass
+
+        day_dir = self.daily_dir / datetime.now().strftime("%Y-%m-%d")
+        day_dir.mkdir(parents=True, exist_ok=True)
+        file_name = (
+            f"session_{datetime.now().strftime('%H%M%S')}_"
+            f"{session_record.get('session_id', 'unknown')}.json"
         )
-        self._save_to_disk()
+        try:
+            with open(day_dir / file_name, "w", encoding="utf-8") as f:
+                json.dump(
+                    serialize_for_json(session_record),
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+        except Exception:
+            pass
+
+        daily_files = sorted(day_dir.glob("session_*.json"), key=lambda p: p.stat().st_mtime)
+        if len(daily_files) > self._daily_limit:
+            for old_file in daily_files[: len(daily_files) - self._daily_limit]:
+                try:
+                    old_file.unlink()
+                except Exception:
+                    pass
 
     def get_current_title(self, index: int) -> str:
         if 0 <= index < len(self._history_sessions):
@@ -182,6 +236,18 @@ class HistoryManager:
                 indent=2,
             )
 
+    def load_latest_session(self) -> Optional[Dict]:
+        if not self.latest_session_file.exists():
+            return None
+        try:
+            with open(self.latest_session_file, "r", encoding="utf-8") as f:
+                data = deserialize_from_json(json.load(f))
+                if isinstance(data, dict) and data.get("messages"):
+                    return data
+        except Exception:
+            return None
+        return None
+
     def get_history_list(self) -> List[Dict]:
         return self._history_sessions
 
@@ -198,12 +264,12 @@ class HistoryManager:
     def update_session(self, index: int, messages: List[Dict]):
         if 0 <= index < len(self._history_sessions):
             merged_messages = merge_session_messages(messages)
-            last_msg_time = merged_messages[-1].get(
-                "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+            existing = self._history_sessions[index]
+            updated = self._build_session_record(
+                merged_messages,
+                title=existing.get("title"),
+                session_id=existing.get("session_id"),
             )
-            self._history_sessions[index]["messages"] = merged_messages
-            self._history_sessions[index]["last_time"] = last_msg_time
-            self._history_sessions[index]["message_count"] = (
-                self._count_conversation_pairs(merged_messages)
-            )
+            self._history_sessions[index] = updated
             self._save_to_disk()
+            self._save_latest_and_daily(updated)

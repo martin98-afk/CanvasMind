@@ -84,6 +84,23 @@ class ToolExecutor:
         self._custom_tools[name] = handler
         logger.info(f"[ToolExecutor] Registered custom tool: {name}")
 
+    def set_memory_manager(self, memory_manager):
+        if self._builtin_tools:
+            self._builtin_tools.set_memory_manager(memory_manager)
+            logger.info("[ToolExecutor] MemoryManager attached to BuiltinTools")
+
+    def set_llm_config_getter(self, getter: Callable):
+        if self._builtin_tools:
+            self._builtin_tools.set_llm_config_getter(getter)
+            logger.info("[ToolExecutor] LLM config getter attached to BuiltinTools")
+
+    def set_session_messages_getter(self, getter: Callable):
+        if self._builtin_tools:
+            self._builtin_tools.set_session_messages_getter(getter)
+            logger.info(
+                "[ToolExecutor] Session messages getter attached to BuiltinTools"
+            )
+
     def execute(self, tool_name: str, args: dict) -> ToolResult:
         """
         执行工具调用
@@ -166,6 +183,25 @@ class ToolExecutor:
             ),
             "summarize_changes": lambda: self._builtin_tools.summarize_changes(
                 args.get("text", ""), args.get("limit", 1200)
+            ),
+            "memory_list": lambda: self._builtin_tools.memory_list(
+                args.get("limit", 10),
+                args.get("include_disabled", False),
+            ),
+            "memory_search": lambda: self._builtin_tools.memory_search(
+                args.get("query", ""),
+                args.get("limit", 8),
+                args.get("include_disabled", False),
+            ),
+            "memory_save": lambda: self._builtin_tools.memory_save(
+                args.get("content", ""),
+                args.get("confidence", 0.8),
+                args.get("source", "assistant"),
+                args.get("conflict_group", ""),
+            ),
+            "memory_consolidate": lambda: self._builtin_tools.memory_consolidate(
+                args.get("max_items", 3),
+                args.get("save", True),
             ),
             "todowrite": lambda: self._builtin_tools.todo_write(args.get("todos", [])),
             "todoread": lambda: self._builtin_tools.todo_read(),

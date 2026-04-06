@@ -285,7 +285,7 @@ class LLMConfigPopup(QWidget):
             return widget
 
     def get_config(self) -> dict:
-        result = {}
+        result = self.config.copy()
         for key, (label, widget) in self._widgets.items():
             # 处理"选择模型"映射到"模型名称"
             actual_key = "模型名称" if key == "选择模型" else key

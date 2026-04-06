@@ -8,7 +8,10 @@ from loguru import logger
 from typing import Dict, List, Optional, Any, Callable
 
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
-from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import CODING_STAGES
+from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
+    CODING_STAGES,
+    get_stage_prompt as resolve_stage_prompt,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
     get_builtin_tools_schema,
 )
@@ -16,9 +19,14 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     ChatSession,
     SessionManager,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
+    supports_vision as provider_supports_vision,
+)
 
 
 TOKEN_ESTIMATION_RATIO = 0.25
+MAX_HISTORY_SNIPPET_CHARS = 1200
+RECENT_HISTORY_MIN_MESSAGES = 6
 
 
 def estimate_tokens(text: str) -> int:
@@ -41,6 +49,22 @@ def estimate_tokens_from_messages(messages: List[Dict]) -> int:
         elif isinstance(content, str):
             total += estimate_tokens(content)
     return total
+
+
+def _normalize_message_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        texts = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text":
+                text = str(item.get("text", "")).strip()
+                if text:
+                    texts.append(text)
+        return "\n".join(texts).strip()
+    return str(content or "").strip()
 
 
 class ChatEngine:
@@ -169,6 +193,130 @@ class ChatEngine:
                     break
         return selected
 
+    def _trim_message_content(self, content: str, hard_limit: int) -> str:
+        text = (content or "").strip()
+        if len(text) <= hard_limit:
+            return text
+        head = text[: int(hard_limit * 0.65)].rstrip()
+        tail = text[-int(hard_limit * 0.2) :].lstrip()
+        omitted = len(text) - len(head) - len(tail)
+        return (
+            f"{head}\n\n[... 已省略 {omitted} 个字符的较早内容以控制上下文长度 ...]\n\n{tail}"
+        )
+
+    def _summarize_compacted_messages(self, messages: List[Dict[str, str]]) -> str:
+        if not messages:
+            return ""
+
+        summary_lines = [
+            "## Earlier Conversation Summary",
+            "以下是为节省上下文窗口而压缩的较早对话，请把它当作已确认的历史上下文继续工作。",
+        ]
+
+        user_points = []
+        assistant_points = []
+        for msg in messages:
+            role = msg.get("role")
+            content = _normalize_message_content(msg.get("content", ""))
+            if not content:
+                continue
+            single_line = " ".join(content.split())
+            snippet = self._trim_message_content(single_line, 220)
+            if role == "user":
+                user_points.append(snippet)
+            elif role == "assistant":
+                assistant_points.append(snippet)
+
+        if user_points:
+            summary_lines.append("### User Requests")
+            for idx, item in enumerate(user_points[-6:], 1):
+                summary_lines.append(f"{idx}. {item}")
+
+        if assistant_points:
+            summary_lines.append("### Assistant Progress")
+            for idx, item in enumerate(assistant_points[-6:], 1):
+                summary_lines.append(f"{idx}. {item}")
+
+        summary_lines.append(
+            "### Compression Note\n如果后续细节与当前上下文冲突，以最近保留的原始消息和最新任务状态为准。"
+        )
+        return "\n".join(summary_lines)
+
+    def _compact_history_messages(
+        self,
+        history_messages: List[Dict[str, str]],
+        history_budget: int,
+    ) -> List[Dict[str, str]]:
+        if not history_messages or history_budget <= 0:
+            return []
+
+        normalized = []
+        for msg in history_messages:
+            role = msg.get("role")
+            if role not in ("user", "assistant"):
+                continue
+            content = _normalize_message_content(msg.get("content", ""))
+            if not content:
+                continue
+            normalized.append({"role": role, "content": content})
+
+        if not normalized:
+            return []
+
+        for item in normalized:
+            item["content"] = self._trim_message_content(
+                item["content"], MAX_HISTORY_SNIPPET_CHARS
+            )
+
+        if estimate_tokens_from_messages(normalized) <= history_budget:
+            return normalized
+
+        recent_messages: List[Dict[str, str]] = []
+        recent_tokens = 0
+        min_recent_tokens = int(history_budget * 0.55)
+        for msg in reversed(normalized):
+            msg_tokens = estimate_tokens_from_messages([msg])
+            if recent_messages and recent_tokens + msg_tokens > history_budget:
+                break
+            recent_messages.insert(0, msg)
+            recent_tokens += msg_tokens
+            if (
+                len(recent_messages) >= RECENT_HISTORY_MIN_MESSAGES
+                and recent_tokens >= min_recent_tokens
+            ):
+                break
+
+        if len(recent_messages) == len(normalized):
+            return recent_messages
+
+        compacted = normalized[: len(normalized) - len(recent_messages)]
+        compact_summary = self._summarize_compacted_messages(compacted)
+        if not compact_summary:
+            return recent_messages
+
+        summary_message = {
+            "role": "assistant",
+            "content": compact_summary,
+        }
+        result_messages = [summary_message] + recent_messages
+
+        while (
+            len(result_messages) > 1
+            and estimate_tokens_from_messages(result_messages) > history_budget
+        ):
+            if len(recent_messages) > 1:
+                recent_messages.pop(0)
+                result_messages = [summary_message] + recent_messages
+                continue
+
+            summary_message["content"] = self._trim_message_content(
+                summary_message["content"], 800
+            )
+            result_messages = [summary_message]
+            break
+
+        return result_messages
+
     def set_callback(self, event: str, callback: Callable):
         self._callbacks[event] = callback
 
@@ -274,11 +422,6 @@ class ChatEngine:
             task_state.build_event_digest(),
         ]
 
-        if self._get_memory_context:
-            memory_context = self._get_memory_context()
-            if memory_context:
-                prompt_parts.append(memory_context)
-
         custom_prompt = llm_config.get("系统提示", "").strip()
         if custom_prompt:
             prompt_parts.append(custom_prompt)
@@ -291,32 +434,48 @@ class ChatEngine:
         )
 
         max_context_tokens = self._get_token_budget(llm_config)
-
-        cards = self._get_chat_cards() if self._get_chat_cards else []
-        cards_to_include = self._smart_trim_messages(cards, max_context_tokens)
-        for card in cards_to_include:
-            role = getattr(card, "role", None)
-            if not role or role == "system":
+        normalized_session_messages = []
+        for msg in session.get_context_messages():
+            role = msg.get("role")
+            if role not in ("user", "assistant"):
                 continue
-
-            content = ""
-            if hasattr(card, "viewer") and hasattr(card.viewer, "get_plain_text"):
-                content = card.viewer.get_plain_text()
+            content = _normalize_message_content(msg.get("content", ""))
             if not content:
                 continue
-
-            if role in ("user", "assistant"):
-                messages.append({"role": role, "content": content})
+            normalized_session_messages.append({"role": role, "content": content})
 
         context_provider = self._get_context_provider()
-        user_text = messages.pop(-1).get("content", "")
+        latest_user_message = ""
+        history_messages = normalized_session_messages
+        if history_messages and history_messages[-1].get("role") == "user":
+            latest_user_message = history_messages[-1].get("content", "")
+            history_messages = history_messages[:-1]
+
+        if self._get_memory_context:
+            memory_query = "\n".join(
+                part
+                for part in [task_state.current_goal or "", latest_user_message]
+                if part.strip()
+            ).strip()
+            try:
+                memory_context = self._get_memory_context(memory_query)
+            except TypeError:
+                memory_context = self._get_memory_context()
+            if memory_context:
+                messages[0]["content"] = messages[0]["content"] + "\n\n" + memory_context
+
         task_prelude = self._build_user_task_prelude(task_state)
 
-        model_name = str(llm_config.get("模型名称", "")).lower()
-        supports_vision = any(
-            marker in model_name
-            for marker in ["4o", "vision", "vl", "gemini", "claude-3"]
+        supports_vision = provider_supports_vision(llm_config)
+
+        context_text = context_provider.get_text_context() if context_provider else ""
+        final_user_text = task_prelude + context_text + latest_user_message
+
+        available_history_budget = max_context_tokens - estimate_tokens(final_user_text) - 200
+        history_for_api = self._compact_history_messages(
+            history_messages, available_history_budget
         )
+        messages.extend(history_for_api)
 
         if supports_vision and context_provider:
             has_image = any(
@@ -324,51 +483,13 @@ class ChatEngine:
             )
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
-                user_content.append({"type": "text", "text": task_prelude + user_text})
+                user_content.append({"type": "text", "text": final_user_text})
                 messages.append({"role": "user", "content": user_content})
                 return messages
 
-        if context_provider:
-            context_text = context_provider.get_text_context()
-            messages.append(
-                {"role": "user", "content": task_prelude + context_text + user_text}
-            )
-        else:
-            messages.append({"role": "user", "content": task_prelude + user_text})
+        messages.append({"role": "user", "content": final_user_text})
 
         return messages
-
-    def _build_stage_prompt(self, stage: str) -> str:
-        if stage not in CODING_STAGES:
-            stage = "discover"
-
-        prompts = {
-            "discover": "## Active Stage: Discover\n"
-            "Goal: Understand project structure, constraints, and relevant context.\n"
-            "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
-            "→ When context is sufficient, use switch_stage tool to transition to plan.",
-            "plan": "## Active Stage: Plan\n"
-            "Goal: Produce implementation path with files, risks, validation steps.\n"
-            "Expected tools: Write a concrete plan using todo tool or analysis.\n"
-            "→ When plan is solid, use switch_stage tool to transition to edit.",
-            "edit": "## Active Stage: Edit\n"
-            "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
-            "Expected tools: write, edit.\n"
-            "→ When changes are complete, use switch_stage tool to transition to verify.",
-            "verify": "## Active Stage: Verify\n"
-            "Goal: Run validation commands, explain failures concretely.\n"
-            "Expected tools: Bash (pytest, test, compile, lint).\n"
-            "→ When verification passes, use switch_stage tool to transition to review.",
-            "review": "## Active Stage: Review\n"
-            "Goal: Check for regressions, missing tests, weak assumptions.\n"
-            "Expected tools: Read, Grep for inspection.\n"
-            "→ When review is done, use switch_stage tool to transition to summarize.",
-            "summarize": "## Active Stage: Summarize\n"
-            "Goal: Compress work into concise handoff for next step.\n"
-            "Expected tools: Final summary output.\n"
-            "→ Task complete.",
-        }
-        return prompts[stage]
 
     def _build_user_task_prelude(self, task_state) -> str:
         return (
@@ -383,11 +504,11 @@ class ChatEngine:
         llm_config: Dict,
         tools: List[Dict],
     ):
-        def get_stage_prompt():
+        def build_stage_prompt():
             session = self._session_manager.get_current_session()
             if session:
-                return self._build_stage_prompt(session.task_state.stage)
-            return self._build_stage_prompt("discover")
+                return resolve_stage_prompt(session.task_state.stage)
+            return resolve_stage_prompt("discover")
 
         def on_stage_changed(new_stage: str):
             session = self._session_manager.get_current_session()
@@ -398,15 +519,25 @@ class ChatEngine:
         if self._tool_executor:
             self._tool_executor.set_stage_callback(on_stage_changed)
 
+        compaction_prompt = ""
+        compaction_config = {}
+        if self._agent_manager and self._agent_manager.get_agent("compaction"):
+            compaction_prompt = self._agent_manager.get_agent_system_prompt(
+                "compaction"
+            )
+            compaction_config = self._agent_manager.get_agent_config("compaction")
+
         self._current_worker = OpenAIChatWorker(
             messages=messages,
             llm_config=llm_config,
             tools=tools,
             tool_executor=self._tool_executor,
             tool_start_callback=self._callbacks.get("tool_call_sync_requested"),
-            get_stage_prompt=get_stage_prompt,
+            get_stage_prompt=build_stage_prompt,
             stage_changed_callback=on_stage_changed,
             permission_check_callback=self._check_tool_permission,
+            compaction_prompt=compaction_prompt,
+            compaction_config=compaction_config,
         )
 
         self._current_worker.content_received.connect(self._on_content_received)

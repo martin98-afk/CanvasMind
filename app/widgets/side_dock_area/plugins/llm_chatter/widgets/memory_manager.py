@@ -25,10 +25,18 @@ class MemoryItemWidget(QWidget):
     deleted = pyqtSignal(int)
     toggled = pyqtSignal(int, bool)
 
-    def __init__(self, item_id: int, content: str, enabled: bool = True, parent=None):
+    def __init__(
+        self,
+        item_id: int,
+        content: str,
+        enabled: bool = True,
+        meta_text: str = "",
+        parent=None,
+    ):
         super().__init__(parent)
         self.item_id = item_id
         self.content = content
+        self.meta_text = meta_text
         self._init_ui(enabled)
 
     def _init_ui(self, enabled):
@@ -36,10 +44,23 @@ class MemoryItemWidget(QWidget):
         main_layout.setContentsMargins(5, 8, 5, 8)
         main_layout.setSpacing(0)
 
+        text_wrap = QWidget(self)
+        text_layout = QVBoxLayout(text_wrap)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
+
         self.label = BodyLabel(self.content, self)
         self.label.setWordWrap(True)
-        self.label.setStyleSheet("padding: 5px 10px;")
-        main_layout.addWidget(self.label, 1)
+        self.label.setStyleSheet("padding: 5px 10px 0 10px;")
+        text_layout.addWidget(self.label)
+
+        if self.meta_text:
+            self.meta_label = BodyLabel(self.meta_text, self)
+            self.meta_label.setWordWrap(True)
+            self.meta_label.setStyleSheet("padding: 0 10px 5px 10px; color: #8c99ad; font-size: 11px;")
+            text_layout.addWidget(self.meta_label)
+
+        main_layout.addWidget(text_wrap, 1)
         main_layout.addWidget(CardSeparator())
 
         self.switch = SwitchButton(self)
@@ -173,12 +194,20 @@ class MemoryManagerDialog(QDialog):
             if isinstance(mem, dict):
                 content = mem.get("content", "")
                 enabled = mem.get("enabled", True)
+                source = mem.get("source", "manual")
+                confidence = mem.get("confidence", 0.8)
+                conflict_group = mem.get("conflict_group", "")
+                meta_parts = [f"source={source}", f"confidence={confidence:.2f}"]
+                if conflict_group:
+                    meta_parts.append(f"group={conflict_group}")
+                meta_text = " | ".join(meta_parts)
             else:
                 content = str(mem)
                 enabled = True
+                meta_text = "source=legacy"
 
             item = QListWidgetItem(self.list_widget)
-            widget = MemoryItemWidget(i, content, enabled)
+            widget = MemoryItemWidget(i, content, enabled, meta_text=meta_text)
             widget.deleted.connect(self._delete_item)
             widget.toggled.connect(self._toggle_item)
             self.list_widget.setItemWidget(item, widget)
@@ -190,9 +219,27 @@ class MemoryManagerDialog(QDialog):
             return
 
         if isinstance(self.memories, list):
-            self.memories.append({"content": content, "enabled": True})
+            self.memories.append(
+                {
+                    "content": content,
+                    "enabled": True,
+                    "confidence": 0.8,
+                    "source": "manual",
+                    "last_used_at": "",
+                    "conflict_group": "",
+                }
+            )
         else:
-            self.memories.append({"content": content, "enabled": True})
+            self.memories.append(
+                {
+                    "content": content,
+                    "enabled": True,
+                    "confidence": 0.8,
+                    "source": "manual",
+                    "last_used_at": "",
+                    "conflict_group": "",
+                }
+            )
 
         self.input_edit.clear()
         self._load_memories()
