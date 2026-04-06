@@ -36,38 +36,79 @@ def merge_session_messages(messages: List[Dict]) -> List[Dict]:
             continue
 
         if role == "assistant":
-            final_content = msg.get("content", "")
-            current_round_id = msg.get("round_id")
+            merged_msg = msg.copy()
+            merged_msg["content"] = msg.get("content", "")
+            merged_tool_calls = [
+                dict(tc) for tc in msg.get("tool_calls", []) if isinstance(tc, dict)
+            ]
+            tool_results = [dict(item) for item in msg.get("tool_results", [])]
 
             j = i + 1
             while j < len(messages):
                 next_msg = messages[j]
                 next_role = next_msg.get("role")
-                next_round_id = next_msg.get("round_id")
 
-                if next_role == "assistant" and next_round_id == current_round_id:
-                    if next_msg.get("content"):
-                        final_content = next_msg.get("content", "")
-                    j += 1
-                elif next_role == "tool" and next_round_id == current_round_id:
-                    j += 1
-                elif next_role == "assistant" and next_round_id is None:
-                    final_content = next_msg.get("content", "")
-                    j += 1
-                else:
+                if next_role in ("user", "system", "welcome"):
                     break
 
-            merged_msg = {
-                "role": "assistant",
-                "content": final_content,
-                "timestamp": msg.get("timestamp"),
-            }
+                if next_role == "assistant":
+                    if next_msg.get("content"):
+                        merged_msg["content"] = next_msg.get("content", "")
+                    if next_msg.get("tool_calls"):
+                        merged_tool_calls.extend(
+                            dict(tc)
+                            for tc in next_msg.get("tool_calls", [])
+                            if isinstance(tc, dict)
+                        )
+                    if next_msg.get("tool_results"):
+                        tool_results.extend(
+                            dict(item) for item in next_msg.get("tool_results", [])
+                        )
+                    j += 1
+                    continue
+
+                if next_role == "tool":
+                    tool_result = next_msg.copy()
+                    tool_result.pop("round_id", None)
+                    tool_results.append(tool_result)
+                    j += 1
+                    continue
+
+                break
+
+            if merged_tool_calls:
+                deduped_tool_calls = []
+                seen_tool_call_ids = set()
+                for tc in merged_tool_calls:
+                    tc_id = tc.get("id")
+                    dedupe_key = tc_id or json.dumps(tc, ensure_ascii=False, sort_keys=True)
+                    if dedupe_key in seen_tool_call_ids:
+                        continue
+                    seen_tool_call_ids.add(dedupe_key)
+                    deduped_tool_calls.append(tc)
+                merged_msg["tool_calls"] = deduped_tool_calls
+
+            if tool_results:
+                deduped_results = []
+                seen_keys = set()
+                for item in tool_results:
+                    dedupe_key = (
+                        item.get("tool_call_id"),
+                        item.get("content"),
+                        item.get("name"),
+                    )
+                    if dedupe_key in seen_keys:
+                        continue
+                    seen_keys.add(dedupe_key)
+                    deduped_results.append(item)
+                merged_msg["tool_results"] = deduped_results
 
             merged.append(merged_msg)
             i = j
             continue
 
         if role == "tool":
+            merged.append(msg.copy())
             i += 1
             continue
 
@@ -97,6 +138,7 @@ class HistoryManager:
                 with open(self.history_file, "r", encoding="utf-8") as f:
                     data = deserialize_from_json(json.load(f))
                     for item in data:
+                        item["messages"] = merge_session_messages(item.get("messages", []))
                         if "title" not in item:
                             item["title"] = item.get("topic_summary", "新对话")
                         if "last_time" not in item:
@@ -243,6 +285,7 @@ class HistoryManager:
             with open(self.latest_session_file, "r", encoding="utf-8") as f:
                 data = deserialize_from_json(json.load(f))
                 if isinstance(data, dict) and data.get("messages"):
+                    data["messages"] = merge_session_messages(data.get("messages", []))
                     return data
         except Exception:
             return None
@@ -258,7 +301,7 @@ class HistoryManager:
 
     def get_session_by_index(self, index: int) -> Optional[List[Dict]]:
         if 0 <= index < len(self._history_sessions):
-            return self._history_sessions[index]["messages"]
+            return merge_session_messages(self._history_sessions[index]["messages"])
         return None
 
     def update_session(self, index: int, messages: List[Dict]):

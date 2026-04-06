@@ -3,7 +3,7 @@ import json
 import re
 import time
 import traceback
-from typing import Dict, List
+from typing import Any, Dict, List
 from loguru import logger
 
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
@@ -311,22 +311,25 @@ class OpenAIChatWorker(QThread):
 
     def run(self):
         try:
-            iteration = 0
-            max_iterations = 10
             current_messages = self.messages.copy()
 
-            while iteration < max_iterations:
+            while not self._is_cancelled:
                 if self._is_cancelled:
                     return
 
-                iteration += 1
-                current_messages = self._maybe_compact_messages(current_messages)
+                compacted_messages = self._maybe_compact_messages(current_messages)
+                if compacted_messages != current_messages:
+                    current_messages = compacted_messages
+                    self.finished_with_messages.emit(current_messages)
+                else:
+                    current_messages = compacted_messages
                 tool_calls_found = self._make_api_call(current_messages)
 
                 if self._is_cancelled:
                     return
 
                 if not tool_calls_found:
+                    current_messages.append(self._build_assistant_message())
                     self.finished_with_content.emit(self.full_response)
                     self.finished_with_messages.emit(current_messages)
                     return
@@ -342,13 +345,7 @@ class OpenAIChatWorker(QThread):
                         return
 
                     q = self._question_pending
-                    current_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": self.full_response,
-                            "tool_calls": self._current_tool_calls,
-                        }
-                    )
+                    current_messages.append(self._build_assistant_message())
                     current_messages.append(
                         {
                             "role": "tool",
@@ -356,42 +353,107 @@ class OpenAIChatWorker(QThread):
                             "content": self._pending_answer,
                         }
                     )
+                    self.finished_with_messages.emit(current_messages)
                     self._question_pending = None
                     self._pending_answer = None
                     continue
 
+                assistant_message = self._build_assistant_message(tool_results)
+
                 if not tool_results:
-                    current_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": self.full_response,
-                            "tool_calls": self._current_tool_calls,
-                        }
-                    )
+                    current_messages.append(assistant_message)
                     self.finished_with_content.emit(self.full_response)
                     self.finished_with_messages.emit(current_messages)
                     return
 
-                current_messages.append(
-                    {
-                        "role": "assistant",
-                        "content": self.full_response,
-                        "tool_calls": self._current_tool_calls,
-                    }
-                )
+                current_messages.append(assistant_message)
                 current_messages.extend(tool_results)
+                self.finished_with_messages.emit(current_messages)
 
                 self._check_and_notify_stage_change()
 
                 QCoreApplication.processEvents()
                 time.sleep(0.2)
 
-            self.finished_with_content.emit(self.full_response)
-            self.finished_with_messages.emit(current_messages)
-
         except Exception as e:
             logger.exception("请求失败!")
             self._handle_error(e)
+
+    def _build_assistant_message(self, tool_results=None) -> Dict:
+        message = {
+            "role": "assistant",
+            "content": self.full_response,
+        }
+
+        if self._current_tool_calls:
+            message["tool_calls"] = [dict(tc) for tc in self._current_tool_calls]
+
+        if tool_results is not None:
+            message["tool_results"] = [dict(item) for item in tool_results]
+            round_id = next(
+                (item.get("round_id") for item in tool_results if item.get("round_id")),
+                None,
+            )
+            if round_id:
+                message["round_id"] = round_id
+
+        return message
+
+    def _sanitize_messages_for_api(self, messages: List[Dict]) -> List[Dict]:
+        sanitized: List[Dict[str, Any]] = []
+
+        for msg in messages or []:
+            if not isinstance(msg, dict):
+                continue
+
+            role = msg.get("role")
+            if role not in ("system", "user", "assistant", "tool"):
+                continue
+
+            api_msg: Dict[str, Any] = {"role": role}
+            content = msg.get("content", "")
+
+            if role == "assistant":
+                tool_calls = []
+                for tool_call in msg.get("tool_calls", []) or []:
+                    if not isinstance(tool_call, dict):
+                        continue
+                    tool_id = tool_call.get("id")
+                    function = tool_call.get("function") or {}
+                    function_name = function.get("name")
+                    function_args = function.get("arguments")
+                    if not tool_id or not function_name or function_args is None:
+                        continue
+                    tool_calls.append(
+                        {
+                            "id": str(tool_id),
+                            "type": "function",
+                            "function": {
+                                "name": function_name,
+                                "arguments": function_args,
+                            },
+                        }
+                    )
+
+                if tool_calls:
+                    api_msg["tool_calls"] = tool_calls
+
+                if content or not tool_calls:
+                    api_msg["content"] = content
+            elif role == "tool":
+                tool_call_id = msg.get("tool_call_id")
+                if not tool_call_id:
+                    continue
+                api_msg["tool_call_id"] = str(tool_call_id)
+                api_msg["content"] = content
+                if msg.get("name"):
+                    api_msg["name"] = msg.get("name")
+            else:
+                api_msg["content"] = content
+
+            sanitized.append(api_msg)
+
+        return sanitized
 
     def _make_api_call(self, messages: List[Dict]) -> bool:
         api_key = self.llm_config.get("API_KEY", "").strip()
@@ -400,7 +462,7 @@ class OpenAIChatWorker(QThread):
 
         req_kwargs = {
             "model": model,
-            "messages": messages,
+            "messages": self._sanitize_messages_for_api(messages),
             "stream": self.stream,
         }
 
@@ -870,6 +932,7 @@ class OpenAIChatWorker(QThread):
                 {
                     "role": "tool",
                     "tool_call_id": tool_call_id,
+                    "name": tool_name,
                     "content": result_content,
                     "round_id": round_id,
                 }

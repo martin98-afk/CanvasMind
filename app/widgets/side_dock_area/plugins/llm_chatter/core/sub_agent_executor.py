@@ -109,25 +109,12 @@ class SubAgentExecutor(QThread):
 
     def _execute_agent_loop(self, messages: List[Dict], tools: List[Dict]) -> str:
         """执行子智能体对话循环"""
-        iteration = 0
-        max_iterations = 50
         current_messages = messages.copy()
         response_content = ""
-        has_tool_calls = True
-        loop_start_time = time.time()
-        max_loop_time = 600
 
-        while iteration < max_iterations:
+        while not self._is_cancelled:
             if self._is_cancelled:
                 return ""
-
-            if time.time() - loop_start_time > max_loop_time:
-                logger.warning(
-                    f"[SubAgentExecutor] Loop timeout after {max_loop_time}s, returning current result"
-                )
-                return response_content if response_content else "任务执行超时"
-
-            iteration += 1
 
             response_content, tool_calls = self._make_api_call(current_messages, tools)
 
@@ -135,12 +122,7 @@ class SubAgentExecutor(QThread):
                 return ""
 
             if not tool_calls:
-                if iteration > 1 and response_content:
-                    return response_content
-                has_tool_calls = False
-                continue
-
-            has_tool_calls = True
+                return response_content
             current_messages.append(
                 {
                     "role": "assistant",
@@ -171,9 +153,6 @@ class SubAgentExecutor(QThread):
             current_messages.extend(tool_results)
             QCoreApplication.processEvents()
             time.sleep(0.2)
-
-        if has_tool_calls:
-            return self._generate_final_summary(current_messages)
 
         return response_content
 

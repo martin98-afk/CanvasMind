@@ -11,6 +11,7 @@ from PyQt5.QtCore import (
     QThreadPool,
 )
 from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QColor, QPainter, QPen
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -93,6 +94,46 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget
     ToolFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+
+
+class ContextUsageRing(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._percent = 0
+        self._ring_color = QColor("#5aa9ff")
+        self._track_color = QColor(255, 255, 255, 40)
+        self.setFixedSize(18, 18)
+        self.setToolTip("上下文占用：0%")
+
+    def set_usage(self, percent: int, used_tokens: int, budget_tokens: int):
+        self._percent = max(0, min(100, int(percent)))
+        if self._percent >= 90:
+            self._ring_color = QColor("#ff6b6b")
+        elif self._percent >= 70:
+            self._ring_color = QColor("#f6c453")
+        else:
+            self._ring_color = QColor("#5aa9ff")
+
+        self.setToolTip(
+            f"当前上下文占用\n已用: {used_tokens} tokens\n预算: {budget_tokens} tokens\n占比: {self._percent}%"
+        )
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        rect = self.rect().adjusted(2, 2, -2, -2)
+        start_angle = 90 * 16
+        span_angle = int(-360 * 16 * (self._percent / 100.0))
+
+        track_pen = QPen(self._track_color, 2.2)
+        painter.setPen(track_pen)
+        painter.drawArc(rect, 0, 360 * 16)
+
+        ring_pen = QPen(self._ring_color, 2.2)
+        painter.setPen(ring_pen)
+        painter.drawArc(rect, start_angle, span_angle)
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -207,6 +248,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._chat_engine.set_callback("stream_started", self._on_stream_started)
         self._chat_engine.set_callback("stream_finished", self._on_stream_finished)
+        self._chat_engine.set_callback("messages_updated", self._on_messages_updated)
         self._chat_engine.set_callback("error", self._on_engine_error)
         self._chat_engine.set_callback(
             "user_message_added", self._on_user_message_added
@@ -330,6 +372,11 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.addWidget(self.menu_btn)
 
         right_layout = QHBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(6)
+
+        self.context_usage_ring = ContextUsageRing(self)
+        right_layout.addWidget(self.context_usage_ring)
 
         model_label = QLabel("模型：", self)
         setFont(model_label, 12, QFont.Bold)
@@ -407,6 +454,9 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(0)
         self.context_selector = ContextSelector(self)
+        self.context_selector.selectionChanged.connect(
+            self._on_context_selection_changed
+        )
         hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
 
@@ -453,6 +503,28 @@ class OpenAIChatToolWindow(ToolWindow):
         if model_name:
             setting = Settings.get_instance()
             setting.set(setting.llm_selected_model, model_name, save=True)
+        self._refresh_context_usage_indicator()
+
+    def _on_context_selection_changed(self, _selected_keys=None):
+        self._refresh_context_usage_indicator()
+
+    def _refresh_context_usage_indicator(self):
+        ring = getattr(self, "context_usage_ring", None)
+        if not ring:
+            return
+
+        if not self._chat_engine:
+            ring.set_usage(0, 0, 0)
+            return
+
+        session = self.session_manager.get_current_session()
+        llm_config = self._get_current_model_config()
+        snapshot = self._chat_engine.get_context_usage_snapshot(session, llm_config)
+        ring.set_usage(
+            snapshot.get("percent", 0),
+            snapshot.get("used_tokens", 0),
+            snapshot.get("budget_tokens", 0),
+        )
 
     def _open_settings_popup(self):
         if self._settings_popup is None:
@@ -605,6 +677,8 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.setCurrentIndex(idx)
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
+
+        self._refresh_context_usage_indicator()
 
     def _setup_combo_with_icons(self, model_names: List[str]):
         self.model_combo.clear()
@@ -768,6 +842,7 @@ class OpenAIChatToolWindow(ToolWindow):
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
+        self._refresh_context_usage_indicator()
 
     def _display_current_session(self):
         # 1. 清空当前 UI
@@ -783,7 +858,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 4. 准备分批加载的数据源
         # 注意：这里一定要从 session.messages 拿，不要从临时变量拿
-        self._message_batch = list(session.messages)
+        if self._history_preview_messages is not None:
+            self._message_batch = list(self._history_preview_messages)
+        else:
+            self._message_batch = list(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
@@ -866,6 +944,7 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             QTimer.singleShot(10, self._scroll_to_bottom)
             self._update_node_preview()
+            self._refresh_context_usage_indicator()
 
     def _render_merged_tool_calls(
         self, card, tool_calls: list, tool_results: list, final_content: str = ""
@@ -933,6 +1012,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
         self._display_current_session()
+        self._refresh_context_usage_indicator()
         return True
 
     def _toggle_history_mode(self, enabled: bool):
@@ -1090,6 +1170,24 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return pattern.sub("", content, count=1)
 
+    def _build_api_safe_messages_from_history(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        safe_messages = []
+        for msg in messages or []:
+            role = msg.get("role")
+            if role not in ("system", "user", "assistant"):
+                continue
+
+            safe_msg = {"role": role, "content": msg.get("content", "")}
+            if msg.get("timestamp"):
+                safe_msg["timestamp"] = msg.get("timestamp")
+            if role == "user" and msg.get("params") is not None:
+                safe_msg["params"] = msg.get("params", {})
+            safe_messages.append(safe_msg)
+
+        return safe_messages
+
     def _on_clear_shortcut(self):
         self._clear_chat_area()
         self.node_preview.clear_nodes()
@@ -1136,7 +1234,8 @@ class OpenAIChatToolWindow(ToolWindow):
             session = self.session_manager.create_new_session()
 
         # 3. 核心：强制覆盖 session 的消息内容
-        session.messages = list(messages)
+        self._history_preview_messages = list(messages)
+        session.messages = self._build_api_safe_messages_from_history(messages)
 
         # 4. 同步状态变量
         self._current_history_index = index
@@ -1657,7 +1756,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
-            self._sync_current_assistant_card_to_session()
 
         if self.history_manager:
             self._save_current_session_to_history()
@@ -1671,6 +1769,14 @@ class OpenAIChatToolWindow(ToolWindow):
 
         session = self.session_manager.get_current_session()
         if not session or not self._current_assistant_card:
+            return
+
+        if any(msg.get("role") == "tool" for msg in session.messages):
+            return
+        if any(
+            msg.get("role") == "assistant" and msg.get("tool_calls")
+            for msg in session.messages
+        ):
             return
 
         viewer = getattr(self._current_assistant_card, "viewer", None)
@@ -1694,27 +1800,8 @@ class OpenAIChatToolWindow(ToolWindow):
         session._update_timestamp()
 
     def _save_current_session_to_history(self):
-        saved_messages = []
-
-        for i in range(self.chat_layout.count()):
-            item = self.chat_layout.itemAt(i)
-            if item and item.widget():
-                widget = item.widget()
-                if isinstance(widget, MessageCard):
-                    role = widget.role
-                    content = ""
-                    if hasattr(widget, "viewer") and hasattr(
-                        widget.viewer, "get_plain_text"
-                    ):
-                        content = widget.viewer.get_plain_text()
-                    if content:
-                        saved_messages.append(
-                            {
-                                "role": role,
-                                "content": content,
-                                "timestamp": widget.timestamp,
-                            }
-                        )
+        session = self.session_manager.get_current_session()
+        saved_messages = list(session.messages or []) if session else []
 
         if saved_messages:
             if self._current_history_index is not None:
@@ -1725,6 +1812,16 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.history_manager.save_session(saved_messages)
                 self._current_history_index = 0
         self._update_node_preview()
+
+    def _on_messages_updated(self, messages: List[Dict[str, Any]]):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        self._history_preview_messages = None
+        session.messages = [dict(msg) for msg in messages]
+        session._update_timestamp()
+        self._refresh_context_usage_indicator()
 
     def _on_engine_error(self, error: str):
         if self._current_assistant_card:
