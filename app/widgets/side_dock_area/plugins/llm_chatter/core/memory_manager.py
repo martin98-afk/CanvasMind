@@ -101,9 +101,7 @@ class MemoryManagerCore:
         normalized = dict(memory)
         normalized["content"] = content
         normalized.setdefault("enabled", True)
-        normalized.setdefault(
-            "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
+        normalized.setdefault("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         normalized.setdefault("confidence", 0.8)
         normalized.setdefault("source", "manual")
         normalized.setdefault("last_used_at", "")
@@ -130,11 +128,11 @@ class MemoryManagerCore:
 
         updated = []
         for memory in memories:
-            if (
-                memory.get("conflict_group", "") == conflict_group
-                and self._normalize_content_key(memory.get("content", ""))
-                != self._normalize_content_key(new_entry.get("content", ""))
-            ):
+            if memory.get(
+                "conflict_group", ""
+            ) == conflict_group and self._normalize_content_key(
+                memory.get("content", "")
+            ) != self._normalize_content_key(new_entry.get("content", "")):
                 item = dict(memory)
                 item["enabled"] = False
                 updated.append(item)
@@ -190,9 +188,10 @@ class MemoryManagerCore:
             logger.error(f"[MemoryManager] Failed to add topic: {e}")
             return False
 
-    def get_user_memories(self) -> List[Dict]:
+    def get_user_memories(self, memory_data: Optional[Dict] = None) -> List[Dict]:
         """获取用户记忆列表"""
-        memory_data = self.load_memory()
+        if memory_data is None:
+            memory_data = self.load_memory()
         memories = memory_data.get("user_memories", [])
         memories = [m for m in memories if self._normalize_memory_entry(m)]
         memories.sort(key=self._memory_sort_key, reverse=True)
@@ -217,7 +216,10 @@ class MemoryManagerCore:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             for index, memory in enumerate(user_memories):
-                if self._normalize_content_key(memory.get("content", "")) != normalized_key:
+                if (
+                    self._normalize_content_key(memory.get("content", ""))
+                    != normalized_key
+                ):
                     continue
                 updated = dict(memory)
                 updated["enabled"] = True
@@ -272,9 +274,12 @@ class MemoryManagerCore:
         *,
         include_disabled: bool = False,
         limit: int = 10,
+        memory_data: Optional[Dict] = None,
     ) -> List[Dict]:
-        query_terms = [part for part in self._normalize_content_key(query).split() if part]
-        memories = self.get_user_memories()
+        query_terms = [
+            part for part in self._normalize_content_key(query).split() if part
+        ]
+        memories = self.get_user_memories(memory_data)
         results = []
         for memory in memories:
             if not include_disabled and not memory.get("enabled", True):
@@ -333,7 +338,9 @@ class MemoryManagerCore:
         lines.append("请优先遵循高置信度且最近使用的记忆。")
         return "\n".join(lines)
 
-    def touch_memories(self, contents: List[str]) -> bool:
+    def touch_memories(
+        self, contents: List[str], memory_data: Optional[Dict] = None
+    ) -> bool:
         normalized_keys = {
             self._normalize_content_key(content)
             for content in contents or []
@@ -343,7 +350,8 @@ class MemoryManagerCore:
             return False
 
         try:
-            memory_data = self.load_memory()
+            if memory_data is None:
+                memory_data = self.load_memory()
             changed = False
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             updated_memories = []
@@ -351,7 +359,10 @@ class MemoryManagerCore:
                 normalized = self._normalize_memory_entry(memory)
                 if not normalized:
                     continue
-                if self._normalize_content_key(normalized.get("content", "")) in normalized_keys:
+                if (
+                    self._normalize_content_key(normalized.get("content", ""))
+                    in normalized_keys
+                ):
                     normalized["last_used_at"] = now
                     changed = True
                 updated_memories.append(normalized)
@@ -457,13 +468,23 @@ class MemoryManagerCore:
         """获取格式化后的记忆上下文字符串"""
         memory_data = self.load_memory()
         topics = memory_data.get("topics", [])
-        selected_memories = (
-            self.search_memories(query, include_disabled=False, limit=limit)
-            if query
-            else self.get_context_memories(limit=limit)
-        )
+        if query:
+            selected_memories = self.search_memories(
+                query, include_disabled=False, limit=limit, memory_data=memory_data
+            )
+            if not selected_memories:
+                selected_memories = self.get_context_memories(
+                    limit=limit, memory_data=memory_data
+                )
+        else:
+            selected_memories = self.get_context_memories(
+                limit=limit, memory_data=memory_data
+            )
         if selected_memories:
-            self.touch_memories([item.get("content", "") for item in selected_memories])
+            self.touch_memories(
+                [item.get("content", "") for item in selected_memories],
+                memory_data=memory_data,
+            )
         lines = [self.format_memories_for_prompt(selected_memories)]
         if topics:
             recent_topics = topics[-5:]
@@ -477,8 +498,12 @@ class MemoryManagerCore:
 
         return "\n".join(lines)
 
-    def get_context_memories(self, limit: int = 8) -> List[Dict]:
-        return self.search_memories("", include_disabled=False, limit=limit)
+    def get_context_memories(
+        self, limit: int = 8, memory_data: Optional[Dict] = None
+    ) -> List[Dict]:
+        return self.search_memories(
+            "", include_disabled=False, limit=limit, memory_data=memory_data
+        )
 
     def set_canvas_name(self, canvas_name: str):
         """设置画布名称（切换工作区时调用）"""

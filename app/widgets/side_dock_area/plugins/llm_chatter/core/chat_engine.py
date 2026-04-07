@@ -607,7 +607,6 @@ class ChatEngine:
 
         self._is_streaming = True
         session.add_user_message(content=user_text, params=context_params or {})
-        session.task_state.set_goal(user_text)
         session.task_state.switch_agent(self._current_agent or "plan")
         session.task_state.infer_stage_from_turn(user_text)
         if session.task_state.stage == "verify":
@@ -716,7 +715,6 @@ class ChatEngine:
     def _build_user_task_prelude(self, task_state) -> str:
         return (
             f"[Task Stage: {task_state.stage}]\n"
-            f"[Current Goal: {task_state.current_goal or 'N/A'}]\n"
             f"[Verification: {task_state.verification_status}]\n\n"
         )
 
