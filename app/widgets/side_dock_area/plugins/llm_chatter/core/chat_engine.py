@@ -682,12 +682,12 @@ class ChatEngine:
                     messages[0]["content"] + "\n\n" + memory_context
                 )
 
-        task_prelude = self._build_user_task_prelude(task_state)
+        # task_prelude = self._build_user_task_prelude(task_state)
 
         supports_vision = provider_supports_vision(llm_config)
 
         context_text = context_provider.get_text_context() if context_provider else ""
-        final_user_text = task_prelude + context_text + latest_user_message
+        final_user_text = context_text + latest_user_message
 
         available_history_budget = (
             max_context_tokens - estimate_tokens(final_user_text) - 200

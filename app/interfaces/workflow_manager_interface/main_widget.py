@@ -42,6 +42,7 @@ from app.utils.utils import get_icon, get_pinyin_search_keys
 from app.interfaces.workflow_manager_interface.widgets.workflow_card import WorkflowCard
 from app.interfaces.workflow_manager_interface.widgets.workflow_list_view import (
     WorkflowListView,
+    WorkflowListItem,
 )
 from app.interfaces.workflow_manager_interface.widgets.workflow_preview_panel import (
     WorkflowPreviewPanel,
@@ -367,8 +368,25 @@ class WorkflowCanvasGalleryPage(QWidget):
         if self._view_mode == VIEW_MODE_GRID:
             self.workflow_list_view.set_file_info_map(self._file_info_map)
             self.workflow_list_view.prepare_paths(self.all_workflow_paths)
+            self._preload_list_items()
         else:
             self._preload_grid_cards()
+
+    def _preload_list_items(self):
+        for wf_path in self.all_workflow_paths:
+            if wf_path not in self.workflow_list_view._item_widgets:
+                try:
+                    item = WorkflowListItem(
+                        wf_path,
+                        self._file_info_map.get(str(wf_path)),
+                        self.workflow_list_view,
+                    )
+                    item.item_selected.connect(
+                        self.workflow_list_view._on_item_selected
+                    )
+                    self.workflow_list_view._item_widgets[wf_path] = item
+                except Exception:
+                    pass
 
     def _preload_grid_cards(self):
         for wf_path in self.all_workflow_paths:
