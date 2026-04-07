@@ -11,7 +11,6 @@ from PyQt5.QtCore import (
     QThreadPool,
 )
 from PyQt5.QtGui import QFont
-from PyQt5.QtGui import QColor, QPainter, QPen
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -29,7 +28,6 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     CardWidget,
-    CaptionLabel,
     TransparentToolButton,
     TransparentToggleToolButton,
 )
@@ -54,7 +52,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import
     HistoryManager,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
-    TitleGenerationTask,
     TopicSummaryTask,
     ShellExecutionTask,
 )
@@ -64,6 +61,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area im
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextSelector,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import ContextUsageRing
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
     ConversationNodePreview,
 )
@@ -81,59 +79,18 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_wi
     QuestionFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
-    render_tool_block,
     format_tool_block,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
-    TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.sub_agent_floating_widget import (
     SubAgentFloatingWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
+    TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget import (
     ToolFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
-
-
-class ContextUsageRing(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._percent = 0
-        self._ring_color = QColor("#5aa9ff")
-        self._track_color = QColor(255, 255, 255, 40)
-        self.setFixedSize(18, 18)
-        self.setToolTip("上下文占用：0%")
-
-    def set_usage(self, percent: int, used_tokens: int, budget_tokens: int):
-        self._percent = max(0, min(100, int(percent)))
-        if self._percent >= 90:
-            self._ring_color = QColor("#ff6b6b")
-        elif self._percent >= 70:
-            self._ring_color = QColor("#f6c453")
-        else:
-            self._ring_color = QColor("#5aa9ff")
-
-        self.setToolTip(
-            f"当前上下文占用\n已用: {used_tokens} tokens\n预算: {budget_tokens} tokens\n占比: {self._percent}%"
-        )
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        rect = self.rect().adjusted(2, 2, -2, -2)
-        start_angle = 90 * 16
-        span_angle = int(-360 * 16 * (self._percent / 100.0))
-
-        track_pen = QPen(self._track_color, 2.2)
-        painter.setPen(track_pen)
-        painter.drawArc(rect, 0, 360 * 16)
-
-        ring_pen = QPen(self._ring_color, 2.2)
-        painter.setPen(ring_pen)
-        painter.drawArc(rect, start_angle, span_angle)
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -915,24 +872,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     )
                 )
                 content = msg.get("content", "")
-                if isinstance(content, list):
-                    content = "\n".join(
-                        [
-                            item.get("text", "")
-                            for item in content
-                            if item.get("type") == "text"
-                        ]
-                    )
-
-                tool_calls = msg.get("tool_calls", [])
-                tool_results = msg.get("tool_results", [])
-
-                if tool_calls:
-                    self._render_merged_tool_calls(
-                        card, tool_calls, tool_results, content
-                    )
-                else:
-                    card.update_content(content)
+                card.update_content(content)
                 card.finish_streaming()
             else:
                 continue
@@ -945,44 +885,6 @@ class OpenAIChatToolWindow(ToolWindow):
             QTimer.singleShot(10, self._scroll_to_bottom)
             self._update_node_preview()
             self._refresh_context_usage_indicator()
-
-    def _render_merged_tool_calls(
-        self, card, tool_calls: list, tool_results: list, final_content: str = ""
-    ):
-        """渲染合并消息中的工具调用和结果 + 最终回复"""
-        combined_content = ""
-
-        for tc in tool_calls:
-            func = tc.get("function", {})
-            tool_name = func.get("name", "unknown")
-            args = func.get("arguments", {})
-
-            args_dict = json.loads(args) if isinstance(args, str) else args
-
-            result_content = ""
-            for tr in tool_results:
-                if tr.get("tool_call_id") == tc.get("id"):
-                    result_content = tr.get("content", "")
-                    break
-
-            tool_block = format_tool_block(
-                tool_name,
-                args_dict,
-                result_content,
-                True,
-            )
-
-            if combined_content:
-                combined_content += "\n\n"
-            combined_content += tool_block
-
-        if final_content:
-            if combined_content:
-                combined_content += "\n\n---\n\n"
-            combined_content += final_content
-
-        if combined_content:
-            card.update_content(combined_content)
 
     def _initialize_history_manager(self):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
@@ -1756,7 +1658,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
-
+        self._sync_current_assistant_card_to_session()
         if self.history_manager:
             self._save_current_session_to_history()
 
@@ -1769,14 +1671,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
         session = self.session_manager.get_current_session()
         if not session or not self._current_assistant_card:
-            return
-
-        if any(msg.get("role") == "tool" for msg in session.messages):
-            return
-        if any(
-            msg.get("role") == "assistant" and msg.get("tool_calls")
-            for msg in session.messages
-        ):
             return
 
         viewer = getattr(self._current_assistant_card, "viewer", None)

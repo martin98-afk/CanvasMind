@@ -621,7 +621,7 @@ class ChatEngine:
         self._emit("task_state_changed", session.task_state)
 
         messages = self._build_messages(session, llm_config)
-
+        print(messages)
         if self._current_agent:
             available_tools = self._get_agent_manager().get_agent_tools_schema(
                 self._current_agent
