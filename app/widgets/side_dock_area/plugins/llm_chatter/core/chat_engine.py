@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 聊天引擎模块 - 处理 LLM 对话的核心逻辑
 """
@@ -181,17 +181,6 @@ class ChatEngine:
             self._current_worker.deny_permission(tool_call_id)
 
     def _get_token_budget(self, llm_config: Dict) -> int:
-        max_tokens = llm_config.get("最大Token", 4096)
-        model_name = str(llm_config.get("模型名称", "")).lower()
-        reserved = 800
-        if "o1" in model_name or "o3" in model_name:
-            reserved = 32000
-        return max(500, max_tokens - reserved)
-
-    def _smart_trim_messages(self, cards: List[Any], max_tokens: int) -> List[Any]:
-        pass
-
-    def _get_token_budget(self, llm_config: Dict) -> int:
         profile = get_provider_profile(llm_config)
         context_limit = profile.get("context_limit", 128000)
         for key in (
@@ -210,13 +199,15 @@ class ChatEngine:
             except Exception:
                 continue
 
-        max_tokens = llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096))
+        max_tokens = llm_config.get(
+            "最大Token", profile.get("max_output_tokens", 4096)
+        )
         try:
             max_tokens = int(max_tokens)
         except Exception:
             max_tokens = int(profile.get("max_output_tokens", 4096))
 
-        model_name = str(llm_config.get("妯″瀷鍚嶇О", "")).lower()
+        model_name = str(llm_config.get("模型名称", "")).lower()
         reserved = min(800, max_tokens)
         if "o1" in model_name or "o3" in model_name:
             reserved = min(max_tokens, 32000)
@@ -258,15 +249,7 @@ class ChatEngine:
         return selected
 
     def _trim_message_content(self, content: str, hard_limit: int) -> str:
-        text = (content or "").strip()
-        if len(text) <= hard_limit:
-            return text
-        head = text[: int(hard_limit * 0.65)].rstrip()
-        tail = text[-int(hard_limit * 0.2) :].lstrip()
-        omitted = len(text) - len(head) - len(tail)
-        return (
-            f"{head}\n\n[... 已省略 {omitted} 个字符的较早内容以控制上下文长度 ...]\n\n{tail}"
-        )
+        return content
 
     def _summarize_compacted_messages(self, messages: List[Dict[str, str]]) -> str:
         if not messages:
@@ -337,10 +320,17 @@ class ChatEngine:
                 normalized.append(normalized_msg)
 
                 if tool_calls and tool_results:
+                    existing_tool_ids = {
+                        m["tool_call_id"]
+                        for m in history_messages
+                        if m.get("role") == "tool"
+                    }
                     for result in tool_results:
                         if not isinstance(result, dict):
                             continue
                         tool_call_id = result.get("tool_call_id")
+                        if tool_call_id in existing_tool_ids:
+                            continue
                         result_content = _normalize_message_content(
                             result.get("content", "")
                         )
@@ -370,7 +360,9 @@ class ChatEngine:
 
         return normalized
 
-    def _has_structured_tool_history(self, history_messages: List[Dict[str, Any]]) -> bool:
+    def _has_structured_tool_history(
+        self, history_messages: List[Dict[str, Any]]
+    ) -> bool:
         for msg in history_messages:
             if msg.get("role") == "tool":
                 return True
@@ -402,7 +394,11 @@ class ChatEngine:
             has_tool_calls = role == "assistant" and bool(msg.get("tool_calls"))
             force_include = include_open_tool_exchange or role == "tool"
 
-            if recent_messages and recent_tokens + msg_tokens > history_budget and not force_include:
+            if (
+                recent_messages
+                and recent_tokens + msg_tokens > history_budget
+                and not force_include
+            ):
                 break
 
             recent_messages.insert(0, msg)
@@ -683,7 +679,9 @@ class ChatEngine:
             except TypeError:
                 memory_context = self._get_memory_context()
             if memory_context:
-                messages[0]["content"] = messages[0]["content"] + "\n\n" + memory_context
+                messages[0]["content"] = (
+                    messages[0]["content"] + "\n\n" + memory_context
+                )
 
         task_prelude = self._build_user_task_prelude(task_state)
 
@@ -692,7 +690,9 @@ class ChatEngine:
         context_text = context_provider.get_text_context() if context_provider else ""
         final_user_text = task_prelude + context_text + latest_user_message
 
-        available_history_budget = max_context_tokens - estimate_tokens(final_user_text) - 200
+        available_history_budget = (
+            max_context_tokens - estimate_tokens(final_user_text) - 200
+        )
         history_for_api, compaction_state = self._compact_history_messages(
             history_messages, available_history_budget
         )
@@ -724,7 +724,12 @@ class ChatEngine:
         profile = get_provider_profile(llm_config)
         context_limit = int(profile.get("context_limit", 128000))
 
-        for key in ("context_limit", "context_window", "max_context_tokens", "max_input_tokens"):
+        for key in (
+            "context_limit",
+            "context_window",
+            "max_context_tokens",
+            "max_input_tokens",
+        ):
             value = llm_config.get(key)
             if value in (None, ""):
                 continue
@@ -736,7 +741,10 @@ class ChatEngine:
 
         max_tokens = llm_config.get(
             "max_tokens",
-            llm_config.get("最大Token", llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096))),
+            llm_config.get(
+                "最大Token",
+                llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096)),
+            ),
         )
         try:
             max_tokens = int(max_tokens)
@@ -744,7 +752,9 @@ class ChatEngine:
             max_tokens = int(profile.get("max_output_tokens", 4096))
 
         model_name = str(
-            llm_config.get("model", llm_config.get("模型名称", llm_config.get("妯″瀷鍚嶇О", "")))
+            llm_config.get(
+                "model", llm_config.get("模型名称", llm_config.get("妯″瀷鍚嶇О", ""))
+            )
         ).lower()
         profile_max_output = int(profile.get("max_output_tokens", 4096))
 
@@ -756,10 +766,16 @@ class ChatEngine:
             reserved = min(max_tokens, 32000)
 
         return max(500, context_limit - reserved)
+
     def _get_token_budget(self, llm_config: Dict) -> int:
         profile = get_provider_profile(llm_config)
         context_limit = profile.get("context_limit", 128000)
-        for key in ("context_limit", "context_window", "max_context_tokens", "max_input_tokens"):
+        for key in (
+            "context_limit",
+            "context_window",
+            "max_context_tokens",
+            "max_input_tokens",
+        ):
             value = llm_config.get(key)
             if value in (None, ""):
                 continue
