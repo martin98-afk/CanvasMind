@@ -353,6 +353,11 @@ class WorkflowListView(QWidget):
     def set_file_info_map(self, file_info_map: Dict[str, dict]):
         self._file_info_map = file_info_map
 
+    def prepare_paths(self, ordered_paths: List[Path]):
+        self._ordered_paths = list(ordered_paths)
+        self._render_count = 0
+        self._batch_inflight = False
+
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
         target_paths = set(ordered_paths)
@@ -538,3 +543,17 @@ class WorkflowListView(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         QTimer.singleShot(0, self._ensure_viewport_filled)
+
+    def preload_in_background(self):
+        if self._render_count >= len(self._ordered_paths):
+            return
+        self._batch_inflight = True
+
+        def load_batch():
+            if self._render_count >= len(self._ordered_paths):
+                self._batch_inflight = False
+                return
+            self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
+            QTimer.singleShot(16, load_batch)
+
+        QTimer.singleShot(100, load_batch)

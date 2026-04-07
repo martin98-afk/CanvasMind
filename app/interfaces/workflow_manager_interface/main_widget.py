@@ -252,10 +252,12 @@ class WorkflowCanvasGalleryPage(QWidget):
             self._view_mode = VIEW_MODE_GRID
             self.content_container.setCurrentWidget(self.grid_container)
             QTimer.singleShot(10, self._refresh_grid_view)
+            QTimer.singleShot(50, self._preload_grid_in_background)
         else:
             self._view_mode = VIEW_MODE_LIST
             self.content_container.setCurrentWidget(self.list_container)
             QTimer.singleShot(10, self._refresh_list_view)
+            QTimer.singleShot(50, self._preload_list_in_background)
 
     def _on_list_selection_changed(self, workflow_path: Path):
         file_info = self._file_info_map.get(str(workflow_path))
@@ -353,6 +355,32 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._request_cache_sizes(workflow_files)
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
+        QTimer.singleShot(200, self._preload_both_views)
+
+    def _preload_both_views(self):
+        if self._view_mode == VIEW_MODE_GRID:
+            self._preload_grid_in_background()
+        else:
+            self._preload_list_in_background()
+
+    def _preload_hidden_view(self):
+        if self._view_mode == VIEW_MODE_GRID:
+            self.workflow_list_view.set_file_info_map(self._file_info_map)
+            self.workflow_list_view.prepare_paths(self.all_workflow_paths)
+        else:
+            self._preload_grid_cards()
+
+    def _preload_grid_cards(self):
+        for wf_path in self.all_workflow_paths:
+            if wf_path not in self._card_map:
+                try:
+                    card = WorkflowCard(
+                        wf_path, self, self._file_info_map.get(str(wf_path))
+                    )
+                    card.hide()
+                    self._card_map[wf_path] = card
+                except Exception:
+                    pass
 
     def _apply_sort_and_filter_and_refresh(self):
         if self._is_loading:
@@ -398,6 +426,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         else:
             self._refresh_list_view()
         self._update_status_label()
+        QTimer.singleShot(300, self._preload_hidden_view)
 
     def _refresh_grid_view(self):
         for card in self._card_map.values():
@@ -509,6 +538,23 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def _on_grid_scroll_range_changed(self, _minimum: int, _maximum: int):
         self._load_more_grid_cards_if_needed()
+
+    def _preload_grid_in_background(self):
+        if self._grid_render_count >= len(self.all_workflow_paths):
+            return
+        self._grid_batch_inflight = True
+
+        def load_batch():
+            if self._grid_render_count >= len(self.all_workflow_paths):
+                self._grid_batch_inflight = False
+                return
+            self._render_more_grid_cards(self.GRID_INCREMENTAL_BATCH_SIZE)
+            QTimer.singleShot(16, load_batch)
+
+        QTimer.singleShot(100, load_batch)
+
+    def _preload_list_in_background(self):
+        self.workflow_list_view.preload_in_background()
 
     def _on_search_changed(self, text: str):
         self._filter_text = text.strip().lower()
