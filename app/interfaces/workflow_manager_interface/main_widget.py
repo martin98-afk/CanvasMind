@@ -33,6 +33,7 @@ from app.interfaces.workflow_manager_interface.utils.utils import (
     _migrate_legacy_workflow_structure,
     WorkflowFileInfoScanner,
     _normalize_canvas_folder,
+    FolderSizeCache,
 )
 from app.scan_components import ComponentScanner
 from app.scheduler.node_recommendation_engine import NodeRecommendationEngine
@@ -53,6 +54,14 @@ VIEW_MODE_LIST = "list"
 
 
 class WorkflowCanvasGalleryPage(QWidget):
+    GRID_INITIAL_BATCH_SIZE = 24
+    GRID_INCREMENTAL_BATCH_SIZE = 12
+    GRID_LOAD_MORE_THRESHOLD_PX = 600
+    SORT_BY_MTIME = 0
+    SORT_BY_CTIME = 1
+    SORT_BY_NAME = 2
+    SORT_BY_CACHE_SIZE = 3
+
     scan_finished = pyqtSignal(list, dict)
     component_code_changed = pyqtSignal(str, str)
     exported_projects_changed = pyqtSignal(str, str)
@@ -76,6 +85,13 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._recommendation_engine_built = False
         self.recommendation_engine = NodeRecommendationEngine()
         self._canvas_cloud_mgr = CanvasCloudManager()
+        self._grid_render_count = 0
+        self._grid_batch_inflight = False
+        self._cache_size_refresh_timer = QTimer(self)
+        self._cache_size_refresh_timer.setSingleShot(True)
+        self._cache_size_refresh_timer.timeout.connect(
+            self._refresh_after_cache_size_update
+        )
 
         self._view_mode = VIEW_MODE_GRID
 
@@ -117,7 +133,7 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(
-            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称")]
+            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称"), self.tr("缓存大小")]
         )
         self.sort_field_combo.setCurrentIndex(0)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
@@ -160,6 +176,14 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.import_btn.clicked.connect(lambda: self.import_canvas())
         top_bar.addWidget(self.import_btn)
         top_bar.addSpacing(150)
+
+        status_bar = QHBoxLayout()
+        status_bar.setSpacing(12)
+        status_bar.setContentsMargins(60, 0, 0, 0)
+        self.status_label = CaptionLabel(self.tr("准备就绪"))
+        self.status_label.setStyleSheet("color: #8a8f99;")
+        status_bar.addWidget(self.status_label)
+        status_bar.addStretch()
         self.grid_container = QWidget()
         self.grid_layout = QVBoxLayout(self.grid_container)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
@@ -182,6 +206,12 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.scroll_area.setWidget(self.scroll_widget)
         self.grid_layout.addWidget(self.scroll_area)
+        self.scroll_area.verticalScrollBar().valueChanged.connect(
+            self._on_grid_scroll_changed
+        )
+        self.scroll_area.verticalScrollBar().rangeChanged.connect(
+            self._on_grid_scroll_range_changed
+        )
 
         self.list_container = QWidget()
         self.list_container.hide()
@@ -209,6 +239,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.content_container.addWidget(self.list_container)
 
         main_layout.addLayout(top_bar)
+        main_layout.addLayout(status_bar)
         main_layout.addWidget(self.content_container, 1)
 
     def _on_view_mode_changed(self, mode: str):
@@ -258,6 +289,7 @@ class WorkflowCanvasGalleryPage(QWidget):
     def load_workflows(self):
         self.workflow_dir = self._get_workflow_dir()
         _migrate_legacy_workflow_structure(self.workflow_dir)
+        self._update_status_label(extra_text=self.tr("扫描中..."))
 
         if self._is_loading:
             if hasattr(self, "_scanner") and hasattr(self, "_thread"):
@@ -291,18 +323,13 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        for wf_path in workflow_files:
-            if wf_path not in self._card_map:
-                try:
-                    card = WorkflowCard(
-                        wf_path, self, self._file_info_map.get(str(wf_path))
-                    )
-                    card.hide()
-                    self._card_map[wf_path] = card
-                except Exception:
-                    import traceback
-
-                    traceback.print_exc()
+        removed_paths = [path for path in self._card_map if path not in self._known_files]
+        for wf_path in removed_paths:
+            card = self._card_map.pop(wf_path, None)
+            if card is not None:
+                self.flow_layout.removeWidget(card)
+                card.hide()
+                card.deleteLater()
 
         for wf_path, card in self._card_map.items():
             old_info = old_file_info_map.get(str(wf_path))
@@ -315,6 +342,7 @@ class WorkflowCanvasGalleryPage(QWidget):
             elif new_info:
                 card.update_file_info(new_info)
 
+        self._request_cache_sizes(workflow_files)
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
 
@@ -333,6 +361,7 @@ class WorkflowCanvasGalleryPage(QWidget):
                 info = self._file_info_map.get(str(wf_path), {})
                 ctime_ts = info.get("ctime_ts", 0)
                 mtime_ts = info.get("mtime_ts", 0)
+                cache_size = info.get("folder_size_bytes", -1)
                 name = wf_path.parent.name
                 if self._filter_text:
                     if name not in self._pinyin_cache:
@@ -342,40 +371,134 @@ class WorkflowCanvasGalleryPage(QWidget):
                     if self._filter_text not in search_keys:
                         continue
 
-                file_with_info.append((wf_path, ctime_ts, mtime_ts, name))
+                file_with_info.append((wf_path, ctime_ts, mtime_ts, name, cache_size))
 
-            if field_index == 0:
+            if field_index == self.SORT_BY_MTIME:
                 key_func = lambda x: x[2]
-            elif field_index == 1:
+            elif field_index == self.SORT_BY_CTIME:
                 key_func = lambda x: x[1]
-            else:
+            elif field_index == self.SORT_BY_NAME:
                 key_func = lambda x: x[3].lower()
+            else:
+                key_func = lambda x: x[4]
 
             file_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
         self._refresh_grid_view()
         self._refresh_list_view()
+        self._update_status_label()
 
     def _refresh_grid_view(self):
         for card in self._card_map.values():
             card.hide()
 
+        self._grid_render_count = 0
+        self._grid_batch_inflight = False
+
         while self.flow_layout.count():
             self.flow_layout.takeAt(0)
 
-        for wf_path in self.all_workflow_paths:
-            card = self._card_map.get(wf_path)
-            if card is not None:
-                self.flow_layout.addWidget(card)
-                card.show()
+        if self._view_mode != VIEW_MODE_GRID or not self.all_workflow_paths:
+            self.flow_layout.invalidate()
+            QTimer.singleShot(0, self.scroll_widget.update)
+            return
 
-        self.flow_layout.invalidate()
-        QTimer.singleShot(0, self.scroll_widget.update)
+        self._render_more_grid_cards(self._initial_grid_batch_size())
+        QTimer.singleShot(0, self._ensure_grid_viewport_filled)
 
     def _refresh_list_view(self):
         self.workflow_list_view.set_file_info_map(self._file_info_map)
         self.workflow_list_view.refresh(self.all_workflow_paths)
+
+    def _initial_grid_batch_size(self) -> int:
+        viewport = self.scroll_area.viewport().size()
+        viewport_width = max(viewport.width(), 1)
+        viewport_height = max(viewport.height(), 1)
+
+        estimated_card_width = 400
+        estimated_card_height = 340
+        estimated_columns = max(1, viewport_width // estimated_card_width)
+        estimated_rows = max(1, viewport_height // estimated_card_height + 1)
+        estimated_visible = estimated_columns * estimated_rows
+        return max(self.GRID_INITIAL_BATCH_SIZE, estimated_visible * 2)
+
+    def _ensure_workflow_card(self, wf_path: Path):
+        card = self._card_map.get(wf_path)
+        if card is not None:
+            return card
+
+        try:
+            card = WorkflowCard(wf_path, self, self._file_info_map.get(str(wf_path)))
+            card.hide()
+            self._card_map[wf_path] = card
+            return card
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
+            return None
+
+    def _render_more_grid_cards(self, count: int) -> bool:
+        if self._view_mode != VIEW_MODE_GRID:
+            return False
+
+        end = min(len(self.all_workflow_paths), self._grid_render_count + max(0, count))
+        if end <= self._grid_render_count:
+            return False
+
+        for wf_path in self.all_workflow_paths[self._grid_render_count : end]:
+            card = self._ensure_workflow_card(wf_path)
+            if card is None:
+                continue
+            self.flow_layout.addWidget(card)
+            card.show()
+
+        self._grid_render_count = end
+        self.flow_layout.invalidate()
+        QTimer.singleShot(0, self.scroll_widget.update)
+        self._update_status_label()
+        return True
+
+    def _ensure_grid_viewport_filled(self):
+        if self._view_mode != VIEW_MODE_GRID:
+            return
+        scrollbar = self.scroll_area.verticalScrollBar()
+        if (
+            self._grid_render_count < len(self.all_workflow_paths)
+            and scrollbar.maximum() <= 0
+        ):
+            self._render_more_grid_cards(self.GRID_INCREMENTAL_BATCH_SIZE)
+            QTimer.singleShot(0, self._ensure_grid_viewport_filled)
+
+    def _load_more_grid_cards_if_needed(self):
+        if self._view_mode != VIEW_MODE_GRID or self._grid_batch_inflight:
+            return
+
+        scrollbar = self.scroll_area.verticalScrollBar()
+        remaining = scrollbar.maximum() - scrollbar.value()
+        should_load = (
+            self._grid_render_count < len(self.all_workflow_paths)
+            and remaining <= self.GRID_LOAD_MORE_THRESHOLD_PX
+        )
+        if not should_load:
+            return
+
+        self._grid_batch_inflight = True
+
+        def load_batch():
+            self._grid_batch_inflight = False
+            rendered = self._render_more_grid_cards(self.GRID_INCREMENTAL_BATCH_SIZE)
+            if rendered:
+                QTimer.singleShot(0, self._load_more_grid_cards_if_needed)
+
+        QTimer.singleShot(0, load_batch)
+
+    def _on_grid_scroll_changed(self, _value: int):
+        self._load_more_grid_cards_if_needed()
+
+    def _on_grid_scroll_range_changed(self, _minimum: int, _maximum: int):
+        self._load_more_grid_cards_if_needed()
 
     def _on_search_changed(self, text: str):
         self._filter_text = text.strip().lower()
@@ -389,9 +512,61 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if self._view_mode == VIEW_MODE_GRID:
+            QTimer.singleShot(0, self._ensure_grid_viewport_filled)
 
     def showEvent(self, event):
         super().showEvent(event)
+
+    def _request_cache_sizes(self, workflow_files: List[Path]):
+        for wf_path in workflow_files:
+            folder = wf_path.parent
+            cached_size = FolderSizeCache.get(folder)
+            if cached_size is not None:
+                info = self._file_info_map.get(str(wf_path))
+                if info is not None:
+                    info["folder_size_bytes"] = cached_size
+                continue
+
+            def update(total_size: int, current_path=wf_path):
+                info = self._file_info_map.get(str(current_path))
+                if info is None:
+                    return
+                info["folder_size_bytes"] = total_size
+                self.workflow_list_view.update_workflow(current_path)
+                self._cache_size_refresh_timer.start(120)
+
+            FolderSizeCache.request(folder, update)
+
+    def _refresh_after_cache_size_update(self):
+        if self.sort_field_combo.currentIndex() == self.SORT_BY_CACHE_SIZE:
+            self._apply_sort_and_filter_and_refresh()
+        else:
+            self._update_status_label()
+
+    def _update_status_label(self, extra_text: str = ""):
+        total_count = len(self._known_files)
+        filtered_count = len(self.all_workflow_paths)
+        cache_known_count = sum(
+            1
+            for info in self._file_info_map.values()
+            if info.get("folder_size_bytes", -1) >= 0
+        )
+
+        if self._view_mode == VIEW_MODE_GRID:
+            rendered_count = self._grid_render_count
+        else:
+            rendered_count = getattr(self.workflow_list_view, "rendered_count", lambda: 0)()
+
+        parts = [
+            self.tr("总数 {0}").format(total_count),
+            self.tr("筛选 {0}").format(filtered_count),
+            self.tr("已渲染 {0}").format(rendered_count),
+            self.tr("缓存统计 {0}").format(cache_known_count),
+        ]
+        if extra_text:
+            parts.append(extra_text)
+        self.status_label.setText(" | ".join(parts))
 
     def open_canvas(self, file_path: Path):
         if file_path not in self.opened_workflows:

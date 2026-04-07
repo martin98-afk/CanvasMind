@@ -28,7 +28,6 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     CardWidget,
-    CaptionLabel,
     TransparentToolButton,
     TransparentToggleToolButton,
 )
@@ -53,7 +52,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.history_manager import
     HistoryManager,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import (
-    TitleGenerationTask,
     TopicSummaryTask,
     ShellExecutionTask,
 )
@@ -63,6 +61,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area im
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextSelector,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import ContextUsageRing
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
     ConversationNodePreview,
 )
@@ -80,14 +79,13 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_wi
     QuestionFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
-    render_tool_block,
     format_tool_block,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
-    TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.sub_agent_floating_widget import (
     SubAgentFloatingWidget,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget import (
+    TodoFloatingWidget,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget import (
     ToolFloatingWidget,
@@ -153,6 +151,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self.homepage = homepage
         self._is_streaming = False
         self.session_manager.create_new_session()
+        app = QApplication.instance()
+        if app is not None:
+            try:
+                app.aboutToQuit.connect(self._auto_save_current_session)
+            except Exception:
+                pass
         if hasattr(self.homepage, "global_variables_changed"):
             self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_managers()
@@ -163,6 +167,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._memory_manager = MemoryManagerCore(canvas_name)
         self._tool_executor = ToolExecutor(self.homepage)
+        self._tool_executor.set_memory_manager(self._memory_manager)
+        self._tool_executor.set_llm_config_getter(self._get_current_model_config)
+        self._tool_executor.set_session_messages_getter(
+            self._get_current_session_messages_for_tools
+        )
         self._agent_manager = AgentManager()
 
         from app.widgets.side_dock_area.plugins.llm_chatter.core.sub_agent_executor import (
@@ -183,9 +192,7 @@ class OpenAIChatToolWindow(ToolWindow):
             tool_executor=self._tool_executor,
             agent_manager=self._agent_manager,
             get_chat_cards=self._get_chat_cards_for_engine,
-            get_memory_context=lambda: self._memory_manager.get_context_string()
-            if self._memory_manager
-            else "",
+            get_memory_context=self._build_memory_context_for_engine,
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)
@@ -198,6 +205,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self._chat_engine.set_callback("stream_started", self._on_stream_started)
         self._chat_engine.set_callback("stream_finished", self._on_stream_finished)
+        self._chat_engine.set_callback("messages_updated", self._on_messages_updated)
         self._chat_engine.set_callback("error", self._on_engine_error)
         self._chat_engine.set_callback(
             "user_message_added", self._on_user_message_added
@@ -253,11 +261,27 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return self._valid_configs.get(selected_name, {})
 
+    def _build_memory_context_for_engine(self, query: str = "") -> str:
+        if not self._memory_manager:
+            return ""
+        return self._memory_manager.get_context_string(query=query, limit=8)
+
+    def _get_current_session_messages_for_tools(self) -> List[Dict[str, Any]]:
+        session = self.session_manager.get_current_session()
+        if not session:
+            return []
+        return list(session.messages or [])
+
     def showEvent(self, event):
         if not self._first_show:
             self._first_show = True
-            QTimer.singleShot(0, lambda: self._create_new_session())
+            QTimer.singleShot(0, self._restore_latest_or_create_session)
         super().showEvent(event)
+
+    def _restore_latest_or_create_session(self):
+        if self._restore_latest_session():
+            return
+        self._create_new_session()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -305,6 +329,11 @@ class OpenAIChatToolWindow(ToolWindow):
         left_layout.addWidget(self.menu_btn)
 
         right_layout = QHBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(6)
+
+        self.context_usage_ring = ContextUsageRing(self)
+        right_layout.addWidget(self.context_usage_ring)
 
         model_label = QLabel("模型：", self)
         setFont(model_label, 12, QFont.Bold)
@@ -382,6 +411,9 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(0)
         self.context_selector = ContextSelector(self)
+        self.context_selector.selectionChanged.connect(
+            self._on_context_selection_changed
+        )
         hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
 
@@ -428,6 +460,28 @@ class OpenAIChatToolWindow(ToolWindow):
         if model_name:
             setting = Settings.get_instance()
             setting.set(setting.llm_selected_model, model_name, save=True)
+        self._refresh_context_usage_indicator()
+
+    def _on_context_selection_changed(self, _selected_keys=None):
+        self._refresh_context_usage_indicator()
+
+    def _refresh_context_usage_indicator(self):
+        ring = getattr(self, "context_usage_ring", None)
+        if not ring:
+            return
+
+        if not self._chat_engine:
+            ring.set_usage(0, 0, 0)
+            return
+
+        session = self.session_manager.get_current_session()
+        llm_config = self._get_current_model_config()
+        snapshot = self._chat_engine.get_context_usage_snapshot(session, llm_config)
+        ring.set_usage(
+            snapshot.get("percent", 0),
+            snapshot.get("used_tokens", 0),
+            snapshot.get("budget_tokens", 0),
+        )
 
     def _open_settings_popup(self):
         if self._settings_popup is None:
@@ -562,7 +616,6 @@ class OpenAIChatToolWindow(ToolWindow):
                 else:
                     config = provider_config.copy()
                     config.pop("备注", None)
-                    config.pop("认证方式", None)
                     config.pop("获取地址", None)
                 self._valid_configs[provider_name] = config
                 all_model_names.append(provider_name)
@@ -581,6 +634,8 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.model_combo.setCurrentIndex(idx)
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
+
+        self._refresh_context_usage_indicator()
 
     def _setup_combo_with_icons(self, model_names: List[str]):
         self.model_combo.clear()
@@ -744,6 +799,7 @@ class OpenAIChatToolWindow(ToolWindow):
         welcome_card._is_welcome = True
         welcome_card.contextActionRequested.connect(self.handle_recommended_question)
         QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
+        self._refresh_context_usage_indicator()
 
     def _display_current_session(self):
         # 1. 清空当前 UI
@@ -759,7 +815,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 4. 准备分批加载的数据源
         # 注意：这里一定要从 session.messages 拿，不要从临时变量拿
-        self._message_batch = list(session.messages)
+        if self._history_preview_messages is not None:
+            self._message_batch = list(self._history_preview_messages)
+        else:
+            self._message_batch = list(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
@@ -813,24 +872,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     )
                 )
                 content = msg.get("content", "")
-                if isinstance(content, list):
-                    content = "\n".join(
-                        [
-                            item.get("text", "")
-                            for item in content
-                            if item.get("type") == "text"
-                        ]
-                    )
-
-                tool_calls = msg.get("tool_calls", [])
-                tool_results = msg.get("tool_results", [])
-
-                if tool_calls:
-                    self._render_merged_tool_calls(
-                        card, tool_calls, tool_results, content
-                    )
-                else:
-                    card.update_content(content)
+                card.update_content(content)
                 card.finish_streaming()
             else:
                 continue
@@ -842,48 +884,38 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             QTimer.singleShot(10, self._scroll_to_bottom)
             self._update_node_preview()
-
-    def _render_merged_tool_calls(
-        self, card, tool_calls: list, tool_results: list, final_content: str = ""
-    ):
-        """渲染合并消息中的工具调用和结果 + 最终回复"""
-        combined_content = ""
-
-        for tc in tool_calls:
-            func = tc.get("function", {})
-            tool_name = func.get("name", "unknown")
-            args = func.get("arguments", {})
-
-            args_dict = json.loads(args) if isinstance(args, str) else args
-
-            result_content = ""
-            for tr in tool_results:
-                if tr.get("tool_call_id") == tc.get("id"):
-                    result_content = tr.get("content", "")
-                    break
-
-            tool_block = format_tool_block(
-                tool_name,
-                args_dict,
-                result_content,
-                True,
-            )
-
-            if combined_content:
-                combined_content += "\n\n"
-            combined_content += tool_block
-
-        if final_content:
-            if combined_content:
-                combined_content += "\n\n---\n\n"
-            combined_content += final_content
-
-        if combined_content:
-            card.update_content(combined_content)
+            self._refresh_context_usage_indicator()
 
     def _initialize_history_manager(self):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
         self.history_manager = HistoryManager(canvas_name)
+
+    def _restore_latest_session(self) -> bool:
+        if not self.history_manager:
+            return False
+
+        latest = self.history_manager.load_latest_session()
+        if not latest:
+            return False
+
+        messages = latest.get("messages", [])
+        if not messages:
+            return False
+
+        restored = ChatSession.from_dict(
+            {
+                "name": latest.get("title") or latest.get("name") or "最近会话",
+                "messages": messages,
+                "topic_summary": latest.get("title", ""),
+            }
+        )
+        self.session_manager.set_current_session(restored)
+        self._current_history_index = None
+        self.title_edit.setText(latest.get("title") or "最近会话")
+        self._load_agent_list()
+        self._display_current_session()
+        self._refresh_context_usage_indicator()
+        return True
 
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
@@ -1040,6 +1072,24 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return pattern.sub("", content, count=1)
 
+    def _build_api_safe_messages_from_history(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        safe_messages = []
+        for msg in messages or []:
+            role = msg.get("role")
+            if role not in ("system", "user", "assistant"):
+                continue
+
+            safe_msg = {"role": role, "content": msg.get("content", "")}
+            if msg.get("timestamp"):
+                safe_msg["timestamp"] = msg.get("timestamp")
+            if role == "user" and msg.get("params") is not None:
+                safe_msg["params"] = msg.get("params", {})
+            safe_messages.append(safe_msg)
+
+        return safe_messages
+
     def _on_clear_shortcut(self):
         self._clear_chat_area()
         self.node_preview.clear_nodes()
@@ -1086,7 +1136,8 @@ class OpenAIChatToolWindow(ToolWindow):
             session = self.session_manager.create_new_session()
 
         # 3. 核心：强制覆盖 session 的消息内容
-        session.messages = list(messages)
+        self._history_preview_messages = list(messages)
+        session.messages = self._build_api_safe_messages_from_history(messages)
 
         # 4. 同步状态变量
         self._current_history_index = index
@@ -1607,8 +1658,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
-            self._sync_current_assistant_card_to_session()
-
+        self._sync_current_assistant_card_to_session()
         if self.history_manager:
             self._save_current_session_to_history()
 
@@ -1644,27 +1694,8 @@ class OpenAIChatToolWindow(ToolWindow):
         session._update_timestamp()
 
     def _save_current_session_to_history(self):
-        saved_messages = []
-
-        for i in range(self.chat_layout.count()):
-            item = self.chat_layout.itemAt(i)
-            if item and item.widget():
-                widget = item.widget()
-                if isinstance(widget, MessageCard):
-                    role = widget.role
-                    content = ""
-                    if hasattr(widget, "viewer") and hasattr(
-                        widget.viewer, "get_plain_text"
-                    ):
-                        content = widget.viewer.get_plain_text()
-                    if content:
-                        saved_messages.append(
-                            {
-                                "role": role,
-                                "content": content,
-                                "timestamp": widget.timestamp,
-                            }
-                        )
+        session = self.session_manager.get_current_session()
+        saved_messages = list(session.messages or []) if session else []
 
         if saved_messages:
             if self._current_history_index is not None:
@@ -1675,6 +1706,16 @@ class OpenAIChatToolWindow(ToolWindow):
                 self.history_manager.save_session(saved_messages)
                 self._current_history_index = 0
         self._update_node_preview()
+
+    def _on_messages_updated(self, messages: List[Dict[str, Any]]):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        self._history_preview_messages = None
+        session.messages = [dict(msg) for msg in messages]
+        session._update_timestamp()
+        self._refresh_context_usage_indicator()
 
     def _on_engine_error(self, error: str):
         if self._current_assistant_card:
@@ -1866,7 +1907,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self._update_title_display(clean_summary)
 
         if should_update_memory and memory_content and self._memory_manager:
-            self._memory_manager.add_user_memory(memory_content)
+            self._memory_manager.add_user_memory(
+                memory_content,
+                source="topic_summary",
+                confidence=0.8,
+            )
             logger.info(
                 f"[Topic Summary] Added to long-term memory: {memory_content[:50]}..."
             )
@@ -1924,6 +1969,13 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_history_index = 0
 
         return self.history_manager.get_current_title(self._current_history_index)
+
+    def closeEvent(self, event):
+        try:
+            self._auto_save_current_session()
+        except Exception:
+            pass
+        super().closeEvent(event)
 
     def _toggle_send_stop(self, is_sending: bool):
         if is_sending:

@@ -1,14 +1,13 @@
 from pathlib import Path
 from typing import Optional, Dict, List
 
-from PyQt5.QtCore import Qt, QSize, pyqtSignal, QTimer
-from PyQt5.QtGui import QPixmap, QFont, QContextMenuEvent
+from PyQt5.QtCore import Qt, QSize, pyqtSignal, QTimer, QEvent
+from PyQt5.QtGui import QPixmap, QFont, QMouseEvent
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QMenu,
 )
 from qfluentwidgets import (
     SmoothScrollArea,
@@ -21,7 +20,10 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 from app.widgets.basic_widget.resizable_image_label import ResizableImageLabel
 from app.utils.utils import get_icon, get_unified_font
-from app.interfaces.workflow_manager_interface.utils.utils import ThumbnailCache
+from app.interfaces.workflow_manager_interface.utils.utils import (
+    ThumbnailCache,
+    FolderSizeCache,
+)
 
 
 class WorkflowListItem(QWidget):
@@ -41,6 +43,8 @@ class WorkflowListItem(QWidget):
         self._setup_ui()
         self._apply_file_info()
         self._load_thumbnail_delayed()
+        self.installEventFilter(self)
+        self.setToolTip(self.tr("双击打开画布"))
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -83,6 +87,17 @@ class WorkflowListItem(QWidget):
         self.folder_size_label.setStyleSheet("background: transparent; color: #888;")
         self.folder_size_label.setFixedWidth(80)
         layout.addWidget(self.folder_size_label)
+
+        passive_widgets = [
+            self.thumbnail_label,
+            self.name_label,
+            self.mtime_label,
+            self.ctime_label,
+            self.size_label,
+            self.folder_size_label,
+        ]
+        for widget in passive_widgets:
+            widget.installEventFilter(self)
 
     def _load_thumbnail_delayed(self):
         def load():
@@ -134,39 +149,33 @@ class WorkflowListItem(QWidget):
             self.mtime_label.setText("--")
             self.ctime_label.setText("--")
             self.size_label.setText("--")
-        folder_size = self._calc_folder_size()
-        if folder_size > 0:
-            if folder_size > 1024 * 1024:
-                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
-            elif folder_size > 1024:
-                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
-            else:
-                self.folder_size_label.setText(f"{folder_size} B")
-        else:
-            self.folder_size_label.setText("--")
+        self.folder_size_label.setText("...")
+        self._request_folder_size()
 
-    def _calc_folder_size(self) -> int:
-        try:
-            total = 0
-            folder = self.workflow_path.parent
-            for f in folder.rglob("*"):
-                if f.is_file():
-                    total += f.stat().st_size
-            return total
-        except Exception:
-            return 0
+    def _request_folder_size(self):
+        folder = self.workflow_path.parent
+
+        def update(folder_size: int):
+            if self._load_cancelled:
+                return
+            if folder_size > 0:
+                if folder_size > 1024 * 1024:
+                    self.folder_size_label.setText(
+                        f"{folder_size / (1024 * 1024):.1f} MB"
+                    )
+                elif folder_size > 1024:
+                    self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
+                else:
+                    self.folder_size_label.setText(f"{folder_size} B")
+            else:
+                self.folder_size_label.setText("--")
+
+        FolderSizeCache.request(folder, update)
 
     def refresh_folder_size(self):
-        folder_size = self._calc_folder_size()
-        if folder_size > 0:
-            if folder_size > 1024 * 1024:
-                self.folder_size_label.setText(f"{folder_size / (1024 * 1024):.1f} MB")
-            elif folder_size > 1024:
-                self.folder_size_label.setText(f"{folder_size / 1024:.1f} KB")
-            else:
-                self.folder_size_label.setText(f"{folder_size} B")
-        else:
-            self.folder_size_label.setText("--")
+        FolderSizeCache.invalidate(self.workflow_path.parent)
+        self.folder_size_label.setText("...")
+        self._request_folder_size()
 
     def update_file_info(self, file_info: Dict):
         self.file_info = file_info
@@ -190,15 +199,19 @@ class WorkflowListItem(QWidget):
                 }
             """)
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.item_selected.emit(self.workflow_path)
-        super().mousePressEvent(event)
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._on_open()
-        super().mouseDoubleClickEvent(event)
+    def eventFilter(self, watched, event):
+        if watched is self or watched.parent() is self:
+            if event.type() == QEvent.MouseButtonPress:
+                mouse_event = event
+                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                    self.item_selected.emit(self.workflow_path)
+                    return watched is not self
+            elif event.type() == QEvent.MouseButtonDblClick:
+                mouse_event = event
+                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                    self._on_open()
+                    return True
+        return super().eventFilter(watched, event)
 
     def _on_open(self):
         if hasattr(self.parent(), "open_canvas"):
@@ -218,24 +231,6 @@ class WorkflowListItem(QWidget):
         if hasattr(self.parent(), "delete_workflow"):
             self.parent().delete_workflow(self.workflow_path)
 
-    def contextMenuEvent(self, event: QContextMenuEvent):
-        menu = QMenu(self)
-        open_action = menu.addAction(self.tr("打开"))
-        copy_action = menu.addAction(self.tr("复制"))
-        rename_action = menu.addAction(self.tr("重命名"))
-        menu.addSeparator()
-        delete_action = menu.addAction(self.tr("删除"))
-
-        action = menu.exec_(self.mapToGlobal(event.pos()))
-        if action == open_action:
-            self._on_open()
-        elif action == copy_action:
-            self._on_copy()
-        elif action == rename_action:
-            self._on_rename()
-        elif action == delete_action:
-            self._on_delete()
-
     def hideEvent(self, event):
         self._load_cancelled = True
         super().hideEvent(event)
@@ -246,6 +241,10 @@ class WorkflowListItem(QWidget):
 
 
 class WorkflowListView(QWidget):
+    LIST_INITIAL_BATCH_SIZE = 40
+    LIST_INCREMENTAL_BATCH_SIZE = 20
+    LIST_LOAD_MORE_THRESHOLD_PX = 800
+
     current_changed = pyqtSignal(Path)
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -254,7 +253,11 @@ class WorkflowListView(QWidget):
         self._current_path: Optional[Path] = None
         self._file_info_map: Dict[str, dict] = {}
         self._gallery_page = parent
+        self._ordered_paths: List[Path] = []
+        self._render_count = 0
+        self._batch_inflight = False
         self._setup_ui()
+        self.scroll_area.viewport().installEventFilter(self)
 
     def open_canvas(self, workflow_path: Path):
         if self._gallery_page and hasattr(self._gallery_page, "open_canvas"):
@@ -334,6 +337,12 @@ class WorkflowListView(QWidget):
 
         self.scroll_area.setWidget(self.content_widget)
         layout.addWidget(self.scroll_area)
+        self.scroll_area.verticalScrollBar().valueChanged.connect(
+            self._on_scroll_changed
+        )
+        self.scroll_area.verticalScrollBar().rangeChanged.connect(
+            self._on_scroll_range_changed
+        )
 
     def set_file_info_map(self, file_info_map: Dict[str, dict]):
         self._file_info_map = file_info_map
@@ -341,19 +350,26 @@ class WorkflowListView(QWidget):
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
         target_paths = set(ordered_paths)
+        self._ordered_paths = list(ordered_paths)
 
         for path in existing_paths - target_paths:
             self.remove_workflow(path)
 
-        for i, path in enumerate(ordered_paths):
-            if path not in self._item_widgets:
-                self.add_workflow(path)
-            else:
-                widget = self._item_widgets[path]
-                self.content_layout.removeWidget(widget)
-                self.content_layout.insertWidget(i, widget)
+        if self._current_path not in target_paths:
+            self._current_path = None
 
-        self.content_layout.update()
+        for path in self._ordered_paths:
+            if path in self._item_widgets:
+                widget = self._item_widgets[path]
+                widget.update_file_info(self._file_info_map.get(str(path)))
+                self.content_layout.removeWidget(widget)
+                widget.hide()
+
+        self._render_count = 0
+        self._batch_inflight = False
+
+        self._render_more_items(self._initial_batch_size())
+        QTimer.singleShot(0, self._ensure_viewport_filled)
 
     def refresh_folder_size(self, workflow_path: Path):
         if workflow_path in self._item_widgets:
@@ -407,3 +423,96 @@ class WorkflowListView(QWidget):
 
     def get_current(self) -> Optional[Path]:
         return self._current_path
+
+    def rendered_count(self) -> int:
+        return self._render_count
+
+    def eventFilter(self, watched, event):
+        if watched is self.scroll_area.viewport():
+            target_item = self._item_at_viewport_pos(event.pos()) if hasattr(event, "pos") else None
+            if target_item is not None:
+                if event.type() == QEvent.MouseButtonDblClick:
+                    mouse_event = event
+                    if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                        target_item._on_open()
+                        return True
+        return super().eventFilter(watched, event)
+
+    def _item_at_viewport_pos(self, viewport_pos):
+        content_pos = self.content_widget.mapFrom(
+            self.scroll_area.viewport(), viewport_pos
+        )
+        target = self.content_widget.childAt(content_pos)
+        while target is not None and not isinstance(target, WorkflowListItem):
+            target = target.parentWidget()
+        return target
+
+    def _initial_batch_size(self) -> int:
+        viewport_height = max(self.scroll_area.viewport().height(), 1)
+        estimated_item_height = 58
+        estimated_rows = max(1, viewport_height // estimated_item_height + 2)
+        return max(self.LIST_INITIAL_BATCH_SIZE, estimated_rows * 2)
+
+    def _ensure_item_widget(self, workflow_path: Path) -> WorkflowListItem:
+        widget = self._item_widgets.get(workflow_path)
+        if widget is not None:
+            return widget
+
+        self.add_workflow(workflow_path)
+        return self._item_widgets[workflow_path]
+
+    def _render_more_items(self, count: int) -> bool:
+        end = min(len(self._ordered_paths), self._render_count + max(0, count))
+        if end <= self._render_count:
+            return False
+
+        for path in self._ordered_paths[self._render_count : end]:
+            widget = self._ensure_item_widget(path)
+            self.content_layout.removeWidget(widget)
+            self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
+            widget.set_selected(path == self._current_path)
+            widget.show()
+
+        self._render_count = end
+        self.content_layout.update()
+        self.content_widget.updateGeometry()
+        return True
+
+    def _ensure_viewport_filled(self):
+        scrollbar = self.scroll_area.verticalScrollBar()
+        if self._render_count < len(self._ordered_paths) and scrollbar.maximum() <= 0:
+            self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
+            QTimer.singleShot(0, self._ensure_viewport_filled)
+
+    def _load_more_if_needed(self):
+        if self._batch_inflight:
+            return
+
+        scrollbar = self.scroll_area.verticalScrollBar()
+        remaining = scrollbar.maximum() - scrollbar.value()
+        should_load = (
+            self._render_count < len(self._ordered_paths)
+            and remaining <= self.LIST_LOAD_MORE_THRESHOLD_PX
+        )
+        if not should_load:
+            return
+
+        self._batch_inflight = True
+
+        def load_batch():
+            self._batch_inflight = False
+            rendered = self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
+            if rendered:
+                QTimer.singleShot(0, self._load_more_if_needed)
+
+        QTimer.singleShot(0, load_batch)
+
+    def _on_scroll_changed(self, _value: int):
+        self._load_more_if_needed()
+
+    def _on_scroll_range_changed(self, _minimum: int, _maximum: int):
+        self._load_more_if_needed()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        QTimer.singleShot(0, self._ensure_viewport_filled)

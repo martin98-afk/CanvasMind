@@ -12,6 +12,10 @@ from loguru import logger
 from PyQt5.QtCore import QThread, pyqtSignal, QCoreApplication
 from openai import OpenAI
 
+from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
+    get_provider_profile,
+)
+
 
 class SubAgentExecutor(QThread):
     """子智能体执行器 - 独立线程运行子智能体任务"""
@@ -105,25 +109,12 @@ class SubAgentExecutor(QThread):
 
     def _execute_agent_loop(self, messages: List[Dict], tools: List[Dict]) -> str:
         """执行子智能体对话循环"""
-        iteration = 0
-        max_iterations = 50
         current_messages = messages.copy()
         response_content = ""
-        has_tool_calls = True
-        loop_start_time = time.time()
-        max_loop_time = 600
 
-        while iteration < max_iterations:
+        while not self._is_cancelled:
             if self._is_cancelled:
                 return ""
-
-            if time.time() - loop_start_time > max_loop_time:
-                logger.warning(
-                    f"[SubAgentExecutor] Loop timeout after {max_loop_time}s, returning current result"
-                )
-                return response_content if response_content else "任务执行超时"
-
-            iteration += 1
 
             response_content, tool_calls = self._make_api_call(current_messages, tools)
 
@@ -131,12 +122,7 @@ class SubAgentExecutor(QThread):
                 return ""
 
             if not tool_calls:
-                if iteration > 1 and response_content:
-                    return response_content
-                has_tool_calls = False
-                continue
-
-            has_tool_calls = True
+                return response_content
             current_messages.append(
                 {
                     "role": "assistant",
@@ -167,9 +153,6 @@ class SubAgentExecutor(QThread):
             current_messages.extend(tool_results)
             QCoreApplication.processEvents()
             time.sleep(0.2)
-
-        if has_tool_calls:
-            return self._generate_final_summary(current_messages)
 
         return response_content
 
@@ -258,6 +241,11 @@ class SubAgentExecutor(QThread):
             else:
                 extra_body[en_key] = value
 
+        if "max_tokens" in req_kwargs:
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
+                model, req_kwargs["max_tokens"]
+            )
+
         if extra_body:
             req_kwargs["extra_body"] = extra_body
 
@@ -329,6 +317,19 @@ class SubAgentExecutor(QThread):
                             pass
 
         return full_response, tool_calls_found
+
+    def _cap_max_output_tokens(self, model: str, requested: int) -> int:
+        try:
+            requested_int = int(requested)
+        except Exception:
+            return requested
+        profile = get_provider_profile(self.llm_config)
+        cap = int(profile.get("max_output_tokens", requested_int))
+        if profile.get("family") == "openai":
+            model_name = (model or "").lower()
+            if "o1" in model_name or "o3" in model_name:
+                cap = max(cap, min(requested_int, 32768))
+        return min(requested_int, cap)
 
     def _execute_tools(self, tool_calls: List[Dict]) -> Optional[List[Dict]]:
         """执行工具调用"""

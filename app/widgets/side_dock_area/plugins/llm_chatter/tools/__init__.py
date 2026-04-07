@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -48,6 +49,9 @@ class BuiltinTools(QObject):
         self._skill_workspaces = {}
         self._sub_agent_manager = None
         self._set_stage_callback = None
+        self._memory_manager = None
+        self._get_llm_config = None
+        self._get_session_messages = None
 
         logger.info(f"[BuiltinTools] Workdir: {self.workdir}")
 
@@ -204,8 +208,189 @@ class BuiltinTools(QObject):
     ):
         return self._canvas_tools.trigger_canvas(endpoint, data, callback_url, timeout)
 
-    def summarize_changes(self) -> ToolResult:
-        return ToolResult(True, content="Summarize functionality - to be implemented")
+    def summarize_changes(self, text: str = "", limit: int = 1200) -> ToolResult:
+        text = (text or "").strip()
+        if not text:
+            return ToolResult(False, error="No text provided for summarization")
+
+        clean_lines = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if clean_lines and clean_lines[-1] == stripped:
+                continue
+            clean_lines.append(stripped)
+
+        summary = "\n".join(clean_lines)
+        if len(summary) > limit:
+            head = summary[: int(limit * 0.75)].rstrip()
+            tail = summary[-int(limit * 0.15) :].lstrip()
+            summary = (
+                f"{head}\n\n[... 已省略 {len(summary) - len(head) - len(tail)} 个字符 ...]\n\n{tail}"
+            )
+        return ToolResult(True, content=summary)
+
+    def set_memory_manager(self, memory_manager):
+        self._memory_manager = memory_manager
+
+    def set_llm_config_getter(self, getter):
+        self._get_llm_config = getter
+
+    def set_session_messages_getter(self, getter):
+        self._get_session_messages = getter
+
+    def memory_list(
+        self,
+        limit: int = 10,
+        include_disabled: bool = False,
+    ) -> ToolResult:
+        if not self._memory_manager:
+            return ToolResult(False, error="Memory manager not available")
+
+        memories = self._memory_manager.get_user_memories()
+        if not include_disabled:
+            memories = [item for item in memories if item.get("enabled", True)]
+        memories = memories[: max(1, int(limit or 10))]
+        return ToolResult(
+            True,
+            content={
+                "count": len(memories),
+                "memories": memories,
+                "formatted": self._memory_manager.format_memories_for_prompt(
+                    memories,
+                    title="长期记忆列表",
+                    include_disabled=include_disabled,
+                ),
+            },
+        )
+
+    def memory_search(
+        self,
+        query: str = "",
+        limit: int = 8,
+        include_disabled: bool = False,
+    ) -> ToolResult:
+        if not self._memory_manager:
+            return ToolResult(False, error="Memory manager not available")
+
+        query = str(query or "").strip()
+        memories = self._memory_manager.search_memories(
+            query,
+            include_disabled=include_disabled,
+            limit=max(1, int(limit or 8)),
+        )
+        return ToolResult(
+            True,
+            content={
+                "query": query,
+                "count": len(memories),
+                "memories": memories,
+                "formatted": self._memory_manager.format_memories_for_prompt(
+                    memories,
+                    title=f"长期记忆搜索结果: {query or '全部'}",
+                    include_disabled=include_disabled,
+                ),
+            },
+        )
+
+    def memory_save(
+        self,
+        content: str,
+        confidence: float = 0.8,
+        source: str = "assistant",
+        conflict_group: str = "",
+    ) -> ToolResult:
+        if not self._memory_manager:
+            return ToolResult(False, error="Memory manager not available")
+
+        content = str(content or "").strip()
+        if not content:
+            return ToolResult(False, error="Memory content is empty")
+
+        success = self._memory_manager.add_user_memory(
+            content,
+            source=source or "assistant",
+            confidence=float(confidence or 0.8),
+            conflict_group=str(conflict_group or ""),
+        )
+        if not success:
+            return ToolResult(False, error="Failed to save memory")
+
+        return ToolResult(
+            True,
+            content={
+                "saved": True,
+                "content": content,
+                "source": source or "assistant",
+                "confidence": float(confidence or 0.8),
+                "conflict_group": str(conflict_group or ""),
+            },
+        )
+
+    def memory_consolidate(
+        self,
+        max_items: int = 3,
+        save: bool = True,
+    ) -> ToolResult:
+        if not self._memory_manager:
+            return ToolResult(False, error="Memory manager not available")
+        if not callable(self._get_llm_config):
+            return ToolResult(False, error="LLM config getter not available")
+        if not callable(self._get_session_messages):
+            return ToolResult(False, error="Session messages getter not available")
+
+        llm_config = self._get_llm_config() or {}
+        messages = self._get_session_messages() or []
+        if not messages:
+            return ToolResult(False, error="No session messages available")
+
+        max_items = max(1, int(max_items or 3))
+        consolidated = self._memory_manager.consolidate_from_messages(
+            messages,
+            llm_config,
+            max_items=max_items,
+        )
+        if not consolidated:
+            return ToolResult(
+                True,
+                content={
+                    "saved": False,
+                    "count": 0,
+                    "memories": [],
+                    "formatted": "未提炼出适合写入长期记忆的新内容。",
+                },
+            )
+
+        saved_count = 0
+        if save:
+            for item in consolidated:
+                if self._memory_manager.add_user_memory(
+                    item.get("content", ""),
+                    source=item.get("source", "session"),
+                    confidence=float(item.get("confidence", 0.8) or 0.8),
+                    conflict_group=str(item.get("conflict_group", "") or ""),
+                ):
+                    saved_count += 1
+
+        formatted = self._memory_manager.format_memories_for_prompt(
+            consolidated,
+            title="本轮提炼出的长期记忆",
+            include_disabled=False,
+        )
+        return ToolResult(
+            True,
+            content={
+                "saved": bool(save),
+                "saved_count": saved_count,
+                "count": len(consolidated),
+                "memories": consolidated,
+                "formatted": formatted,
+                "provider_linked": bool(
+                    llm_config.get("API_URL") or llm_config.get("模型名称")
+                ),
+            },
+        )
 
     def _resolve_path(self, path: str):
         if not path:
@@ -489,6 +674,84 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "properties": {
                         "command": {"type": "string", "description": "验证命令"},
                         "timeout": {"type": "integer", "description": "超时时间"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "memory_list",
+                "description": "列出当前工作区的长期记忆，可选择是否包含已禁用/冲突记忆",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "description": "最多返回多少条记忆"},
+                        "include_disabled": {
+                            "type": "boolean",
+                            "description": "是否包含已禁用的冲突记忆",
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "memory_search",
+                "description": "检索和当前任务相关的长期记忆，适合在编码或追问前主动查用户偏好、项目约束和长期决策",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "检索关键词"},
+                        "limit": {"type": "integer", "description": "最多返回多少条记忆"},
+                        "include_disabled": {
+                            "type": "boolean",
+                            "description": "是否包含已禁用的冲突记忆",
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "memory_save",
+                "description": "保存一条新的长期记忆，适合写入稳定的用户偏好、项目约束、明确纠正和长期决策",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string", "description": "记忆内容"},
+                        "confidence": {
+                            "type": "number",
+                            "description": "置信度，0 到 1",
+                        },
+                        "source": {"type": "string", "description": "记忆来源"},
+                        "conflict_group": {
+                            "type": "string",
+                            "description": "冲突组，相同组的新记忆会压制旧记忆",
+                        },
+                    },
+                    "required": ["content"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "memory_consolidate",
+                "description": "基于当前会话消息和当前 provider 配置，自动提炼适合写入长期记忆的稳定信息，并可直接保存",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "max_items": {
+                            "type": "integer",
+                            "description": "最多提炼多少条记忆",
+                        },
+                        "save": {
+                            "type": "boolean",
+                            "description": "是否直接保存提炼结果到长期记忆",
+                        },
                     },
                 },
             },
