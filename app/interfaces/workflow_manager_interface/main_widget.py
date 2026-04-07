@@ -42,7 +42,6 @@ from app.utils.utils import get_icon, get_pinyin_search_keys
 from app.interfaces.workflow_manager_interface.widgets.workflow_card import WorkflowCard
 from app.interfaces.workflow_manager_interface.widgets.workflow_list_view import (
     WorkflowListView,
-    WorkflowListItem,
 )
 from app.interfaces.workflow_manager_interface.widgets.workflow_preview_panel import (
     WorkflowPreviewPanel,
@@ -134,12 +133,7 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(
-            [
-                self.tr("修改时间"),
-                self.tr("创建时间"),
-                self.tr("名称"),
-                self.tr("缓存大小"),
-            ]
+            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称"), self.tr("缓存大小")]
         )
         self.sort_field_combo.setCurrentIndex(0)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
@@ -253,12 +247,9 @@ class WorkflowCanvasGalleryPage(QWidget):
             self._view_mode = VIEW_MODE_GRID
             self.content_container.setCurrentWidget(self.grid_container)
             QTimer.singleShot(10, self._refresh_grid_view)
-            QTimer.singleShot(50, self._preload_grid_in_background)
         else:
             self._view_mode = VIEW_MODE_LIST
             self.content_container.setCurrentWidget(self.list_container)
-            QTimer.singleShot(10, self._refresh_list_view)
-            QTimer.singleShot(50, self._preload_list_in_background)
 
     def _on_list_selection_changed(self, workflow_path: Path):
         file_info = self._file_info_map.get(str(workflow_path))
@@ -332,9 +323,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        removed_paths = [
-            path for path in self._card_map if path not in self._known_files
-        ]
+        removed_paths = [path for path in self._card_map if path not in self._known_files]
         for wf_path in removed_paths:
             card = self._card_map.pop(wf_path, None)
             if card is not None:
@@ -356,49 +345,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._request_cache_sizes(workflow_files)
         self._apply_sort_and_filter_and_refresh()
         self.scan_finished.emit(workflow_files, file_info_map)
-        QTimer.singleShot(200, self._preload_both_views)
-
-    def _preload_both_views(self):
-        if self._view_mode == VIEW_MODE_GRID:
-            self._preload_grid_in_background()
-        else:
-            self._preload_list_in_background()
-
-    def _preload_hidden_view(self):
-        if self._view_mode == VIEW_MODE_GRID:
-            self.workflow_list_view.set_file_info_map(self._file_info_map)
-            self.workflow_list_view.prepare_paths(self.all_workflow_paths)
-            self._preload_list_items()
-        else:
-            self._preload_grid_cards()
-
-    def _preload_list_items(self):
-        for wf_path in self.all_workflow_paths:
-            if wf_path not in self.workflow_list_view._item_widgets:
-                try:
-                    item = WorkflowListItem(
-                        wf_path,
-                        self._file_info_map.get(str(wf_path)),
-                        self.workflow_list_view,
-                    )
-                    item.item_selected.connect(
-                        self.workflow_list_view._on_item_selected
-                    )
-                    self.workflow_list_view._item_widgets[wf_path] = item
-                except Exception:
-                    pass
-
-    def _preload_grid_cards(self):
-        for wf_path in self.all_workflow_paths:
-            if wf_path not in self._card_map:
-                try:
-                    card = WorkflowCard(
-                        wf_path, self, self._file_info_map.get(str(wf_path))
-                    )
-                    card.hide()
-                    self._card_map[wf_path] = card
-                except Exception:
-                    pass
 
     def _apply_sort_and_filter_and_refresh(self):
         if self._is_loading:
@@ -439,12 +385,9 @@ class WorkflowCanvasGalleryPage(QWidget):
             file_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
-        if self._view_mode == VIEW_MODE_GRID:
-            self._refresh_grid_view()
-        else:
-            self._refresh_list_view()
+        self._refresh_grid_view()
+        self._refresh_list_view()
         self._update_status_label()
-        QTimer.singleShot(300, self._preload_hidden_view)
 
     def _refresh_grid_view(self):
         for card in self._card_map.values():
@@ -557,23 +500,6 @@ class WorkflowCanvasGalleryPage(QWidget):
     def _on_grid_scroll_range_changed(self, _minimum: int, _maximum: int):
         self._load_more_grid_cards_if_needed()
 
-    def _preload_grid_in_background(self):
-        if self._grid_render_count >= len(self.all_workflow_paths):
-            return
-        self._grid_batch_inflight = True
-
-        def load_batch():
-            if self._grid_render_count >= len(self.all_workflow_paths):
-                self._grid_batch_inflight = False
-                return
-            self._render_more_grid_cards(self.GRID_INCREMENTAL_BATCH_SIZE)
-            QTimer.singleShot(16, load_batch)
-
-        QTimer.singleShot(100, load_batch)
-
-    def _preload_list_in_background(self):
-        self.workflow_list_view.preload_in_background()
-
     def _on_search_changed(self, text: str):
         self._filter_text = text.strip().lower()
         self._search_debounce_timer.start(300)
@@ -630,9 +556,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         if self._view_mode == VIEW_MODE_GRID:
             rendered_count = self._grid_render_count
         else:
-            rendered_count = getattr(
-                self.workflow_list_view, "rendered_count", lambda: 0
-            )()
+            rendered_count = getattr(self.workflow_list_view, "rendered_count", lambda: 0)()
 
         parts = [
             self.tr("总数 {0}").format(total_count),

@@ -8,7 +8,9 @@ from PyQt5.QtCore import (
     pyqtSignal,
     QMutexLocker,
     QMutex,
-    QTimer,
+    QObject,
+    QRunnable,
+    QThreadPool,
 )
 from PyQt5.QtGui import QPixmap, QPixmapCache
 
@@ -38,12 +40,32 @@ class ThumbnailCache:
         cls._loading[key] = loading
 
 
+class _FolderSizeWorkerSignals(QObject):
+    finished = pyqtSignal(str, int)
+
+
+class _FolderSizeWorker(QRunnable):
+    def __init__(self, folder: Path):
+        super().__init__()
+        self.folder = folder
+        self.signals = _FolderSizeWorkerSignals()
+
+    def run(self):
+        total = 0
+        try:
+            for item in self.folder.rglob("*"):
+                if item.is_file():
+                    total += item.stat().st_size
+        except Exception:
+            total = 0
+        self.signals.finished.emit(str(self.folder), total)
+
+
 class FolderSizeCache:
     _cache: Dict[str, int] = {}
     _callbacks: Dict[str, List[Callable[[int], None]]] = {}
-    _pending_folders: List[Path] = []
-    _batch_timer: Optional[QTimer] = None
-    _batch_delay_ms = 200
+    _loading: Dict[str, bool] = {}
+    _thread_pool = QThreadPool.globalInstance()
 
     @classmethod
     def get(cls, folder: Path) -> Optional[int]:
@@ -54,14 +76,10 @@ class FolderSizeCache:
         key = str(folder)
         cls._cache.pop(key, None)
         cls._callbacks.pop(key, None)
-        cls._pending_folders = [f for f in cls._pending_folders if str(f) != key]
-        if cls._batch_timer and cls._batch_timer.isActive():
-            cls._batch_timer.stop()
+        cls._loading.pop(key, None)
 
     @classmethod
-    def request(
-        cls, folder: Path, callback: Callable[[int], None], delay_ms: int = None
-    ):
+    def request(cls, folder: Path, callback: Callable[[int], None]):
         key = str(folder)
         cached = cls._cache.get(key)
         if cached is not None:
@@ -69,46 +87,24 @@ class FolderSizeCache:
             return
 
         cls._callbacks.setdefault(key, []).append(callback)
-
-        if any(str(f) == key for f in cls._pending_folders):
+        if cls._loading.get(key):
             return
 
-        cls._pending_folders.append(folder)
-
-        if cls._batch_timer is None:
-            cls._batch_timer = QTimer()
-            cls._batch_timer.setSingleShot(True)
-            cls._batch_timer.timeout.connect(cls._process_batch)
-
-        if not cls._batch_timer.isActive():
-            delay = delay_ms if delay_ms is not None else cls._batch_delay_ms
-            cls._batch_timer.start(delay)
+        cls._loading[key] = True
+        worker = _FolderSizeWorker(folder)
+        worker.signals.finished.connect(cls._on_finished)
+        cls._thread_pool.start(worker)
 
     @classmethod
-    def _process_batch(cls):
-        folders = list(cls._pending_folders)
-        cls._pending_folders.clear()
-
-        results = []
-        for folder in folders:
-            key = str(folder)
-            total = 0
+    def _on_finished(cls, folder_key: str, total: int):
+        cls._cache[folder_key] = total
+        cls._loading[folder_key] = False
+        callbacks = cls._callbacks.pop(folder_key, [])
+        for callback in callbacks:
             try:
-                for item in folder.iterdir():
-                    if item.is_file():
-                        total += item.stat().st_size
+                callback(total)
             except Exception:
-                total = -1
-            results.append((key, total))
-
-        for key, total in results:
-            cls._cache[key] = total
-            callbacks = cls._callbacks.pop(key, [])
-            for callback in callbacks:
-                try:
-                    callback(total)
-                except Exception:
-                    pass
+                pass
 
 
 def iter_workflow_files(workflow_dirs: List[Path]) -> List[Path]:

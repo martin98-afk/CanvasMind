@@ -203,18 +203,12 @@ class WorkflowListItem(QWidget):
         if watched is self or watched.parent() is self:
             if event.type() == QEvent.MouseButtonPress:
                 mouse_event = event
-                if (
-                    isinstance(mouse_event, QMouseEvent)
-                    and mouse_event.button() == Qt.LeftButton
-                ):
+                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
                     self.item_selected.emit(self.workflow_path)
                     return watched is not self
             elif event.type() == QEvent.MouseButtonDblClick:
                 mouse_event = event
-                if (
-                    isinstance(mouse_event, QMouseEvent)
-                    and mouse_event.button() == Qt.LeftButton
-                ):
+                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
                     self._on_open()
                     return True
         return super().eventFilter(watched, event)
@@ -353,11 +347,6 @@ class WorkflowListView(QWidget):
     def set_file_info_map(self, file_info_map: Dict[str, dict]):
         self._file_info_map = file_info_map
 
-    def prepare_paths(self, ordered_paths: List[Path]):
-        self._ordered_paths = list(ordered_paths)
-        self._render_count = 0
-        self._batch_inflight = False
-
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
         target_paths = set(ordered_paths)
@@ -440,18 +429,11 @@ class WorkflowListView(QWidget):
 
     def eventFilter(self, watched, event):
         if watched is self.scroll_area.viewport():
-            target_item = (
-                self._item_at_viewport_pos(event.pos())
-                if hasattr(event, "pos")
-                else None
-            )
+            target_item = self._item_at_viewport_pos(event.pos()) if hasattr(event, "pos") else None
             if target_item is not None:
                 if event.type() == QEvent.MouseButtonDblClick:
                     mouse_event = event
-                    if (
-                        isinstance(mouse_event, QMouseEvent)
-                        and mouse_event.button() == Qt.LeftButton
-                    ):
+                    if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
                         target_item._on_open()
                         return True
         return super().eventFilter(watched, event)
@@ -484,32 +466,23 @@ class WorkflowListView(QWidget):
         if end <= self._render_count:
             return False
 
-        batch_size = 10
-        paths_to_render = self._ordered_paths[self._render_count : end]
-
-        def render_batch(index):
-            if index >= len(paths_to_render):
-                self._render_count = end
-                self.content_layout.update()
-                self.content_widget.updateGeometry()
-                return
-
-            path = paths_to_render[index]
+        for path in self._ordered_paths[self._render_count : end]:
             widget = self._ensure_item_widget(path)
             self.content_layout.removeWidget(widget)
             self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
             widget.set_selected(path == self._current_path)
             widget.show()
-            QTimer.singleShot(8, lambda: render_batch(index + 1))
 
-        render_batch(0)
+        self._render_count = end
+        self.content_layout.update()
+        self.content_widget.updateGeometry()
         return True
 
     def _ensure_viewport_filled(self):
         scrollbar = self.scroll_area.verticalScrollBar()
         if self._render_count < len(self._ordered_paths) and scrollbar.maximum() <= 0:
             self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
-            QTimer.singleShot(16, self._ensure_viewport_filled)
+            QTimer.singleShot(0, self._ensure_viewport_filled)
 
     def _load_more_if_needed(self):
         if self._batch_inflight:
@@ -530,7 +503,7 @@ class WorkflowListView(QWidget):
             self._batch_inflight = False
             rendered = self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
             if rendered:
-                QTimer.singleShot(16, self._load_more_if_needed)
+                QTimer.singleShot(0, self._load_more_if_needed)
 
         QTimer.singleShot(0, load_batch)
 
@@ -543,17 +516,3 @@ class WorkflowListView(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         QTimer.singleShot(0, self._ensure_viewport_filled)
-
-    def preload_in_background(self):
-        if self._render_count >= len(self._ordered_paths):
-            return
-        self._batch_inflight = True
-
-        def load_batch():
-            if self._render_count >= len(self._ordered_paths):
-                self._batch_inflight = False
-                return
-            self._render_more_items(self.LIST_INCREMENTAL_BATCH_SIZE)
-            QTimer.singleShot(16, load_batch)
-
-        QTimer.singleShot(100, load_batch)
