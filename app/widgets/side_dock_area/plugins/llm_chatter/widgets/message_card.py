@@ -11,6 +11,13 @@ from typing import List, Dict, Any
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
     render_tool_block,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+    append_text_block,
+    append_tool_result_block,
+    content_to_markdown,
+    content_to_text,
+    ensure_content_blocks,
+)
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import (
@@ -933,7 +940,7 @@ class TagWidget(CardWidget):
 
 class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
-    regenerateRequested = pyqtSignal()
+    undoRequested = pyqtSignal()
     actionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
     optionSelected = pyqtSignal(dict)
@@ -954,6 +961,7 @@ class MessageCard(SimpleCardWidget):
         self.timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M")
         self.error = error
         self._interactive_options: List[dict] = []
+        self._content_data: Any = [] if role == "assistant" else ""
         self._streaming = False
         self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._update_anim)
@@ -1077,21 +1085,17 @@ class MessageCard(SimpleCardWidget):
                 (
                     FluentIcon.COPY,
                     "复制",
-                    lambda: self.actionRequested.emit(
-                        self.viewer.get_plain_text(), "copy"
-                    ),
+                    lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
-                (FluentIcon.SYNC, "重试", self.regenerateRequested.emit),
             ]
         elif self.role == "user":
             specs = [
                 (
                     FluentIcon.COPY,
                     "复制",
-                    lambda: self.actionRequested.emit(
-                        self.viewer.get_plain_text(), "copy"
-                    ),
+                    lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
+                (FluentIcon.RETURN, "撤销到这里", self.undoRequested.emit),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
         for ic, tp, cb in specs:
@@ -1371,7 +1375,64 @@ class MessageCard(SimpleCardWidget):
     def update_content(self, txt):
         if self.role == "assistant" and not self._streaming:
             self.start_streaming_anim()
-        self.viewer.append_chunk(txt)
+        if isinstance(txt, list):
+            self.set_content(txt)
+            return
+        self.append_text(txt)
+
+    def set_content(self, content: Any):
+        if self.role == "assistant":
+            self._content_data = ensure_content_blocks(content)
+            rendered = content_to_markdown(self._content_data)
+        else:
+            self._content_data = str(content or "")
+            rendered = self._content_data
+
+        if hasattr(self.viewer, "_markdown_text"):
+            self.viewer._markdown_text = rendered
+            self.viewer._schedule_render(immediate=True)
+        elif hasattr(self.viewer, "set_text"):
+            self.viewer.set_text(rendered)
+
+    def append_text(self, text: str):
+        if self.role == "assistant":
+            self._content_data = append_text_block(self._content_data, text)
+            rendered = content_to_markdown(self._content_data)
+            self.viewer._markdown_text = rendered
+            self.viewer._schedule_render(immediate=False)
+            return
+
+        self._content_data = str(self._content_data or "") + str(text or "")
+        self.viewer.append_chunk(str(text or ""))
+
+    def append_tool_result(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any] = None,
+        result: Any = None,
+        success: bool = True,
+        tool_call_id: str = None,
+    ):
+        self._content_data = append_tool_result_block(
+            self._content_data,
+            tool_name=tool_name,
+            arguments=arguments,
+            result=result,
+            success=success,
+            tool_call_id=tool_call_id,
+        )
+        self.viewer._markdown_text = content_to_markdown(self._content_data)
+        self.viewer._schedule_render(immediate=True)
+
+    def get_content_data(self) -> Any:
+        if self.role == "assistant":
+            return ensure_content_blocks(self._content_data)
+        return str(self._content_data or "")
+
+    def get_plain_text(self) -> str:
+        if self.role == "assistant":
+            return content_to_text(self._content_data, include_tool_results=True)
+        return str(self._content_data or "")
 
     def run_js(self, js_code: str):
         """运行 JavaScript 代码"""

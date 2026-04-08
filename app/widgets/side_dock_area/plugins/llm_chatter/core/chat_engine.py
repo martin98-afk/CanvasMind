@@ -23,6 +23,12 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import
     get_provider_profile,
     supports_vision as provider_supports_vision,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+    consolidate_messages,
+    content_to_text,
+    ensure_content_blocks,
+    extract_tool_result_blocks,
+)
 
 
 TOKEN_ESTIMATION_RATIO = 0.25
@@ -47,6 +53,7 @@ def estimate_tokens_from_messages(messages: List[Dict]) -> int:
             for item in content:
                 if isinstance(item, dict):
                     total += len(item.get("text", ""))
+                    total += len(str(item.get("result", "")))
         elif isinstance(content, str):
             total += estimate_tokens(content)
         for tool_call in msg.get("tool_calls", []):
@@ -60,19 +67,7 @@ def estimate_tokens_from_messages(messages: List[Dict]) -> int:
 
 
 def _normalize_message_content(content: Any) -> str:
-    if isinstance(content, str):
-        return content.strip()
-    if isinstance(content, list):
-        texts = []
-        for item in content:
-            if not isinstance(item, dict):
-                continue
-            if item.get("type") == "text":
-                text = str(item.get("text", "")).strip()
-                if text:
-                    texts.append(text)
-        return "\n".join(texts).strip()
-    return str(content or "").strip()
+    return content_to_text(content).strip()
 
 
 class ChatEngine:
@@ -312,7 +307,8 @@ class ChatEngine:
 
             if role == "assistant":
                 tool_calls = msg.get("tool_calls", [])
-                tool_results = msg.get("tool_results", [])
+                tool_results = list(msg.get("tool_results", []) or [])
+                tool_results.extend(extract_tool_result_blocks(msg.get("content", [])))
                 if tool_calls:
                     normalized_msg["tool_calls"] = tool_calls
                 if not content and not tool_calls:
@@ -332,7 +328,7 @@ class ChatEngine:
                         if tool_call_id in existing_tool_ids:
                             continue
                         result_content = _normalize_message_content(
-                            result.get("content", "")
+                            result.get("result", result.get("content", ""))
                         )
                         if not tool_call_id or not result_content:
                             continue
@@ -937,7 +933,7 @@ class ChatEngine:
         self._emit("stream_finished", response)
 
     def _on_worker_messages_updated(self, messages: List[Dict]):
-        self._emit("messages_updated", messages)
+        self._emit("messages_updated", consolidate_messages(messages or []))
 
     def _on_worker_compaction_status_changed(self, state: Dict[str, Any]):
         session = self._session_manager.get_current_session()

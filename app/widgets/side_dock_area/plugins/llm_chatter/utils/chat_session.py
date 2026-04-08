@@ -5,14 +5,15 @@ from PyQt5.QtCore import QObject
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
     TaskSessionState,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+    consolidate_messages,
+)
 
 
 class ChatSession:
     def __init__(self, name: str = None, messages: Optional[List[Dict]] = None):
         self.name = name or f"对话 {datetime.now().strftime('%m-%d %H:%M')}"
-        self.messages: List[Dict[str, str]] = (
-            messages.copy() if messages is not None else []
-        )
+        self.messages: List[Dict[str, str]] = consolidate_messages(messages or [])
         self.topic_summary: str = ""
         self.created_at: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_updated: str = self.created_at
@@ -34,7 +35,7 @@ class ChatSession:
         }
 
     def get_context_messages(self) -> List[Dict[str, str]]:
-        return self.messages.copy()
+        return consolidate_messages(self.messages)
 
     def add_system_message(self, content: str):
         self.messages.append(
@@ -44,6 +45,7 @@ class ChatSession:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
+        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def add_assistant_message(self, content: str):
@@ -54,6 +56,7 @@ class ChatSession:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
+        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def add_user_message(self, content: str, params: dict = None):
@@ -65,6 +68,7 @@ class ChatSession:
                 "params": params or {},
             }
         )
+        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def _update_timestamp(self):
