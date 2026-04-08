@@ -78,9 +78,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.message_card import 
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.question_floating_widget import (
     QuestionFloatingWidget,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
-    format_tool_block,
-)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.sub_agent_floating_widget import (
     SubAgentFloatingWidget,
 )
@@ -91,6 +88,10 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget
     ToolFloatingWidget,
 )
 from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+    consolidate_messages,
+    content_to_text,
+)
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -813,12 +814,8 @@ class OpenAIChatToolWindow(ToolWindow):
         # 3. 更新任务状态（左侧可能有的任务面板）
         self._on_task_state_changed(session.task_state)
 
-        # 4. 准备分批加载的数据源
-        # 注意：这里一定要从 session.messages 拿，不要从临时变量拿
-        if self._history_preview_messages is not None:
-            self._message_batch = list(self._history_preview_messages)
-        else:
-            self._message_batch = list(session.messages)
+        # 4. 统一只渲染 canonical session messages
+        self._message_batch = consolidate_messages(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
@@ -851,31 +848,7 @@ class OpenAIChatToolWindow(ToolWindow):
         ]
 
         for msg in batch:
-            role = msg.get("role")
-
-            if role == "user":
-                content = self._sanitize_user_message_for_display(
-                    msg.get("content", "")
-                )
-                self._append_user_message(
-                    content,
-                    timestamp=msg.get(
-                        "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
-                    ),
-                    tag_params=msg.get("params", {}),
-                )
-
-            elif role == "assistant":
-                card = self._append_assistant_message(
-                    timestamp=msg.get(
-                        "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
-                    )
-                )
-                content = msg.get("content", "")
-                card.update_content(content)
-                card.finish_streaming()
-            else:
-                continue
+            self._render_message_to_card(msg)
 
         self._message_batch_index += len(batch)
 
@@ -910,6 +883,7 @@ class OpenAIChatToolWindow(ToolWindow):
             }
         )
         self.session_manager.set_current_session(restored)
+        self._history_preview_messages = None
         self._current_history_index = None
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
@@ -939,6 +913,7 @@ class OpenAIChatToolWindow(ToolWindow):
             # 情况 A：如果是从 _load_history_session 点进来的，session 已经更新好了
             if self._history_preview_opening:
                 self._history_preview_opening = False
+                self._history_preview_messages = None
                 # 直接去渲染 Session 里的消息
                 self._display_current_session()
 
@@ -954,6 +929,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     self.session_manager.set_current_session(restored)
                     self._history_preview_session_data = None
                     self._current_history_index = None
+                self._history_preview_messages = None
 
                 self._display_current_session()
 
@@ -1072,11 +1048,32 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return pattern.sub("", content, count=1)
 
+    def _render_message_to_card(self, msg: Dict[str, Any]):
+        if not isinstance(msg, dict):
+            return
+
+        role = msg.get("role")
+        timestamp = msg.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+        if role == "user":
+            content = self._sanitize_user_message_for_display(msg.get("content", ""))
+            self._append_user_message(
+                content,
+                timestamp=timestamp,
+                tag_params=msg.get("params", {}),
+            )
+            return
+
+        if role == "assistant":
+            card = self._append_assistant_message(timestamp=timestamp)
+            card.set_content(msg.get("content", []))
+            card.finish_streaming()
+
     def _build_api_safe_messages_from_history(
         self, messages: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         safe_messages = []
-        for msg in messages or []:
+        for msg in consolidate_messages(messages or []):
             role = msg.get("role")
             if role not in ("system", "user", "assistant"):
                 continue
@@ -1086,6 +1083,13 @@ class OpenAIChatToolWindow(ToolWindow):
                 safe_msg["timestamp"] = msg.get("timestamp")
             if role == "user" and msg.get("params") is not None:
                 safe_msg["params"] = msg.get("params", {})
+            if role == "assistant":
+                if msg.get("tool_calls"):
+                    safe_msg["tool_calls"] = msg.get("tool_calls", [])
+                if msg.get("tool_results"):
+                    safe_msg["tool_results"] = msg.get("tool_results", [])
+                if msg.get("round_id"):
+                    safe_msg["round_id"] = msg.get("round_id")
             safe_messages.append(safe_msg)
 
         return safe_messages
@@ -1130,21 +1134,23 @@ class OpenAIChatToolWindow(ToolWindow):
         if not messages:
             return
 
-        # 2. 获取当前正在使用的 session 对象
-        session = self.session_manager.get_current_session()
-        if not session:
-            session = self.session_manager.create_new_session()
-
-        # 3. 核心：强制覆盖 session 的消息内容
-        self._history_preview_messages = list(messages)
-        session.messages = self._build_api_safe_messages_from_history(messages)
+        # 2. 直接用历史消息重建 session，避免 UI 预览数据和真实 session 分叉
+        title = self.history_manager.get_current_title(index)
+        restored = ChatSession.from_dict(
+            {
+                "name": title or "历史对话",
+                "messages": self._build_api_safe_messages_from_history(messages),
+                "topic_summary": title or "",
+            }
+        )
+        self.session_manager.set_current_session(restored)
+        self._history_preview_messages = None
 
         # 4. 同步状态变量
         self._current_history_index = index
         self._history_preview_opening = True  # 标记：我是通过点击历史项关闭菜单的
 
         # 5. 更新标题显示
-        title = self.history_manager.get_current_title(index)
         self.title_edit.setText(title or "历史对话")
 
         # 6. 关闭历史界面 (这会触发 _toggle_history_mode(False))
@@ -1191,20 +1197,17 @@ class OpenAIChatToolWindow(ToolWindow):
             self._scroll_to_bottom()
 
     def _update_node_preview(self):
-        if self._history_preview_messages is not None:
-            messages = self._history_preview_messages
-        else:
-            session = self.session_manager.get_current_session()
-            if not session:
-                return
-            messages = session.messages
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+        messages = consolidate_messages(session.messages)
 
         node_data = []
         current_user_msg = None
 
         for msg in messages:
             if msg["role"] == "user":
-                current_user_msg = msg.get("content", "")[:30]
+                current_user_msg = content_to_text(msg.get("content", ""))[:30]
             elif msg["role"] == "assistant" and current_user_msg:
                 timestamp = (
                     msg.get("timestamp", "")[-5:] if msg.get("timestamp") else ""
@@ -1218,13 +1221,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.update_nodes(node_data)
 
     def _on_node_preview_clicked(self, index: int):
-        if self._history_preview_messages is not None:
-            messages = self._history_preview_messages
-        else:
-            session = self.session_manager.get_current_session()
-            if not session:
-                return
-            messages = session.messages
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+        messages = consolidate_messages(session.messages)
 
         pair_index = 0
         for i, msg in enumerate(messages):
@@ -1589,14 +1589,13 @@ class OpenAIChatToolWindow(ToolWindow):
         tool_args = getattr(self, "_current_tool_args", {})
 
         if tool_call_id and self._current_assistant_card:
-            separator = "\n\n"
-            tool_block = format_tool_block(
-                tool_name,
-                tool_args,
-                "[工具执行已被用户中止]",
-                False,
+            self._current_assistant_card.append_tool_result(
+                tool_name=tool_name,
+                arguments=tool_args,
+                result="[工具执行已被用户中止]",
+                success=False,
+                tool_call_id=tool_call_id,
             )
-            self._current_assistant_card.update_content(separator + tool_block)
             self._scroll_to_bottom()
 
         if hasattr(self, "_chat_engine") and self._chat_engine:
@@ -1630,16 +1629,15 @@ class OpenAIChatToolWindow(ToolWindow):
             self._todo_floating_widget.setVisible(True)
 
         content = str(result)
-        tool_block = format_tool_block(
-            tool_name,
-            arguments or {},
-            content,
-            success,
-        )
 
         if self._current_assistant_card:
-            separator = "\n\n"
-            self._current_assistant_card.update_content(separator + tool_block)
+            self._current_assistant_card.append_tool_result(
+                tool_name=tool_name,
+                arguments=arguments or {},
+                result=content,
+                success=success,
+                tool_call_id=tool_call_id,
+            )
 
         self._scroll_to_bottom()
 
@@ -1666,19 +1664,16 @@ class OpenAIChatToolWindow(ToolWindow):
             self.input_area.setFocus()
 
     def _sync_current_assistant_card_to_session(self):
-        if self._history_preview_messages is not None:
-            return
-
         session = self.session_manager.get_current_session()
         if not session or not self._current_assistant_card:
             return
 
         viewer = getattr(self._current_assistant_card, "viewer", None)
-        if not viewer or not hasattr(viewer, "get_plain_text"):
+        if not viewer:
             return
 
-        content = viewer.get_plain_text()
-        if not content or not str(content).strip():
+        content = self._current_assistant_card.get_content_data()
+        if not content:
             return
 
         assistant_message = {
@@ -1688,9 +1683,12 @@ class OpenAIChatToolWindow(ToolWindow):
         }
 
         if session.messages and session.messages[-1].get("role") == "assistant":
-            session.messages[-1] = assistant_message
+            preserved = dict(session.messages[-1])
+            preserved.update(assistant_message)
+            session.messages[-1] = preserved
         else:
             session.messages.append(assistant_message)
+        session.messages = consolidate_messages(session.messages)
         session._update_timestamp()
 
     def _save_current_session_to_history(self):
@@ -1713,7 +1711,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = [dict(msg) for msg in messages]
+        session.messages = consolidate_messages(messages or [])
         session._update_timestamp()
         self._refresh_context_usage_indicator()
 

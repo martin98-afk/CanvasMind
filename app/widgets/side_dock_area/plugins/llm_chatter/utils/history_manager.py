@@ -6,116 +6,14 @@ from typing import List, Dict, Optional
 from pathlib import Path
 
 from app.utils.utils import serialize_for_json, deserialize_from_json
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+    consolidate_messages,
+    content_to_text,
+)
 
 
 def merge_session_messages(messages: List[Dict]) -> List[Dict]:
-    """
-    合并一轮对话：
-    - user 消息保留
-    - 同一 round_id 的 assistant + tool 消息合并成一条
-    - 删除 tool_calls 和 tool_results（不需要存给 API）
-    - 跳过 tool 消息
-    """
-    if not messages:
-        return []
-
-    merged = []
-    i = 0
-    while i < len(messages):
-        msg = messages[i]
-        role = msg.get("role")
-
-        if role == "system":
-            merged.append(msg.copy())
-            i += 1
-            continue
-
-        if role == "user":
-            merged.append(msg.copy())
-            i += 1
-            continue
-
-        if role == "assistant":
-            merged_msg = msg.copy()
-            merged_msg["content"] = msg.get("content", "")
-            merged_tool_calls = [
-                dict(tc) for tc in msg.get("tool_calls", []) if isinstance(tc, dict)
-            ]
-            tool_results = [dict(item) for item in msg.get("tool_results", [])]
-
-            j = i + 1
-            while j < len(messages):
-                next_msg = messages[j]
-                next_role = next_msg.get("role")
-
-                if next_role in ("user", "system", "welcome"):
-                    break
-
-                if next_role == "assistant":
-                    if next_msg.get("content"):
-                        merged_msg["content"] = next_msg.get("content", "")
-                    if next_msg.get("tool_calls"):
-                        merged_tool_calls.extend(
-                            dict(tc)
-                            for tc in next_msg.get("tool_calls", [])
-                            if isinstance(tc, dict)
-                        )
-                    if next_msg.get("tool_results"):
-                        tool_results.extend(
-                            dict(item) for item in next_msg.get("tool_results", [])
-                        )
-                    j += 1
-                    continue
-
-                if next_role == "tool":
-                    tool_result = next_msg.copy()
-                    tool_result.pop("round_id", None)
-                    tool_results.append(tool_result)
-                    j += 1
-                    continue
-
-                break
-
-            if merged_tool_calls:
-                deduped_tool_calls = []
-                seen_tool_call_ids = set()
-                for tc in merged_tool_calls:
-                    tc_id = tc.get("id")
-                    dedupe_key = tc_id or json.dumps(tc, ensure_ascii=False, sort_keys=True)
-                    if dedupe_key in seen_tool_call_ids:
-                        continue
-                    seen_tool_call_ids.add(dedupe_key)
-                    deduped_tool_calls.append(tc)
-                merged_msg["tool_calls"] = deduped_tool_calls
-
-            if tool_results:
-                deduped_results = []
-                seen_keys = set()
-                for item in tool_results:
-                    dedupe_key = (
-                        item.get("tool_call_id"),
-                        item.get("content"),
-                        item.get("name"),
-                    )
-                    if dedupe_key in seen_keys:
-                        continue
-                    seen_keys.add(dedupe_key)
-                    deduped_results.append(item)
-                merged_msg["tool_results"] = deduped_results
-
-            merged.append(merged_msg)
-            i = j
-            continue
-
-        if role == "tool":
-            merged.append(msg.copy())
-            i += 1
-            continue
-
-        merged.append(msg.copy())
-        i += 1
-
-    return merged
+    return consolidate_messages(messages or [])
 
 
 class HistoryManager:
@@ -179,13 +77,7 @@ class HistoryManager:
                 if msg.get("role") == "user":
                     content = msg.get("content", "")
                     if isinstance(content, list):
-                        content = "\n".join(
-                            [
-                                item.get("text", "")
-                                for item in content
-                                if item.get("type") == "text"
-                            ]
-                        )
+                        content = content_to_text(content)
                     title = content[:30].strip() or "新对话"
                     break
             else:
