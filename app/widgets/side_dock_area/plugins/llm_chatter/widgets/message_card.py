@@ -940,7 +940,7 @@ class TagWidget(CardWidget):
 
 class MessageCard(SimpleCardWidget):
     deleteRequested = pyqtSignal()
-    regenerateRequested = pyqtSignal()
+    undoRequested = pyqtSignal()
     actionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
     optionSelected = pyqtSignal(dict)
@@ -1087,7 +1087,6 @@ class MessageCard(SimpleCardWidget):
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
-                (FluentIcon.SYNC, "重试", self.regenerateRequested.emit),
             ]
         elif self.role == "user":
             specs = [
@@ -1096,6 +1095,7 @@ class MessageCard(SimpleCardWidget):
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
+                (FluentIcon.RETURN, "撤销到这里", self.undoRequested.emit),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
         for ic, tp, cb in specs:

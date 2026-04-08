@@ -10,7 +10,7 @@ from PyQt5.QtCore import (
     pyqtSignal,
     QThreadPool,
 )
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTextCursor
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -774,8 +774,21 @@ class OpenAIChatToolWindow(ToolWindow):
         return None
 
     def _create_new_session(self):
+        if self._is_streaming and self._chat_engine:
+            self._chat_engine.stop()
+            self._is_streaming = False
+            self._toggle_send_stop(False)
+
+        try:
+            self._auto_save_current_session()
+        except Exception:
+            logger.exception("Failed to auto-save current session before creating a new one")
+
         session = self.session_manager.create_new_session()
         self._current_history_index = None
+        self._history_preview_messages = None
+        self._history_preview_session_data = None
+        self._history_preview_opening = False
         self.history_btn.setChecked(False)
         self._clear_chat_area()
         self.title_edit.setText("新对话")
@@ -1069,6 +1082,58 @@ class OpenAIChatToolWindow(ToolWindow):
             card.set_content(msg.get("content", []))
             card.finish_streaming()
 
+    def _get_rendered_message_cards(self) -> List[MessageCard]:
+        cards: List[MessageCard] = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if getattr(widget, "_is_welcome", False):
+                continue
+            if widget.role not in ("user", "assistant"):
+                continue
+            cards.append(widget)
+        return cards
+
+    def _get_rendered_message_index_map(self) -> List[int]:
+        session = self.session_manager.get_current_session()
+        if not session:
+            return []
+
+        canonical_messages = consolidate_messages(session.messages)
+        index_map: List[int] = []
+        for idx, msg in enumerate(canonical_messages):
+            if msg.get("role") not in ("user", "assistant"):
+                continue
+            index_map.append(idx)
+        return index_map
+
+    def _persist_session_after_mutation(self):
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        session.messages = consolidate_messages(session.messages)
+        session._update_timestamp()
+
+        if not session.messages:
+            if self._current_history_index is not None and self.history_manager:
+                self.history_manager.delete_history(self._current_history_index)
+                self._current_history_index = None
+            return
+
+        if self.history_manager:
+            if self._current_history_index is not None:
+                self.history_manager.update_session(
+                    self._current_history_index, session.messages
+                )
+            else:
+                self.history_manager.save_session(session.messages)
+                self._current_history_index = 0
+
     def _build_api_safe_messages_from_history(
         self, messages: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
@@ -1170,6 +1235,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
+        card.undoRequested.connect(lambda: self._undo_from_message(card))
         card.actionRequested.connect(self._on_code_action)
         self._add_chat_widget(card)
         self._scroll_to_bottom()
@@ -1181,7 +1247,6 @@ class OpenAIChatToolWindow(ToolWindow):
         card = MessageCard(parent=self, role="assistant", timestamp=timestamp)
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
-        card.regenerateRequested.connect(lambda: self._regenerate_message(card))
         card.contextActionRequested.connect(self.handle_recommended_question)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
@@ -1290,100 +1355,82 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             self.node_preview.set_visible_node(-1)
 
-    def _delete_message(self, card: MessageCard):
-        card_index = -1
-        for i in range(self.chat_layout.count()):
-            if self.chat_layout.itemAt(i).widget() is card:
-                card_index = i
-                break
-        if card_index == -1:
-            return
+    def _truncate_session_from_rendered_index(self, rendered_index: int) -> bool:
+        session = self.session_manager.get_current_session()
+        if not session:
+            return False
 
+        canonical_messages = consolidate_messages(session.messages)
+        index_map = self._get_rendered_message_index_map()
+        if rendered_index >= len(index_map):
+            return False
+
+        cutoff_index = index_map[rendered_index]
+        session.messages = canonical_messages[:cutoff_index]
+        self._persist_session_after_mutation()
+        self._display_current_session()
+        self._refresh_context_usage_indicator()
+        return True
+
+    def _delete_message(self, card: MessageCard):
+        cards = self._get_rendered_message_cards()
+        if card not in cards:
+            return
+        rendered_index = cards.index(card)
+        self._delete_messages_by_rendered_index(rendered_index, card.role)
+
+    def _delete_messages_by_rendered_index(self, rendered_index: int, role: str):
         session = self.session_manager.get_current_session()
         if not session:
             return
+
+        canonical_messages = consolidate_messages(session.messages)
+        index_map = self._get_rendered_message_index_map()
+        if rendered_index >= len(index_map):
+            return
+        card_index = index_map[rendered_index]
 
         to_remove_indices = [card_index]
-        if card.role == "user" and card_index + 1 < self.chat_layout.count():
-            next_widget = self.chat_layout.itemAt(card_index + 1).widget()
-            if isinstance(next_widget, MessageCard) and next_widget.role == "assistant":
-                to_remove_indices.append(card_index + 1)
+        if (
+            role == "user"
+            and card_index + 1 < len(canonical_messages)
+            and canonical_messages[card_index + 1].get("role") == "assistant"
+        ):
+            to_remove_indices.append(card_index + 1)
+        elif (
+            role == "assistant"
+            and card_index - 1 >= 0
+            and canonical_messages[card_index - 1].get("role") == "user"
+        ):
+            to_remove_indices.append(card_index - 1)
 
         for idx in sorted(to_remove_indices, reverse=True):
-            item = self.chat_layout.itemAt(idx)
-            if item and item.widget():
-                w = item.widget()
-                self.chat_layout.removeWidget(w)
-                w.deleteLater()
-            if idx < len(session.messages):
-                session.messages.pop(idx)
+            canonical_messages.pop(idx)
 
-        self._update_node_preview()
+        session.messages = canonical_messages
+        self._persist_session_after_mutation()
+        self._display_current_session()
+        self._refresh_context_usage_indicator()
 
-    def _regenerate_message(self, card: MessageCard):
-        session = self.session_manager.get_current_session()
-        if not session:
+    def _undo_from_message(self, card: MessageCard):
+        cards = self._get_rendered_message_cards()
+        if card not in cards:
+            return
+        rendered_index = cards.index(card)
+        if card.role != "user":
             return
 
-        if card.role != "assistant":
+        if self._is_streaming:
+            self._on_stop_clicked()
+
+        user_input = card.get_plain_text()
+        if not self._truncate_session_from_rendered_index(rendered_index):
             return
 
-        card_uuid = id(card)
-
-        ui_card_map = {}
-        for i in range(self.chat_layout.count()):
-            item = self.chat_layout.itemAt(i)
-            if item and item.widget() and isinstance(item.widget(), MessageCard):
-                ui_card_map[id(item.widget())] = i
-
-        card_pos = ui_card_map.get(card_uuid, -1)
-        if card_pos < 0:
-            return
-
-        user_card_pos = -1
-        for i in range(card_pos - 1, -1, -1):
-            item = self.chat_layout.itemAt(i)
-            if item and item.widget() and isinstance(item.widget(), MessageCard):
-                if item.widget().role == "user":
-                    user_card_pos = i
-                    break
-
-        if user_card_pos >= 0:
-            user_card = self.chat_layout.itemAt(user_card_pos).widget()
-            if hasattr(user_card, "viewer"):
-                user_input = user_card.viewer.get_plain_text()
-            else:
-                user_input = ""
-            if hasattr(user_card, "context_tags"):
-                user_params = user_card.context_tags
-            else:
-                user_params = None
-
-            self.chat_layout.removeWidget(user_card)
-            user_card.deleteLater()
-            if user_card_pos < len(session.messages):
-                session.messages.pop(user_card_pos)
-            card_pos -= 1
-
-            card_uuid = id(card)
-            ui_card_map = {}
-            for i in range(self.chat_layout.count()):
-                item = self.chat_layout.itemAt(i)
-                if item and item.widget() and isinstance(item.widget(), MessageCard):
-                    ui_card_map[id(item.widget())] = i
-            card_pos = ui_card_map.get(card_uuid, card_pos)
-        else:
-            return
-
-        if user_params:
-            user_input = (
-                "\n".join([value[1] for value in user_params.values()])
-                + "\n\n"
-                + user_input
-            )
-
-        self._delete_message(card)
-        self._on_send_clicked(user_input)
+        self.input_area.setPlainText(user_input)
+        self.input_area.moveCursor(QTextCursor.End)
+        self.input_area._on_text_changed()
+        self.input_area.setFocus()
 
     def _on_code_action(self, code: str, action: str = "copy"):
         if action == "insert":
