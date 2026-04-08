@@ -275,6 +275,51 @@ def repair_misordered_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str
     return repaired
 
 
+def repair_grouped_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    normalized_blocks = ensure_content_blocks(blocks)
+    if len(normalized_blocks) < 4:
+        return normalized_blocks
+
+    if normalized_blocks[0].get("type") != "text":
+        return normalized_blocks
+    if normalized_blocks[-1].get("type") != "text":
+        return normalized_blocks
+
+    middle_blocks = normalized_blocks[1:-1]
+    if not middle_blocks or any(
+        block.get("type") != "tool_result" for block in middle_blocks
+    ):
+        return normalized_blocks
+
+    trailing_text = str(normalized_blocks[-1].get("text", ""))
+    think_matches = list(
+        re.finditer(r"<think>[\s\S]*?</think>\s*", trailing_text, re.IGNORECASE)
+    )
+    if not think_matches:
+        return normalized_blocks
+
+    think_segments = [match.group(0) for match in think_matches if match.group(0).strip()]
+    if not think_segments:
+        return normalized_blocks
+
+    repaired: List[Dict[str, Any]] = [normalized_blocks[0]]
+    for idx, tool_block in enumerate(middle_blocks):
+        repaired.append(tool_block)
+        if idx < len(think_segments):
+            repaired.append(make_text_block(think_segments[idx]))
+
+    consumed_end = think_matches[-1].end()
+    tail = trailing_text[consumed_end:]
+    if len(think_segments) > len(middle_blocks):
+        remaining = "".join(think_segments[len(middle_blocks) :])
+        if remaining.strip():
+            repaired.append(make_text_block(remaining))
+    if tail.strip():
+        repaired.append(make_text_block(tail))
+
+    return repaired
+
+
 def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not isinstance(message, dict):
         return None
@@ -369,7 +414,9 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             seen_tool_keys.add(key)
             normalized_blocks.append(tool_block)
 
-        normalized["content"] = repair_misordered_tool_blocks(normalized_blocks)
+        normalized["content"] = repair_grouped_tool_blocks(
+            repair_misordered_tool_blocks(normalized_blocks)
+        )
 
         if message.get("tool_calls"):
             normalized["tool_calls"] = [

@@ -1703,7 +1703,6 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
-        self._sync_current_assistant_card_to_session()
         if self.history_manager:
             self._save_current_session_to_history()
 

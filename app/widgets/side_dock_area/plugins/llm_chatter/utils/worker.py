@@ -330,27 +330,26 @@ class OpenAIChatWorker(QThread):
         try:
             current_messages = self.messages.copy()
             self._emit_compaction_status(self._last_compaction_state)
+            compacted_messages, compaction_state = self._maybe_compact_messages(
+                current_messages
+            )
+            self._emit_compaction_status(compaction_state)
+            current_messages = compacted_messages
+            if compacted_messages != self.messages:
+                self.finished_with_messages.emit(current_messages)
+
+            self.full_response = ""
 
             while not self._is_cancelled:
                 if self._is_cancelled:
                     return
-
-                compacted_messages, compaction_state = self._maybe_compact_messages(
-                    current_messages
-                )
-                self._emit_compaction_status(compaction_state)
-                if compacted_messages != current_messages:
-                    current_messages = compacted_messages
-                    self.finished_with_messages.emit(current_messages)
-                else:
-                    current_messages = compacted_messages
                 tool_calls_found = self._make_api_call(current_messages)
 
                 if self._is_cancelled:
                     return
 
                 if not tool_calls_found:
-                    current_messages.append(self._build_assistant_message())
+                    current_messages.extend(self._build_response_message_sequence())
                     self.finished_with_messages.emit(current_messages)
                     self.finished_with_content.emit(self.full_response)
                     return
@@ -366,7 +365,7 @@ class OpenAIChatWorker(QThread):
                         return
 
                     q = self._question_pending
-                    current_messages.append(self._build_assistant_message())
+                    current_messages.extend(self._build_response_message_sequence())
                     current_messages.append(
                         {
                             "role": "tool",
@@ -379,16 +378,9 @@ class OpenAIChatWorker(QThread):
                     self._pending_answer = None
                     continue
 
-                assistant_message = self._build_assistant_message(tool_results)
-
-                if not tool_results:
-                    current_messages.append(assistant_message)
-                    self.finished_with_messages.emit(current_messages)
-                    self.finished_with_content.emit(self.full_response)
-                    return
-
-                current_messages.append(assistant_message)
-                current_messages.extend(tool_results)
+                current_messages.extend(
+                    self._build_response_message_sequence(tool_results)
+                )
                 self.finished_with_messages.emit(current_messages)
 
                 self._check_and_notify_stage_change()
@@ -400,7 +392,101 @@ class OpenAIChatWorker(QThread):
             logger.exception("请求失败!")
             self._handle_error(e)
 
-    def _build_assistant_message(self, tool_results=None) -> Dict:
+    def _build_response_message_sequence(self, tool_results=None) -> List[Dict]:
+        tool_call_args_by_id = {}
+        tool_call_map = {}
+        for tc in self._current_tool_calls or []:
+            if not isinstance(tc, dict):
+                continue
+            tool_call_id = str(tc.get("id") or "")
+            if not tool_call_id:
+                continue
+            function = tc.get("function", {}) or {}
+            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
+            normalized_tc = {
+                "id": tool_call_id,
+                "type": tc.get("type", "function"),
+                "function": {
+                    "name": function.get("name"),
+                    "arguments": function.get("arguments", "{}"),
+                },
+            }
+            tool_call_map[tool_call_id] = normalized_tc
+            if parsed_args:
+                tool_call_args_by_id[tool_call_id] = parsed_args
+
+        tool_result_map = {}
+        for item in tool_results or []:
+            if not isinstance(item, dict):
+                continue
+            tool_call_id = str(item.get("tool_call_id") or "")
+            if not tool_call_id:
+                continue
+            arguments = normalize_tool_arguments(item.get("arguments", {}))
+            if not arguments:
+                arguments = tool_call_args_by_id.get(tool_call_id, {})
+            tool_result_map[tool_call_id] = {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "name": item.get("name", "tool"),
+                "arguments": arguments,
+                "content": item.get("content", ""),
+                "result": item.get("content", ""),
+                "success": item.get("success", True),
+                "round_id": item.get("round_id"),
+            }
+
+        sequence: List[Dict] = []
+        pending_text_blocks = []
+        saw_marker = False
+
+        for block in self._response_content_blocks or []:
+            if not isinstance(block, dict):
+                continue
+            block_type = block.get("type")
+            if block_type == "text":
+                text = str(block.get("text", ""))
+                if text:
+                    pending_text_blocks = append_text_block(pending_text_blocks, text)
+                continue
+
+            if block_type != "tool_call_marker":
+                continue
+
+            saw_marker = True
+            tool_call_id = str(block.get("tool_call_id") or "")
+            assistant_message = {
+                "role": "assistant",
+                "content": pending_text_blocks,
+            }
+            tool_call = tool_call_map.get(tool_call_id)
+            if tool_call:
+                assistant_message["tool_calls"] = [tool_call]
+            if assistant_message.get("content") or assistant_message.get("tool_calls"):
+                sequence.append(assistant_message)
+
+            pending_text_blocks = []
+            tool_result = tool_result_map.get(tool_call_id)
+            if tool_result:
+                sequence.append(tool_result)
+
+        if pending_text_blocks:
+            sequence.append({"role": "assistant", "content": pending_text_blocks})
+        elif not sequence and self.full_response:
+            sequence.append(
+                {
+                    "role": "assistant",
+                    "content": append_text_block([], self.full_response),
+                }
+            )
+        elif not sequence and not saw_marker:
+            sequence.append({"role": "assistant", "content": []})
+
+        return sequence
+
+    def _build_assistant_message(
+        self, tool_results=None, include_tool_results: bool = True
+    ) -> Dict:
         tool_call_args_by_id = {}
         for tc in self._current_tool_calls or []:
             if not isinstance(tc, dict):
@@ -432,9 +518,6 @@ class OpenAIChatWorker(QThread):
             )
 
         content_blocks = []
-        result_map = {
-            item.get("tool_call_id"): item for item in normalized_tool_results if item.get("tool_call_id")
-        }
         for block in self._response_content_blocks or []:
             if not isinstance(block, dict):
                 continue
@@ -443,9 +526,16 @@ class OpenAIChatWorker(QThread):
                 text = str(block.get("text", ""))
                 if text:
                     content_blocks = append_text_block(content_blocks, text)
-            elif block_type == "tool_call_marker":
+            elif include_tool_results and block_type == "tool_call_marker":
                 tool_call_id = block.get("tool_call_id")
-                result_item = result_map.get(tool_call_id)
+                result_item = next(
+                    (
+                        item
+                        for item in normalized_tool_results
+                        if item.get("tool_call_id") == tool_call_id
+                    ),
+                    None,
+                )
                 if result_item:
                     content_blocks.append(
                         {
@@ -868,10 +958,9 @@ class OpenAIChatWorker(QThread):
         }
 
     def _process_response(self, response):
-        self.full_response = ""
+        self._response_content_blocks = []
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
-        self._response_content_blocks = []
         tool_calls_found = False
 
         for chunk in response:
