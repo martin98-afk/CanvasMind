@@ -4,6 +4,22 @@ import re
 from typing import Any, Dict, List, Optional
 
 
+def normalize_tool_arguments(arguments: Any) -> Dict[str, Any]:
+    if isinstance(arguments, dict):
+        return dict(arguments)
+    if isinstance(arguments, str):
+        text = arguments.strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {}
+    return {}
+
+
 def make_text_block(text: Any) -> Dict[str, Any]:
     return {
         "type": "text",
@@ -21,7 +37,7 @@ def make_tool_result_block(
     block = {
         "type": "tool_result",
         "name": str(tool_name or "tool"),
-        "arguments": arguments or {},
+        "arguments": normalize_tool_arguments(arguments),
         "result": "" if result is None else str(result),
         "success": bool(success),
     }
@@ -272,6 +288,16 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         normalized["timestamp"] = message.get("timestamp")
 
     if role == "assistant":
+        tool_call_args_by_id: Dict[str, Dict[str, Any]] = {}
+        for tc in message.get("tool_calls", []) or []:
+            if not isinstance(tc, dict):
+                continue
+            tool_call_id = str(tc.get("id") or "")
+            function = tc.get("function", {}) or {}
+            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
+            if tool_call_id and parsed_args:
+                tool_call_args_by_id[tool_call_id] = parsed_args
+
         content_blocks = ensure_content_blocks(message.get("content", []))
         normalized_blocks: List[Dict[str, Any]] = []
         seen_tool_keys = set()
@@ -285,12 +311,16 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                     normalized_blocks.append(make_text_block(text))
                 continue
             if block.get("type") == "tool_result":
+                tool_call_id = block.get("tool_call_id")
+                tool_arguments = normalize_tool_arguments(block.get("arguments", {}))
+                if not tool_arguments and tool_call_id:
+                    tool_arguments = tool_call_args_by_id.get(str(tool_call_id), {})
                 tool_block = make_tool_result_block(
                     tool_name=block.get("name", "tool"),
-                    arguments=block.get("arguments", {}),
+                    arguments=tool_arguments,
                     result=block.get("result", ""),
                     success=block.get("success", True),
-                    tool_call_id=block.get("tool_call_id"),
+                    tool_call_id=tool_call_id,
                 )
                 key = (
                     tool_block.get("tool_call_id"),
@@ -311,7 +341,10 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         extra_tool_blocks = [
             make_tool_result_block(
                 tool_name=item.get("name", "tool"),
-                arguments=item.get("arguments", {}),
+                arguments=(
+                    normalize_tool_arguments(item.get("arguments", {}))
+                    or tool_call_args_by_id.get(str(item.get("tool_call_id") or ""), {})
+                ),
                 result=item.get("result", item.get("content", "")),
                 success=item.get("success", True),
                 tool_call_id=item.get("tool_call_id"),

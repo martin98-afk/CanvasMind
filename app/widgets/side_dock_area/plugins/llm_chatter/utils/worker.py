@@ -18,6 +18,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
     content_to_text,
+    normalize_tool_arguments,
 )
 
 
@@ -400,15 +401,29 @@ class OpenAIChatWorker(QThread):
             self._handle_error(e)
 
     def _build_assistant_message(self, tool_results=None) -> Dict:
+        tool_call_args_by_id = {}
+        for tc in self._current_tool_calls or []:
+            if not isinstance(tc, dict):
+                continue
+            tool_call_id = str(tc.get("id") or "")
+            function = tc.get("function", {}) or {}
+            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
+            if tool_call_id and parsed_args:
+                tool_call_args_by_id[tool_call_id] = parsed_args
+
         normalized_tool_results = []
         for item in tool_results or []:
             if not isinstance(item, dict):
                 continue
+            tool_call_id = item.get("tool_call_id")
+            arguments = normalize_tool_arguments(item.get("arguments", {}))
+            if not arguments and tool_call_id:
+                arguments = tool_call_args_by_id.get(str(tool_call_id), {})
             normalized_tool_results.append(
                 {
-                    "tool_call_id": item.get("tool_call_id"),
+                    "tool_call_id": tool_call_id,
                     "name": item.get("name", "tool"),
-                    "arguments": item.get("arguments", {}),
+                    "arguments": arguments,
                     "content": item.get("content", ""),
                     "result": item.get("content", ""),
                     "success": item.get("success", True),
