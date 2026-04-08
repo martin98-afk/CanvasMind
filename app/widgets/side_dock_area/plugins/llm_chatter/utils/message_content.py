@@ -298,24 +298,34 @@ def repair_grouped_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, A
     if not think_matches:
         return normalized_blocks
 
-    think_segments = [match.group(0) for match in think_matches if match.group(0).strip()]
-    if not think_segments:
+    text_segments: List[str] = []
+    leading_text = trailing_text[: think_matches[0].start()]
+    if leading_text.strip():
+        text_segments.append(leading_text)
+
+    for idx, match in enumerate(think_matches):
+        next_start = (
+            think_matches[idx + 1].start()
+            if idx + 1 < len(think_matches)
+            else len(trailing_text)
+        )
+        segment = trailing_text[match.start() : next_start]
+        if segment.strip():
+            text_segments.append(segment)
+
+    if not text_segments:
         return normalized_blocks
 
     repaired: List[Dict[str, Any]] = [normalized_blocks[0]]
     for idx, tool_block in enumerate(middle_blocks):
         repaired.append(tool_block)
-        if idx < len(think_segments):
-            repaired.append(make_text_block(think_segments[idx]))
+        if idx < len(text_segments):
+            repaired.append(make_text_block(text_segments[idx]))
 
-    consumed_end = think_matches[-1].end()
-    tail = trailing_text[consumed_end:]
-    if len(think_segments) > len(middle_blocks):
-        remaining = "".join(think_segments[len(middle_blocks) :])
+    if len(text_segments) > len(middle_blocks):
+        remaining = "".join(text_segments[len(middle_blocks) :])
         if remaining.strip():
             repaired.append(make_text_block(remaining))
-    if tail.strip():
-        repaired.append(make_text_block(tail))
 
     return repaired
 
