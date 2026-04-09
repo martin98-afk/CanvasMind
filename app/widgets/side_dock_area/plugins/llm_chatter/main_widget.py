@@ -1231,7 +1231,6 @@ class OpenAIChatToolWindow(ToolWindow):
             tag_params=tag_params
             or {key: value for key, value in self.context_selector.context.items()},
         )
-        # card.viewer._install_dialog_filter()
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))

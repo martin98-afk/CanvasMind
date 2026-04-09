@@ -19,7 +19,7 @@ class Component(BaseComponent):
     requirements = ""
     name = "文件上传"
     category = "数据集成/文件数据"
-    description = "接收本地上传文件"
+    description = "接收用户本地上传的文件，上传后文件会被复制到工作目录，并返回文件路径供下游节点使用；图片文件会自动触发预览显示"
     inputs = [
     ]
     outputs = [
@@ -27,6 +27,12 @@ class Component(BaseComponent):
     ]
 
     def run(self, params, inputs=None):
+        """
+        处理用户上传的文件
+        - 获取上传文件的路径
+        - 若为图片格式(png/jpg/jpeg)，自动通知主进程显示预览
+        - 返回文件路径供后续节点使用
+        """
         file_path = params.dict().get("file_upload")
         if file_path.endswith("png") or file_path.endswith("jpg") or file_path.endswith("jpeg"):
             # 使用特定格式通知主进程拦截

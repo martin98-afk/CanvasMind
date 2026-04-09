@@ -18,7 +18,7 @@ ConnectionType = base_module.ConnectionType
 class Component(BaseComponent):
     name = "添加字符串"
     category = "测试组件"
-    description = "将输入文本与指定字符串进行拼接，适用于文本预处理、前后缀添加、动态内容组合等场景喵~"
+    description = "将输入文本与指定字符串拼接，输出合并后的文本结果"
     requirements = ""
     inputs = [
         PortDefinition(name="input1", label="待拼接文本", type=ArgumentType.TEXT, connection=ConnectionType.SINGLE),

@@ -640,8 +640,12 @@ class ChatEngine:
         ]
 
         custom_prompt = llm_config.get("系统提示", "").strip()
+        context_provider = self._get_context_provider()
+        context_text = context_provider.get_text_context() if context_provider else ""
         if custom_prompt:
             prompt_parts.append(custom_prompt)
+        if context_text:
+            prompt_parts.append(context_text)
 
         messages.append(
             {
@@ -655,7 +659,6 @@ class ChatEngine:
             session.get_context_messages()
         )
 
-        context_provider = self._get_context_provider()
         latest_user_message = ""
         history_messages = normalized_session_messages
         if history_messages and history_messages[-1].get("role") == "user":
@@ -676,16 +679,9 @@ class ChatEngine:
                 messages[0]["content"] = (
                     messages[0]["content"] + "\n\n" + memory_context
                 )
-
-        # task_prelude = self._build_user_task_prelude(task_state)
-
         supports_vision = provider_supports_vision(llm_config)
-
-        context_text = context_provider.get_text_context() if context_provider else ""
-        final_user_text = context_text + latest_user_message
-
         available_history_budget = (
-            max_context_tokens - estimate_tokens(final_user_text) - 200
+            max_context_tokens - estimate_tokens(latest_user_message) - 200
         )
         history_for_api, compaction_state = self._compact_history_messages(
             history_messages, available_history_budget
@@ -699,11 +695,11 @@ class ChatEngine:
             )
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
-                user_content.append({"type": "text", "text": final_user_text})
+                user_content.append({"type": "text", "text": latest_user_message})
                 messages.append({"role": "user", "content": user_content})
                 return messages
 
-        messages.append({"role": "user", "content": final_user_text})
+        messages.append({"role": "user", "content": latest_user_message})
 
         return messages
 
