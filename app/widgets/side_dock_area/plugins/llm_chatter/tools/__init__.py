@@ -83,13 +83,13 @@ class BuiltinTools(QObject):
     def canvas_tools(self):
         return self._canvas_tools
 
-    def read_file(self, filePath: str, offset: int = 1, limit: int = 2000):
-        return self._file_tools.read_file(filePath, offset, limit)
+    def read_file(self, path: str, offset: int = 1, limit: int = 2000):
+        return self._file_tools.read_file(path, offset, limit)
 
-    def write_file(self, filePath: str, content: str):
-        result = self._file_tools.write_file(filePath, content)
+    def write_file(self, path: str, content: str):
+        result = self._file_tools.write_file(path, content)
         if result.success:
-            resolved_path = self._file_tools._resolve_path(filePath)
+            resolved_path = self._file_tools._resolve_path(path)
             logger.info(
                 f"[BuiltinTools] write_file success, emitting fileModified: {resolved_path}"
             )
@@ -97,11 +97,11 @@ class BuiltinTools(QObject):
         return result
 
     def edit_file(
-        self, filePath: str, oldString: str, newString: str, replaceAll: bool = False
+        self, path: str, oldString: str, newString: str, replaceAll: bool = False
     ):
-        result = self._file_tools.edit_file(filePath, oldString, newString, replaceAll)
+        result = self._file_tools.edit_file(path, oldString, newString, replaceAll)
         if result.success:
-            resolved_path = self._file_tools._resolve_path(filePath)
+            resolved_path = self._file_tools._resolve_path(path)
             logger.info(
                 f"[BuiltinTools] edit_file success, emitting fileModified: {resolved_path}"
             )
@@ -117,10 +117,10 @@ class BuiltinTools(QObject):
     def list_directory(self, path: str = None):
         return self._file_tools.list_directory(path)
 
-    def apply_patch(self, filePath: str, patch_content: str):
-        result = self._file_tools.apply_patch(filePath, patch_content)
+    def apply_patch(self, path: str, patch_content: str):
+        result = self._file_tools.apply_patch(path, patch_content)
         if result.success:
-            resolved_path = self._file_tools._resolve_path(filePath)
+            resolved_path = self._file_tools._resolve_path(path)
             logger.info(
                 f"[BuiltinTools] apply_patch success, emitting fileModified: {resolved_path}"
             )
@@ -130,10 +130,10 @@ class BuiltinTools(QObject):
     def diff_files(self, file1: str, file2: str = None, use_git: bool = False):
         return self._file_tools.diff_files(file1, file2, use_git)
 
-    def multi_edit(self, filePath: str, edits: List[Dict]):
-        result = self._file_tools.multi_edit(filePath, edits)
+    def multi_edit(self, path: str, edits: List[Dict]):
+        result = self._file_tools.multi_edit(path, edits)
         if result.success:
-            resolved_path = self._file_tools._resolve_path(filePath)
+            resolved_path = self._file_tools._resolve_path(path)
             logger.info(
                 f"[BuiltinTools] multi_edit success, emitting fileModified: {resolved_path}"
             )
@@ -188,8 +188,8 @@ class BuiltinTools(QObject):
     def stage_files(self, files: List[str]):
         return self._task_tools.stage_files(files)
 
-    def switch_stage(self, stage: str):
-        return self._task_tools.switch_stage(stage)
+    # def switch_stage(self, stage: str):
+    #     return self._task_tools.switch_stage(stage)
 
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
@@ -423,132 +423,104 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "read",
-                "description": "读取文件内容，支持指定行范围",
+                "description": "读取文件内容。输出会包含行号。建议大文件使用 offset 和 limit 分段读取。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "filePath": {"type": "string", "description": "文件路径"},
-                        "offset": {"type": "integer", "description": "起始行号"},
-                        "limit": {"type": "integer", "description": "最大行数"},
+                        "path": {"type": "string", "description": "文件相对路径"},
+                        "offset": {"type": "integer", "description": "起始行号 (从1开始)", "default": 1},
+                        "limit": {"type": "integer", "description": "读取的行数", "default": 500}
                     },
-                    "required": ["filePath"],
-                },
-            },
+                    "required": ["path"]
+                }
+            }
         },
         {
             "type": "function",
             "function": {
                 "name": "write",
-                "description": "创建新文件或覆盖现有文件",
+                "description": "创建新文件或覆盖现有文件。会自动创建不存在的目录。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "filePath": {"type": "string", "description": "文件路径"},
-                        "content": {"type": "string", "description": "文件内容"},
+                        "path": {"type": "string", "description": "文件相对路径"},
+                        "content": {"type": "string", "description": "完整的文件内容"}
                     },
-                    "required": ["filePath", "content"],
-                },
-            },
+                    "required": ["path", "content"]
+                }
+            }
         },
         {
             "type": "function",
             "function": {
                 "name": "edit",
-                "description": "通过精确字符串替换来编辑文件",
+                "description": "通过精确字符串替换编辑文件。为防止误改，oldString 必须在文件中唯一。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "filePath": {"type": "string", "description": "文件路径"},
-                        "oldString": {"type": "string", "description": "要替换的文本"},
-                        "newString": {"type": "string", "description": "替换后的文本"},
-                        "replaceAll": {
-                            "type": "boolean",
-                            "description": "是否替换所有",
-                        },
+                        "path": {"type": "string", "description": "文件路径"},
+                        "oldString": {"type": "string", "description": "要被替换的原始精确文本块"},
+                        "newString": {"type": "string", "description": "替换后的新文本块"},
+                        "replaceAll": {"type": "boolean", "description": "如果存在多个匹配项，是否全部替换",
+                                       "default": False}
                     },
-                    "required": ["filePath", "oldString", "newString"],
-                },
-            },
+                    "required": ["path", "oldString", "newString"]
+                }
+            }
         },
         {
             "type": "function",
             "function": {
                 "name": "grep",
-                "description": "使用正则表达式搜索文件内容",
+                "description": "在指定目录下递归搜索匹配正则表达式的内容。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "pattern": {"type": "string", "description": "正则表达式"},
-                        "path": {"type": "string", "description": "搜索路径"},
-                        "include": {"type": "string", "description": "文件过滤"},
+                        "path": {"type": "string", "description": "起始搜索目录 (默认当前目录)", "default": "."},
+                        "include": {"type": "string", "description": "文件过滤模式 (如 '*.py')"}
                     },
-                    "required": ["pattern"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "glob",
-                "description": "通过glob模式查找文件",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "pattern": {"type": "string", "description": "glob模式"},
-                        "path": {"type": "string", "description": "搜索路径"},
-                    },
-                    "required": ["pattern"],
-                },
-            },
+                    "required": ["pattern"]
+                }
+            }
         },
         {
             "type": "function",
             "function": {
                 "name": "list",
-                "description": "列出目录内容",
+                "description": "列出目录下的文件和文件夹。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string", "description": "目录路径"},
-                    },
-                },
-            },
+                        "path": {"type": "string", "description": "目录路径", "default": "."}
+                    }
+                }
+            }
         },
         {
             "type": "function",
             "function": {
                 "name": "multiedit",
-                "description": "一次性执行多个编辑操作，适用于批量修改",
+                "description": "在同一个文件中执行多处替换操作。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "filePath": {"type": "string", "description": "文件路径"},
+                        "path": {"type": "string", "description": "文件路径"},
                         "edits": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "oldString": {
-                                        "type": "string",
-                                        "description": "要替换的文本",
-                                    },
-                                    "newString": {
-                                        "type": "string",
-                                        "description": "替换后的文本",
-                                    },
-                                    "replaceAll": {
-                                        "type": "boolean",
-                                        "description": "是否替换所有",
-                                    },
+                                    "oldString": {"type": "string", "description": "旧文本"},
+                                    "newString": {"type": "string", "description": "新文本"}
                                 },
-                                "required": ["oldString", "newString"],
-                            },
-                            "description": "编辑操作列表",
-                        },
+                                "required": ["oldString", "newString"]
+                            }
+                        }
                     },
-                    "required": ["filePath", "edits"],
-                },
-            },
+                    "required": ["path", "edits"]
+                }
+            }
         },
         {
             "type": "function",
@@ -558,32 +530,10 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "filePath": {"type": "string", "description": "文件路径"},
+                        "path": {"type": "string", "description": "文件路径"},
                         "patch_content": {"type": "string", "description": "补丁内容"},
                     },
-                    "required": ["filePath", "patch_content"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "diff",
-                "description": "对比两个文件或文件与git版本的差异",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "file1": {"type": "string", "description": "第一个文件路径"},
-                        "file2": {
-                            "type": "string",
-                            "description": "第二个文件路径（可选）",
-                        },
-                        "use_git": {
-                            "type": "boolean",
-                            "description": "是否与git版本对比",
-                        },
-                    },
-                    "required": ["file1"],
+                    "required": ["path", "patch_content"],
                 },
             },
         },
@@ -611,7 +561,7 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "url": {"type": "string", "description": "网页URL"},
-                        "format": {"type": "string", "description": "返回格式"},
+                        "format": {"type": "string", "description": "返回格式, 支持:html, text, markdown"},
                     },
                     "required": ["url"],
                 },

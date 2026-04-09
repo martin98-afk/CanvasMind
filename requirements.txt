@@ -149,3 +149,4 @@ redis
 sqlalchemy
 psutil
 ipykernel_launcher
+html2text

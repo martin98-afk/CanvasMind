@@ -1,3 +1,5 @@
+import fnmatch
+import re
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import os
@@ -26,210 +28,190 @@ class FileTools:
             logger.warning(f"[FileTools] Failed to resolve path {path}: {e}")
             return self.workdir
 
-    def read_file(
-        self, filePath: str, offset: int = 1, limit: int = 2000
-    ) -> ToolResult:
-        logger.info(
-            f"[FileTools.read_file] filePath={filePath}, offset={offset}, limit={limit}"
-        )
+    def read_file(self, path: str, offset: int = 1, limit: int = 500) -> ToolResult:
+        """
+        读取文件，返回带行号的内容，方便 AI 定位
+        """
         try:
-            if not filePath:
-                return ToolResult(False, error="Missing required parameter: filePath")
+            full_path = self._resolve_path(path)
+            if not full_path.exists():
+                return ToolResult(False, error=f"File not found: {path}")
 
-            path = self._resolve_path(filePath)
-            logger.info(f"[FileTools.read_file] resolved path: {path}")
-            if not path.exists():
-                logger.warning(f"[FileTools.read_file] File not found: {filePath}")
-                return ToolResult(False, error=f"File not found: {filePath}")
+            if full_path.is_dir():
+                return self.list_directory(path)
 
-            if path.is_dir():
-                logger.info(
-                    f"[FileTools.read_file] Path is a directory, listing contents: {filePath}"
-                )
-                entries = []
-                for item in sorted(path.iterdir()):
-                    rel_path = item.relative_to(path)
-                    entries.append(str(rel_path))
-                if not entries:
-                    return ToolResult(True, content="Empty directory")
-                return ToolResult(
-                    True, content="Directory contents:\n" + "\n".join(entries)
-                )
+            # 使用 errors='replace' 防止因编码问题直接崩溃
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                all_lines = f.readlines()
 
-            with open(path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            total_lines = len(all_lines)
+            start_idx = max(0, offset - 1)
+            end_idx = min(total_lines, start_idx + limit)
 
-            total_lines = len(lines)
-            start = max(0, offset - 1)
-            end = min(total_lines, start + limit)
-            content = "".join(lines[start:end])
-
-            result = (
-                f"File: {path}\nLines {start + 1}-{end} of {total_lines}:\n\n{content}"
+            content_slice = all_lines[start_idx:end_idx]
+            # 格式化输出：行号 | 内容
+            formatted_content = "".join(
+                f"{i + start_idx + 1:6d} | {line}" for i, line in enumerate(content_slice)
             )
-            return ToolResult(True, content=result)
-        except PermissionError:
-            return ToolResult(
-                False,
-                error=f"Permission denied: {filePath}. The path may be a directory or access is restricted.",
-            )
+
+            res_info = f"File: {path} (Lines {start_idx + 1}-{end_idx} of {total_lines})\n\n"
+            return ToolResult(True, content=res_info + formatted_content)
         except Exception as e:
             return ToolResult(False, error=f"Read error: {str(e)}")
 
-    def write_file(self, filePath: str, content: str) -> ToolResult:
+    def write_file(self, path: str, content: str) -> ToolResult:
+        """
+        写入文件，自动创建中间目录
+        """
         try:
-            if not filePath:
-                return ToolResult(False, error="Missing required parameter: filePath")
-            if content is None:
-                content = ""
+            full_path = self._resolve_path(path)
+            full_path.parent.mkdir(parents=True, exist_ok=True)
 
-            path = self._resolve_path(filePath)
-            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content if content is not None else "")
 
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-
-            return ToolResult(True, content=f"File written: {path}")
+            return ToolResult(True, content=f"Successfully written to {path}")
         except Exception as e:
             return ToolResult(False, error=f"Write error: {str(e)}")
 
-    def edit_file(
-        self, filePath: str, oldString: str, newString: str, replaceAll: bool = False
-    ) -> ToolResult:
+    def edit_file(self, path: str, oldString: str, newString: str, replaceAll: bool = False) -> ToolResult:
+        """
+        精确文本替换。包含唯一性校验，防止 AI 误改多处代码。
+        """
         try:
-            if not filePath:
-                return ToolResult(False, error="Missing required parameter: filePath")
-            if oldString is None:
-                oldString = ""
-            if newString is None:
-                newString = ""
+            full_path = self._resolve_path(path)
+            if not full_path.exists():
+                return ToolResult(False, error=f"File not found: {path}")
 
-            path = self._resolve_path(filePath)
-            if not path.exists():
-                return ToolResult(False, error=f"File not found: {filePath}")
+            content = full_path.read_text(encoding="utf-8", errors="replace")
 
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
+            count = content.count(oldString)
+            if count == 0:
+                return ToolResult(False,
+                                  error="The specified 'oldString' was not found in the file. Ensure exact match including whitespace.")
 
-            if replaceAll:
-                if oldString not in content:
-                    return ToolResult(False, error="String not found in file")
-                new_content = content.replace(oldString, newString)
-            else:
-                if oldString not in content:
-                    return ToolResult(False, error="String not found in file")
-                new_content = content.replace(oldString, newString, 1)
+            if count > 1 and not replaceAll:
+                return ToolResult(False,
+                                  error=f"The 'oldString' appears {count} times. Please provide a more specific code block to ensure uniqueness, or set replaceAll=True.")
 
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(new_content)
+            new_content = content.replace(oldString, newString, -1 if replaceAll else 1)
+            full_path.write_text(new_content, encoding="utf-8")
 
-            return ToolResult(True, content=f"File edited: {path}")
+            return ToolResult(True, content=f"Successfully edited {path}.")
         except Exception as e:
             return ToolResult(False, error=f"Edit error: {str(e)}")
 
-    def grep_files(
-        self, pattern: str, path: str = None, include: str = None
-    ) -> ToolResult:
+    def grep_files(self, pattern: str, path: str = ".", include: str = None) -> ToolResult:
+        """
+        高效搜索，排除干扰目录，限制返回行数
+        """
         try:
-            if not pattern:
-                return ToolResult(False, error="Missing required parameter: pattern")
-
-            import re
-            import fnmatch
-            import os as _os
-
-            search_path = self._resolve_path(path) if path else self.workdir
-            if not search_path.exists():
-                return ToolResult(
-                    False, error=f"Path not found: {path or self.workdir}"
-                )
-
+            search_root = self._resolve_path(path)
+            regex = re.compile(pattern, re.IGNORECASE)
             results = []
-            regex = re.compile(pattern)
 
-            for root, dirs, files in _os.walk(search_path):
-                if ".git" in root or "__pycache__" in root:
-                    continue
+            # 常见的排除目录，提升性能并减少 Token 浪费
+            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 'dist', 'build', '.idea', '.vscode'}
+
+            for root, dirs, files in os.walk(search_root):
+                dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
                 for filename in files:
                     if include and not fnmatch.fnmatch(filename, include):
                         continue
-                    filepath = Path(root) / filename
+
+                    file_path = Path(root) / filename
                     try:
-                        with open(
-                            filepath, "r", encoding="utf-8", errors="ignore"
-                        ) as f:
-                            for line_num, line in enumerate(f, 1):
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            for i, line in enumerate(f, 1):
                                 if regex.search(line):
-                                    rel_path = filepath.relative_to(self.workdir)
-                                    results.append(
-                                        f"{rel_path}:{line_num}: {line.rstrip()}"
-                                    )
-                    except Exception:
+                                    rel_path = file_path.relative_to(self.workdir)
+                                    results.append(f"{rel_path}:{i}: {line.strip()}")
+                                    if len(results) >= 100:
+                                        return ToolResult(True, content="\n".join(
+                                            results) + "\n\n... (Too many matches, please refine your search pattern)")
+                    except:
                         continue
 
-            if not results:
-                return ToolResult(True, content="No matches found")
-
-            output = "\n".join(results[:500])
-            return ToolResult(True, content=output)
+            return ToolResult(True, content="\n".join(results) if results else "No matches found.")
         except Exception as e:
             return ToolResult(False, error=f"Grep error: {str(e)}")
 
-    def glob_files(self, pattern: str, path: str = None) -> ToolResult:
+    def list_directory(self, path: str = ".") -> ToolResult:
+        """
+        列出目录，增加 [DIR] 标识
+        """
         try:
-            if not pattern:
-                return ToolResult(False, error="Missing required parameter: pattern")
-
-            search_path = self._resolve_path(path) if path else self.workdir
-            if not search_path.exists():
-                return ToolResult(
-                    False, error=f"Path not found: {path or self.workdir}"
-                )
-
-            matches = list(search_path.glob(pattern))
-            matches = [m for m in matches if m.is_file()]
-
-            if not matches:
-                return ToolResult(True, content="No matches found")
-
-            try:
-                results = [str(m.relative_to(search_path)) for m in matches[:100]]
-            except ValueError:
-                results = [str(m) for m in matches[:100]]
-            return ToolResult(True, content="\n".join(results))
-        except TypeError as e:
-            return ToolResult(
-                False, error=f"Glob error: {str(e)}. Pattern may be invalid."
-            )
-        except Exception as e:
-            return ToolResult(False, error=f"Glob error: {str(e)}")
-
-    def list_directory(self, path: str = None) -> ToolResult:
-        try:
-            target_path = self._resolve_path(path) if path else self.workdir
+            target_path = self._resolve_path(path)
             if not target_path.exists():
-                return ToolResult(
-                    False, error=f"Path not found: {path or self.workdir}"
-                )
+                return ToolResult(False, error=f"Path not found: {path}")
 
             entries = []
             for item in sorted(target_path.iterdir()):
-                rel_path = item.relative_to(target_path)
-                entries.append(str(rel_path))
+                prefix = "[DIR] " if item.is_dir() else "      "
+                entries.append(f"{prefix}{item.name}")
 
-            if not entries:
-                return ToolResult(True, content="Empty directory")
-
-            return ToolResult(True, content="\n".join(entries))
+            output = f"Contents of {path}:\n" + ("\n".join(entries) if entries else "(Empty directory)")
+            return ToolResult(True, content=output)
         except Exception as e:
             return ToolResult(False, error=f"List error: {str(e)}")
 
-    def apply_patch(self, filePath: str, patch_content: str) -> ToolResult:
+    def multi_edit(self, path: str, edits: List[Dict]) -> ToolResult:
+        """
+        批量编辑同一文件，减少文件 I/O 次数
+        """
         try:
-            path = self._resolve_path(filePath)
+            full_path = self._resolve_path(path)
+            if not full_path.exists():
+                return ToolResult(False, error=f"File not found: {path}")
+
+            content = full_path.read_text(encoding="utf-8", errors="replace")
+
+            applied_count = 0
+            for edit in edits:
+                old = edit.get("oldString")
+                new = edit.get("newString")
+                if old in content:
+                    content = content.replace(old, new, 1)
+                    applied_count += 1
+                else:
+                    logger.warning(f"Multi-edit: block not found in {path}")
+
+            full_path.write_text(content, encoding="utf-8")
+            return ToolResult(True, content=f"Applied {applied_count}/{len(edits)} edits to {path}")
+        except Exception as e:
+            return ToolResult(False, error=f"Multi-edit error: {str(e)}")
+
+    def glob_files(self, pattern: str, path: str = ".") -> ToolResult:
+        """
+        通过通配符查找文件
+        """
+        try:
+            search_path = self._resolve_path(path)
+            # rglob 进行递归查找
+            matches = list(search_path.rglob(pattern))
+
+            if not matches:
+                return ToolResult(True, content="No files matched the pattern.")
+
+            # 仅返回文件，并转化为相对工作目录的路径
+            results = []
+            for m in matches[:100]:  # 限制返回数量
+                if m.is_file():
+                    try:
+                        results.append(str(m.relative_to(self.workdir)))
+                    except ValueError:
+                        results.append(str(m))
+
+            return ToolResult(True, content="\n".join(results))
+        except Exception as e:
+            return ToolResult(False, error=f"Glob error: {str(e)}")
+
+    def apply_patch(self, path: str, patch_content: str) -> ToolResult:
+        try:
+            path = self._resolve_path(path)
             if not path.exists():
-                return ToolResult(False, error=f"File not found: {filePath}")
+                return ToolResult(False, error=f"File not found: {path}")
 
             with open(path, "r", encoding="utf-8") as f:
                 original = f.read()
@@ -326,53 +308,3 @@ class FileTools:
             return ToolResult(True, content=result.stdout)
         except Exception as e:
             return ToolResult(False, error=f"Diff error: {str(e)}")
-
-    def multi_edit(self, filePath: str, edits: List[Dict]) -> ToolResult:
-        try:
-            if not filePath:
-                return ToolResult(False, error="Missing required parameter: filePath")
-            if not edits:
-                return ToolResult(False, error="Missing required parameter: edits")
-
-            path = self._resolve_path(filePath)
-            if not path.exists():
-                return ToolResult(False, error=f"File not found: {filePath}")
-
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            original_content = content
-            applied_edits = []
-            errors = []
-
-            for idx, edit in enumerate(edits):
-                old_string = edit.get("oldString", "")
-                new_string = edit.get("newString", "")
-                replace_all = edit.get("replaceAll", False)
-
-                if not old_string:
-                    errors.append(f"Edit {idx + 1}: missing oldString")
-                    continue
-
-                if old_string not in content:
-                    errors.append(f"Edit {idx + 1}: string not found")
-                    continue
-
-                if replace_all:
-                    content = content.replace(old_string, new_string)
-                else:
-                    content = content.replace(old_string, new_string, 1)
-                applied_edits.append(idx + 1)
-
-            if not applied_edits:
-                return ToolResult(False, error=f"No edits applied: {'; '.join(errors)}")
-
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-
-            msg = f"Applied {len(applied_edits)} edits to {path}"
-            if errors:
-                msg += f"\nWarnings: {'; '.join(errors)}"
-            return ToolResult(True, content=msg)
-        except Exception as e:
-            return ToolResult(False, error=f"Multi-edit error: {str(e)}")
