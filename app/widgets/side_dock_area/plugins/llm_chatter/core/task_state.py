@@ -10,23 +10,23 @@ STAGE_PROMPTS = {
     "discover": "## Active Stage: Discover\n"
     "Goal: Understand project structure, constraints, and relevant context.\n"
     "Expected tools: Read, Glob, Grep, Bash (for exploration).\n"
-    "→ When context is sufficient, use switch_stage tool to transition to plan.",
+    "→ When context is sufficient, transit to plan.",
     "plan": "## Active Stage: Plan\n"
     "Goal: Produce implementation path with files, risks, validation steps.\n"
     "Expected tools: Write a concrete plan using todo tool or analysis.\n"
-    "→ When plan is solid, use switch_stage tool to transition to edit.",
+    "→ When plan is solid, transit to edit.",
     "edit": "## Active Stage: Edit\n"
     "Goal: Make focused changes, preserve local patterns, keep edits verifiable.\n"
     "Expected tools: write, edit.\n"
-    "→ When changes are complete, use switch_stage tool to transition to verify.",
+    "→ When changes are complete, transit to verify.",
     "verify": "## Active Stage: Verify\n"
     "Goal: Run validation commands, explain failures concretely.\n"
     "Expected tools: Bash (pytest, test, compile, lint).\n"
-    "→ When verification passes, use switch_stage tool to transition to review.",
+    "→ When verification passes, transit to review.",
     "review": "## Active Stage: Review\n"
     "Goal: Check for regressions, missing tests, weak assumptions.\n"
     "Expected tools: Read, Grep for inspection.\n"
-    "→ When review is done, use switch_stage tool to transition to summarize.",
+    "→ When review is done, transit to summarize.",
     "summarize": "## Active Stage: Summarize\n"
     "Goal: Compress work into concise handoff for next step.\n"
     "Expected tools: Final summary output.\n"

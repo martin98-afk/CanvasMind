@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import hashlib
 import json
 import math
 import re
@@ -19,7 +20,14 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
     ensure_content_blocks,
 )
 
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QUrl
+from PyQt5.QtCore import (
+    Qt,
+    QTimer,
+    pyqtSignal,
+    QUrl,
+    QVariantAnimation,
+    QEasingCurve,
+)
 from PyQt5.QtGui import (
     QWheelEvent,
     QPainter,
@@ -213,22 +221,29 @@ def _sanitize_incomplete_markdown(md_text: str) -> str:
 
 def _render_think_block(content: str, completed: bool = True) -> str:
     status_text = "💡 思考过程" if completed else "🧠 正在思考..."
-    open_attr = " open" if not completed else ""
+    expanded = not completed
 
     max_preview = 40
     content_preview = content.strip().replace("\n", " ")[:max_preview]
     if len(content.strip().replace("\n", " ")) > max_preview:
         content_preview += "..."
 
+    block_seed = f"{content}|{completed}"
+    block_key = "think-" + hashlib.sha1(block_seed.encode("utf-8")).hexdigest()[:12]
+    expanded_attr = "true" if expanded else "false"
+    body_style = ' style="height:auto; opacity:1;"' if expanded else ""
     content = escape(content)
 
-    return f"""<details{open_attr} class="think-block">
-    <summary style="display: flex; align-items: center; gap: 6px;">
+    return f"""<div class="cm-collapsible think-block" data-block-key="{block_key}" data-expanded="{expanded_attr}">
+    <button type="button" class="cm-collapsible__summary think-block__summary" aria-expanded="{expanded_attr}">
+        <span class="cm-collapsible__chevron" aria-hidden="true"></span>
         <span style="white-space: nowrap;">{status_text}</span>
-        <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{content_preview}</span>
-    </summary>
-    <div class="think-content" style="white-space: pre-wrap; word-break: break-all;">{content}</div>
-</details>"""
+        <span style="color: #666; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(content_preview)}</span>
+    </button>
+    <div class="cm-collapsible__body"{body_style}>
+        <div class="think-content" style="white-space: pre-wrap; word-break: break-word;">{content}</div>
+    </div>
+</div>"""
 
 
 def _render_tool_block(
@@ -669,15 +684,60 @@ class CodeWebViewer(QWebEngineView):
 
                 .code-btn:hover {{ background: rgba(255,255,255,0.08) !important; }}
 
-                details.think-block {{
+                .cm-collapsible {{
+                    overflow: hidden;
+                    transform: translateZ(0);
+                    backface-visibility: hidden;
+                }}
+                .cm-collapsible__summary {{
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: transparent;
+                    border: none;
+                    text-align: left;
+                    cursor: pointer;
+                    outline: none;
+                    -webkit-tap-highlight-color: transparent;
+                }}
+                .cm-collapsible__summary:focus-visible {{
+                    box-shadow: inset 0 0 0 1px rgba(102, 198, 255, 0.28);
+                }}
+                .cm-collapsible__chevron {{
+                    flex: 0 0 auto;
+                    width: 8px;
+                    height: 8px;
+                    border-right: 1.5px solid currentColor;
+                    border-bottom: 1.5px solid currentColor;
+                    transform: rotate(45deg);
+                    transform-origin: center;
+                    transition: transform 180ms ease;
+                    margin-left: 2px;
+                    opacity: 0.85;
+                }}
+                .cm-collapsible[data-expanded="true"] .cm-collapsible__chevron {{
+                    transform: rotate(225deg);
+                }}
+                .cm-collapsible__body {{
+                    height: 0;
+                    opacity: 0;
+                    overflow: hidden;
+                    will-change: height, opacity;
+                    transition: height 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease;
+                }}
+                .cm-collapsible[data-expanded="true"] .cm-collapsible__body {{
+                    opacity: 1;
+                }}
+
+                .think-block {{
                     margin: 8px 0;
                     background: linear-gradient(180deg, rgba(19,26,37,0.92), rgba(16,22,31,0.95));
                     border: 1px solid var(--border);
                     border-radius: 10px;
                 }}
-                details.think-block summary {{
+                .think-block__summary {{
                     padding: 8px 12px;
-                    cursor: pointer;
                     color: var(--text-secondary);
                     font-weight: 600;
                 }}
@@ -688,20 +748,19 @@ class CodeWebViewer(QWebEngineView):
                     font-style: italic;
                 }}
 
-                details.tool-block {{
+                .tool-block {{
                     margin: 8px 0;
                     background: linear-gradient(180deg, rgba(18,24,35,0.96), rgba(15,20,29,0.98));
                     border: 1px solid var(--border);
                     border-radius: 10px;
                     box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
                 }}
-                details.tool-block summary {{
+                .tool-block__summary {{
                     padding: 8px 12px;
-                    cursor: pointer;
                     color: var(--accent);
                     font-weight: 600;
                     font-size: 13px;
-                    white-space: pre-wrap;
+                    white-space: normal;
                 }}
                 .tool-content {{
                     padding: 10px 12px;
@@ -713,6 +772,8 @@ class CodeWebViewer(QWebEngineView):
                     color: #d8b68d;
                     font-size: 12px;
                     font-family: Consolas, monospace;
+                    white-space: pre-wrap;
+                    word-break: break-word;
                 }}
 
                 blockquote {{
@@ -728,10 +789,81 @@ class CodeWebViewer(QWebEngineView):
         <body>
             <div id="content-placeholder"></div>
             <script>
+                const collapsibleState = new Map();
+
+                function syncExpandedAttrs(block, expanded) {{
+                    block.dataset.expanded = expanded ? 'true' : 'false';
+                    const summary = block.querySelector('.cm-collapsible__summary');
+                    if (summary) summary.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                    const key = block.dataset.blockKey;
+                    if (key) collapsibleState.set(key, expanded);
+                }}
+
+                function animateCollapsible(block, expand) {{
+                    const body = block.querySelector('.cm-collapsible__body');
+                    if (!body) return;
+
+                    body.style.transition = 'none';
+                    const startHeight = body.getBoundingClientRect().height;
+                    body.style.height = startHeight + 'px';
+                    body.offsetHeight;
+                    body.style.transition = '';
+
+                    if (expand) {{
+                        syncExpandedAttrs(block, true);
+                        body.style.opacity = '1';
+                        body.style.height = body.scrollHeight + 'px';
+                    }} else {{
+                        body.style.height = body.scrollHeight + 'px';
+                        body.offsetHeight;
+                        syncExpandedAttrs(block, false);
+                        body.style.opacity = '0';
+                        body.style.height = '0px';
+                    }}
+
+                    const cleanup = () => {{
+                        if (block.dataset.expanded === 'true') {{
+                            body.style.height = 'auto';
+                            body.style.opacity = '1';
+                        }} else {{
+                            body.style.height = '0px';
+                            body.style.opacity = '0';
+                        }}
+                        reportHeight();
+                    }};
+
+                    body.addEventListener('transitionend', cleanup, {{ once: true }});
+                    requestAnimationFrame(reportHeight);
+                }}
+
+                function restoreCollapsibleStates(root) {{
+                    root.querySelectorAll('.cm-collapsible').forEach(block => {{
+                        const key = block.dataset.blockKey;
+                        const expanded = key && collapsibleState.has(key)
+                            ? collapsibleState.get(key)
+                            : block.dataset.expanded === 'true';
+                        const body = block.querySelector('.cm-collapsible__body');
+                        syncExpandedAttrs(block, !!expanded);
+                        if (body) {{
+                            body.style.transition = 'none';
+                            if (expanded) {{
+                                body.style.height = 'auto';
+                                body.style.opacity = '1';
+                            }} else {{
+                                body.style.height = '0px';
+                                body.style.opacity = '0';
+                            }}
+                            body.offsetHeight;
+                            body.style.transition = '';
+                        }}
+                    }});
+                }}
+
                 function updateContent(newHtml) {{
                     const container = document.getElementById('content-placeholder');
                     if (container.innerHTML !== newHtml) {{
                         container.innerHTML = newHtml;
+                        restoreCollapsibleStates(container);
                         if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise();
                         reportHeight();
                     }}
@@ -747,6 +879,15 @@ class CodeWebViewer(QWebEngineView):
                         const b64 = btn.getAttribute('data-copy');
                         if (act === 'copy' && navigator.clipboard) navigator.clipboard.writeText(atob(b64));
                         console.log('pywebview_action:' + act + ':' + b64);
+                        return;
+                    }}
+                    const summary = e.target.closest('.cm-collapsible__summary');
+                    if (summary) {{
+                        const block = summary.closest('.cm-collapsible');
+                        if (block) {{
+                            animateCollapsible(block, block.dataset.expanded !== 'true');
+                        }}
+                        return;
                     }}
                     const tag = e.target.closest('.context-tag');
                     if (tag) console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
@@ -966,6 +1107,11 @@ class MessageCard(SimpleCardWidget):
         self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._update_anim)
         self._pulse_phase = 0.0
+        self._height_anim = QVariantAnimation(self)
+        self._height_anim.setDuration(180)
+        self._height_anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._height_anim.valueChanged.connect(self._apply_viewer_height)
+        self._target_viewer_height = 40
         self._theme = self._build_theme(role, error)
         self._base_bg = self._theme["bg"]
         self._base_border = self._theme["border"]
@@ -1334,10 +1480,28 @@ class MessageCard(SimpleCardWidget):
                 pass
 
     def _update_height(self, h):
-        self.viewer.setFixedHeight(max(40, h))
+        target_height = max(40, h)
+        current_height = self.viewer.height() or self.viewer.minimumHeight() or 40
+        self._target_viewer_height = target_height
+
+        if self._streaming or abs(target_height - current_height) < 10:
+            if self._height_anim.state() == QVariantAnimation.Running:
+                self._height_anim.stop()
+            self._apply_viewer_height(target_height)
+            return
+
+        self._height_anim.stop()
+        self._height_anim.setStartValue(current_height)
+        self._height_anim.setEndValue(target_height)
+        self._height_anim.start()
+
+    def _apply_viewer_height(self, value):
+        height = max(40, int(value))
+        self.viewer.setFixedHeight(height)
         self.updateGeometry()
-        if self.parentWidget():
-            QTimer.singleShot(10, self.parentWidget().updateGeometry)
+        parent = self.parentWidget()
+        if parent:
+            parent.updateGeometry()
 
     def sync_width(self):
         parent = self.parentWidget()
@@ -1510,6 +1674,10 @@ class MessageCard(SimpleCardWidget):
     def closeEvent(self, e):
         try:
             self._anim_timer.stop()
+        except RuntimeError:
+            pass
+        try:
+            self._height_anim.stop()
         except RuntimeError:
             pass
         if hasattr(self.viewer, "deleteLater"):

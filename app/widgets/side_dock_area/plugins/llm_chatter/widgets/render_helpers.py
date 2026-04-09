@@ -4,6 +4,7 @@ UI 渲染辅助函数
 """
 
 import json
+import hashlib
 from html import escape
 
 
@@ -76,17 +77,30 @@ def render_tool_block(
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
         </div>"""
 
-    open_attr = "" if collapsed else "open"
+    block_seed = "|".join(
+        [
+            str(tool_name or ""),
+            json.dumps(tool_args or {}, ensure_ascii=False, sort_keys=True),
+            str(result or ""),
+            str(success),
+        ]
+    )
+    block_key = "tool-" + hashlib.sha1(block_seed.encode("utf-8")).hexdigest()[:12]
+    expanded_attr = "false" if collapsed else "true"
+    body_style = "" if collapsed else " style=\"height:auto; opacity:1;\""
 
-    return f"""<details class="tool-block" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;" {open_attr}>
-    <summary style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+    return f"""<div class="cm-collapsible tool-block" data-block-key="{block_key}" data-expanded="{expanded_attr}" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;">
+    <button type="button" class="cm-collapsible__summary tool-block__summary" aria-expanded="{expanded_attr}" style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; width: 100%; background: transparent; border: none; text-align: left;">
+        <span class="cm-collapsible__chevron" aria-hidden="true"></span>
         <span>{icon}</span>
         <span>{escape(tool_name)}</span>
         {status_html}
         <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>
-    </summary>
-    {result_html}
-</details>"""
+    </button>
+    <div class="cm-collapsible__body"{body_style}>
+        {result_html}
+    </div>
+</div>"""
 
 
 def format_timestamp(ts: str) -> str:

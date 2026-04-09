@@ -4,6 +4,22 @@ import re
 from typing import Any, Dict, List, Optional
 
 
+def normalize_tool_arguments(arguments: Any) -> Dict[str, Any]:
+    if isinstance(arguments, dict):
+        return dict(arguments)
+    if isinstance(arguments, str):
+        text = arguments.strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return {}
+    return {}
+
+
 def make_text_block(text: Any) -> Dict[str, Any]:
     return {
         "type": "text",
@@ -21,7 +37,7 @@ def make_tool_result_block(
     block = {
         "type": "tool_result",
         "name": str(tool_name or "tool"),
-        "arguments": arguments or {},
+        "arguments": normalize_tool_arguments(arguments),
         "result": "" if result is None else str(result),
         "success": bool(success),
     }
@@ -259,6 +275,61 @@ def repair_misordered_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str
     return repaired
 
 
+def repair_grouped_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    normalized_blocks = ensure_content_blocks(blocks)
+    if len(normalized_blocks) < 4:
+        return normalized_blocks
+
+    if normalized_blocks[0].get("type") != "text":
+        return normalized_blocks
+    if normalized_blocks[-1].get("type") != "text":
+        return normalized_blocks
+
+    middle_blocks = normalized_blocks[1:-1]
+    if not middle_blocks or any(
+        block.get("type") != "tool_result" for block in middle_blocks
+    ):
+        return normalized_blocks
+
+    trailing_text = str(normalized_blocks[-1].get("text", ""))
+    think_matches = list(
+        re.finditer(r"<think>[\s\S]*?</think>\s*", trailing_text, re.IGNORECASE)
+    )
+    if not think_matches:
+        return normalized_blocks
+
+    text_segments: List[str] = []
+    leading_text = trailing_text[: think_matches[0].start()]
+    if leading_text.strip():
+        text_segments.append(leading_text)
+
+    for idx, match in enumerate(think_matches):
+        next_start = (
+            think_matches[idx + 1].start()
+            if idx + 1 < len(think_matches)
+            else len(trailing_text)
+        )
+        segment = trailing_text[match.start() : next_start]
+        if segment.strip():
+            text_segments.append(segment)
+
+    if not text_segments:
+        return normalized_blocks
+
+    repaired: List[Dict[str, Any]] = [normalized_blocks[0]]
+    for idx, tool_block in enumerate(middle_blocks):
+        repaired.append(tool_block)
+        if idx < len(text_segments):
+            repaired.append(make_text_block(text_segments[idx]))
+
+    if len(text_segments) > len(middle_blocks):
+        remaining = "".join(text_segments[len(middle_blocks) :])
+        if remaining.strip():
+            repaired.append(make_text_block(remaining))
+
+    return repaired
+
+
 def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not isinstance(message, dict):
         return None
@@ -272,6 +343,16 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         normalized["timestamp"] = message.get("timestamp")
 
     if role == "assistant":
+        tool_call_args_by_id: Dict[str, Dict[str, Any]] = {}
+        for tc in message.get("tool_calls", []) or []:
+            if not isinstance(tc, dict):
+                continue
+            tool_call_id = str(tc.get("id") or "")
+            function = tc.get("function", {}) or {}
+            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
+            if tool_call_id and parsed_args:
+                tool_call_args_by_id[tool_call_id] = parsed_args
+
         content_blocks = ensure_content_blocks(message.get("content", []))
         normalized_blocks: List[Dict[str, Any]] = []
         seen_tool_keys = set()
@@ -285,12 +366,16 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                     normalized_blocks.append(make_text_block(text))
                 continue
             if block.get("type") == "tool_result":
+                tool_call_id = block.get("tool_call_id")
+                tool_arguments = normalize_tool_arguments(block.get("arguments", {}))
+                if not tool_arguments and tool_call_id:
+                    tool_arguments = tool_call_args_by_id.get(str(tool_call_id), {})
                 tool_block = make_tool_result_block(
                     tool_name=block.get("name", "tool"),
-                    arguments=block.get("arguments", {}),
+                    arguments=tool_arguments,
                     result=block.get("result", ""),
                     success=block.get("success", True),
-                    tool_call_id=block.get("tool_call_id"),
+                    tool_call_id=tool_call_id,
                 )
                 key = (
                     tool_block.get("tool_call_id"),
@@ -311,7 +396,10 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         extra_tool_blocks = [
             make_tool_result_block(
                 tool_name=item.get("name", "tool"),
-                arguments=item.get("arguments", {}),
+                arguments=(
+                    normalize_tool_arguments(item.get("arguments", {}))
+                    or tool_call_args_by_id.get(str(item.get("tool_call_id") or ""), {})
+                ),
                 result=item.get("result", item.get("content", "")),
                 success=item.get("success", True),
                 tool_call_id=item.get("tool_call_id"),
@@ -336,7 +424,9 @@ def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             seen_tool_keys.add(key)
             normalized_blocks.append(tool_block)
 
-        normalized["content"] = repair_misordered_tool_blocks(normalized_blocks)
+        normalized["content"] = repair_grouped_tool_blocks(
+            repair_misordered_tool_blocks(normalized_blocks)
+        )
 
         if message.get("tool_calls"):
             normalized["tool_calls"] = [

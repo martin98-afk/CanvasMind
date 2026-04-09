@@ -123,35 +123,38 @@ class ToolExecutor:
 
         tool_map = {
             "read": lambda: self._builtin_tools.read_file(
-                args.get("filePath"), args.get("offset", 1), args.get("limit", 2000)
+                path=args.get("path"),  # 统一使用 path
+                offset=args.get("offset", 1),
+                limit=args.get("limit", 500)   # 建议默认值设为 500，防止 Token 溢出
             ),
             "write": lambda: self._builtin_tools.write_file(
-                args.get("filePath"), args.get("content", "")
+                path=args.get("path"),
+                content=args.get("content", "")
             ),
             "edit": lambda: self._builtin_tools.edit_file(
-                args.get("filePath"),
-                args.get("oldString", ""),
-                args.get("newString", ""),
-                args.get("replaceAll", False),
+                path=args.get("path"),
+                oldString=args.get("oldString", ""),
+                newString=args.get("newString", ""),
+                replaceAll=args.get("replaceAll", False),
             ),
             "multiedit": lambda: self._builtin_tools.multi_edit(
-                args.get("filePath"),
-                args.get("edits", []),
+                path=args.get("path"),
+                edits=args.get("edits", []),
             ),
             "grep": lambda: self._builtin_tools.grep_files(
-                args.get("pattern"), args.get("path"), args.get("include")
+                pattern=args.get("pattern"),
+                path=args.get("path", "."),    # 默认当前路径
+                include=args.get("include")
             ),
             "glob": lambda: self._builtin_tools.glob_files(
-                args.get("pattern"), args.get("path")
+                pattern=args.get("pattern"),
+                path=args.get("path", ".")     # 默认当前路径
             ),
-            "list": lambda: self._builtin_tools.list_directory(args.get("path")),
+            "list": lambda: self._builtin_tools.list_directory(
+                path=args.get("path", ".")     # 默认当前路径
+            ),
             "patch": lambda: self._builtin_tools.apply_patch(
-                args.get("filePath"), args.get("patch_content", "")
-            ),
-            "diff": lambda: self._builtin_tools.diff_files(
-                args.get("file1", ""),
-                args.get("file2"),
-                args.get("use_git", False),
+                args.get("path"), args.get("patch_content", "")
             ),
             "git_status": lambda: self._builtin_tools.git_status(args.get("path")),
             "git_log": lambda: self._builtin_tools.git_log(

@@ -266,23 +266,23 @@ class TaskTools:
         except Exception as e:
             return ToolResult(False, error=f"stage_files error: {str(e)}")
 
-    def switch_stage(self, stage: str) -> ToolResult:
-        valid_stages = ["discover", "plan", "edit", "verify", "review", "summarize"]
-        stage = (stage or "").lower().strip()
-        if stage not in valid_stages:
-            return ToolResult(
-                False,
-                error=f"Invalid stage: {stage}. Valid stages: {', '.join(valid_stages)}",
-            )
-
-        if self._set_stage_callback:
-            try:
-                self._set_stage_callback(stage)
-                return ToolResult(True, content=f"Stage switched to: {stage}")
-            except Exception as e:
-                return ToolResult(False, error=f"Failed to switch stage: {str(e)}")
-        else:
-            return ToolResult(False, error="Stage callback not configured")
+    # def switch_stage(self, stage: str) -> ToolResult:
+    #     valid_stages = ["discover", "plan", "edit", "verify", "review", "summarize"]
+    #     stage = (stage or "").lower().strip()
+    #     if stage not in valid_stages:
+    #         return ToolResult(
+    #             False,
+    #             error=f"Invalid stage: {stage}. Valid stages: {', '.join(valid_stages)}",
+    #         )
+    #
+    #     if self._set_stage_callback:
+    #         try:
+    #             self._set_stage_callback(stage)
+    #             return ToolResult(True, content=f"Stage switched to: {stage}")
+    #         except Exception as e:
+    #             return ToolResult(False, error=f"Failed to switch stage: {str(e)}")
+    #     else:
+    #         return ToolResult(False, error="Stage callback not configured")
 
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
