@@ -1,7 +1,8 @@
 """
 Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 """
-
+import time
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
@@ -115,14 +116,10 @@ class CanvasTools:
         if not node:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
-        if not hasattr(node, "current_code"):
-            return ToolResult(False, error=f"节点 [{node_name}] 不支持代码修改")
-
         try:
             node.current_code = code
             node._debug_enabled = True
             self.parent.run_node(node)
-            node._debug_enabled = False
             return ToolResult(True, content=f"已更新代码并运行节点 [{node_name}]")
         except Exception as e:
             return ToolResult(False, error=f"修改代码并运行失败: {str(e)}")
