@@ -6,23 +6,38 @@ from typing import Callable, Dict, Tuple, List, Any
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
 from PyQt5.QtGui import QScreen, QMouseEvent
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QApplication, QWidget, QFrame, QSizePolicy
+from PyQt5.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QApplication,
+    QWidget,
+    QFrame,
+    QSizePolicy,
+)
 from qfluentwidgets import (
-    FluentIcon, CheckBox, TransparentToolButton,
-    CardWidget, CaptionLabel, BodyLabel
+    FluentIcon,
+    CheckBox,
+    TransparentToolButton,
+    CardWidget,
+    CaptionLabel,
+    BodyLabel,
 )
 
 from app.utils.utils import serialize_for_json, get_icon
 
 
 class ContextRegistry:
-
     def __init__(self):
         # 每个实例都有独立的上下文和执行器字典
         self._contexts: Dict[str, Callable[[], Tuple[str, Any, Callable]]] = {}
         self._executors: Dict[str, Callable[[Any], None]] = {}
 
-    def register(self, key: str, provider: Callable[[], Tuple[str, Any, Callable]], executor: Callable[[Any], None]):
+    def register(
+        self,
+        key: str,
+        provider: Callable[[], Tuple[str, Any, Callable]],
+        executor: Callable[[Any], None],
+    ):
         """
         注册一个上下文项
         :param key: 唯一标识，如 "@graph"
@@ -42,11 +57,10 @@ class ContextRegistry:
         self._contexts.pop(key, None)
         self._executors.pop(key, None)
 
-    def get_all_items(self) -> List[Tuple[str, Callable[[], Tuple[str, Any, Callable]]]]:
-        return [
-            (key, provider)
-            for key, provider in self._contexts.items()
-        ]
+    def get_all_items(
+        self,
+    ) -> List[Tuple[str, Callable[[], Tuple[str, Any, Callable]]]]:
+        return [(key, provider) for key, provider in self._contexts.items()]
 
     def clear(self):
         self._contexts.clear()
@@ -55,7 +69,7 @@ class ContextRegistry:
 
 # ==================== 【改进】单个上下文标签卡片 ====================
 class TagWidget(CardWidget):
-    closed = pyqtSignal(str)      # 发出 key
+    closed = pyqtSignal(str)  # 发出 key
     doubleClicked = pyqtSignal(str)  # 新增：双击信号
 
     def __init__(self, key: str, text: str, parent=None):
@@ -91,7 +105,9 @@ class ContextSelectorPopup(QWidget):
 
     def __init__(self, context_items: List[Tuple[str, Callable]], parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setWindowFlags(
+            Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         self.context_items = context_items
@@ -126,7 +142,9 @@ class ContextSelectorPopup(QWidget):
 
         for key, _ in self.context_items:
             cb = CheckBox(key, self)
-            cb.stateChanged.connect(lambda state, k=key: self._on_item_toggled(k, state))
+            cb.stateChanged.connect(
+                lambda state, k=key: self._on_item_toggled(k, state)
+            )
             self.checkboxes.append(cb)
             layout.addWidget(cb)
 
@@ -143,7 +161,9 @@ class ContextSelectorPopup(QWidget):
         else:
             self.selected_keys.discard(key)
         self.selectionChanged.emit(self.selected_keys.copy())
-        if self.parent_widget and hasattr(self.parent_widget, '_on_context_selection_changed'):
+        if self.parent_widget and hasattr(
+            self.parent_widget, "_on_context_selection_changed"
+        ):
             self.parent_widget._on_context_selection_changed(self.selected_keys.copy())
 
     def _select_all(self):
@@ -192,7 +212,9 @@ class ContextSelector(QWidget):
         self.parent = parent
         self._selected_keys = set()
         self._context_items: List[Tuple[str, Callable]] = []
-        self._context_cache: Dict[str, Tuple[str, str, Callable, bool]] = {}  # key -> (name, formatted_text, callback)
+        self._context_cache: Dict[
+            str, Tuple[str, str, Callable, bool]
+        ] = {}  # key -> (name, formatted_text, callback)
 
         self._refresh_context_items()
 
@@ -212,7 +234,9 @@ class ContextSelector(QWidget):
         self.refresh_btn.clicked.connect(self._update_tags)
 
         self.tags_container = QWidget(self)
-        self.tags_container.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        self.tags_container.setSizePolicy(
+            QSizePolicy.MinimumExpanding, QSizePolicy.Minimum
+        )
         self.tags_layout = QVBoxLayout(self.tags_container)
         self.tags_layout.setContentsMargins(0, 0, 0, 0)
         self.tags_layout.setSpacing(4)
@@ -255,26 +279,38 @@ class ContextSelector(QWidget):
             if is_image:
                 # 多模态图片格式
                 if "text" in context:
-                    items.append({
-                        "type": "text",
-                        "text": f"# {name}信息:\n{context['text']}"
-                    })
-                items.append({
-                    "type": "image_url",
-                    "image_url": {"url": context["url"]}  # {"url": "data:image/..."}
-                })
+                    items.append(
+                        {"type": "text", "text": f"# {name}信息:\n{context['text']}"}
+                    )
+                items.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": context["url"]
+                        },  # {"url": "data:image/..."}
+                    }
+                )
             else:
                 # 文本
-                items.append({
-                    "type": "text",
-                    "text": f"# {name}信息:\n{context}"
-                })
+                items.append({"type": "text", "text": f"# {name}信息:\n{context}"})
         return items
 
     def get_text_context(self):
-        context = ("===== 画布上下文信息开始 =====\n\n" +
-                   "\n".join([context[1] for context in self._context_cache.values() if not context[3]]) +
-                   "\n===== 上下文信息结束 =====\n\n") if self._context_cache else ""
+        context = (
+            (
+                "===== 画布上下文信息开始 =====\n\n"
+                + "\n".join(
+                    [
+                        context[1]
+                        for context in self._context_cache.values()
+                        if not context[3]
+                    ]
+                )
+                + "\n===== 上下文信息结束 =====\n\n"
+            )
+            if self._context_cache
+            else ""
+        )
         return context
 
     def get_context_by_key(self, key: str) -> str:
@@ -286,7 +322,7 @@ class ContextSelector(QWidget):
         return self._context_cache.get(key, ("", "", lambda: None))[2]
 
     def _refresh_context_items(self):
-        if hasattr(self.parent.homepage, 'context_register'):
+        if hasattr(self.parent.homepage, "context_register"):
             self._context_items = self.parent.homepage.context_register.get_all_items()
         else:
             self._context_items = []
@@ -298,7 +334,7 @@ class ContextSelector(QWidget):
 
     def _show_popup(self):
         self._refresh_context_items()
-        if hasattr(self, 'popup') and self.popup:
+        if hasattr(self, "popup") and self.popup:
             self.popup.close()
             self.popup.deleteLater()
 
@@ -319,15 +355,19 @@ class ContextSelector(QWidget):
                     name, context_data, callback_params = context_func()
                 except Exception as e:
                     logger.error(traceback.format_exc())
-                    name, context_data, callback_params = "错误", f"[加载失败: {e}]", None
+                    name, context_data, callback_params = (
+                        "错误",
+                        f"[加载失败: {e}]",
+                        None,
+                    )
 
                 # ✅ 关键：保留原始数据结构，不做强制字符串化
                 # 判断是否是图片 dict
                 is_image = (
-                        isinstance(context_data, dict) and
-                        "url" in context_data and
-                        isinstance(context_data["url"], str) and
-                        context_data["url"].startswith("data:image/")
+                    isinstance(context_data, dict)
+                    and "url" in context_data
+                    and isinstance(context_data["url"], str)
+                    and context_data["url"].startswith("data:image/")
                 )
 
                 if not is_image:
@@ -338,7 +378,12 @@ class ContextSelector(QWidget):
                         context_str = str(context_data)
                     context_data = f"# {name}信息:\n{context_str}\n\n"
 
-                self._context_cache[context_key] = (name, context_data, callback_params, is_image)
+                self._context_cache[context_key] = (
+                    name,
+                    context_data,
+                    callback_params,
+                    is_image,
+                )
 
     def _update_tags(self):
         self._refresh_context_cache()
@@ -367,7 +412,9 @@ class ContextSelector(QWidget):
             name = self._context_cache.get(key, ("未知", "", lambda: None))[0]
             tag = TagWidget(key, name)
             tag.closed.connect(self._on_tag_closed)
-            tag.doubleClicked.connect(lambda k=key, t=tag: self._on_tag_double_clicked(k, t))
+            tag.doubleClicked.connect(
+                lambda k=key, t=tag: self._on_tag_double_clicked(k, t)
+            )
 
             tag_width = tag.sizeHint().width()
             if row_width + tag_width > max_row_width and row_width > 0:
@@ -393,7 +440,7 @@ class ContextSelector(QWidget):
             self._selected_keys.discard(key)
             self._update_tags()
             self.selectionChanged.emit(self._selected_keys.copy())
-            if hasattr(self, 'popup') and self.popup:
+            if hasattr(self, "popup") and self.popup:
                 self.popup.selected_keys = self._selected_keys.copy()
                 self.popup._update_checkboxes_from_selection()
 
@@ -406,3 +453,22 @@ class ContextSelector(QWidget):
                 callback(params, tag)
             except Exception as e:
                 print(f"[ContextSelector] 双击回调出错: {e}")
+
+    def has_canvas_context(self):
+        """检查是否激活了画布相关上下文"""
+        canvas_context_keys = {"画布节点图像", "画布节点", "全局变量"}
+        return bool(self._selected_keys & canvas_context_keys)
+
+    def get_canvas_tools_schema(self):
+        """获取画布工具 schema（如果画布上下文已激活）"""
+        if not self.has_canvas_context():
+            return []
+        if hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_schema"):
+            return self.parent.homepage.llm_context_provider.get_canvas_tools_schema()
+        return []
+
+    def get_canvas_tools_executor(self):
+        """获取画布工具执行器"""
+        if hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_executor"):
+            return self.parent.homepage.llm_context_provider.get_canvas_tools_executor()
+        return None

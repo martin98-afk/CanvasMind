@@ -88,6 +88,8 @@ class ChatEngine:
         self._get_context_provider = get_context_provider
         self._tool_executor = tool_executor
         self._agent_manager = agent_manager
+
+        self._setup_canvas_tools()
         self._get_chat_cards = get_chat_cards
         self._get_memory_context = get_memory_context
 
@@ -120,6 +122,19 @@ class ChatEngine:
 
     def _get_agent_manager(self):
         return self._agent_manager
+
+    def _get_canvas_tools(self):
+        context_provider = self._get_context_provider()
+        if context_provider and hasattr(context_provider, "get_canvas_tools_schema"):
+            return context_provider.get_canvas_tools_schema()
+        return []
+
+    def _setup_canvas_tools(self):
+        context_provider = self._get_context_provider()
+        if context_provider and hasattr(context_provider, "get_canvas_tools_executor"):
+            canvas_executor = context_provider.get_canvas_tools_executor()
+            if canvas_executor and self._tool_executor:
+                self._tool_executor.set_canvas_tools_executor(canvas_executor)
 
     def _check_tool_permission(self, tool_name: str, arguments: dict) -> str:
         agent_manager = self._get_agent_manager()
@@ -228,14 +243,13 @@ class ChatEngine:
             if not content:
                 continue
             single_line = " ".join(content.split())
-            snippet = self._trim_message_content(single_line, 220)
             if role == "user":
-                user_points.append(snippet)
+                user_points.append(single_line)
             elif role == "assistant":
-                assistant_points.append(snippet)
+                assistant_points.append(single_line)
             elif role == "tool":
                 tool_name = msg.get("name") or msg.get("tool_call_id") or "tool"
-                tool_points.append(f"{tool_name}: {snippet}")
+                tool_points.append(f"{tool_name}: {single_line}")
 
         if user_points:
             summary_lines.append("### User Requests")
@@ -579,6 +593,10 @@ class ChatEngine:
             )
         else:
             available_tools = get_builtin_tools_schema()
+
+        canvas_tools = self._get_canvas_tools()
+        if canvas_tools:
+            available_tools = available_tools + canvas_tools
 
         self._start_worker(messages, llm_config, available_tools)
         return True

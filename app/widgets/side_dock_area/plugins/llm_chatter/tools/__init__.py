@@ -13,8 +13,8 @@ from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import 
     TerminalTools,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_tools import (
-    CanvasTools,
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_webhook_tools import (
+    CanvasTools as CanvasToolsForBuiltin,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.diagnostics_tools import (
     DiagnosticsTools,
@@ -45,7 +45,7 @@ class BuiltinTools(QObject):
         self._web_tools = WebTools(self.workdir)
         self._terminal_tools = TerminalTools(self.workdir)
         self._task_tools = TaskTools(self.workdir)
-        self._canvas_tools = CanvasTools(self.workdir)
+        self._canvas_tools = CanvasToolsForBuiltin(self.workdir)
         self._diagnostics_tools = DiagnosticsTools(self.workdir)
 
         self._todo_list = []
