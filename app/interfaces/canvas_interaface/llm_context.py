@@ -66,7 +66,7 @@ class LLMContextProvider:
             # 属性：过滤 + 格式化
             custom_props = {
                 k: v for k, v in node.model._custom_prop.items()
-                if k not in {"persistent_id", "temp_data", "cache", "global_variable", "debug_code"}
+                if k not in {"persistent_id", "temp_data", "cache", "global_variable"}
             }
             if custom_props:
                 props_str = "; ".join(f"{k}={repr(v) if isinstance(v, str) else v}" for k, v in custom_props.items())

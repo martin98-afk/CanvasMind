@@ -287,6 +287,7 @@ class OpenAIChatWorker(QThread):
         self._answer_event = Event()
         self._permission_pending = None
         self._permission_approved = False
+        self._round_permission_cache = {}
         self._previewed_tool_call_ids = set()
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
@@ -314,11 +315,14 @@ class OpenAIChatWorker(QThread):
         self._pending_answer = answer
         self._answer_event.set()
 
-    def approve_permission(self, tool_call_id: str):
+    def approve_permission(self, tool_call_id: str, auto_allow: bool = False):
         if (
             self._permission_pending
             and self._permission_pending.get("tool_call_id") == tool_call_id
         ):
+            if auto_allow:
+                tool_name = self._permission_pending.get("tool_name", "")
+                self._round_permission_cache[tool_name] = True
             self._permission_approved = True
             self._permission_pending = None
 
@@ -557,8 +561,10 @@ class OpenAIChatWorker(QThread):
                 if msg.get("name"):
                     api_msg["name"] = msg.get("name")
             elif role == "user" and msg.get("params"):
-                context_text = "\n\n".join([msg["params"][param][1] for param in msg["params"]])
-                api_msg["content"] = f'{context_text}\n\n{content}'
+                context_text = "\n\n".join(
+                    [msg["params"][param][1] for param in msg["params"]]
+                )
+                api_msg["content"] = f"{context_text}\n\n{content}"
             else:
                 api_msg["content"] = content
 
@@ -731,7 +737,9 @@ class OpenAIChatWorker(QThread):
         transcript_lines = []
         for msg in old_messages:
             role = msg.get("role", "unknown")
-            transcript_lines.append(f"[{role}] {extract_text(msg.get('content', ''), 1800)}")
+            transcript_lines.append(
+                f"[{role}] {extract_text(msg.get('content', ''), 1800)}"
+            )
 
         recent_hint = []
         for msg in recent_messages[-4:]:
@@ -817,7 +825,9 @@ class OpenAIChatWorker(QThread):
         if self._estimate_message_tokens(messages) <= threshold:
             return messages, inactive_state
 
-        system_message = messages[0] if messages and messages[0].get("role") == "system" else None
+        system_message = (
+            messages[0] if messages and messages[0].get("role") == "system" else None
+        )
         start_idx = 1 if system_message else 0
         body = messages[start_idx:]
         if len(body) < 8:
@@ -1011,7 +1021,12 @@ class OpenAIChatWorker(QThread):
                 return None
 
             if self.permission_check_callback:
-                permission_result = self.permission_check_callback(tool_name, arguments)
+                if tool_name in self._round_permission_cache:
+                    permission_result = "allow"
+                else:
+                    permission_result = self.permission_check_callback(
+                        tool_name, arguments
+                    )
                 if permission_result == "ask":
                     self.permission_approval_requested.emit(
                         tool_call_id, tool_name, arguments

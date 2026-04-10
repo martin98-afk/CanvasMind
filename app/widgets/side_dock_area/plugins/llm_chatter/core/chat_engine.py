@@ -167,9 +167,9 @@ class ChatEngine:
     ):
         self._emit("permission_approval_requested", tool_call_id, tool_name, arguments)
 
-    def approve_tool_permission(self, tool_call_id: str):
+    def approve_tool_permission(self, tool_call_id: str, auto_allow: bool = False):
         if self._current_worker:
-            self._current_worker.approve_permission(tool_call_id)
+            self._current_worker.approve_permission(tool_call_id, auto_allow)
 
     def deny_tool_permission(self, tool_call_id: str):
         if self._current_worker:
@@ -686,16 +686,19 @@ class ChatEngine:
 
         max_tokens = llm_config.get(
             "最大Token",
-            llm_config.get("max_tokens", llm_config.get("max_output_tokens", profile.get("max_output_tokens", 4096))),
+            llm_config.get(
+                "max_tokens",
+                llm_config.get(
+                    "max_output_tokens", profile.get("max_output_tokens", 4096)
+                ),
+            ),
         )
         try:
             max_tokens = int(max_tokens)
         except Exception:
             max_tokens = int(profile.get("max_output_tokens", 4096))
 
-        model_name = str(
-            llm_config.get("model", "")
-        ).lower()
+        model_name = str(llm_config.get("model", "")).lower()
         profile_max_output = int(profile.get("max_output_tokens", 4096))
 
         if max_tokens > profile_max_output * 2:

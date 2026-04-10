@@ -61,7 +61,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area im
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextSelector,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import ContextUsageRing
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import (
+    ContextUsageRing,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
     ConversationNodePreview,
 )
@@ -718,7 +720,9 @@ class OpenAIChatToolWindow(ToolWindow):
         try:
             self._auto_save_current_session()
         except Exception:
-            logger.exception("Failed to auto-save current session before creating a new one")
+            logger.exception(
+                "Failed to auto-save current session before creating a new one"
+            )
 
         session = self.session_manager.create_new_session()
         self._current_history_index = None
@@ -1749,6 +1753,19 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_floating_widget.show_question(question, options, multiple)
 
     def _on_question_answered(self, answer: str):
+        if self._pending_permission_tool_call_id:
+            tool_call_id = self._pending_permission_tool_call_id
+            self._pending_permission_tool_call_id = None
+            if answer == "允许":
+                self._chat_engine.approve_tool_permission(tool_call_id, False)
+            elif answer == "允许且该轮对话自动允许":
+                self._chat_engine.approve_tool_permission(tool_call_id, True)
+            else:
+                self._chat_engine.deny_tool_permission(tool_call_id)
+            if self.input_area:
+                self.input_area.setFocus()
+            return
+
         if not self._question_tool_call_id:
             return
 
@@ -1763,6 +1780,14 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_question_cancelled(self):
         """用户关闭问题窗口时，返回空答案让大模型继续"""
+        if self._pending_permission_tool_call_id:
+            tool_call_id = self._pending_permission_tool_call_id
+            self._pending_permission_tool_call_id = None
+            self._chat_engine.deny_tool_permission(tool_call_id)
+            if self.input_area:
+                self.input_area.setFocus()
+            return
+
         if not self._question_tool_call_id:
             return
 
@@ -1782,29 +1807,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, tool_name: str, arguments: dict
     ):
         self._pending_permission_tool_call_id = tool_call_id
+        self._pending_permission_auto_allow = False
         try:
-            from PyQt5.QtWidgets import QMessageBox
-            from PyQt5.QtCore import Qt
-
             arg_str = str(arguments)[:200] if arguments else ""
-            msg = (
-                f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}\n\n是否允许执行?"
-            )
-            reply = QMessageBox.question(
-                self,
-                "权限批准",
-                msg,
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if reply == QMessageBox.Yes:
-                self._chat_engine.approve_tool_permission(tool_call_id)
-            else:
-                self._chat_engine.deny_tool_permission(tool_call_id)
+            question_text = f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}"
+            options = ["允许", "允许且该轮对话自动允许", "不允许"]
+            self._question_floating_widget.show_question(question_text, options, False)
         except Exception as e:
             logger.error(f"[Permission] Approval error: {e}")
             self._chat_engine.deny_tool_permission(tool_call_id)
-        finally:
             self._pending_permission_tool_call_id = None
 
     def _maybe_generate_topic_summary(self):

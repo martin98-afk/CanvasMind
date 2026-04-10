@@ -125,11 +125,10 @@ class ToolExecutor:
             "read": lambda: self._builtin_tools.read_file(
                 path=args.get("path"),  # 统一使用 path
                 offset=args.get("offset", 1),
-                limit=args.get("limit", 500)   # 建议默认值设为 500，防止 Token 溢出
+                limit=args.get("limit", 500),  # 建议默认值设为 500，防止 Token 溢出
             ),
             "write": lambda: self._builtin_tools.write_file(
-                path=args.get("path"),
-                content=args.get("content", "")
+                path=args.get("path"), content=args.get("content", "")
             ),
             "edit": lambda: self._builtin_tools.edit_file(
                 path=args.get("path"),
@@ -143,15 +142,15 @@ class ToolExecutor:
             ),
             "grep": lambda: self._builtin_tools.grep_files(
                 pattern=args.get("pattern"),
-                path=args.get("path", "."),    # 默认当前路径
-                include=args.get("include")
+                path=args.get("path", "."),  # 默认当前路径
+                include=args.get("include"),
             ),
             "glob": lambda: self._builtin_tools.glob_files(
                 pattern=args.get("pattern"),
-                path=args.get("path", ".")     # 默认当前路径
+                path=args.get("path", "."),  # 默认当前路径
             ),
             "list": lambda: self._builtin_tools.list_directory(
-                path=args.get("path", ".")     # 默认当前路径
+                path=args.get("path", ".")  # 默认当前路径
             ),
             "patch": lambda: self._builtin_tools.apply_patch(
                 args.get("path"), args.get("patch_content", "")
@@ -180,6 +179,9 @@ class ToolExecutor:
             ),
             "run_verify": lambda: self._builtin_tools.run_verify(
                 args.get("command", ""), args.get("timeout", 120)
+            ),
+            "get_diagnostics": lambda: self._builtin_tools.get_diagnostics(
+                args.get("file_path", ""), args.get("language")
             ),
             "summarize_changes": lambda: self._builtin_tools.summarize_changes(
                 args.get("text", ""), args.get("limit", 1200)

@@ -77,7 +77,7 @@ class WebTools:
                                 r.text, re.DOTALL)
             snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</div>', r.text, re.DOTALL)
             results = []
-            for i, (link, title) in enumerate(titles[:8]):
+            for i, (link, title) in enumerate(titles[:num_results]):
                 t = re.sub(r"<[^>]+>", "", title).strip()
                 s = re.sub(r"<[^>]+>", "", snippets[i]).strip() if i < len(snippets) else ""
                 results.append(f"**{t}**\n{link}\n{s}")
