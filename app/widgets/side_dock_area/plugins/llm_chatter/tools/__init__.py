@@ -555,6 +555,20 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "run_verify",
+                "description": "运行针对当前任务的验证命令，默认尝试项目测试或语法检查",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "验证命令"},
+                        "timeout": {"type": "integer", "description": "超时时间"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "webfetch",
                 "description": "获取网页内容",
                 "parameters": {
@@ -611,20 +625,6 @@ def get_builtin_tools_schema() -> List[Dict]:
                         },
                     },
                     "required": ["files"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "run_verify",
-                "description": "运行针对当前任务的验证命令，默认尝试项目测试或语法检查",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "command": {"type": "string", "description": "验证命令"},
-                        "timeout": {"type": "integer", "description": "超时时间"},
-                    },
                 },
             },
         },

@@ -640,6 +640,9 @@ class OpenAIChatWorker(QThread):
                 api_msg["content"] = content_to_text(content)
                 if msg.get("name"):
                     api_msg["name"] = msg.get("name")
+            elif role == "user" and msg["params"]:
+                context_text = "\n\n".join([msg["params"][param][1] for param in msg["params"]])
+                api_msg["content"] = f'{context_text}\n\n{content}'
             else:
                 api_msg["content"] = content
 
@@ -651,7 +654,6 @@ class OpenAIChatWorker(QThread):
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
-
         req_kwargs = {
             "model": model,
             "messages": self._sanitize_messages_for_api(messages),

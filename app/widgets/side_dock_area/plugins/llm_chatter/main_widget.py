@@ -709,70 +709,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         self._latest_task_state = task_state
 
-    def _suggest_agent(self, user_text: str) -> Optional[str]:
-        """基于用户输入智能推荐合适的智能体"""
-        if not user_text or not self._agent_manager:
-            return None
-
-        text_lower = user_text.lower()
-
-        agent_keywords = {
-            "web-developer": [
-                "html",
-                "css",
-                "javascript",
-                "react",
-                "vue",
-                "angular",
-                "node",
-                "前端",
-                "后端",
-                "网站",
-                "网页",
-                "http",
-                "api",
-                "npm",
-                "webpack",
-                "vite",
-                "浏览器",
-                "样式",
-                "组件",
-                "前端开发",
-                "后端开发",
-            ],
-            "python-reviewer": [
-                "python",
-                "py",
-                "django",
-                "flask",
-                "fastapi",
-                "爬虫",
-                "数据分析",
-                "机器学习",
-                "ai",
-                "模型",
-                "算法",
-                "函数",
-                "类",
-                "代码审查",
-                "优化",
-                "性能",
-                "bug",
-                "调试",
-                "错误",
-            ],
-        }
-
-        for agent_name, keywords in agent_keywords.items():
-            if not keywords:
-                continue
-            for keyword in keywords:
-                if keyword in text_lower:
-                    if self._agent_manager.get_agent(agent_name):
-                        return agent_name
-
-        return None
-
     def _create_new_session(self):
         if self._is_streaming and self._chat_engine:
             self._chat_engine.stop()
@@ -1496,8 +1432,7 @@ class OpenAIChatToolWindow(ToolWindow):
         context_params = {k: v for k, v in self.context_selector.context.items()}
 
         self.input_area.clear()
-
-        self._append_user_message(user_text)
+        self._append_user_message(user_text, tag_params=context_params)
 
         assistant_card = self._append_assistant_message()
 
@@ -1739,7 +1674,6 @@ class OpenAIChatToolWindow(ToolWindow):
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
         saved_messages = list(session.messages or []) if session else []
-
         if saved_messages:
             if self._current_history_index is not None:
                 self.history_manager.update_session(

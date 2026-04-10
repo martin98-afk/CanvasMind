@@ -175,39 +175,6 @@ class ChatEngine:
         if self._current_worker:
             self._current_worker.deny_permission(tool_call_id)
 
-    def _get_token_budget(self, llm_config: Dict) -> int:
-        profile = get_provider_profile(llm_config)
-        context_limit = profile.get("context_limit", 128000)
-        for key in (
-            "context_limit",
-            "context_window",
-            "max_context_tokens",
-            "涓婁笅鏂囬暱搴?",
-            "涓婁笅鏂囩獥鍙?",
-        ):
-            value = llm_config.get(key)
-            if value in (None, ""):
-                continue
-            try:
-                context_limit = int(value)
-                break
-            except Exception:
-                continue
-
-        max_tokens = llm_config.get(
-            "最大Token", profile.get("max_output_tokens", 4096)
-        )
-        try:
-            max_tokens = int(max_tokens)
-        except Exception:
-            max_tokens = int(profile.get("max_output_tokens", 4096))
-
-        model_name = str(llm_config.get("模型名称", "")).lower()
-        reserved = min(800, max_tokens)
-        if "o1" in model_name or "o3" in model_name:
-            reserved = min(max_tokens, 32000)
-        return max(500, int(context_limit) - reserved)
-
     def _smart_trim_messages(self, cards: List[Any], max_tokens: int) -> List[Any]:
         if not cards:
             return []
@@ -348,6 +315,8 @@ class ChatEngine:
                 normalized_msg["tool_call_id"] = tool_call_id
                 if msg.get("name"):
                     normalized_msg["name"] = msg.get("name")
+            elif role == "user" and msg.get("params"):
+                normalized_msg["params"] = msg.get("params")
             else:
                 if not content:
                     continue
@@ -641,11 +610,8 @@ class ChatEngine:
 
         custom_prompt = llm_config.get("系统提示", "").strip()
         context_provider = self._get_context_provider()
-        context_text = context_provider.get_text_context() if context_provider else ""
         if custom_prompt:
             prompt_parts.append(custom_prompt)
-        if context_text:
-            prompt_parts.append(context_text)
 
         messages.append(
             {
@@ -658,11 +624,12 @@ class ChatEngine:
         normalized_session_messages = self._normalize_history_messages(
             session.get_context_messages()
         )
-
         latest_user_message = ""
+        params = {}
         history_messages = normalized_session_messages
         if history_messages and history_messages[-1].get("role") == "user":
             latest_user_message = history_messages[-1].get("content", "")
+            params = history_messages[-1].get("params", {})
             history_messages = history_messages[:-1]
 
         if self._get_memory_context:
@@ -696,11 +663,10 @@ class ChatEngine:
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
                 user_content.append({"type": "text", "text": latest_user_message})
-                messages.append({"role": "user", "content": user_content})
+                messages.append({"role": "user", "content": user_content, "params": params})
                 return messages
 
-        messages.append({"role": "user", "content": latest_user_message})
-
+        messages.append({"role": "user", "content": latest_user_message, "params": params})
         return messages
 
     def _build_user_task_prelude(self, task_state) -> str:
