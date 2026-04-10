@@ -145,11 +145,6 @@ class ToolFloatingWidget(CardWidget):
         QApplication.processEvents()
         QApplication.processEvents()
 
-    def _create_spinner(self):
-        from PyQt5.QtCore import QByteArray
-
-        return None
-
     def _append_progress(self, text: str):
         self.task_label.setText(text)
 

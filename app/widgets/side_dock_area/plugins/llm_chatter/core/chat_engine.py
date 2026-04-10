@@ -210,9 +210,6 @@ class ChatEngine:
                     break
         return selected
 
-    def _trim_message_content(self, content: str, hard_limit: int) -> str:
-        return content
-
     def _summarize_compacted_messages(self, messages: List[Dict[str, str]]) -> str:
         if not messages:
             return ""
@@ -663,10 +660,14 @@ class ChatEngine:
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
                 user_content.append({"type": "text", "text": latest_user_message})
-                messages.append({"role": "user", "content": user_content, "params": params})
+                messages.append(
+                    {"role": "user", "content": user_content, "params": params}
+                )
                 return messages
 
-        messages.append({"role": "user", "content": latest_user_message, "params": params})
+        messages.append(
+            {"role": "user", "content": latest_user_message, "params": params}
+        )
         return messages
 
     def _build_user_task_prelude(self, task_state) -> str:

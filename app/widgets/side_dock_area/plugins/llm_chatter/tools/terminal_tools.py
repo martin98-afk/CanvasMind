@@ -21,29 +21,16 @@ class TerminalTools:
 
     def execute_bash(self, command: str, timeout: int = 120) -> ToolResult:
         try:
-            system = os.name
-            if system == "nt":
-                res = subprocess.run(
-                    command,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="ignore",
-                    timeout=timeout,
-                    cwd=str(self.workdir),
-                )
-            else:
-                res = subprocess.run(
-                    command,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="ignore",
-                    timeout=timeout,
-                    cwd=str(self.workdir),
-                )
+            res = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=timeout,
+                cwd=str(self.workdir),
+            )
 
             output = res.stdout.strip() if res.stdout else ""
             error_out = res.stderr.strip() if res.stderr else ""
