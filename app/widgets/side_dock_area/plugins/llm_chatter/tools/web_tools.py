@@ -1,3 +1,4 @@
+import os
 import re
 import httpx
 import html2text
@@ -66,9 +67,8 @@ class WebTools:
         except Exception as e:
             return ToolResult(False, error=f"Fetch error: {str(e)}")
 
-    def search_web(self, query: str, num_results: int = 10) -> ToolResult:
+    def search_web_duckduckgo(self, query: str, num_results: int = 10) -> ToolResult:
         try:
-            import httpx
             url = "https://html.duckduckgo.com/html/"
             r = httpx.get(url, params={"q": query},
                           headers={"User-Agent": "Mozilla/5.0 (compatible)"},
@@ -77,23 +77,19 @@ class WebTools:
                                 r.text, re.DOTALL)
             snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</div>', r.text, re.DOTALL)
             results = []
-            for i, (link, title) in enumerate(titles[:8]):
+            for i, (link, title) in enumerate(titles[:num_results]):
                 t = re.sub(r"<[^>]+>", "", title).strip()
                 s = re.sub(r"<[^>]+>", "", snippets[i]).strip() if i < len(snippets) else ""
                 results.append(f"**{t}**\n{link}\n{s}")
             return ToolResult(True, content="\n\n".join(results) if results else "No results found")
-        except ImportError:
-            logger.error("DuckDuckGo search failed: requests library not installed")
         except Exception as e:
             logger.error(f"DuckDuckGo search failed: {e}")
 
+    def serch_web_serpapi(self, query: str, num_results: int = 10) -> ToolResult:
         try:
-            import requests
-            import os
-
             api_key = (
-                os.environ.get("SERPAPI_KEY")
-                or Settings.get_instance().SERPAPI_KEY.value
+                    os.environ.get("SERPAPI_KEY")
+                    or Settings.get_instance().SERPAPI_KEY.value
             )
 
             if api_key == "your-serpapi-key-here" or not api_key:
@@ -104,10 +100,10 @@ class WebTools:
 
             proxies = None
             http_proxy = (
-                os.environ.get("HTTP_PROXY")
-                or os.environ.get("http_proxy")
-                or os.environ.get("HTTPS_PROXY")
-                or os.environ.get("https_proxy")
+                    os.environ.get("HTTP_PROXY")
+                    or os.environ.get("http_proxy")
+                    or os.environ.get("HTTPS_PROXY")
+                    or os.environ.get("https_proxy")
             )
             if http_proxy:
                 proxies = {"http": http_proxy, "https": http_proxy}
@@ -119,8 +115,8 @@ class WebTools:
                 "api_key": api_key,
             }
 
-            response = requests.get(
-                "https://serpapi.com/search", params=params, proxies=proxies, timeout=30
+            response = httpx.get(
+                "https://serpapi.com/search", params=params, proxies=proxies, timeout=30, follow_redirects=True
             )
 
             if response.status_code == 401:
@@ -146,11 +142,12 @@ class WebTools:
 
             return ToolResult(True, content="\n\n".join(results))
 
-        except ImportError:
-            return ToolResult(False, error="requests library not installed")
-        except requests.exceptions.Timeout:
+        except httpx.Timeout:
             return ToolResult(False, error="Search timeout, please try again")
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             return ToolResult(False, error=f"Search request failed: {str(e)}")
         except Exception as e:
             return ToolResult(False, error=f"Search error: {str(e)}")
+
+    def search_web(self, query: str, num_results: int = 10) -> ToolResult:
+        return self.serch_web_serpapi(query, num_results)

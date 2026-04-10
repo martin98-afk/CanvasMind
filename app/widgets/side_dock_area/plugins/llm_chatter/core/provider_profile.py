@@ -115,6 +115,6 @@ def get_provider_profile(llm_config: Dict[str, Any]) -> Dict[str, Any]:
 def supports_vision(llm_config: Dict[str, Any]) -> bool:
     model = str(llm_config.get("模型名称", "") or "").lower()
     profile = get_provider_profile(llm_config)
-    if any(marker in model for marker in ("vision", "vl", "4o", "llava", "gemma4")):
+    if any(marker in model for marker in ("vision", "vl", "4o", "llava")):
         return True
     return bool(profile.get("supports_vision", False))

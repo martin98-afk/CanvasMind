@@ -167,46 +167,13 @@ class ChatEngine:
     ):
         self._emit("permission_approval_requested", tool_call_id, tool_name, arguments)
 
-    def approve_tool_permission(self, tool_call_id: str):
+    def approve_tool_permission(self, tool_call_id: str, auto_allow: bool = False):
         if self._current_worker:
-            self._current_worker.approve_permission(tool_call_id)
+            self._current_worker.approve_permission(tool_call_id, auto_allow)
 
     def deny_tool_permission(self, tool_call_id: str):
         if self._current_worker:
             self._current_worker.deny_permission(tool_call_id)
-
-    def _get_token_budget(self, llm_config: Dict) -> int:
-        profile = get_provider_profile(llm_config)
-        context_limit = profile.get("context_limit", 128000)
-        for key in (
-            "context_limit",
-            "context_window",
-            "max_context_tokens",
-            "涓婁笅鏂囬暱搴?",
-            "涓婁笅鏂囩獥鍙?",
-        ):
-            value = llm_config.get(key)
-            if value in (None, ""):
-                continue
-            try:
-                context_limit = int(value)
-                break
-            except Exception:
-                continue
-
-        max_tokens = llm_config.get(
-            "最大Token", profile.get("max_output_tokens", 4096)
-        )
-        try:
-            max_tokens = int(max_tokens)
-        except Exception:
-            max_tokens = int(profile.get("max_output_tokens", 4096))
-
-        model_name = str(llm_config.get("模型名称", "")).lower()
-        reserved = min(800, max_tokens)
-        if "o1" in model_name or "o3" in model_name:
-            reserved = min(max_tokens, 32000)
-        return max(500, int(context_limit) - reserved)
 
     def _smart_trim_messages(self, cards: List[Any], max_tokens: int) -> List[Any]:
         if not cards:
@@ -242,9 +209,6 @@ class ChatEngine:
                     selected.append(card)
                     break
         return selected
-
-    def _trim_message_content(self, content: str, hard_limit: int) -> str:
-        return content
 
     def _summarize_compacted_messages(self, messages: List[Dict[str, str]]) -> str:
         if not messages:
@@ -348,6 +312,8 @@ class ChatEngine:
                 normalized_msg["tool_call_id"] = tool_call_id
                 if msg.get("name"):
                     normalized_msg["name"] = msg.get("name")
+            elif role == "user" and msg.get("params"):
+                normalized_msg["params"] = msg.get("params")
             else:
                 if not content:
                     continue
@@ -463,11 +429,6 @@ class ChatEngine:
 
         if self._has_structured_tool_history(normalized):
             return self._compact_structured_history_messages(normalized, history_budget)
-
-        for item in normalized:
-            item["content"] = self._trim_message_content(
-                item["content"], MAX_HISTORY_SNIPPET_CHARS
-            )
 
         if estimate_tokens_from_messages(normalized) <= history_budget:
             return normalized, self._make_compaction_state(
@@ -640,6 +601,7 @@ class ChatEngine:
         ]
 
         custom_prompt = llm_config.get("系统提示", "").strip()
+        context_provider = self._get_context_provider()
         if custom_prompt:
             prompt_parts.append(custom_prompt)
 
@@ -654,12 +616,12 @@ class ChatEngine:
         normalized_session_messages = self._normalize_history_messages(
             session.get_context_messages()
         )
-
-        context_provider = self._get_context_provider()
         latest_user_message = ""
+        params = {}
         history_messages = normalized_session_messages
         if history_messages and history_messages[-1].get("role") == "user":
             latest_user_message = history_messages[-1].get("content", "")
+            params = history_messages[-1].get("params", {})
             history_messages = history_messages[:-1]
 
         if self._get_memory_context:
@@ -676,16 +638,9 @@ class ChatEngine:
                 messages[0]["content"] = (
                     messages[0]["content"] + "\n\n" + memory_context
                 )
-
-        # task_prelude = self._build_user_task_prelude(task_state)
-
         supports_vision = provider_supports_vision(llm_config)
-
-        context_text = context_provider.get_text_context() if context_provider else ""
-        final_user_text = context_text + latest_user_message
-
         available_history_budget = (
-            max_context_tokens - estimate_tokens(final_user_text) - 200
+            max_context_tokens - estimate_tokens(latest_user_message) - 200
         )
         history_for_api, compaction_state = self._compact_history_messages(
             history_messages, available_history_budget
@@ -699,19 +654,16 @@ class ChatEngine:
             )
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
-                user_content.append({"type": "text", "text": final_user_text})
-                messages.append({"role": "user", "content": user_content})
+                user_content.append({"type": "text", "text": latest_user_message})
+                messages.append(
+                    {"role": "user", "content": user_content, "params": params}
+                )
                 return messages
 
-        messages.append({"role": "user", "content": final_user_text})
-
-        return messages
-
-    def _build_user_task_prelude(self, task_state) -> str:
-        return (
-            f"[Task Stage: {task_state.stage}]\n"
-            f"[Verification: {task_state.verification_status}]\n\n"
+        messages.append(
+            {"role": "user", "content": latest_user_message, "params": params}
         )
+        return messages
 
     def _get_context_budget(self, llm_config: Dict) -> int:
         profile = get_provider_profile(llm_config)
@@ -733,10 +685,12 @@ class ChatEngine:
                 continue
 
         max_tokens = llm_config.get(
-            "max_tokens",
+            "最大Token",
             llm_config.get(
-                "最大Token",
-                llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096)),
+                "max_tokens",
+                llm_config.get(
+                    "max_output_tokens", profile.get("max_output_tokens", 4096)
+                ),
             ),
         )
         try:
@@ -744,11 +698,7 @@ class ChatEngine:
         except Exception:
             max_tokens = int(profile.get("max_output_tokens", 4096))
 
-        model_name = str(
-            llm_config.get(
-                "model", llm_config.get("模型名称", llm_config.get("妯″瀷鍚嶇О", ""))
-            )
-        ).lower()
+        model_name = str(llm_config.get("model", "")).lower()
         profile_max_output = int(profile.get("max_output_tokens", 4096))
 
         if max_tokens > profile_max_output * 2:
@@ -759,41 +709,6 @@ class ChatEngine:
             reserved = min(max_tokens, 32000)
 
         return max(500, context_limit - reserved)
-
-    def _get_token_budget(self, llm_config: Dict) -> int:
-        profile = get_provider_profile(llm_config)
-        context_limit = profile.get("context_limit", 128000)
-        for key in (
-            "context_limit",
-            "context_window",
-            "max_context_tokens",
-            "max_input_tokens",
-        ):
-            value = llm_config.get(key)
-            if value in (None, ""):
-                continue
-            try:
-                context_limit = int(value)
-                break
-            except Exception:
-                continue
-
-        max_tokens = llm_config.get(
-            "max_tokens",
-            llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096)),
-        )
-        try:
-            max_tokens = int(max_tokens)
-        except Exception:
-            max_tokens = int(profile.get("max_output_tokens", 4096))
-
-        model_name = str(
-            llm_config.get("model", llm_config.get("妯″瀷鍚嶇О", ""))
-        ).lower()
-        reserved = min(800, max_tokens)
-        if "o1" in model_name or "o3" in model_name:
-            reserved = min(max_tokens, 32000)
-        return max(500, int(context_limit) - reserved)
 
     def get_context_usage_snapshot(
         self, session: Optional[ChatSession] = None, llm_config: Optional[Dict] = None
@@ -919,10 +834,6 @@ class ChatEngine:
                 session.task_state.update_todos(self._tool_executor.todo_list)
             if tool_name == "task":
                 session.task_state.set_stage("summarize", "sub-agent-result")
-            if tool_name == "switch_stage" and success:
-                new_stage = (arguments or {}).get("stage", "")
-                if new_stage:
-                    session.task_state.set_stage(new_stage, "tool-requested")
             self._emit("task_state_changed", session.task_state)
 
         self._emit("tool_result_received", tool_call_id, tool_name, arguments, result)

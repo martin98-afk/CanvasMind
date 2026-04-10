@@ -156,49 +156,6 @@ class SubAgentExecutor(QThread):
 
         return response_content
 
-    def _generate_final_summary(self, messages: List[Dict]) -> str:
-        """生成最终总结"""
-        try:
-            summary_prompt = """请基于之前的探索和分析，生成一个项目分析总结报告。
-
-要求：
-1. 任务目标 - 你完成了什么
-2. 探索发现 - 发现的关键信息  
-3. 项目概况 - 结构、技术栈、主要模块
-4. 重要细节 - 文件路径、关键类/函数、依赖关系等
-
-请直接输出总结报告，不要包含思考过程。"""
-
-            summary_messages = messages + [{"role": "user", "content": summary_prompt}]
-
-            api_key = self.llm_config.get("API_KEY", "").strip()
-            base_url = self.llm_config.get("API_URL") or None
-            model = str(self.llm_config.get("模型名称", "gpt-4o"))
-
-            client = OpenAI(
-                api_key=api_key if api_key else "dummy",
-                base_url=base_url,
-                timeout=30.0,
-            )
-
-            from ..utils.retry_helper import create_api_call_with_retry
-
-            def create_summary():
-                return client.chat.completions.create(
-                    model=model,
-                    messages=summary_messages,
-                    temperature=0.3,
-                    max_tokens=4000,
-                )
-
-            resp = create_api_call_with_retry(client, create_summary)
-
-            return resp.choices[0].message.content.strip()
-
-        except Exception as e:
-            logger.warning(f"Summary generation failed: {e}")
-            return messages[-1].get("content", "") if messages else ""
-
     def _make_api_call(self, messages: List[Dict], tools: List[Dict] = None) -> tuple:
         """调用 LLM API"""
         api_key = self.llm_config.get("API_KEY", "").strip()

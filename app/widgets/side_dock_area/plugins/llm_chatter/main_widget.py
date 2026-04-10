@@ -61,7 +61,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.bottom_input_area im
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextSelector,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import ContextUsageRing
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_usage_ring import (
+    ContextUsageRing,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_preview import (
     ConversationNodePreview,
 )
@@ -709,70 +711,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         self._latest_task_state = task_state
 
-    def _suggest_agent(self, user_text: str) -> Optional[str]:
-        """基于用户输入智能推荐合适的智能体"""
-        if not user_text or not self._agent_manager:
-            return None
-
-        text_lower = user_text.lower()
-
-        agent_keywords = {
-            "web-developer": [
-                "html",
-                "css",
-                "javascript",
-                "react",
-                "vue",
-                "angular",
-                "node",
-                "前端",
-                "后端",
-                "网站",
-                "网页",
-                "http",
-                "api",
-                "npm",
-                "webpack",
-                "vite",
-                "浏览器",
-                "样式",
-                "组件",
-                "前端开发",
-                "后端开发",
-            ],
-            "python-reviewer": [
-                "python",
-                "py",
-                "django",
-                "flask",
-                "fastapi",
-                "爬虫",
-                "数据分析",
-                "机器学习",
-                "ai",
-                "模型",
-                "算法",
-                "函数",
-                "类",
-                "代码审查",
-                "优化",
-                "性能",
-                "bug",
-                "调试",
-                "错误",
-            ],
-        }
-
-        for agent_name, keywords in agent_keywords.items():
-            if not keywords:
-                continue
-            for keyword in keywords:
-                if keyword in text_lower:
-                    if self._agent_manager.get_agent(agent_name):
-                        return agent_name
-
-        return None
-
     def _create_new_session(self):
         if self._is_streaming and self._chat_engine:
             self._chat_engine.stop()
@@ -782,7 +720,9 @@ class OpenAIChatToolWindow(ToolWindow):
         try:
             self._auto_save_current_session()
         except Exception:
-            logger.exception("Failed to auto-save current session before creating a new one")
+            logger.exception(
+                "Failed to auto-save current session before creating a new one"
+            )
 
         session = self.session_manager.create_new_session()
         self._current_history_index = None
@@ -1231,7 +1171,6 @@ class OpenAIChatToolWindow(ToolWindow):
             tag_params=tag_params
             or {key: value for key, value in self.context_selector.context.items()},
         )
-        # card.viewer._install_dialog_filter()
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
@@ -1424,9 +1363,11 @@ class OpenAIChatToolWindow(ToolWindow):
             self._on_stop_clicked()
 
         user_input = card.get_plain_text()
+        context_tags = card.context_tags.copy()
         if not self._truncate_session_from_rendered_index(rendered_index):
             return
 
+        self.context_selector.restore_context_from_tags(context_tags)
         self.input_area.setPlainText(user_input)
         self.input_area.moveCursor(QTextCursor.End)
         self.input_area._on_text_changed()
@@ -1497,8 +1438,7 @@ class OpenAIChatToolWindow(ToolWindow):
         context_params = {k: v for k, v in self.context_selector.context.items()}
 
         self.input_area.clear()
-
-        self._append_user_message(user_text)
+        self._append_user_message(user_text, tag_params=context_params)
 
         assistant_card = self._append_assistant_message()
 
@@ -1740,7 +1680,6 @@ class OpenAIChatToolWindow(ToolWindow):
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
         saved_messages = list(session.messages or []) if session else []
-
         if saved_messages:
             if self._current_history_index is not None:
                 self.history_manager.update_session(
@@ -1814,6 +1753,19 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_floating_widget.show_question(question, options, multiple)
 
     def _on_question_answered(self, answer: str):
+        if self._pending_permission_tool_call_id:
+            tool_call_id = self._pending_permission_tool_call_id
+            self._pending_permission_tool_call_id = None
+            if answer == "允许":
+                self._chat_engine.approve_tool_permission(tool_call_id, False)
+            elif answer == "允许且该轮对话自动允许":
+                self._chat_engine.approve_tool_permission(tool_call_id, True)
+            else:
+                self._chat_engine.deny_tool_permission(tool_call_id)
+            if self.input_area:
+                self.input_area.setFocus()
+            return
+
         if not self._question_tool_call_id:
             return
 
@@ -1828,6 +1780,14 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_question_cancelled(self):
         """用户关闭问题窗口时，返回空答案让大模型继续"""
+        if self._pending_permission_tool_call_id:
+            tool_call_id = self._pending_permission_tool_call_id
+            self._pending_permission_tool_call_id = None
+            self._chat_engine.deny_tool_permission(tool_call_id)
+            if self.input_area:
+                self.input_area.setFocus()
+            return
+
         if not self._question_tool_call_id:
             return
 
@@ -1847,29 +1807,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self, tool_call_id: str, tool_name: str, arguments: dict
     ):
         self._pending_permission_tool_call_id = tool_call_id
+        self._pending_permission_auto_allow = False
         try:
-            from PyQt5.QtWidgets import QMessageBox
-            from PyQt5.QtCore import Qt
-
             arg_str = str(arguments)[:200] if arguments else ""
-            msg = (
-                f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}\n\n是否允许执行?"
-            )
-            reply = QMessageBox.question(
-                self,
-                "权限批准",
-                msg,
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if reply == QMessageBox.Yes:
-                self._chat_engine.approve_tool_permission(tool_call_id)
-            else:
-                self._chat_engine.deny_tool_permission(tool_call_id)
+            question_text = f"工具 `{tool_name}` 需要权限执行。\n\n参数: {arg_str}"
+            options = ["允许", "允许且该轮对话自动允许", "不允许"]
+            self._question_floating_widget.show_question(question_text, options, False)
         except Exception as e:
             logger.error(f"[Permission] Approval error: {e}")
             self._chat_engine.deny_tool_permission(tool_call_id)
-        finally:
             self._pending_permission_tool_call_id = None
 
     def _maybe_generate_topic_summary(self):

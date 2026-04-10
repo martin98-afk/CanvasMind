@@ -16,7 +16,6 @@ from app.utils.utils import serialize_for_json, get_icon
 
 
 class ContextRegistry:
-    # 注意：不再有 _instance，也不再是单例
 
     def __init__(self):
         # 每个实例都有独立的上下文和执行器字典
@@ -232,6 +231,17 @@ class ContextSelector(QWidget):
     def context(self):
         return self._context_cache
 
+    def set_selection(self, selected_keys: set):
+        self._selected_keys = selected_keys.copy()
+        self._update_tags()
+        self.selectionChanged.emit(selected_keys.copy())
+
+    def restore_context_from_tags(self, context_tags: dict):
+        self._context_cache = context_tags.copy()
+        self._selected_keys = set(context_tags.keys())
+        self._refresh_tags_ui()
+        self.selectionChanged.emit(set(context_tags.keys()))
+
     def get_multimodal_context_items(self) -> List[Dict[str, Any]]:
         """
         返回可用于多模态大模型的上下文项列表。
@@ -332,7 +342,9 @@ class ContextSelector(QWidget):
 
     def _update_tags(self):
         self._refresh_context_cache()
+        self._refresh_tags_ui()
 
+    def _refresh_tags_ui(self):
         while self.tags_layout.count():
             child = self.tags_layout.takeAt(0)
             if child.widget():

@@ -66,9 +66,9 @@ class ChatSession:
                 "content": content,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "params": params or {},
+                "_normalized": True,
             }
         )
-        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def _update_timestamp(self):

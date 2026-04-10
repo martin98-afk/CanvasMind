@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from app.interfaces.component_developer.constants import LLM_CODE_CONTEXT, COMPONENT_EXTENSION_PATH
@@ -15,8 +16,11 @@ class LLMContextProvider:
 
     def _register_contexts(self):
         """注册所有支持的大模型上下文类型"""
-        self.context_register.register("当前代码", self.extract_current_code, lambda *args, **kwargs: None)
-        self.context_register.register("当前选中区域", self.extract_selected_code, lambda *args, **kwargs: None)
+        self.context_register.register(
+            "当前代码", self.extract_current_code,
+            lambda x, *args: self.parent.load_component(uuid=os.path.basename(x).replace(".py", "")))
+        self.context_register.register("当前选中区域", self.extract_selected_code,
+            lambda x, *args: self.parent.load_component(uuid=os.path.basename(x).replace(".py", "")))
 
     def _get_component_paths(self):
         """获取当前组件的路径信息"""
@@ -57,8 +61,8 @@ class LLMContextProvider:
         path_prefix = self._build_code_prefix(full_path, component_abs_path, extension_abs_path)
         
         if not code.strip():
-            return f"{name} 全部代码", "代码为空", None
-        return f"{name} 全部代码", path_prefix + code, None
+            return f"{name} 全部代码", "代码为空", str(self.parent.current_component_file)
+        return f"{name} 全部代码", path_prefix + code, str(self.parent.current_component_file)
 
     def extract_selected_code(self) -> str:
         """返回带组件名称、路径信息、行号范围和选中代码的上下文字符串"""
@@ -80,13 +84,13 @@ class LLMContextProvider:
             end_line_num = end_block.blockNumber() + 1
 
             selected_text = cursor.selectedText().replace('\u2029', '\n')  # PyQt5 用 \u2029 表示换行
-            return f"{name} {start_line_num}~{end_line_num}行代码", path_prefix + selected_text, None
+            return f"{name} {start_line_num}~{end_line_num}行代码", path_prefix + selected_text, str(self.parent.current_component_file)
         else:
             # 未选中则返回完整代码（与 extract_current_code_for_llm 一致）
             code = self.parent.code_editor.get_code()
             if not code.strip():
-                return f"{name} 全部代码", "代码为空", None
-            return f"{name} 全部代码", path_prefix + code, None
+                return f"{name} 全部代码", "代码为空", str(self.parent.current_component_file)
+            return f"{name} 全部代码", path_prefix + code, str(self.parent.current_component_file)
 
     def send_preset_generate_llm_request(self, question):
         # 右边栏切换到大模型
