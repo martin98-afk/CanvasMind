@@ -1,24 +1,23 @@
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
+from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
-from PyQt5.QtCore import QObject, pyqtSignal, QMetaObject, Qt
 
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.git_tools import GitTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.web_tools import WebTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import (
-    TerminalTools,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_webhook_tools import (
     CanvasTools as CanvasToolsForBuiltin,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.diagnostics_tools import (
     DiagnosticsTools,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.git_tools import GitTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import (
+    TerminalTools,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.web_tools import WebTools
 
 
 class BuiltinTools(QObject):

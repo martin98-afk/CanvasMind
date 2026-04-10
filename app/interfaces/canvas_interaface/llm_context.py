@@ -76,8 +76,8 @@ class LLMContextProvider:
             "下表描述了画布中各节点的类型、原组件、配置属性、输入来源及输出去向。",
             "- 端口格式为：`端口名 (数据类型)`。",
             "",
-            "| 节点名称 | 类型 | 原组件名 | 属性 | 输入来源 | 输出去向 |",
-            "|----------|------|--------|------|----------|----------|",
+            "| 节点名称 | 类型 | 原组件名 | 组件代码 | 属性 | 输入来源 | 输出去向 |",
+            "|----------|------|--------|--------|------|----------|----------|",
         ]
 
         for node in nodes:
@@ -90,6 +90,13 @@ class LLMContextProvider:
             if hasattr(node, "FULL_PATH"):
                 node_type = node.FULL_PATH.split("/")[0]
                 component_name = str(node.FULL_PATH.split("/")[1])
+            # 获取节点代码
+            if hasattr(node, "comp_cls"):
+                code = node.comp_cls._source_code
+            elif hasattr(node, "format_code"):
+                code = node.format_code()
+            else:
+                code = "无"
             # 属性：过滤 + 格式化
             custom_props = {
                 k: v
@@ -137,7 +144,7 @@ class LLMContextProvider:
                     output_lines.append(f"{port.name()} ({port.model.type_}): /")
             outputs_str = "<br>".join(output_lines) if output_lines else "/"
 
-            row = f"| {name} | {node_type} | {component_name} | {props_str} | {inputs_str} | {outputs_str} |"
+            row = f"| {name} | {node_type} | {component_name} | {code} | {props_str} | {inputs_str} | {outputs_str} |"
             rows.append(row)
 
         return "\n".join(rows)

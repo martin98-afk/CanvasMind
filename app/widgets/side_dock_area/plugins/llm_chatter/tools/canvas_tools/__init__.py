@@ -1,9 +1,7 @@
 """
 Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 """
-import time
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 
