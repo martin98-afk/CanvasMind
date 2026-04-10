@@ -480,22 +480,13 @@ def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         nonlocal current_assistant
         if not current_assistant:
             return
-        if current_assistant.get("_normalized"):
-            normalized = current_assistant
-        else:
-            normalized = normalize_message(current_assistant)
+        normalized = normalize_message(current_assistant)
         if normalized:
-            normalized["_normalized"] = True
             consolidated.append(normalized)
         current_assistant = None
 
     for raw_msg in messages or []:
-        if raw_msg.get("_normalized"):
-            msg = raw_msg
-        else:
-            msg = normalize_message(raw_msg)
-            if msg:
-                msg["_normalized"] = True
+        msg = normalize_message(raw_msg)
         if not msg:
             continue
 
@@ -512,7 +503,6 @@ def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     "content": [],
                     "tool_calls": [],
                     "tool_results": [],
-                    "_normalized": True,
                 }
                 if msg.get("timestamp"):
                     current_assistant["timestamp"] = msg.get("timestamp")
@@ -545,7 +535,6 @@ def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     "content": [],
                     "tool_calls": [],
                     "tool_results": [],
-                    "_normalized": True,
                 }
             tool_block = make_tool_result_block(
                 tool_name=msg.get("name", "tool"),
