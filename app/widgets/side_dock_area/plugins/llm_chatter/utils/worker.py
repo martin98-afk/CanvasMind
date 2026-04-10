@@ -713,29 +713,24 @@ class OpenAIChatWorker(QThread):
     def _build_compaction_messages(
         self, old_messages: List[Dict], recent_messages: List[Dict]
     ) -> List[Dict]:
-        transcript_lines = []
-        for msg in old_messages:
-            role = msg.get("role", "unknown")
-            content = msg.get("content", "")
+        def extract_text(content: Any, max_len: int) -> str:
             if isinstance(content, list):
                 text_parts = []
                 for item in content:
                     if isinstance(item, dict) and item.get("type") == "text":
                         text_parts.append(item.get("text", ""))
                 content = "\n".join(text_parts)
-            transcript_lines.append(f"[{role}] {str(content)[:1800]}")
+            return str(content)[:max_len]
+
+        transcript_lines = []
+        for msg in old_messages:
+            role = msg.get("role", "unknown")
+            transcript_lines.append(f"[{role}] {extract_text(msg.get('content', ''), 1800)}")
 
         recent_hint = []
         for msg in recent_messages[-4:]:
             role = msg.get("role", "unknown")
-            content = msg.get("content", "")
-            if isinstance(content, list):
-                text_parts = []
-                for item in content:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text_parts.append(item.get("text", ""))
-                content = "\n".join(text_parts)
-            recent_hint.append(f"[{role}] {str(content)[:400]}")
+            recent_hint.append(f"[{role}] {extract_text(msg.get('content', ''), 400)}")
 
         prompt = (
             "请压缩较早的对话上下文，生成一个后续可继续执行编码任务的摘要。\n\n"

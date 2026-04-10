@@ -1359,9 +1359,11 @@ class OpenAIChatToolWindow(ToolWindow):
             self._on_stop_clicked()
 
         user_input = card.get_plain_text()
+        context_keys = set(card.context_tags.keys())
         if not self._truncate_session_from_rendered_index(rendered_index):
             return
 
+        self.context_selector.set_selection(context_keys)
         self.input_area.setPlainText(user_input)
         self.input_area.moveCursor(QTextCursor.End)
         self.input_area._on_text_changed()

@@ -231,6 +231,11 @@ class ContextSelector(QWidget):
     def context(self):
         return self._context_cache
 
+    def set_selection(self, selected_keys: set):
+        self._selected_keys = selected_keys.copy()
+        self._update_tags()
+        self.selectionChanged.emit(selected_keys.copy())
+
     def get_multimodal_context_items(self) -> List[Dict[str, Any]]:
         """
         返回可用于多模态大模型的上下文项列表。
