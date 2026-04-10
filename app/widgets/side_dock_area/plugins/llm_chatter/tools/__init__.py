@@ -188,9 +188,6 @@ class BuiltinTools(QObject):
     def stage_files(self, files: List[str]):
         return self._task_tools.stage_files(files)
 
-    # def switch_stage(self, stage: str):
-    #     return self._task_tools.switch_stage(stage)
-
     def ask_question(
         self, question: str, options: List[str] = None, multiple: bool = False
     ):
@@ -391,24 +388,6 @@ class BuiltinTools(QObject):
                 ),
             },
         )
-
-    def _resolve_path(self, path: str):
-        if not path:
-            return self.workdir
-        import os
-
-        try:
-            expanded = os.path.expandvars(path)
-            if expanded != path:
-                path = expanded
-            p = Path(path)
-            if p.is_absolute():
-                return p.resolve()
-            else:
-                return (self.workdir / p).resolve()
-        except (ValueError, OSError, RuntimeError) as e:
-            logger.warning(f"[BuiltinTools] Failed to resolve path {path}: {e}")
-            return self.workdir
 
 
 def create_builtin_tools(homepage=None, workdir: str = None) -> BuiltinTools:

@@ -11,14 +11,6 @@ class TerminalTools:
     def __init__(self, workdir: Path):
         self.workdir = workdir
 
-    def _resolve_path(self, path: Optional[str]) -> Path:
-        if not path:
-            return self.workdir
-        p = Path(path)
-        if p.is_absolute():
-            return p.resolve()
-        return (self.workdir / p).resolve()
-
     def execute_bash(self, command: str, timeout: int = 120) -> ToolResult:
         try:
             res = subprocess.run(

@@ -16,7 +16,6 @@ from app.utils.utils import serialize_for_json, get_icon
 
 
 class ContextRegistry:
-    # 注意：不再有 _instance，也不再是单例
 
     def __init__(self):
         # 每个实例都有独立的上下文和执行器字典

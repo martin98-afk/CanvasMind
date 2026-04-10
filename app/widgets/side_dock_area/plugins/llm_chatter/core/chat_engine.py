@@ -670,12 +670,6 @@ class ChatEngine:
         )
         return messages
 
-    def _build_user_task_prelude(self, task_state) -> str:
-        return (
-            f"[Task Stage: {task_state.stage}]\n"
-            f"[Verification: {task_state.verification_status}]\n\n"
-        )
-
     def _get_context_budget(self, llm_config: Dict) -> int:
         profile = get_provider_profile(llm_config)
         context_limit = int(profile.get("context_limit", 128000))
@@ -697,10 +691,7 @@ class ChatEngine:
 
         max_tokens = llm_config.get(
             "max_tokens",
-            llm_config.get(
-                "最大Token",
-                llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096)),
-            ),
+            llm_config.get("max_output_tokens", profile.get("max_output_tokens", 4096)),
         )
         try:
             max_tokens = int(max_tokens)
@@ -708,9 +699,7 @@ class ChatEngine:
             max_tokens = int(profile.get("max_output_tokens", 4096))
 
         model_name = str(
-            llm_config.get(
-                "model", llm_config.get("模型名称", llm_config.get("妯″瀷鍚嶇О", ""))
-            )
+            llm_config.get("model", "")
         ).lower()
         profile_max_output = int(profile.get("max_output_tokens", 4096))
 
@@ -722,41 +711,6 @@ class ChatEngine:
             reserved = min(max_tokens, 32000)
 
         return max(500, context_limit - reserved)
-
-    def _get_token_budget(self, llm_config: Dict) -> int:
-        profile = get_provider_profile(llm_config)
-        context_limit = profile.get("context_limit", 128000)
-        for key in (
-            "context_limit",
-            "context_window",
-            "max_context_tokens",
-            "max_input_tokens",
-        ):
-            value = llm_config.get(key)
-            if value in (None, ""):
-                continue
-            try:
-                context_limit = int(value)
-                break
-            except Exception:
-                continue
-
-        max_tokens = llm_config.get(
-            "max_tokens",
-            llm_config.get("鏈€澶oken", profile.get("max_output_tokens", 4096)),
-        )
-        try:
-            max_tokens = int(max_tokens)
-        except Exception:
-            max_tokens = int(profile.get("max_output_tokens", 4096))
-
-        model_name = str(
-            llm_config.get("model", llm_config.get("妯″瀷鍚嶇О", ""))
-        ).lower()
-        reserved = min(800, max_tokens)
-        if "o1" in model_name or "o3" in model_name:
-            reserved = min(max_tokens, 32000)
-        return max(500, int(context_limit) - reserved)
 
     def get_context_usage_snapshot(
         self, session: Optional[ChatSession] = None, llm_config: Optional[Dict] = None
@@ -882,10 +836,6 @@ class ChatEngine:
                 session.task_state.update_todos(self._tool_executor.todo_list)
             if tool_name == "task":
                 session.task_state.set_stage("summarize", "sub-agent-result")
-            if tool_name == "switch_stage" and success:
-                new_stage = (arguments or {}).get("stage", "")
-                if new_stage:
-                    session.task_state.set_stage(new_stage, "tool-requested")
             self._emit("task_state_changed", session.task_state)
 
         self._emit("tool_result_received", tool_call_id, tool_name, arguments, result)

@@ -178,9 +178,6 @@ class ToolExecutor:
             "stage_files": lambda: self._builtin_tools.stage_files(
                 args.get("files", [])
             ),
-            "switch_stage": lambda: self._builtin_tools.switch_stage(
-                args.get("stage", "")
-            ),
             "run_verify": lambda: self._builtin_tools.run_verify(
                 args.get("command", ""), args.get("timeout", 120)
             ),
