@@ -690,8 +690,8 @@ class ChatEngine:
                 continue
 
         max_tokens = llm_config.get(
-            "max_tokens",
-            llm_config.get("max_output_tokens", profile.get("max_output_tokens", 4096)),
+            "最大Token",
+            llm_config.get("max_tokens", llm_config.get("max_output_tokens", profile.get("max_output_tokens", 4096))),
         )
         try:
             max_tokens = int(max_tokens)

@@ -3,6 +3,7 @@ import json
 import re
 import time
 import traceback
+from threading import Event
 from typing import Any, Dict, List
 from loguru import logger
 
@@ -283,6 +284,7 @@ class OpenAIChatWorker(QThread):
         self._is_cancelled = False
         self._question_pending = None
         self._pending_answer = None
+        self._answer_event = Event()
         self._permission_pending = None
         self._permission_approved = False
         self._previewed_tool_call_ids = set()
@@ -302,6 +304,7 @@ class OpenAIChatWorker(QThread):
 
     def cancel(self):
         self._is_cancelled = True
+        self._answer_event.set()
         if self._question_pending:
             self._question_pending = None
         if self._permission_pending:
@@ -309,6 +312,7 @@ class OpenAIChatWorker(QThread):
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
+        self._answer_event.set()
 
     def approve_permission(self, tool_call_id: str):
         if (
@@ -357,9 +361,10 @@ class OpenAIChatWorker(QThread):
                 tool_results = self._execute_all_tools()
 
                 if tool_results is None:
+                    self._answer_event.clear()
                     while self._pending_answer is None and not self._is_cancelled:
-                        QApplication.processEvents()
-                        time.sleep(0.1)
+                        if self._answer_event.wait(timeout=1.0):
+                            break
 
                     if self._is_cancelled:
                         return
@@ -376,6 +381,7 @@ class OpenAIChatWorker(QThread):
                     self.finished_with_messages.emit(current_messages)
                     self._question_pending = None
                     self._pending_answer = None
+                    self._answer_event.clear()
                     continue
 
                 current_messages.extend(
@@ -550,7 +556,7 @@ class OpenAIChatWorker(QThread):
                 api_msg["content"] = content_to_text(content)
                 if msg.get("name"):
                     api_msg["name"] = msg.get("name")
-            elif role == "user" and msg["params"]:
+            elif role == "user" and msg.get("params"):
                 context_text = "\n\n".join([msg["params"][param][1] for param in msg["params"]])
                 api_msg["content"] = f'{context_text}\n\n{content}'
             else:

@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
 
+from PyQt5.QtCore import QTimer
+
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
@@ -29,6 +31,8 @@ class HistoryManager:
         self._topic_summaries: Dict[str, str] = {}
         self._daily_limit = 5
         self._history_limit = 100
+        self._save_timer: Optional[QTimer] = None
+        self._save_delay_ms = 2000
 
     def _load_history(self) -> List[Dict]:
         if self.history_file.exists():
@@ -206,5 +210,13 @@ class HistoryManager:
                 session_id=existing.get("session_id"),
             )
             self._history_sessions[index] = updated
-            self._save_to_disk()
             self._save_latest_and_daily(updated)
+            self._schedule_save()
+
+    def _schedule_save(self):
+        if self._save_timer is None:
+            self._save_timer = QTimer.singleShot(self._save_delay_ms, self._do_save)
+
+    def _do_save(self):
+        self._save_to_disk()
+        self._save_timer = None
