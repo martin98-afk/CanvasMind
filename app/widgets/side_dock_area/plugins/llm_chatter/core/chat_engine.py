@@ -430,11 +430,6 @@ class ChatEngine:
         if self._has_structured_tool_history(normalized):
             return self._compact_structured_history_messages(normalized, history_budget)
 
-        for item in normalized:
-            item["content"] = self._trim_message_content(
-                item["content"], MAX_HISTORY_SNIPPET_CHARS
-            )
-
         if estimate_tokens_from_messages(normalized) <= history_budget:
             return normalized, self._make_compaction_state(
                 original_count=len(normalized),
