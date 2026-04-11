@@ -846,16 +846,16 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "list_canvases",
-                "description": "列出所有在线可以执行的画布及其 webhook 触发器信息",
+                "name": "list_webhooks",
+                "description": "列出所有在线可以执行的画布的 webhook 触发器信息",
                 "parameters": {"type": "object", "properties": {}},
             },
         },
         {
             "type": "function",
             "function": {
-                "name": "trigger_canvas",
-                "description": "通过 webhook 触发画布运行并等待结果返回",
+                "name": "trigger_webhook",
+                "description": "通过 webhook 触发画布运行并等待结果返回，执行前许通过 list_webhook 获取已上线 webhook 列表",
                 "parameters": {
                     "type": "object",
                     "properties": {

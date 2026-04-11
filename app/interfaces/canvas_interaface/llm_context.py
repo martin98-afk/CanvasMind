@@ -7,13 +7,10 @@ from app.interfaces.canvas_interaface.constants import (
     LLM_GRAPH_CONTEXT_NORMS,
     NODE_CREATE_CONTEXT_NORMS,
 )
+from app.interfaces.canvas_interaface.llm_tools import get_canvas_tools_schema, CanvasTools
 from app.interfaces.canvas_interaface.widgets.ui_setup import CanvasUISetUp
 from app.interfaces.canvas_interaface.utils.canvas_io import CanvasIO
 from app.scan_components import ComponentScanner
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_tools import (
-    CanvasTools,
-    get_canvas_tools_schema,
-)
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.context_selector import (
     ContextRegistry,
 )
