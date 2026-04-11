@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import filecmp
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Optional, Callable, Set
 import os
 
 from loguru import logger
@@ -43,10 +43,16 @@ class BaseExecutor(ABC):
         shutil.copy2(src, dst)
         return True
 
-    def sync_directory_if_needed(self, src_dir: Path, dst_dir: Path) -> bool:
+    def sync_directory_if_needed(
+        self, src_dir: Path, dst_dir: Path, protected: set = None
+    ) -> bool:
         """同步目录内容，未变化文件跳过，已删除源文件会从目标移除"""
         src_dir = Path(src_dir)
         dst_dir = Path(dst_dir)
+        if protected is None:
+            protected = set()
+        else:
+            protected = set(protected)
         if not src_dir.exists():
             return False
 
@@ -57,6 +63,8 @@ class BaseExecutor(ABC):
         dst_entries = {entry.name: entry for entry in dst_dir.iterdir()}
 
         for name, dst_entry in dst_entries.items():
+            if name in protected:
+                continue
             src_entry = src_entries.get(name)
             if src_entry is not None:
                 continue
@@ -98,7 +106,7 @@ class BaseExecutor(ABC):
             return False
 
         workspace_dir = ctx.cache_path / "workspace" / ctx.node.persistent_id
-        return self.sync_directory_if_needed(extension_dir, workspace_dir)
+        return self.sync_directory_if_needed(extension_dir, workspace_dir, {"upload"})
 
     def cleanup(self, ctx) -> None:
         """清理执行环境 - 可被覆盖"""
