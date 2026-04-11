@@ -2,6 +2,7 @@
 from collections import deque
 from dataclasses import dataclass
 from typing import Any, Optional
+import uuid
 
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from loguru import logger
@@ -80,30 +81,32 @@ class CanvasRunner(QObject):
     def run_workflow(self):
         nodes = self.parent.property_panel.get_current_execution_order()
         if nodes:
-            self._enqueue(ExecutionTask('selected', nodes, sort=False))
+            return self._enqueue(ExecutionTask('selected', nodes, sort=False))
         else:
             selected_nodes = self.parent.graph.selected_nodes()
-            self._enqueue(ExecutionTask('full', selected_nodes, sort=True))
+            return self._enqueue(ExecutionTask('full', selected_nodes, sort=True))
 
     def run_full(self, nodes=None, triggered_data=None, task_id=None, sort=True):
-        self._enqueue(ExecutionTask('full', nodes, sort=sort, triggered_data=triggered_data, task_id=task_id))
+        return self._enqueue(ExecutionTask('full', nodes, sort=sort, triggered_data=triggered_data, task_id=task_id))
 
     def run_subgraph(self, nodes=None, triggered_data=None, task_id=None):
-        self._enqueue(ExecutionTask('subgraph', nodes, triggered_data=triggered_data, task_id=task_id))
+        return self._enqueue(ExecutionTask('subgraph', nodes, triggered_data=triggered_data, task_id=task_id))
 
     def run_to(self, target_node, triggered_data=None, task_id=None):
-        self._enqueue(ExecutionTask('to', target_node, triggered_data=triggered_data, task_id=task_id))
+        return self._enqueue(ExecutionTask('to', target_node, triggered_data=triggered_data, task_id=task_id))
 
     def run_from(self, start_node, triggered_data=None, task_id=None):
-        self._enqueue(ExecutionTask('from', start_node, triggered_data=triggered_data, task_id=task_id))
+        return self._enqueue(ExecutionTask('from', start_node, triggered_data=triggered_data, task_id=task_id))
 
     def run_node(self, node):
-        self._enqueue(ExecutionTask('node', node))
+        return self._enqueue(ExecutionTask('node', node))
 
     # --- 队列核心逻辑 ---
 
     def _enqueue(self, task: ExecutionTask):
         """任务入队并尝试启动"""
+        if not task.task_id:
+            task.task_id = str(uuid.uuid4())
         self._task_queue.append(task)
         # 1. 创建执行记录
         self.parent.execution_record.create_record(
@@ -117,6 +120,8 @@ class CanvasRunner(QObject):
 
         if not self._is_running:
             self._process_next_task()
+
+        return task.task_id
 
     def _process_next_task(self):
         """处理队列中的下一个任务"""
