@@ -1,6 +1,7 @@
 """
 Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 """
+
 from typing import List, Dict, Optional, Any, cast
 import time
 
@@ -56,7 +57,9 @@ class CanvasTools:
             "input_data": getattr(record, "input_data", None),
         }
 
-    def _serialize_port_links(self, node, port_getter_name: str, direction: str) -> List[Dict[str, Any]]:
+    def _serialize_port_links(
+        self, node, port_getter_name: str, direction: str
+    ) -> List[Dict[str, Any]]:
         result = []
         port_getter = getattr(node, port_getter_name, None)
         if not callable(port_getter):
@@ -104,7 +107,11 @@ class CanvasTools:
         }
 
         if include_logs:
-            logs = self._get_current_run_logs(node) if log_type == "current" else node.get_logs()
+            logs = (
+                self._get_current_run_logs(node)
+                if log_type == "current"
+                else node.get_logs()
+            )
             snapshot["logs"] = self._tail_text(logs, log_tail_chars)
             snapshot["log_type"] = log_type
 
@@ -150,16 +157,48 @@ class CanvasTools:
 
         if mode == "node":
             task_id = self.parent.run_node(node)
-            return ToolResult(True, content={"message": f"已触发：运行节点 [{node_name}]", "task_id": task_id, "mode": mode, "node_name": node_name})
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已触发：运行节点 [{node_name}]",
+                    "task_id": task_id,
+                    "mode": mode,
+                    "node_name": node_name,
+                },
+            )
         elif mode == "to":
             task_id = self.parent.run_to(node)
-            return ToolResult(True, content={"message": f"已触发：运行到节点 [{node_name}]", "task_id": task_id, "mode": mode, "node_name": node_name})
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已触发：运行到节点 [{node_name}]",
+                    "task_id": task_id,
+                    "mode": mode,
+                    "node_name": node_name,
+                },
+            )
         elif mode == "from":
             task_id = self.parent.run_from(node)
-            return ToolResult(True, content={"message": f"已触发：从节点 [{node_name}] 开始运行", "task_id": task_id, "mode": mode, "node_name": node_name})
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已触发：从节点 [{node_name}] 开始运行",
+                    "task_id": task_id,
+                    "mode": mode,
+                    "node_name": node_name,
+                },
+            )
         elif mode == "subgraph":
             task_id = self.parent.run_subgraph(node)
-            return ToolResult(True, content={"message": f"已触发：运行节点 [{node_name}] 所在子图", "task_id": task_id, "mode": mode, "node_name": node_name})
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已触发：运行节点 [{node_name}] 所在子图",
+                    "task_id": task_id,
+                    "mode": mode,
+                    "node_name": node_name,
+                },
+            )
 
         return ToolResult(False, error="未知的运行模式")
 
@@ -209,7 +248,7 @@ class CanvasTools:
 
         return log_text_edit.toPlainText() or f"run_id={run_id} 日志为空"
 
-    def canvas_modify_and_run(self, node_name: str, code: str) -> ToolResult:
+    def canvas_edit_run(self, node_name: str, code: str) -> ToolResult:
         """
         修改节点代码并运行
 
@@ -236,7 +275,7 @@ class CanvasTools:
         except Exception as e:
             return ToolResult(False, error=f"修改代码并运行失败: {str(e)}")
 
-    def canvas_list_nodes(self) -> ToolResult:
+    def canvas_nodes(self) -> ToolResult:
         """列出画布所有节点"""
         nodes = self.graph.all_nodes()
         if not nodes:
@@ -252,7 +291,7 @@ class CanvasTools:
 
         return ToolResult(True, content="\n".join(lines))
 
-    def canvas_set_node_property(
+    def canvas_set_prop(
         self, node_name: str, properties: Dict, target: Optional[str] = None
     ) -> ToolResult:
         """
@@ -277,7 +316,7 @@ class CanvasTools:
         except Exception as e:
             return ToolResult(False, error=f"设置节点属性失败: {str(e)}")
 
-    def canvas_get_node_property(
+    def canvas_get_prop(
         self, node_name: str, property_names: Optional[List[str]] = None
     ) -> ToolResult:
         """
@@ -307,13 +346,11 @@ class CanvasTools:
             for prop_name in property_names:
                 value = node.get_property(prop_name)
                 result[prop_name] = value
-            return ToolResult(
-                True, content=f"节点 [{node_name}] 属性:\n{result}"
-            )
+            return ToolResult(True, content=f"节点 [{node_name}] 属性:\n{result}")
         except Exception as e:
             return ToolResult(False, error=f"查询节点属性失败: {str(e)}")
 
-    def canvas_get_execution_state(
+    def canvas_exec_state(
         self,
         task_id: Optional[str] = None,
         include_nodes: bool = True,
@@ -335,15 +372,31 @@ class CanvasTools:
                 records = [record]
             else:
                 all_records = manager.get_all_records()
-                records = sorted(all_records, key=lambda item: getattr(item, "start_time", 0), reverse=True)[: max(1, recent_limit)]
+                records = sorted(
+                    all_records,
+                    key=lambda item: getattr(item, "start_time", 0),
+                    reverse=True,
+                )[: max(1, recent_limit)]
 
             content = {
                 "canvas_name": getattr(self.parent, "workflow_name", None),
                 "runner": {
-                    "is_running": bool(getattr(runner, "_is_running", False)) if runner else False,
-                    "queue_size": len(getattr(runner, "_task_queue", [])) if runner else 0,
-                    "current_task_id": getattr(getattr(runner, "_current_task", None), "task_id", None) if runner else None,
-                    "current_mode": getattr(getattr(runner, "_current_task", None), "mode", None) if runner else None,
+                    "is_running": bool(getattr(runner, "_is_running", False))
+                    if runner
+                    else False,
+                    "queue_size": len(getattr(runner, "_task_queue", []))
+                    if runner
+                    else 0,
+                    "current_task_id": getattr(
+                        getattr(runner, "_current_task", None), "task_id", None
+                    )
+                    if runner
+                    else None,
+                    "current_mode": getattr(
+                        getattr(runner, "_current_task", None), "mode", None
+                    )
+                    if runner
+                    else None,
                     "timestamp": time.time(),
                 },
                 "records": [self._serialize_record(record) for record in records],
@@ -367,31 +420,40 @@ class CanvasTools:
         except Exception as e:
             return ToolResult(False, error=f"获取执行状态失败: {str(e)}")
 
-    def canvas_get_node_debug_snapshot(
+    def canvas_snapshot(
         self,
-        node_name: str,
+        node_names: Optional[List[str]] = None,
         include_logs: bool = True,
         log_type: str = "historical",
         log_tail_chars: int = 4000,
         include_code: bool = False,
     ) -> ToolResult:
-        node = self._find_node_by_name(node_name)
-        if not node:
-            return ToolResult(False, error=f"未找到节点: {node_name}")
+        if node_names is None:
+            nodes = list(self.graph.all_nodes())
+        else:
+            nodes = []
+            for name in node_names:
+                node = self._find_node_by_name(name)
+                if not node:
+                    return ToolResult(False, error=f"未找到节点: {name}")
+                nodes.append(node)
 
         try:
-            return ToolResult(
-                True,
-                content=self._collect_node_snapshot(
+            snapshots = [
+                self._collect_node_snapshot(
                     node,
                     include_logs=include_logs,
                     log_type=log_type,
                     log_tail_chars=log_tail_chars,
                     include_code=include_code,
-                ),
+                )
+                for node in nodes
+            ]
+            return ToolResult(
+                True, content=snapshots if len(snapshots) > 1 else snapshots[0]
             )
         except Exception as e:
-            return ToolResult(False, error=f"获取节点调试快照失败: {str(e)}")
+            return ToolResult(False, error=f"获取节点快照失败: {str(e)}")
 
 
 def get_canvas_tools_schema() -> List[Dict]:
@@ -441,7 +503,7 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_modify_and_run",
+                "name": "canvas_edit_run",
                 "description": "修改节点代码并立即运行",
                 "parameters": {
                     "type": "object",
@@ -456,7 +518,7 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_list_nodes",
+                "name": "canvas_nodes",
                 "description": "列出画布上的所有节点",
                 "parameters": {"type": "object", "properties": {}},
             },
@@ -464,16 +526,31 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_get_execution_state",
+                "name": "canvas_exec_state",
                 "description": "获取画布最近执行任务的状态、错误和问题节点，适合自动调试闭环中的验证阶段",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "task_id": {"type": "string", "description": "可选，指定任务 ID"},
-                        "include_nodes": {"type": "boolean", "description": "是否附带 failed/running/pending 节点快照"},
-                        "include_logs": {"type": "boolean", "description": "是否在问题节点中附带日志摘要"},
-                        "log_tail_chars": {"type": "integer", "description": "日志尾部保留字符数"},
-                        "recent_limit": {"type": "integer", "description": "未指定 task_id 时返回最近几条记录"},
+                        "task_id": {
+                            "type": "string",
+                            "description": "可选，指定任务 ID",
+                        },
+                        "include_nodes": {
+                            "type": "boolean",
+                            "description": "是否附带 failed/running/pending 节点快照",
+                        },
+                        "include_logs": {
+                            "type": "boolean",
+                            "description": "是否在问题节点中附带日志摘要",
+                        },
+                        "log_tail_chars": {
+                            "type": "integer",
+                            "description": "日志尾部保留字符数",
+                        },
+                        "recent_limit": {
+                            "type": "integer",
+                            "description": "未指定 task_id 时返回最近几条记录",
+                        },
                     },
                 },
             },
@@ -481,29 +558,41 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_get_node_debug_snapshot",
-                "description": "获取节点调试快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码",
+                "name": "canvas_snapshot",
+                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码。支持单节点、多节点或空（所有节点）查询",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "node_name": {"type": "string", "description": "节点名称"},
-                        "include_logs": {"type": "boolean", "description": "是否返回日志"},
+                        "node_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "节点名称列表，为空则查询所有节点",
+                        },
+                        "include_logs": {
+                            "type": "boolean",
+                            "description": "是否返回日志",
+                        },
                         "log_type": {
                             "type": "string",
                             "description": "日志类型: historical(历史日志), current(本轮运行日志)",
                             "enum": ["historical", "current"],
                         },
-                        "log_tail_chars": {"type": "integer", "description": "日志尾部保留字符数"},
-                        "include_code": {"type": "boolean", "description": "是否附带节点当前执行代码"},
+                        "log_tail_chars": {
+                            "type": "integer",
+                            "description": "日志尾部保留字符数",
+                        },
+                        "include_code": {
+                            "type": "boolean",
+                            "description": "是否附带节点当前执行代码",
+                        },
                     },
-                    "required": ["node_name"],
                 },
             },
         },
         {
             "type": "function",
             "function": {
-                "name": "canvas_set_node_property",
+                "name": "canvas_set_prop",
                 "description": "设置节点的属性参数，如模型、温度、最大令牌等",
                 "parameters": {
                     "type": "object",
@@ -511,11 +600,11 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "node_name": {"type": "string", "description": "节点名称"},
                         "properties": {
                             "type": "object",
-                            "description": "属性字典，如 {\"temperature\": 0.7, \"max_tokens\": 1000}",
+                            "description": '属性字典，如 {"temperature": 0.7, "max_tokens": 1000}',
                         },
                         "target": {
                             "type": "string",
-                            "description": "可选，特殊目标 - \"current_node\"表示当前节点",
+                            "description": '可选，特殊目标 - "current_node"表示当前节点',
                         },
                     },
                     "required": ["node_name", "properties"],
@@ -525,7 +614,7 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_get_node_property",
+                "name": "canvas_get_prop",
                 "description": "查询节点当前的属性参数值",
                 "parameters": {
                     "type": "object",
@@ -534,7 +623,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "property_names": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "可选，属性名列表，如 [\"temperature\", \"model\"]",
+                            "description": '可选，属性名列表，如 ["temperature", "model"]',
                         },
                     },
                     "required": ["node_name"],

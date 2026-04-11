@@ -257,30 +257,30 @@ class ToolExecutor:
                 node_name=args.get("node_name", ""),
                 log_type=args.get("log_type", "historical"),
             ),
-            "canvas_modify_and_run": lambda: self._canvas_tools_executor.canvas_modify_and_run(
+            "canvas_edit_run": lambda: self._canvas_tools_executor.canvas_edit_run(
                 node_name=args.get("node_name", ""), code=args.get("code", "")
             ),
-            "canvas_list_nodes": lambda: self._canvas_tools_executor.canvas_list_nodes(),
-            "canvas_get_execution_state": lambda: self._canvas_tools_executor.canvas_get_execution_state(
+            "canvas_nodes": lambda: self._canvas_tools_executor.canvas_nodes(),
+            "canvas_exec_state": lambda: self._canvas_tools_executor.canvas_exec_state(
                 task_id=args.get("task_id"),
                 include_nodes=args.get("include_nodes", True),
                 include_logs=args.get("include_logs", False),
                 log_tail_chars=args.get("log_tail_chars", 2000),
                 recent_limit=args.get("recent_limit", 5),
             ),
-            "canvas_get_node_debug_snapshot": lambda: self._canvas_tools_executor.canvas_get_node_debug_snapshot(
-                node_name=args.get("node_name", ""),
+            "canvas_snapshot": lambda: self._canvas_tools_executor.canvas_snapshot(
+                node_names=args.get("node_names"),
                 include_logs=args.get("include_logs", True),
                 log_type=args.get("log_type", "historical"),
                 log_tail_chars=args.get("log_tail_chars", 4000),
                 include_code=args.get("include_code", False),
             ),
-            "canvas_set_node_property": lambda: self._canvas_tools_executor.canvas_set_node_property(
+            "canvas_set_prop": lambda: self._canvas_tools_executor.canvas_set_prop(
                 node_name=args.get("node_name", ""),
                 properties=args.get("properties", {}),
                 target=args.get("target"),
             ),
-            "canvas_get_node_property": lambda: self._canvas_tools_executor.canvas_get_node_property(
+            "canvas_get_prop": lambda: self._canvas_tools_executor.canvas_get_prop(
                 node_name=args.get("node_name", ""),
                 property_names=args.get("property_names"),
             ),
