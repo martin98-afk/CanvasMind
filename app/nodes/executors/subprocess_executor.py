@@ -20,16 +20,11 @@ class SubprocessExecutor(BaseExecutor):
 
     def prepare_environment(self, ctx) -> None:
         super().prepare_environment(ctx)
-        shutil.copyfile(
-            resource_path("app/components/base.py"), str(ctx.run_dir.parent / "base.py")
+        self.sync_file_if_needed(
+            Path(resource_path("app/components/base.py")),
+            ctx.run_dir.parent / "base.py",
         )
-
-        extension_dir = Path(resource_path("app/component_extensions")) / getattr(
-            ctx.node, "uuid", ""
-        )
-        if extension_dir.exists():
-            workspace_dir = ctx.cache_path / "workspace" / ctx.node.persistent_id
-            shutil.copytree(extension_dir, workspace_dir, dirs_exist_ok=True)
+        self.sync_node_extensions(ctx)
 
     def execute(self, ctx) -> dict:
         if ctx.log_file_path and os.path.exists(ctx.log_file_path):

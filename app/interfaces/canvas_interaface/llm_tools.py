@@ -1,7 +1,7 @@
 """
 Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 """
-from typing import List, Dict
+from typing import List, Dict, Optional, cast
 
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 
@@ -18,7 +18,7 @@ class CanvasTools:
                 return node
         return None
 
-    def canvas_run_node(self, mode: str, node_name: str = None) -> ToolResult:
+    def canvas_run_node(self, mode: str, node_name: Optional[str] = None) -> ToolResult:
         """
         运行画布节点
 
@@ -37,7 +37,7 @@ class CanvasTools:
             self.parent.run_workflow()
             return ToolResult(True, content="已触发：运行整个画布")
 
-        node = self._find_node_by_name(node_name)
+        node = self._find_node_by_name(cast(str, node_name))
         if not node:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
@@ -138,6 +138,67 @@ class CanvasTools:
 
         return ToolResult(True, content="\n".join(lines))
 
+    def canvas_set_node_property(
+        self, node_name: str, properties: Dict, target: Optional[str] = None
+    ) -> ToolResult:
+        """
+        设置节点属性参数
+
+        Args:
+            node_name: 节点名称
+            properties: 属性字典，如 {"temperature": 0.7, "max_tokens": 1000}
+            target: 可选，特殊目标 - "current_node"表示当前节点，
+                   或者传入node_uuid字符串表示通过UUID定位节点
+        """
+        node = self._find_node_by_name(node_name)
+        if not node:
+            return ToolResult(False, error=f"未找到节点: {node_name}")
+
+        try:
+            for prop_name, prop_value in properties.items():
+                node.set_property(prop_name, prop_value)
+            return ToolResult(
+                True, content=f"已设置节点 [{node_name}] 的属性: {properties}"
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"设置节点属性失败: {str(e)}")
+
+    def canvas_get_node_property(
+        self, node_name: str, property_names: Optional[List[str]] = None
+    ) -> ToolResult:
+        """
+        查询节点当前参数
+
+        Args:
+            node_name: 节点名称
+            property_names: 可选，属性名列表，如 ["temperature", "model"]
+                          如果为空，则返回节点所有可读属性
+        """
+        node = self._find_node_by_name(node_name)
+        if not node:
+            return ToolResult(False, error=f"未找到节点: {node_name}")
+
+        try:
+            if property_names is None or len(property_names) == 0:
+                all_props = {}
+                if hasattr(node, "get_properties"):
+                    all_props = node.get_properties()
+                elif hasattr(node, "properties"):
+                    all_props = node.properties or {}
+                return ToolResult(
+                    True, content=f"节点 [{node_name}] 所有属性:\n{all_props}"
+                )
+
+            result = {}
+            for prop_name in property_names:
+                value = node.get_property(prop_name)
+                result[prop_name] = value
+            return ToolResult(
+                True, content=f"节点 [{node_name}] 属性:\n{result}"
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"查询节点属性失败: {str(e)}")
+
 
 def get_canvas_tools_schema() -> List[Dict]:
     """获取画布工具的 schema 定义"""
@@ -204,6 +265,47 @@ def get_canvas_tools_schema() -> List[Dict]:
                 "name": "canvas_list_nodes",
                 "description": "列出画布上的所有节点",
                 "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_set_node_property",
+                "description": "设置节点的属性参数，如模型、温度、最大令牌等",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_name": {"type": "string", "description": "节点名称"},
+                        "properties": {
+                            "type": "object",
+                            "description": "属性字典，如 {\"temperature\": 0.7, \"max_tokens\": 1000}",
+                        },
+                        "target": {
+                            "type": "string",
+                            "description": "可选，特殊目标 - \"current_node\"表示当前节点",
+                        },
+                    },
+                    "required": ["node_name", "properties"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_get_node_property",
+                "description": "查询节点当前的属性参数值",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_name": {"type": "string", "description": "节点名称"},
+                        "property_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "可选，属性名列表，如 [\"temperature\", \"model\"]",
+                        },
+                    },
+                    "required": ["node_name"],
+                },
             },
         },
     ]

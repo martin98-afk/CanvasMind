@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
-import shutil
 import time
-from pathlib import Path
 
 from app.nodes.executors.base import BaseExecutor
 from app.templates.node_execute_script import _EXECUTION_SCRIPT_TEMPLATE
-from app.utils.utils import resource_path
 
 
 class IPythonExecutor(BaseExecutor):
@@ -17,12 +14,7 @@ class IPythonExecutor(BaseExecutor):
 
     def prepare_environment(self, ctx) -> None:
         super().prepare_environment(ctx)
-        extension_dir = Path(resource_path("app/component_extensions")) / getattr(
-            ctx.node, "uuid", ""
-        )
-        if extension_dir.exists():
-            workspace_dir = ctx.cache_path / "workspace" / ctx.node.persistent_id
-            shutil.copytree(extension_dir, workspace_dir, dirs_exist_ok=True)
+        self.sync_node_extensions(ctx)
 
     def execute(self, ctx) -> dict:
         if ctx.log_file_path and os.path.exists(ctx.log_file_path):
