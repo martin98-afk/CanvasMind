@@ -411,9 +411,6 @@ class ChatEngine:
                 result_messages = [summary_message] + recent_messages
                 continue
 
-            summary_message["content"] = self._trim_message_content(
-                summary_message["content"], 800
-            )
             result_messages = [summary_message]
             break
 
@@ -494,9 +491,6 @@ class ChatEngine:
                 result_messages = [summary_message] + recent_messages
                 continue
 
-            summary_message["content"] = self._trim_message_content(
-                summary_message["content"], 800
-            )
             result_messages = [summary_message]
             break
 
