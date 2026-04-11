@@ -113,6 +113,10 @@ def create_node_class(full_path, file_path, parent_window=None):
                     return
 
         @property
+        def comp_cls(self):
+            return ComponentScanner().get_component_by_uuid(self.uuid)
+
+        @property
         def description(self):
             return ComponentScanner().get_component_by_uuid(self.uuid).description
 
@@ -273,8 +277,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def get_class_name(self) -> str:
             """返回组件类名"""
-            comp_cls = ComponentScanner().get_component_by_uuid(self.uuid)
-            return comp_cls.__name__
+            return self.comp_cls.__name__
 
         def _generate_parms_widget(self):
             """生成节点属性配置控件"""

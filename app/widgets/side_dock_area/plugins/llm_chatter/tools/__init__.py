@@ -1,24 +1,23 @@
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
+from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
-from PyQt5.QtCore import QObject, pyqtSignal, QMetaObject, Qt
 
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.git_tools import GitTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.web_tools import WebTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import (
-    TerminalTools,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_tools import (
-    CanvasTools,
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.canvas_webhook_tools import (
+    CanvasTools as CanvasToolsForBuiltin,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.diagnostics_tools import (
     DiagnosticsTools,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.git_tools import GitTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import (
+    TerminalTools,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.tools.web_tools import WebTools
 
 
 class BuiltinTools(QObject):
@@ -45,7 +44,7 @@ class BuiltinTools(QObject):
         self._web_tools = WebTools(self.workdir)
         self._terminal_tools = TerminalTools(self.workdir)
         self._task_tools = TaskTools(self.workdir)
-        self._canvas_tools = CanvasTools(self.workdir)
+        self._canvas_tools = CanvasToolsForBuiltin(self.workdir)
         self._diagnostics_tools = DiagnosticsTools(self.workdir)
 
         self._todo_list = []
@@ -847,16 +846,16 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "list_canvases",
-                "description": "列出所有在线可以执行的画布及其 webhook 触发器信息",
+                "name": "list_webhooks",
+                "description": "列出所有在线可以执行的画布的 webhook 触发器信息",
                 "parameters": {"type": "object", "properties": {}},
             },
         },
         {
             "type": "function",
             "function": {
-                "name": "trigger_canvas",
-                "description": "通过 webhook 触发画布运行并等待结果返回",
+                "name": "trigger_webhook",
+                "description": "通过 webhook 触发画布运行并等待结果返回，执行前许通过 list_webhook 获取已上线 webhook 列表",
                 "parameters": {
                     "type": "object",
                     "properties": {

@@ -1,0 +1,235 @@
+{
+  "graph": {
+    "layout_direction": 0,
+    "acyclic": true,
+    "pipe_collision": false,
+    "pipe_slicing": true,
+    "pipe_style": 2
+  },
+  "nodes": {
+    "0x14ca13ca0d0": {
+      "type_": "dynamic.StatusDynamicNode_a5754c54-98ac-44ca-b5ef-4313a3410400",
+      "icon": ":/icons/同心圆.svg",
+      "name": "文件选择",
+      "color": [
+        13,
+        18,
+        23,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 0.0,
+      "height": 0.0,
+      "pos": [
+        617.9174238055774,
+        -753.5237362696972
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "b70635ac-c279-4f76-9db3-e8c089d57ede",
+        "_collapsed": false,
+        "_exec_mode": "subprocess",
+        "_data_select": {},
+        "_version": "latest",
+        "file_select": "",
+        "FULL_PATH": "数据集成/文件数据/文件选择"
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "file",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "output_values": {}
+    },
+    "0x14caa975350": {
+      "type_": "dynamic.StatusDynamicNode_6e9741c5-c84a-43b8-8a7b-1db1d958c00f",
+      "icon": ":/icons/同心圆.svg",
+      "name": "json创建",
+      "color": [
+        13,
+        18,
+        23,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 0.0,
+      "height": 0.0,
+      "pos": [
+        562.9174238055774,
+        -492.72849692422284
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "c8847fce-1c57-45c1-b0d1-1b95a0ae3e2e",
+        "_collapsed": false,
+        "_exec_mode": "subprocess",
+        "_data_select": {},
+        "_version": "latest",
+        "prop1": {},
+        "FULL_PATH": "数据集成/json创建"
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "output1",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "output_values": {}
+    },
+    "0x14ca13cb4d0": {
+      "type_": "dynamic.StatusDynamicNode_23a17af9-b9dc-4839-a909-3724d0d60122",
+      "icon": ":/icons/同心圆.svg",
+      "name": "插入数据",
+      "color": [
+        13,
+        18,
+        23,
+        255
+      ],
+      "border_color": [
+        74,
+        84,
+        85,
+        255
+      ],
+      "text_color": [
+        255,
+        255,
+        255,
+        180
+      ],
+      "disabled": false,
+      "selected": true,
+      "visible": true,
+      "width": 0.0,
+      "height": 0.0,
+      "pos": [
+        1115.0060021650313,
+        -674.0461853270708
+      ],
+      "layout_direction": 0,
+      "port_deletion_allowed": false,
+      "subgraph_session": {},
+      "custom": {
+        "persistent_id": "2c11de5b-e453-4dde-aee8-982215e7ca37",
+        "_collapsed": false,
+        "_exec_mode": "subprocess",
+        "_data_select": {},
+        "_version": "latest",
+        "table_name": "",
+        "mode": "INSERT",
+        "FULL_PATH": "sqlite套件/插入数据"
+      },
+      "input_ports": [
+        {
+          "name": "database_path",
+          "multi_connection": false,
+          "display_name": true
+        },
+        {
+          "name": "data",
+          "multi_connection": false,
+          "display_name": true
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "status",
+          "multi_connection": true,
+          "display_name": true
+        },
+        {
+          "name": "row_count",
+          "multi_connection": true,
+          "display_name": true
+        }
+      ],
+      "output_values": {}
+    }
+  },
+  "connections": [
+    {
+      "out": [
+        "0x14ca13ca0d0",
+        "file"
+      ],
+      "in": [
+        "0x14ca13cb4d0",
+        "database_path"
+      ]
+    },
+    {
+      "out": [
+        "0x14caa975350",
+        "output1"
+      ],
+      "in": [
+        "0x14ca13cb4d0",
+        "data"
+      ]
+    }
+  ],
+  "global_variables": {
+    "env": {
+      "user_id": null,
+      "canvas_id": null,
+      "session_id": null,
+      "run_id": null,
+      "metadata": {
+        "TZ": "Asia/Shanghai",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTHONPATH": ".",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONWARNINGS": "ignore"
+      }
+    },
+    "custom": {},
+    "custom_order": [],
+    "node_vars": {},
+    "node_vars_order": []
+  }
+}

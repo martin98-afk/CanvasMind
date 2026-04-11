@@ -19,6 +19,7 @@ class ToolExecutor:
     def __init__(self, homepage=None, workdir: str = None):
         self._homepage = homepage
         self._builtin_tools: Optional[BuiltinTools] = None
+        self._canvas_tools_executor = None
         self._workdir = workdir
         self._custom_tools: Dict[str, Callable] = {}
 
@@ -93,6 +94,10 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools.set_llm_config_getter(getter)
             logger.info("[ToolExecutor] LLM config getter attached to BuiltinTools")
+
+    def set_canvas_tools_executor(self, executor):
+        self._canvas_tools_executor = executor
+        logger.info("[ToolExecutor] Canvas tools executor attached")
 
     def set_session_messages_getter(self, getter: Callable):
         if self._builtin_tools:
@@ -219,8 +224,8 @@ class ToolExecutor:
                 args.get("options"),
                 args.get("multiple", False),
             ),
-            "list_canvases": lambda: self._builtin_tools.list_canvases(),
-            "trigger_canvas": lambda: self._builtin_tools.trigger_canvas(
+            "list_webhooks": lambda: self._builtin_tools.list_canvases(),
+            "trigger_webhook": lambda: self._builtin_tools.trigger_canvas(
                 args.get("endpoint", ""),
                 args.get("data"),
                 args.get("callback_url"),
@@ -235,7 +240,36 @@ class ToolExecutor:
             except Exception as e:
                 return ToolResult(False, error=f"Execution error: {str(e)}")
 
+        if self._canvas_tools_executor and tool_name.startswith("canvas_"):
+            return self._execute_canvas_tool(tool_name, args)
+
         return ToolResult(False, error=f"Unknown tool: {tool_name}")
+
+    def _execute_canvas_tool(self, tool_name: str, args: dict):
+        if not self._canvas_tools_executor:
+            return ToolResult(False, error="Canvas tools executor not available")
+
+        canvas_tool_map = {
+            "canvas_run_node": lambda: self._canvas_tools_executor.canvas_run_node(
+                mode=args.get("mode", "node"), node_name=args.get("node_name")
+            ),
+            "canvas_get_logs": lambda: self._canvas_tools_executor.canvas_get_logs(
+                node_name=args.get("node_name", ""),
+                log_type=args.get("log_type", "historical"),
+            ),
+            "canvas_modify_and_run": lambda: self._canvas_tools_executor.canvas_modify_and_run(
+                node_name=args.get("node_name", ""), code=args.get("code", "")
+            ),
+            "canvas_list_nodes": lambda: self._canvas_tools_executor.canvas_list_nodes(),
+        }
+
+        executor = canvas_tool_map.get(tool_name)
+        if executor:
+            try:
+                return executor()
+            except Exception as e:
+                return ToolResult(False, error=f"Canvas tool execution error: {str(e)}")
+        return ToolResult(False, error=f"Unknown canvas tool: {tool_name}")
 
     def execute_skill(self, method: str, params: dict) -> dict:
         """执行技能"""
