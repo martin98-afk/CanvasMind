@@ -261,6 +261,20 @@ class ToolExecutor:
                 node_name=args.get("node_name", ""), code=args.get("code", "")
             ),
             "canvas_list_nodes": lambda: self._canvas_tools_executor.canvas_list_nodes(),
+            "canvas_get_execution_state": lambda: self._canvas_tools_executor.canvas_get_execution_state(
+                task_id=args.get("task_id"),
+                include_nodes=args.get("include_nodes", True),
+                include_logs=args.get("include_logs", False),
+                log_tail_chars=args.get("log_tail_chars", 2000),
+                recent_limit=args.get("recent_limit", 5),
+            ),
+            "canvas_get_node_debug_snapshot": lambda: self._canvas_tools_executor.canvas_get_node_debug_snapshot(
+                node_name=args.get("node_name", ""),
+                include_logs=args.get("include_logs", True),
+                log_type=args.get("log_type", "historical"),
+                log_tail_chars=args.get("log_tail_chars", 4000),
+                include_code=args.get("include_code", False),
+            ),
             "canvas_set_node_property": lambda: self._canvas_tools_executor.canvas_set_node_property(
                 node_name=args.get("node_name", ""),
                 properties=args.get("properties", {}),
