@@ -18,7 +18,7 @@ from app.widgets.side_dock_area.plugins.canvas_execution_records.execution_resul
 )
 
 # 假设这些是你项目中的工具类引用，如果没有可以替换为标准 PyQt 组件
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition, DockCategory
 
 
 class ExecutionHistoryWindow(ToolWindow):
@@ -29,7 +29,7 @@ class ExecutionHistoryWindow(ToolWindow):
     name = "任务记录"
     icon = get_icon("任务队列")
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 80
     cards = {}  # {execution_id: ExecutionResultCard}
 

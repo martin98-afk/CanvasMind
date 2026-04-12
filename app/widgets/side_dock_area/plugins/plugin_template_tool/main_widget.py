@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QVBoxLayout,
@@ -17,8 +17,6 @@ from qfluentwidgets import (
     FluentIcon,
     SingleDirectionScrollArea,
     CardWidget,
-    SubtitleLabel,
-    setFont,
     isDarkTheme,
     InfoBarPosition,
     SegmentedWidget,
@@ -28,10 +26,9 @@ from qfluentwidgets import (
 from app.plugins.constants import PluginType
 from app.plugins.plugin_manager import UnifiedPluginManager
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition, DockCategory
 
-
-NODE_CATEGORIES = ["全部", "内置", "display", "interactive", "operate"]
+NODE_CATEGORIES = ["全部", "流式", "display", "interactive", "operate"]
 
 
 class PluginCard(CardWidget):
@@ -179,7 +176,7 @@ class PluginTemplateToolWindow(ToolWindow):
     name = "插件模板库"
     icon = ":/icons/组件.png"
     default_position = DockPosition.TOP
-    CATEGORIES = ["运行画布", "组件开发"]
+    CATEGORIES = [DockCategory.CANVAS, DockCategory.COMPONENT]
     display_order = 50
 
     def setup_ui(self):
@@ -189,7 +186,7 @@ class PluginTemplateToolWindow(ToolWindow):
         self.cards = []
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setContentsMargins(0, 12, 0, 0)
         self.main_layout.setSpacing(0)
 
         self.setup_navigation()
@@ -206,43 +203,6 @@ class PluginTemplateToolWindow(ToolWindow):
         self.search_edit.setFixedWidth(240)
         self.search_edit.textChanged.connect(self.filter_plugins)
         title_bar.insert_button(1, self.search_edit, 1)
-
-    def setup_navigation(self):
-        nav_widget = QWidget()
-        nav_layout = QVBoxLayout(nav_widget)
-        nav_layout.setContentsMargins(16, 0, 16, 8)
-        nav_layout.setSpacing(8)
-
-        nav_top_row = QHBoxLayout()
-        nav_top_row.setSpacing(8)
-
-        self.type_nav = SegmentedWidget(self)
-
-        for name in NODE_CATEGORIES:
-            self.type_nav.addItem(name, name)
-        self.type_nav.setCurrentItem("全部")
-        self.type_nav.currentItemChanged.connect(self.on_type_changed)
-
-        batch_layout = QHBoxLayout()
-        batch_layout.setSpacing(4)
-
-        self.expand_all_btn = TransparentToolButton(get_icon("展开"), self)
-        self.expand_all_btn.setFixedSize(28, 28)
-        self.expand_all_btn.setToolTip("全部展开")
-        self.expand_all_btn.clicked.connect(self._on_expand_all)
-
-        self.collapse_all_btn = TransparentToolButton(get_icon("折叠"), self)
-        self.collapse_all_btn.setFixedSize(28, 28)
-        self.collapse_all_btn.setToolTip("全部折叠")
-        self.collapse_all_btn.clicked.connect(self._on_collapse_all)
-
-        batch_layout.addWidget(self.expand_all_btn)
-        batch_layout.addWidget(self.collapse_all_btn)
-
-        nav_top_row.addWidget(self.type_nav, 1)
-        nav_top_row.addLayout(batch_layout)
-        nav_layout.addLayout(nav_top_row)
-        self.main_layout.addWidget(nav_widget)
 
     def setup_navigation(self):
         nav_widget = QWidget()
@@ -314,7 +274,7 @@ class PluginTemplateToolWindow(ToolWindow):
                 "output3": {"data": "hidden", "data_type": "str"} # 不带 plugin 参数则不实时展示
             }
         )""",
-                "type": "内置",
+                "type": "流式",
             },
             {
                 "name": "流式输出 (静默更新)",
@@ -327,7 +287,7 @@ class PluginTemplateToolWindow(ToolWindow):
                 "output2": {"data": 1, "data_type": "list"}
             }
         )""",
-                "type": "内置",
+                "type": "流式",
             },
         ]
 

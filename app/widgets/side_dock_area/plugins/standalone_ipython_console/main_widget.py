@@ -1,7 +1,11 @@
 from PyQt5.QtWidgets import QVBoxLayout
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.widgets.ipython_console.ipython_console import EmbeddedIPythonConsole
 
 
@@ -10,7 +14,7 @@ class IPythonConsoleToolWindow(ToolWindow):
     icon = get_icon("ipython")
     singleton = True
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 60
 
     def setup_ui(self):

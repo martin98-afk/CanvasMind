@@ -30,6 +30,7 @@ from app.server_manager.http_server.service_manager import SERVICE_MANAGER
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.dialog_widget.project_export_dialog import ProjectExportFlowDialog
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
+from app.widgets.side_dock_area.tool_window import DockCategory
 
 
 class ExportedProjectsPage(QWidget):
@@ -129,7 +130,7 @@ class ExportedProjectsPage(QWidget):
         left_layout.addWidget(self.scroll_area, 1)
 
         # --- 右侧：详情面板 ---
-        self.side_dock_area = SideDockArea(self, "项目管理")
+        self.side_dock_area = SideDockArea(self, DockCategory.PROJECT)
         self.service_test_tool = self.side_dock_area.get_tool_instance("API 调试台")
         self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
         self.project_info_tool = self.side_dock_area.get_tool_instance("项目基本信息")

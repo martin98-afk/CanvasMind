@@ -43,7 +43,11 @@ from app.widgets.side_dock_area.plugins.component_info.port_editory_widget impor
 from app.widgets.side_dock_area.plugins.component_info.property_editory_widget import (
     PropertyEditorWidget,
 )
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class CollapsibleCard(QWidget):
@@ -183,7 +187,7 @@ class ComponentInfoWindow(ToolWindow):
     name = "组件属性面板"
     icon = get_icon("配置")
     default_position = DockPosition.TOP
-    CATEGORIES = ["组件开发"]
+    CATEGORIES = [DockCategory.COMPONENT]
     display_order = 10
     _first_show = False
     _name_edit = None

@@ -20,7 +20,7 @@ from app.nodes.backdrop_node import (
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.component_node import create_node_class
-from app.nodes.group_node import GroupPortOutputNode, GroupPortInputNode
+from app.nodes.group_node import GroupPortOutputNode, GroupPortInputNode, create_group_node_class
 from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import create_sticky_note_node
@@ -101,6 +101,11 @@ class NodeOperations:
         output_port_node = GroupPortOutputNode
         output_port_node.__name__ = "GroupPortOutputNode"
         self.graph.register_node(output_port_node)
+        # 组节点
+        group_node = create_group_node_class(self.parent)
+        group_node.__name__ = "GroupNode"
+        self.graph.register_node(group_node)
+        self.node_type_map[group_node.FULL_PATH] = f"general.{group_node.__name__}"
         # 注册图表绘制节点
         media_node = create_media_node(self.parent)
         media_node.__name__ = "MediaNode"

@@ -12,7 +12,11 @@ from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.canvas_node_log.collapsible_card import (
     CollapsibleLogCard,
 )
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class LogToolWindow(ToolWindow):
@@ -21,7 +25,7 @@ class LogToolWindow(ToolWindow):
     name = "模型日志"
     icon = get_icon("运行记录")
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 90
     MAX_RUNS = 50
     cardDoubleClicked = pyqtSignal(str)

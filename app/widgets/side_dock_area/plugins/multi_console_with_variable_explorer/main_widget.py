@@ -5,7 +5,11 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from app.utils.utils import get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.ipython_console.variable_explorer import VariableExplorerWidget
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.widgets.ipython_console.ipython_console import (
     EmbeddedIPythonConsole,
     IPythonConsoleManager,
@@ -17,7 +21,7 @@ class MultiConsoleToolWindow(ToolWindow):
     icon = get_icon("调试")
     singleton = True
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["组件开发"]
+    CATEGORIES = [DockCategory.COMPONENT]
     display_order = 20
     _var_explorer = None
     _console_manager = None

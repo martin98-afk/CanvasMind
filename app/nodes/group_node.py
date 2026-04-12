@@ -132,12 +132,13 @@ class GroupPortOutputNode(PortOutputNode):
         return port
 
 
-def create_group_node_class(graph, parent_window):
+def create_group_node_class(parent_window):
 
     class CustomGroupNode(CustomBaseNode, StatusNode):
         __identifier__ = 'general'
         NODE_NAME = 'GroupNode'
         graph_id = None
+        FULL_PATH = "组节点"
 
         def __init__(self):
             super(CustomGroupNode, self).__init__(qgraphics_item=GroupNodeItem)

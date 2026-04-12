@@ -10,7 +10,11 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import FluentIcon, BodyLabel, TableWidget, ComboBox
 
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class ComponentHistoryToolWindow(ToolWindow):
@@ -18,7 +22,7 @@ class ComponentHistoryToolWindow(ToolWindow):
     icon = FluentIcon.HISTORY
     singleton = True
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["组件开发"]
+    CATEGORIES = [DockCategory.COMPONENT]
     display_order = 30
     _history_table = None
     _usage_table = None

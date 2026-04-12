@@ -24,7 +24,11 @@ from PyQt5.QtGui import (
 )
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class InlineTerminal(QTextEdit):
@@ -252,7 +256,7 @@ class ShellConsoleToolWindow(ToolWindow):
     icon = get_icon("shell")
     singleton = True
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 70
 
     def __init__(self, page, button):

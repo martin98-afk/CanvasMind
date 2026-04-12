@@ -89,7 +89,11 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.todo_floating_widget
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.tool_floating_widget import (
     ToolFloatingWidget,
 )
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
@@ -101,7 +105,7 @@ class OpenAIChatToolWindow(ToolWindow):
     icon = get_icon("大模型")
     singleton = True
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布", "组件开发", "项目管理"]
+    CATEGORIES = [DockCategory.CANVAS, DockCategory.COMPONENT, DockCategory.PROJECT]
     display_order = 30
     session_manager = SessionManager()
     _valid_configs: Dict[str, Dict[str, Any]] = {}

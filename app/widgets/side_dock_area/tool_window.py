@@ -17,6 +17,12 @@ class DockPosition(Enum):
     HIDDEN = "hidden"
 
 
+class DockCategory(Enum):
+    CANVAS = "运行画布"
+    COMPONENT = "组件开发"
+    PROJECT = "项目管理"
+
+
 @dataclass
 class PluginManifest:
     name: str

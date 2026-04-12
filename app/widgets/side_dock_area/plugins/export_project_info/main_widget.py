@@ -7,14 +7,18 @@ from PyQt5.QtWidgets import QVBoxLayout
 from qfluentwidgets import TextEdit
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class ProjectInfoTool(ToolWindow):
     name = "项目基本信息"
     icon = get_icon("配置")
     default_position = DockPosition.TOP
-    CATEGORIES = ["项目管理"]
+    CATEGORIES = [DockCategory.PROJECT]
     display_order = 10
 
     def setup_ui(self):

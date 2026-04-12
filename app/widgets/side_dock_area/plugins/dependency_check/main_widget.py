@@ -34,7 +34,11 @@ from app.interfaces.package_manager_interface import PackageListThread
 from app.scan_components import ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.widgets.side_dock_area.plugins.dependency_check.remote_install_thread import (
     RemoteInstallThread,
 )
@@ -44,7 +48,7 @@ class DependencyToolWindow(ToolWindow):
     name = "依赖检查"
     icon = get_icon("依赖包")
     default_position = DockPosition.TOP
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 40
 
     def setup_ui(self):

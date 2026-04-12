@@ -34,6 +34,7 @@ from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.code_editor.code_editer import CodeEditorWidget
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
 from app.scan_components import resource_path
+from app.widgets.side_dock_area.tool_window import DockCategory
 
 
 class ComponentDevelopUISetUp:
@@ -103,7 +104,7 @@ class ComponentDevelopUISetUp:
         # 【兼容性挂载】将新组件挂载到 parent，防止旧代码报错
         self.parent.tab_manager = self.tab_manager
         # ================= 右侧区域 =================
-        self.side_dock_area = SideDockArea(self.parent, "组件开发")
+        self.side_dock_area = SideDockArea(self.parent, DockCategory.COMPONENT)
         self._llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
         # self._llm_chatter.set_system_prompt(self.parent.llm_context_provider.system_prompt)
 

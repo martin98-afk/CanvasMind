@@ -21,6 +21,7 @@ from app.utils.utils import get_icon
 from app.widgets.basic_widget.bread_crumb import Breadcrumb
 from app.widgets.basic_widget.splitter import ModernSplitter
 from app.widgets.side_dock_area.side_dock_area import SideDockArea
+from app.widgets.side_dock_area.tool_window import DockCategory
 from .canvas_left_panel import LeftPanel
 from .canvas_setting_popup import CanvasSettingPopup
 from .workflow_graph_manager import WorkflowCanvasManager
@@ -89,7 +90,7 @@ class CanvasUISetUp:
         # 初始引用
         self.graph = self.canvas_manager.current_graph()
 
-        self.side_dock_area = SideDockArea(self.parent, "运行画布")
+        self.side_dock_area = SideDockArea(self.parent, DockCategory.CANVAS)
 
         self.splitter = ModernSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.nav_panel)
@@ -151,6 +152,9 @@ class CanvasUISetUp:
             lambda: self.parent.create_backdrop_node(
                 "general.StickyNote", init_io=False
             )
+        )
+        self.group_node.clicked.connect(
+            lambda: self.parent.create_group_node()
         )
         self.trigger_node.clicked.connect(
             lambda: self.parent.create_next_node("general.trigger")
@@ -350,6 +354,7 @@ class CanvasUISetUp:
         self.echart_node = self._build_tool_btn(get_icon("多媒体"), "媒体展示")
         self.code_node = self._build_tool_btn(get_icon("代码执行"), "代码节点")
         self.note_node = self._build_tool_btn(get_icon("文本注释"), "注释节点")
+        self.group_node = self._build_tool_btn(get_icon("收集"), "创建分组")
 
         for btn in [
             self.iterate_node,
@@ -359,6 +364,7 @@ class CanvasUISetUp:
             self.code_node,
             self.trigger_node,
             self.note_node,
+            # self.group_node,
         ]:
             self.node_layout.addWidget(btn)
 

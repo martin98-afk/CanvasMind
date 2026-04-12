@@ -2,7 +2,11 @@
 from PyQt5.QtWidgets import QVBoxLayout
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.widgets.side_dock_area.plugins.property_panel import PropertyPanel
 
 
@@ -10,7 +14,7 @@ class PropertyToolWindow(ToolWindow):
     name = "属性面板"
     icon = get_icon("属性面板")
     default_position = DockPosition.TOP
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 10
 
     def setup_ui(self):
