@@ -135,7 +135,8 @@ class WorkflowCanvasManager(QWidget):
             # 1. 实例化
             new_graph = CustomNodeGraph(
                 viewer=CustomNodeViewer(parent=self.parent_window),
-                parent=self.parent_window
+                parent=self.parent_window,
+                splitter=self.graph_splitter
             )
 
             # 2. 同步环境

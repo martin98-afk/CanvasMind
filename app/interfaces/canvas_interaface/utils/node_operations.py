@@ -478,8 +478,8 @@ class NodeOperations:
             "Group"
         )
         new_graph.deserialize_session(session_data)
-        self.setup_graph_menu(new_graph)
-        self.setup_graph_menu(self.graph)
+        self.setup_graph_menu(new_graph.viewer())
+        # self.setup_graph_menu(self.graph)
         # 画布右键菜单注册
         graph_menu = new_graph.get_context_menu("graph")
         graph_menu.add_command("撤销", self.parent._undo, "Ctrl+Z")

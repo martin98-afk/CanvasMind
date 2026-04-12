@@ -277,7 +277,7 @@ class CanvasUISetUp:
         if not self.breadcrumb.items_data:
             self.breadcrumb.addItem("0", self.parent.workflow_name)
 
-        # self.breadcrumb.currentItemChanged.connect(self._on_breadcrumb_clicked)
+        self.breadcrumb.currentItemChanged.connect(self._on_breadcrumb_clicked)
         setFont(self.breadcrumb, 20)
 
         layout.addWidget(self.btn_toggle_nav)
