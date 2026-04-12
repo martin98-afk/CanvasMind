@@ -157,6 +157,9 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self.homepage = homepage
         self._is_streaming = False
+        # 问题修复：初始化未定义的属性
+        self._pending_permission_tool_call_id: Optional[str] = None
+        self._question_tool_call_id: Optional[str] = None
         self.session_manager.create_new_session()
         app = QApplication.instance()
         if app is not None:
