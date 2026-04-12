@@ -12,6 +12,7 @@ from loguru import logger
 
 from app.nodes.backdrop_node import ControlFlowBackdrop
 from app.nodes.base.status_node import NodeStatus
+from app.nodes.group_node import is_group_node_instance
 from app.scan_components import ComponentScanner
 from app.scheduler.backdrop_executor import BackdropExecutor
 from app.scheduler.execution_context import ExecutionContext
@@ -206,7 +207,7 @@ class NodeListExecutor(QRunnable):
             be.execute()
             self.signals.backdrop_finished.emit()
         # 组节点执行逻辑
-        elif isinstance(node, GroupNode):
+        elif is_group_node_instance(node):
             ge = GroupNodeExecutor(
                 group_node=node, scheduler=self.scheduler, python_exe=self.python_exe,
                 kernel_manager=self.kernel_manager, global_variables=self.scheduler.global_variables,

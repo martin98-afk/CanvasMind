@@ -4,7 +4,6 @@ import uuid
 
 import orjson
 from NodeGraphQt import GroupNode
-from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
 from qfluentwidgets import Theme, getIconColor, FluentIcon
@@ -20,7 +19,12 @@ from app.nodes.backdrop_node import (
 from app.nodes.branch_node import create_branch_node
 from app.nodes.dynamic_code_node import create_dynamic_code_node
 from app.nodes.component_node import create_node_class
-from app.nodes.group_node import GroupPortOutputNode, GroupPortInputNode, create_group_node_class
+from app.nodes.group_node import (
+    GroupPortOutputNode,
+    GroupPortInputNode,
+    create_group_node_class,
+    is_group_node_instance,
+)
 from app.nodes.multimedia_node import create_media_node
 from app.nodes.port_node import CustomPortInputNode, CustomPortOutputNode
 from app.nodes.sticky_note import create_sticky_note_node
@@ -40,6 +44,7 @@ class NodeOperations:
         self.recommendation_engine = recommendation_engine
         self.thread_pool = thread_pool
         self.graph_menu = None
+        self._graph_menus = {}
         self._node_id_cache_valid = False  # 标记缓存是否有效
         self._current_recommendation_task = None  # 用于取消旧任务（可选）
         self._node_id_cache = {}  # 缓存：node_id -> node_object
@@ -136,9 +141,18 @@ class NodeOperations:
         except Exception as e:
             logger.exception("register_components 执行失败！")  # ← 关键
 
-    def setup_graph_menu(self, viewer):
+    def setup_graph_menu(self, viewer, graph=None):
         """注入函数"""
-        viewer._custom_menu = self.graph_menu
+        graph = graph or getattr(viewer, "graph", None) or self.graph
+        if graph is None:
+            return
+        graph_menu_widget = self._graph_menus.get(id(graph))
+        if graph_menu_widget is None:
+            graph_menu_widget = CustomGraphMenu(graph, self.parent.nav_panel, self.parent)
+            self._graph_menus[id(graph)] = graph_menu_widget
+        else:
+            graph_menu_widget._graph = graph
+        viewer._custom_menu = graph_menu_widget
         original_context_menu_event = viewer.contextMenuEvent
 
         def custom_context_menu_event(event):
@@ -168,9 +182,9 @@ class NodeOperations:
             # 执行显示逻辑
             if show_custom_bg_menu:
                 scene_pos = viewer.mapToScene(event.pos())
-                self.graph_menu._spawn_pos_scene = scene_pos
-                self.graph_menu._spawn_pos_set = True
-                self.graph_menu.show_at_cursor(event.globalPos())
+                graph_menu_widget._spawn_pos_scene = scene_pos
+                graph_menu_widget._spawn_pos_set = True
+                graph_menu_widget.show_at_cursor(event.globalPos())
                 event.accept()
             else:
                 # 其他情况（点击了普通节点、Note的标题栏、Note内部的文字块）-> 原生逻辑
@@ -179,9 +193,11 @@ class NodeOperations:
         viewer.contextMenuEvent = custom_context_menu_event
 
     def setup_context_menu(self):
-        self.setup_graph_menu(self.graph.viewer())
-        # 画布右键菜单注册
-        graph_menu = self.graph.get_context_menu("graph")
+        self._setup_context_menu_for_graph(self.graph)
+
+    def _setup_context_menu_for_graph(self, graph):
+        self.setup_graph_menu(graph.viewer(), graph)
+        graph_menu = graph.get_context_menu("graph")
         graph_menu.add_command(
             "运行工作流", self.parent.canvas_runner.run_workflow, "Ctrl+R"
         )
@@ -196,8 +212,7 @@ class NodeOperations:
             ),
             "Del",
         )
-        # 节点右键菜单注册
-        nodes_menu = self.graph.get_context_menu("nodes")
+        nodes_menu = graph.get_context_menu("nodes")
         for special_node in [
             "visualize.MediaNode",
             "dynamic.DYNAMIC_CODE",
@@ -326,9 +341,35 @@ class NodeOperations:
 
     def on_node_double_clicked(self, node):
         """双击节点事件"""
-        if isinstance(node, GroupNode):
-            # 展开组节点。注意：这需要 graph.widget 已经被添加到 UI 中
-            self.graph.expand_group_node(node)
+        if is_group_node_instance(node):
+            self.open_group_subgraph(node)
+
+    def open_group_subgraph(self, node):
+        """打开组节点对应的子图，如已销毁则按 session 重建。"""
+        if not is_group_node_instance(node):
+            return None
+
+        graph_id = getattr(node, "graph_id", None)
+        sub_graph = node.get_sub_graph() if graph_id else None
+        if sub_graph:
+            self.parent.ui_manager.canvas_manager.switch_to_graph_by_id(graph_id)
+            return sub_graph
+
+        session_data = node.get_sub_graph_session() or {}
+        if not session_data:
+            return None
+
+        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph(
+            node.name() or "Group",
+            custom_id=graph_id,
+        )
+        if not new_graph:
+            return None
+
+        new_graph.deserialize_session(session_data)
+        self._setup_context_menu_for_graph(new_graph)
+        node.graph_id = graph_id
+        return new_graph
 
     def create_next_node_using_name(self, name):
         if name in self.name2type:
@@ -440,10 +481,18 @@ class NodeOperations:
         for i, ((int_id, int_pname), g_name) in enumerate(input_map.items()):
             p_node_id = f"port_in_{g_name}"
             session_data["nodes"][p_node_id] = {
-                "type_": PortInputNode.type_,
+                "type_": "general.GroupPortInputNode",
                 "name": g_name,
                 "pos": [min_x - 600, center_y + (i * 100)],
-                "outputs": {g_name: {}},
+                "port_deletion_allowed": True,
+                "output_ports": [
+                    {
+                        "name": g_name,
+                        "multi_connection": True,
+                        "display_name": False,
+                    }
+                ],
+                "input_ports": [],
                 "custom": {},
             }
             session_data["connections"].append(
@@ -453,10 +502,18 @@ class NodeOperations:
         for i, ((int_id, int_pname), g_name) in enumerate(output_map.items()):
             p_node_id = f"port_out_{g_name}"
             session_data["nodes"][p_node_id] = {
-                "type_": PortOutputNode.type_,
+                "type_": "general.GroupPortOutputNode",
                 "name": g_name,
                 "pos": [max_x + 600, center_y + (i * 100)],
-                "inputs": {g_name: {}},
+                "port_deletion_allowed": True,
+                "input_ports": [
+                    {
+                        "name": g_name,
+                        "multi_connection": False,
+                        "display_name": False,
+                    }
+                ],
+                "output_ports": [],
                 "custom": {},
             }
             session_data["connections"].append(
@@ -474,26 +531,7 @@ class NodeOperations:
         for g_name in list(dict.fromkeys(output_map.values())):
             group_node.add_output(g_name)
 
-        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph(
-            "Group"
-        )
-        new_graph.deserialize_session(session_data)
-        self.setup_graph_menu(new_graph.viewer())
-        # self.setup_graph_menu(self.graph)
-        # 画布右键菜单注册
-        graph_menu = new_graph.get_context_menu("graph")
-        graph_menu.add_command("撤销", self.parent._undo, "Ctrl+Z")
-        graph_menu.add_command("重做", self.parent._redo, "Ctrl+Y")  # 或 'Ctrl+Shift+Z'
-        graph_menu.add_command(
-            "删除选中",
-            lambda graph: (
-                self.parent.node_operations.delete_selected_nodes(graph),
-                self.parent.property_panel.update_properties(None),
-            ),
-            "Del",
-        )
-        QTimer.singleShot(0, lambda: self.parent.ui_manager.update_position(True))
-        group_node.graph_id = graph_id
+        group_node.set_sub_graph_session(session_data)
         # --- 5. 恢复外部连线 ---
         g_inputs = group_node.inputs()
         g_outputs = group_node.outputs()
@@ -504,7 +542,18 @@ class NodeOperations:
 
         # --- 6. 扫尾 ---
         graph.delete_nodes(selected_nodes)
+        graph.clear_selection()
+        if group_node.view.scene():
+            group_node.view.setSelected(True)
         group_node.set_selected(True)
+        graph_id, new_graph = self.parent.ui_manager.canvas_manager.create_sub_graph(
+            "Group"
+        )
+        if new_graph:
+            new_graph.deserialize_session(session_data)
+            self._setup_context_menu_for_graph(new_graph)
+            group_node.graph_id = graph_id
+            QTimer.singleShot(0, lambda: self.parent.ui_manager.update_position(True))
         graph.end_undo()
 
     def create_backdrop_node(self, key, init_io=True):
@@ -630,10 +679,31 @@ class NodeOperations:
         # 使用类中已有的 thread_pool 执行
         self.thread_pool.start(cleanup_task)
 
+    def _prune_dangling_connections(self, graph, nodes):
+        """清理指向已不存在节点的连接模型，避免 NodeGraphQt 在遍历连接时报错。"""
+        if not graph or not nodes:
+            return
+
+        valid_ids = set(getattr(graph.model, "nodes", {}).keys())
+        for node in nodes:
+            if not hasattr(node, "input_ports"):
+                continue
+            for port in list(node.input_ports()) + list(node.output_ports()):
+                connected = getattr(port.model, "connected_ports", None)
+                if not isinstance(connected, dict):
+                    continue
+                stale_ids = [node_id for node_id in list(connected.keys()) if node_id not in valid_ids]
+                for node_id in stale_ids:
+                    connected.pop(node_id, None)
+
     def delete_node(self, node):
         """删除单个节点"""
         if not node:
             return
+        graph = getattr(node, "graph", None) or self.graph
+        if not graph or node.id not in getattr(graph.model, "nodes", {}):
+            return
+        self._prune_dangling_connections(graph, [node])
 
         node_id = node.get_property("persistent_id")
         if hasattr(node, "on_deleted"):
@@ -644,7 +714,7 @@ class NodeOperations:
         # 3. 图表操作
         node_name = node.name()
         self._invalidate_node_cache()
-        self.graph.delete_node(node)
+        graph.delete_node(node)
         self.parent.property_panel.pop_node_layout(node_name)
         self.parent.property_panel.update_properties(None)
 
@@ -653,8 +723,17 @@ class NodeOperations:
         selected_nodes = graph.selected_nodes()
         if not selected_nodes:
             return
+        selected_nodes = [
+            node
+            for node in selected_nodes
+            if node.id in getattr((getattr(node, "graph", None) or graph).model, "nodes", {})
+        ]
+        if not selected_nodes:
+            return
 
         node_ids_to_delete = []
+        owner_graph = getattr(selected_nodes[0], "graph", None) or graph
+        self._prune_dangling_connections(owner_graph, selected_nodes)
 
         for node in selected_nodes:
             # 收集 ID
@@ -673,7 +752,7 @@ class NodeOperations:
         self._delete_node_workspace_async(node_ids_to_delete)
 
         # 2. 批量从画布删除
-        graph.delete_nodes(selected_nodes)
+        owner_graph.delete_nodes(selected_nodes)
 
         # 3. 更新 UI 和缓存
         self._invalidate_node_cache()
@@ -771,7 +850,17 @@ class NodeOperations:
 
     def _rebuild_node_cache(self):
         """重建节点缓存"""
-        self._node_id_cache = {node.id: node for node in self.graph.all_nodes()}
+        cache = {}
+        canvas_manager = getattr(self.parent.ui_manager, "canvas_manager", None)
+        if canvas_manager:
+            for graph_id in canvas_manager.all_graph_ids:
+                graph = canvas_manager.get_graph_by_id(graph_id)
+                if graph:
+                    for node in graph.all_nodes():
+                        cache[node.id] = node
+        if not cache and self.graph:
+            cache = {node.id: node for node in self.graph.all_nodes()}
+        self._node_id_cache = cache
         self._node_id_cache_valid = True
 
     def _get_node_by_id_cached(self, node_id):

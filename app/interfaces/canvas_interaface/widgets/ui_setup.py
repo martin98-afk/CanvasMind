@@ -183,7 +183,7 @@ class CanvasUISetUp:
             FluentIcon.REMOVE, "关闭当前视角", parent=self.canvas_manager
         )
         view_remove_action.triggered.connect(
-            lambda: self.canvas_manager.graph_splitter.remove_viewer()
+            lambda: self.graph.graph_splitter.remove_viewer()
         )
         self.more_canvas_settings_menu.addAction(view_remove_action)
         self.more_canvas_settings_button.clicked.connect(self._show_canvas_more_menu)
@@ -210,19 +210,7 @@ class CanvasUISetUp:
         根据 Manager 发来的导航列表更新面包屑
         nav_list: [('0', 'Main'), ('1', 'Sub')...]
         """
-        current_count = len(self.breadcrumb.items_data)
-        target_count = len(nav_list)
-
-        # 1. 增加 (进入子图)
-        if target_count > current_count:
-            for i in range(current_count, target_count):
-                id_str, name = nav_list[i]
-                self.breadcrumb.addItem(id_str, name)
-
-        # 2. 减少 (返回上级)
-        elif target_count < current_count:
-            while len(self.breadcrumb.items_data) > target_count:
-                self.breadcrumb.removeItem(self.breadcrumb.items_data[-1])
+        self.breadcrumb.setPath([(name, id_str) for id_str, name in nav_list])
 
     # ================= 业务接口 =================
 
@@ -237,7 +225,7 @@ class CanvasUISetUp:
 
     def _on_breadcrumb_clicked(self, route_key):
         """点击面包屑项"""
-        self.switch_to_graph_level(int(route_key))
+        self.canvas_manager.switch_to_level(int(route_key), destroy_intermediates=True)
 
     # ================= UI 磨砂面板构建 (保持原有样式) =================
 
@@ -554,7 +542,7 @@ class CanvasUISetUp:
 
     def _on_view_split_right(self):
         """点击增加视角"""
-        new_viewer = self.canvas_manager.graph_splitter.split_right()
+        new_viewer = self.graph.graph_splitter.split_right()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
         new_viewer.zoom_to_nodes(
@@ -564,7 +552,7 @@ class CanvasUISetUp:
 
     def _on_view_split_down(self):
         """点击增加视角"""
-        new_viewer = self.canvas_manager.graph_splitter.split_down()
+        new_viewer = self.graph.graph_splitter.split_down()
         new_viewer.graph = self.graph
         self.graph._wire_signals(new_viewer)
         new_viewer.zoom_to_nodes(

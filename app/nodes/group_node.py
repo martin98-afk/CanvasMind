@@ -142,6 +142,7 @@ def create_group_node_class(parent_window):
 
         def __init__(self):
             super(CustomGroupNode, self).__init__(qgraphics_item=GroupNodeItem)
+            self.parent_window = parent_window
             self.model.port_deletion_allowed = True
             self.set_color(50, 50, 50)  # 设置一个深色背景
 
@@ -197,7 +198,7 @@ def create_group_node_class(parent_window):
             Returns:
                 SubGraph: node graph used to manage the nodes expaneded session.
             """
-            parent_window.ui_manager.canvas_manager.switch_to_graph_by_id(self.graph_id)
+            parent_window.node_operations.open_group_subgraph(self)
 
         def collapse(self):
             """
@@ -211,3 +212,18 @@ def create_group_node_class(parent_window):
 
 
     return CustomGroupNode
+
+
+def is_group_node_instance(node):
+    return bool(
+        node
+        and (
+            getattr(node, "type_", "") == "general.GroupNode"
+            or getattr(node, "NODE_NAME", "") == "GroupNode"
+            or (
+                hasattr(node, "get_sub_graph_session")
+                and hasattr(node, "get_sub_graph")
+                and hasattr(node, "expand")
+            )
+        )
+    )
