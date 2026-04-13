@@ -1,9 +1,23 @@
 # -*- coding: utf-8 -*-
+import datetime
 from typing import List, Dict, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea
-from qfluentwidgets import BodyLabel, CaptionLabel, CardWidget, TransparentToolButton, FluentIcon
+from PyQt5.QtWidgets import (
+    QWidget,
+    QFrame,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+)
+from qfluentwidgets import (
+    BodyLabel,
+    CaptionLabel,
+    CardWidget,
+    TransparentToolButton,
+    FluentIcon,
+)
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 
@@ -75,6 +89,19 @@ class _HistoryItemCard(CardWidget):
         super().mousePressEvent(event)
 
 
+class _SectionHeader(QLabel):
+    def __init__(self, text: str, parent=None):
+        super().__init__(text, parent)
+        self.setStyleSheet(
+            """
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 2px;
+            """
+        )
+
+
 class HistoryPopup(QWidget):
     sessionSelected = pyqtSignal(int)
     sessionDeleted = pyqtSignal(int)
@@ -86,6 +113,8 @@ class HistoryPopup(QWidget):
             Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self._all_history: List[Dict] = []
+        self._current_index: Optional[int] = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -165,33 +194,89 @@ class HistoryPopup(QWidget):
         self.setMinimumWidth(360)
         self.setMaximumWidth(420)
 
+    def _get_date_category(self, last_time_str: str) -> str:
+        if not last_time_str or last_time_str == "未知":
+            return "更早"
+        try:
+            session_date = datetime.datetime.strptime(
+                last_time_str[:10], "%Y-%m-%d"
+            ).date()
+            today = datetime.datetime.now().date()
+            yesterday = today - datetime.timedelta(days=1)
+            week_start = today - datetime.timedelta(days=today.weekday())
+            last_week_start = week_start - datetime.timedelta(days=7)
+
+            if session_date == today:
+                return "今天"
+            elif session_date == yesterday:
+                return "昨天"
+            elif week_start <= session_date <= today:
+                return "本周"
+            elif last_week_start <= session_date < week_start:
+                return "上周"
+            else:
+                return "更早"
+        except (ValueError, TypeError):
+            return "更早"
+
+    def _group_by_date(self, history: List[Dict]) -> Dict[str, List[Dict]]:
+        groups = {"今天": [], "昨天": [], "本周": [], "上周": [], "更早": []}
+        for session in history:
+            category = self._get_date_category(session.get("last_time", ""))
+            groups[category].append(session)
+        return groups
+
     def _clear_content(self):
         while self.content_layout.count():
             item = self.content_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-    def set_history(self, history_list: List[Dict], current_index: Optional[int]):
+    def _update_display(self):
         self._clear_content()
 
-        if not history_list:
+        if not self._all_history:
             empty_label = QLabel("暂无历史对话记录", self.content_widget)
             empty_label.setAlignment(Qt.AlignCenter)
             empty_label.setStyleSheet("color: rgba(255, 255, 255, 0.6); padding: 16px;")
             self.content_layout.addWidget(empty_label)
         else:
-            for index, session in enumerate(history_list):
-                card = _HistoryItemCard(
-                    index=index,
-                    title=session.get("title", "新对话"),
-                    last_time=session.get("last_time", "未知"),
-                    message_count=session.get("message_count", 0),
-                    is_current=current_index == index,
-                    parent=self.content_widget,
+            grouped = self._group_by_date(self._all_history)
+            has_items = False
+
+            for section, sessions in grouped.items():
+                if not sessions:
+                    continue
+                has_items = True
+
+                header = _SectionHeader(section, self.content_widget)
+                self.content_layout.addWidget(header)
+
+                for session in sessions:
+                    original_index = self._all_history.index(session)
+                    card = _HistoryItemCard(
+                        index=original_index,
+                        title=session.get("title", "新对话"),
+                        last_time=session.get("last_time", "未知"),
+                        message_count=session.get("message_count", 0),
+                        is_current=self._current_index == original_index,
+                        parent=self.content_widget,
+                    )
+                    card.sessionClicked.connect(self._on_card_clicked)
+                    card.deleteRequested.connect(self._on_card_deleted)
+                    self.content_layout.addWidget(card)
+
+                spacer = QWidget(self.content_widget)
+                spacer.setFixedHeight(10)
+                self.content_layout.addWidget(spacer)
+
+            if not has_items:
+                empty_label = QLabel("暂无历史对话记录", self.content_widget)
+                empty_label.setAlignment(Qt.AlignCenter)
+                empty_label.setStyleSheet(
+                    "color: rgba(255, 255, 255, 0.6); padding: 16px;"
                 )
-                card.sessionClicked.connect(self.sessionSelected.emit)
-                card.deleteRequested.connect(self.sessionDeleted.emit)
-                self.content_layout.addWidget(card)
+                self.content_layout.addWidget(empty_label)
 
         self.content_layout.addStretch(1)
         self.content_layout.invalidate()
@@ -201,7 +286,19 @@ class HistoryPopup(QWidget):
         self.content_widget.updateGeometry()
         self.adjustSize()
 
+    def _on_card_clicked(self, index: int):
+        self.sessionSelected.emit(index)
+
+    def _on_card_deleted(self, index: int):
+        self.sessionDeleted.emit(index)
+
+    def set_history(self, history_list: List[Dict], current_index: Optional[int]):
+        self._all_history = history_list
+        self._current_index = current_index
+        self._update_display()
+
     def show_at(self, reference_widget: QWidget):
+        self._update_display()
         self.adjustSize()
         btn_rect = reference_widget.rect()
         btn_global_pos = reference_widget.mapToGlobal(btn_rect.topLeft())
@@ -214,7 +311,9 @@ class HistoryPopup(QWidget):
         x = btn_global_pos.x() + btn_width - popup_width
         y = btn_global_pos.y() + btn_height
 
-        screen = reference_widget.screen() if hasattr(reference_widget, "screen") else None
+        screen = (
+            reference_widget.screen() if hasattr(reference_widget, "screen") else None
+        )
         if screen:
             screen_geom = screen.availableGeometry()
             x = max(x, screen_geom.left())
