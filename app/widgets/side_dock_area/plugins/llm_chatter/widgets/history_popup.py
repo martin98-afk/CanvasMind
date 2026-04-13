@@ -147,8 +147,8 @@ class _HistoryItemCard(CardWidget):
         self.edit_btn.clicked.connect(self._start_edit)
         btn_container.addWidget(self.edit_btn)
 
-        self.delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
-        self.delete_btn.setToolTip("删除历史")
+        self.delete_btn = TransparentToolButton(FluentIcon.FOLDER, self)
+        self.delete_btn.setToolTip("归档")
         self.delete_btn.setFixedSize(24, 24)
         self.delete_btn.clicked.connect(lambda: self.deleteRequested.emit(self._index))
         btn_container.addWidget(self.delete_btn)
@@ -225,7 +225,7 @@ class _SectionHeader(QLabel):
 
 class HistoryPopup(QWidget):
     sessionSelected = pyqtSignal(int)
-    sessionDeleted = pyqtSignal(int)
+    sessionArchived = pyqtSignal(int)
     sessionRenamed = pyqtSignal(int, str)
     MAX_CONTENT_HEIGHT = 400
 
@@ -446,7 +446,7 @@ class HistoryPopup(QWidget):
     def _on_card_deleted(self, index: int):
         if index < 0 or index >= len(self._all_history):
             return
-        self.sessionDeleted.emit(index)
+        self.sessionArchived.emit(index)
 
     def _on_card_renamed(self, index: int, new_title: str):
         self.sessionRenamed.emit(index, new_title)

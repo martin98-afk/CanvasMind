@@ -529,7 +529,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._history_popup.sessionSelected.connect(
                 self._load_history_session_from_popup
             )
-            self._history_popup.sessionDeleted.connect(self._delete_history_session)
+            self._history_popup.sessionArchived.connect(self._archive_history_session)
             self._history_popup.sessionRenamed.connect(self._rename_history_session)
 
         history_list = self.history_manager.get_history_list() if self.history_manager else []
@@ -1235,10 +1235,10 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             self.chat_layout.addWidget(widget)
 
-    def _delete_history_session(self, index: int):
-        deleted_current = self._current_history_index == index
-        self.history_manager.delete_history(index)
-        if deleted_current:
+    def _archive_history_session(self, index: int):
+        archived_current = self._current_history_index == index
+        self.history_manager.archive_history(index)
+        if archived_current:
             self.session_manager.create_new_session()
             self._current_history_index = None
             self._clear_chat_area()

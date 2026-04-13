@@ -1,5 +1,6 @@
 import json
 import uuid
+import re
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -17,12 +18,19 @@ def merge_session_messages(messages: List[Dict]) -> List[Dict]:
     return consolidate_messages(messages or [])
 
 
+def sanitize_filename(name: str) -> str:
+    """移除文件名中不合法的字符"""
+    return re.sub(r'[<>:"/\\|?*]', '_', name)
+
+
 class HistoryManager:
     def __init__(self, canvas_name: str):
         self.canvas_name = canvas_name
         self.history_dir = Path("canvas_files") / "workflows" / canvas_name
         self.history_file = self.history_dir / f"llm_history.json"
+        self.archive_dir = self.history_dir / "archived"
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self.archive_dir.mkdir(parents=True, exist_ok=True)
         self._history_sessions: List[Dict] = self._load_history()
         self._history_limit = 100
         self._save_timer: Optional[QTimer] = None
@@ -172,10 +180,34 @@ class HistoryManager:
     def get_history_list(self) -> List[Dict]:
         return self._history_sessions
 
-    def delete_history(self, index: int):
+    def archive_history(self, index: int) -> bool:
+        """将历史记录归档到单独的文件中"""
         if 0 <= index < len(self._history_sessions):
+            session = self._history_sessions[index]
+            title = session.get("title", "未命名")
+            last_time = session.get("last_time", datetime.now().strftime("%Y-%m-%d"))
+            session_id = session.get("session_id", "unknown")
+
+            safe_title = sanitize_filename(title[:50])
+            date_str = last_time[:10] if last_time else datetime.now().strftime("%Y-%m-%d")
+            filename = f"{safe_title}_{date_str}_{session_id}.json"
+
+            archive_file = self.archive_dir / filename
+            try:
+                with open(archive_file, "w", encoding="utf-8") as f:
+                    json.dump(
+                        serialize_for_json(session),
+                        f,
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+            except Exception:
+                return False
+
             self._history_sessions.pop(index)
             self._save_to_disk()
+            return True
+        return False
 
     def get_session_by_index(self, index: int) -> Optional[List[Dict]]:
         if 0 <= index < len(self._history_sessions):
