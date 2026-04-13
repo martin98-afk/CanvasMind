@@ -56,7 +56,7 @@ class MemoryManagerCore:
     def _ensure_memory_file(self):
         """确保记忆文件存在"""
         try:
-            canvas_name = self._canvas_name or "default"
+            canvas_name = "default"
             memory_dir = Path("canvas_files") / "workflows" / canvas_name
             memory_dir.mkdir(parents=True, exist_ok=True)
             self._memory_file = memory_dir / "soul.md"

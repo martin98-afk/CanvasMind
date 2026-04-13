@@ -530,6 +530,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 self._load_history_session_from_popup
             )
             self._history_popup.sessionDeleted.connect(self._delete_history_session)
+            self._history_popup.sessionRenamed.connect(self._rename_history_session)
 
         history_list = self.history_manager.get_history_list() if self.history_manager else []
         self._history_popup.set_history(history_list, self._current_history_index)
@@ -805,6 +806,15 @@ class OpenAIChatToolWindow(ToolWindow):
         self._displayed_session_id = None
         self._add_chat_widget(welcome_card)
 
+    def _hide_welcome_cards(self):
+        """隐藏所有欢迎卡片"""
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                if getattr(widget, "_is_welcome", False):
+                    widget.hide()
+
     def _load_message_batch(self):
         """分批加载消息，避免卡顿"""
         session = self.session_manager.get_current_session()
@@ -853,7 +863,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self.session_manager.set_current_session(restored)
         self._history_preview_messages = None
-        self._current_history_index = None
+        self._current_history_index = 0
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
         self._display_current_session()
@@ -1169,7 +1179,9 @@ class OpenAIChatToolWindow(ToolWindow):
                     self._current_history_index, session.messages
                 )
             else:
-                self.history_manager.save_session(session.messages)
+                self.history_manager.save_session(
+                    session.messages, session_id=session.session_id
+                )
                 self._current_history_index = 0
 
     def _build_api_safe_messages_from_history(
@@ -1224,15 +1236,30 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.addWidget(widget)
 
     def _delete_history_session(self, index: int):
+        deleted_current = self._current_history_index == index
         self.history_manager.delete_history(index)
-        if self._current_history_index == index:
+        if deleted_current:
+            self.session_manager.create_new_session()
             self._current_history_index = None
+            self._clear_chat_area()
+            self._show_initial_welcome()
+            self.title_edit.setText("新对话")
         elif (
             self._current_history_index is not None
             and index < self._current_history_index
         ):
             self._current_history_index -= 1
 
+        if self._history_popup and self._history_popup.isVisible():
+            self._history_popup.set_history(
+                self.history_manager.get_history_list(),
+                self._current_history_index,
+            )
+
+    def _rename_history_session(self, index: int, new_title: str):
+        if not self.history_manager:
+            return
+        self.history_manager.update_session_title(index, new_title)
         if self._history_popup and self._history_popup.isVisible():
             self._history_popup.set_history(
                 self.history_manager.get_history_list(),
@@ -1584,6 +1611,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if not user_text:
             return
+
+        self._hide_welcome_cards()
 
         context_params = {k: v for k, v in self.context_selector.context.items()}
 

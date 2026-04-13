@@ -4,12 +4,12 @@ from typing import List, Dict, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
+    QLineEdit,
     QWidget,
     QFrame,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QScrollArea,
 )
 from qfluentwidgets import (
     BodyLabel,
@@ -17,13 +17,59 @@ from qfluentwidgets import (
     CardWidget,
     TransparentToolButton,
     FluentIcon,
+    SingleDirectionScrollArea,
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
+
+
+def format_relative_time(time_str: str) -> str:
+    """将时间字符串转换为相对时间显示"""
+    if not time_str or time_str == "未知":
+        return "更早"
+    try:
+        session_time = datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        now = datetime.datetime.now()
+        diff = now - session_time
+
+        if diff.total_seconds() < 60:
+            return "刚刚"
+        elif diff.total_seconds() < 3600:
+            minutes = int(diff.total_seconds() / 60)
+            return f"{minutes}分钟前"
+        elif diff.total_seconds() < 86400:
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours}小时前"
+        elif diff.days == 1:
+            return "昨天"
+        elif diff.days < 7:
+            return f"{diff.days}天前"
+        else:
+            return time_str[5:10] if len(time_str) >= 10 else time_str
+    except (ValueError, TypeError):
+        return time_str[5:10] if time_str and len(time_str) >= 10 else "更早"
+
+
+def get_message_preview(messages: List[Dict], max_len: int = 50) -> str:
+    """从消息列表中提取预览文本"""
+    if not messages:
+        return ""
+    for msg in reversed(messages):
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "user" and content:
+            if isinstance(content, list):
+                content = " ".join(
+                    c.get("text", "") if isinstance(c, dict) else str(c)
+                    for c in content
+                )
+            return content[:max_len].strip() + ("..." if len(content) > max_len else "")
+    return ""
 
 
 class _HistoryItemCard(CardWidget):
     sessionClicked = pyqtSignal(int)
     deleteRequested = pyqtSignal(int)
+    renameRequested = pyqtSignal(int, str)
 
     def __init__(
         self,
@@ -32,10 +78,12 @@ class _HistoryItemCard(CardWidget):
         last_time: str,
         message_count: int,
         is_current: bool,
+        preview: str = "",
         parent=None,
     ):
         super().__init__(parent)
         self._index = index
+        self._is_editing = False
         self.setCursor(Qt.PointingHandCursor)
         self.setStyleSheet(
             """
@@ -51,47 +99,120 @@ class _HistoryItemCard(CardWidget):
             """
         )
 
-        layout = QHBoxLayout(self)
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 8, 8)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
 
-        text_wrap = QVBoxLayout()
-        text_wrap.setContentsMargins(0, 0, 0, 0)
-        text_wrap.setSpacing(2)
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
 
-        title_label = BodyLabel(title[:200], self)
-        title_label.setWordWrap(True)
-        title_label.setStyleSheet(
+        self.title_label = BodyLabel(title[:100], self)
+        self.title_label.setWordWrap(True)
+        self.title_label.setStyleSheet(
             "color: white; font-weight: bold;" if is_current else "color: white;"
         )
-        text_wrap.addWidget(title_label)
+        top_row.addWidget(self.title_label, 1)
 
-        meta_text = f"{last_time} · {message_count} 轮"
-        if is_current:
-            meta_text += " · 当前"
-        meta_label = CaptionLabel(meta_text, self)
-        meta_label.setStyleSheet(
-            "color: #ffb65c;" if is_current else "color: rgba(255, 255, 255, 0.6);"
+        self.title_edit = QLineEdit(title[:100], self)
+        self.title_edit.setStyleSheet(
+            """
+            QLineEdit {
+                background-color: rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(102, 198, 255, 0.5);
+                border-radius: 4px;
+                color: white;
+                padding: 2px 6px;
+            }
+            """
         )
-        text_wrap.addWidget(meta_label)
+        self.title_edit.hide()
+        self.title_edit.setMaximumWidth(200)
+        self.title_edit.returnPressed.connect(self._finish_edit)
+        self.title_edit.editingFinished.connect(self._finish_edit)
+        top_row.addWidget(self.title_edit, 1, Qt.AlignLeft)
 
-        layout.addLayout(text_wrap, 1)
+        self.current_indicator = CaptionLabel("当前", self)
+        self.current_indicator.setStyleSheet(
+            "color: #66c6ff; font-weight: bold; background-color: rgba(102, 198, 255, 0.15); border-radius: 4px; padding: 2px 6px;"
+        )
+        self.current_indicator.setVisible(is_current)
+        top_row.addWidget(self.current_indicator, 0, Qt.AlignTop)
 
-        delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
-        delete_btn.setToolTip("删除历史")
-        delete_btn.setFixedSize(24, 24)
-        delete_btn.clicked.connect(lambda: self.deleteRequested.emit(self._index))
-        layout.addWidget(delete_btn, 0, Qt.AlignTop)
+        btn_container = QHBoxLayout()
+        btn_container.setSpacing(2)
+
+        self.edit_btn = TransparentToolButton(FluentIcon.EDIT, self)
+        self.edit_btn.setToolTip("重命名")
+        self.edit_btn.setFixedSize(24, 24)
+        self.edit_btn.clicked.connect(self._start_edit)
+        btn_container.addWidget(self.edit_btn)
+
+        self.delete_btn = TransparentToolButton(FluentIcon.DELETE, self)
+        self.delete_btn.setToolTip("删除历史")
+        self.delete_btn.setFixedSize(24, 24)
+        self.delete_btn.clicked.connect(lambda: self.deleteRequested.emit(self._index))
+        btn_container.addWidget(self.delete_btn)
+
+        top_row.addLayout(btn_container, 0)
+
+        layout.addLayout(top_row)
+
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(8)
+
+        rel_time = format_relative_time(last_time)
+        meta_text = f"{rel_time} · {message_count} 轮对话"
+        self.meta_label = CaptionLabel(meta_text, self)
+        self.meta_label.setStyleSheet(
+            "color: #ffb65c;" if is_current else "color: rgba(255, 255, 255, 0.5);"
+        )
+        bottom_row.addWidget(self.meta_label)
+
+        bottom_row.addStretch(1)
+
+        if preview:
+            self.preview_label = CaptionLabel(preview, self)
+            self.preview_label.setStyleSheet(
+                "color: rgba(255, 255, 255, 0.4); font-style: italic;"
+            )
+            self.preview_label.setWordWrap(True)
+            self.preview_label.setMaximumWidth(220)
+            bottom_row.addWidget(self.preview_label, 0, Qt.AlignRight)
+
+        layout.addLayout(bottom_row)
+
+    def _start_edit(self):
+        self._is_editing = True
+        self.title_label.hide()
+        self.title_edit.show()
+        self.title_edit.setText(self.title_label.text())
+        self.title_edit.setFocus()
+        self.title_edit.selectAll()
+
+    def _finish_edit(self):
+        if not self._is_editing:
+            return
+        new_title = self.title_edit.text().strip()
+        if new_title and new_title != self.title_label.text():
+            self.renameRequested.emit(self._index, new_title)
+        self._is_editing = False
+        self.title_edit.hide()
+        self.title_label.show()
+
+    def update_title(self, new_title: str):
+        self.title_label.setText(new_title[:100])
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and not self._is_editing:
             self.sessionClicked.emit(self._index)
         super().mousePressEvent(event)
 
 
 class _SectionHeader(QLabel):
-    def __init__(self, text: str, parent=None):
-        super().__init__(text, parent)
+    def __init__(self, text: str, count: int = 0, parent=None):
+        super().__init__(parent)
+        display_text = text if count == 0 else f"{text} ({count})"
+        self.setText(display_text)
         self.setStyleSheet(
             """
             color: rgba(255, 255, 255, 0.45);
@@ -105,7 +226,8 @@ class _SectionHeader(QLabel):
 class HistoryPopup(QWidget):
     sessionSelected = pyqtSignal(int)
     sessionDeleted = pyqtSignal(int)
-    MAX_CONTENT_HEIGHT = 420
+    sessionRenamed = pyqtSignal(int, str)
+    MAX_CONTENT_HEIGHT = 400
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -138,55 +260,34 @@ class HistoryPopup(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        title = BodyLabel("历史对话", self.main_frame)
-        title.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
-        layout.addWidget(title)
-        layout.addWidget(CardSeparator(self.main_frame))
+        self.title_label = BodyLabel("历史对话", self.main_frame)
+        self.title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        layout.addWidget(self.title_label)
 
-        self.scroll_area = QScrollArea(self.main_frame)
+        separator = CardSeparator(self.main_frame)
+        layout.addWidget(separator)
+
+        self.scroll_area = SingleDirectionScrollArea(self.main_frame)
         self.scroll_area.setObjectName("historyScrollArea")
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QScrollArea.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setFixedHeight(self.MAX_CONTENT_HEIGHT)
-        self.scroll_area.setViewportMargins(2, 2, 10, 2)
         self.scroll_area.setStyleSheet(
             """
-            QScrollArea#historyScrollArea {
+            SingleDirectionScrollArea#historyScrollArea {
                 background-color: rgba(255, 255, 255, 0.02);
                 border: 1px solid rgba(255, 255, 255, 0.04);
                 border-radius: 18px;
             }
-            QScrollArea#historyScrollArea > QWidget > QWidget {
+            SingleDirectionScrollArea#historyScrollArea > QWidget {
                 background: transparent;
-                border-radius: 14px;
-            }
-            QScrollBar:vertical {
-                width: 10px;
-                background: transparent;
-                margin: 2px 0;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(140, 148, 160, 0.45);
-                border-radius: 5px;
-                min-height: 24px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(160, 168, 180, 0.62);
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: transparent;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0;
             }
             """
         )
 
         self.content_widget = QWidget(self.scroll_area)
+        self.content_widget.setStyleSheet("background: transparent;")
         self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setContentsMargins(4, 4, 4, 4)
         self.content_layout.setSpacing(6)
         self.scroll_area.setWidget(self.content_widget)
         layout.addWidget(self.scroll_area)
@@ -195,6 +296,7 @@ class HistoryPopup(QWidget):
         self.setMaximumWidth(420)
 
     def _get_date_category(self, last_time_str: str) -> str:
+        """将时间字符串分类为: 今天, 昨天, 本周, 上周, 本月, [月份], [年份]"""
         if not last_time_str or last_time_str == "未知":
             return "更早"
         try:
@@ -205,6 +307,8 @@ class HistoryPopup(QWidget):
             yesterday = today - datetime.timedelta(days=1)
             week_start = today - datetime.timedelta(days=today.weekday())
             last_week_start = week_start - datetime.timedelta(days=7)
+            month_start = today.replace(day=1)
+            last_month_start = (month_start - datetime.timedelta(days=1)).replace(day=1)
 
             if session_date == today:
                 return "今天"
@@ -214,15 +318,25 @@ class HistoryPopup(QWidget):
                 return "本周"
             elif last_week_start <= session_date < week_start:
                 return "上周"
+            elif session_date >= month_start:
+                return "本月"
+            elif session_date.year == today.year:
+                month_names = ["一月", "二月", "三月", "四月", "五月", "六月",
+                               "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                return month_names[session_date.month - 1]
             else:
-                return "更早"
+                return f"{session_date.year}年"
         except (ValueError, TypeError):
             return "更早"
 
     def _group_by_date(self, history: List[Dict]) -> Dict[str, List[Dict]]:
-        groups = {"今天": [], "昨天": [], "本周": [], "上周": [], "更早": []}
+        """按时间分组，保持顺序"""
+        order = ["今天", "昨天", "本周", "上周", "本月"]
+        groups = {}
         for session in history:
             category = self._get_date_category(session.get("last_time", ""))
+            if category not in groups:
+                groups[category] = []
             groups[category].append(session)
         return groups
 
@@ -242,28 +356,68 @@ class HistoryPopup(QWidget):
             self.content_layout.addWidget(empty_label)
         else:
             grouped = self._group_by_date(self._all_history)
-            has_items = False
 
-            for section, sessions in grouped.items():
+            order = ["今天", "昨天", "本周", "上周", "本月"]
+            current_year = datetime.datetime.now().year
+            month_names = ["一月", "二月", "三月", "四月", "五月", "六月",
+                           "七月", "八月", "九月", "十月", "十一月", "十二月"]
+
+            extra_sections = []
+            for key in grouped.keys():
+                if key not in order and key != "更早":
+                    if key.endswith("年"):
+                        extra_sections.append((key, grouped[key]))
+                    else:
+                        extra_sections.append((key, grouped[key]))
+
+            extra_sections.sort(key=lambda x: x[0] if not x[0].endswith("年") else f"0{x[0]}")
+
+            year_groups = {}
+            month_groups = []
+            for key, sessions in extra_sections:
+                if key.endswith("年"):
+                    year_groups[key] = sessions
+                else:
+                    month_groups.append((key, sessions))
+
+            month_groups.sort(key=lambda x: -month_names.index(x[0]) if x[0] in month_names else 0)
+
+            final_order = []
+            for section in order:
+                if section in grouped:
+                    final_order.append((section, grouped[section]))
+
+            for section, sessions in month_groups:
+                final_order.append((section, sessions))
+
+            for year in sorted(year_groups.keys(), reverse=True):
+                final_order.append((year, year_groups[year]))
+
+            has_items = False
+            for section, sessions in final_order:
                 if not sessions:
                     continue
                 has_items = True
 
-                header = _SectionHeader(section, self.content_widget)
+                header = _SectionHeader(section, len(sessions), self.content_widget)
                 self.content_layout.addWidget(header)
 
                 for session in sessions:
                     original_index = self._all_history.index(session)
+                    messages = session.get("messages", [])
+                    preview = get_message_preview(messages)
                     card = _HistoryItemCard(
                         index=original_index,
                         title=session.get("title", "新对话"),
                         last_time=session.get("last_time", "未知"),
                         message_count=session.get("message_count", 0),
                         is_current=self._current_index == original_index,
+                        preview=preview,
                         parent=self.content_widget,
                     )
                     card.sessionClicked.connect(self._on_card_clicked)
                     card.deleteRequested.connect(self._on_card_deleted)
+                    card.renameRequested.connect(self._on_card_renamed)
                     self.content_layout.addWidget(card)
 
                 spacer = QWidget(self.content_widget)
@@ -290,7 +444,12 @@ class HistoryPopup(QWidget):
         self.sessionSelected.emit(index)
 
     def _on_card_deleted(self, index: int):
+        if index < 0 or index >= len(self._all_history):
+            return
         self.sessionDeleted.emit(index)
+
+    def _on_card_renamed(self, index: int, new_title: str):
+        self.sessionRenamed.emit(index, new_title)
 
     def set_history(self, history_list: List[Dict], current_index: Optional[int]):
         self._all_history = history_list
@@ -324,3 +483,8 @@ class HistoryPopup(QWidget):
         self.show()
         self.raise_()
         self.setFocus()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.hide()
+        super().keyPressEvent(event)
