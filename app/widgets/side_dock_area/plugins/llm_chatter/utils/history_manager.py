@@ -40,12 +40,20 @@ class HistoryManager:
                 with open(self.history_file, "r", encoding="utf-8") as f:
                     data = deserialize_from_json(json.load(f))
                     for item in data:
-                        item["messages"] = merge_session_messages(item.get("messages", []))
+                        fallback_ts = (
+                            item.get("last_time")
+                            or item.get("saved_at")
+                            or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                        item["messages"] = self._ensure_message_timestamps(
+                            merge_session_messages(item.get("messages", [])),
+                            fallback_ts,
+                        )
                         if "title" not in item:
                             item["title"] = item.get("topic_summary", "新对话")
                         if "last_time" not in item:
-                            item["last_time"] = item.get("messages", [{}])[-1].get(
-                                "timestamp", "未知"
+                            item["last_time"] = self._extract_last_message_time(
+                                item.get("messages", [])
                             )
                         if "message_count" not in item:
                             item["message_count"] = len(item.get("messages", []))
@@ -73,9 +81,8 @@ class HistoryManager:
         saved_at = now.strftime("%Y-%m-%d %H:%M:%S")
         session_id = session_id or uuid.uuid4().hex[:8]
 
-        last_msg_time = merged_messages[-1].get(
-            "timestamp", now.strftime("%Y-%m-%d %H:%M")
-        )
+        merged_messages = self._ensure_message_timestamps(merged_messages, saved_at)
+        last_msg_time = self._extract_last_message_time(merged_messages)
         if not title:
             for msg in merged_messages:
                 if msg.get("role") == "user":
@@ -181,7 +188,15 @@ class HistoryManager:
             with open(self.latest_session_file, "r", encoding="utf-8") as f:
                 data = deserialize_from_json(json.load(f))
                 if isinstance(data, dict) and data.get("messages"):
-                    data["messages"] = merge_session_messages(data.get("messages", []))
+                    fallback_ts = (
+                        data.get("last_time")
+                        or data.get("saved_at")
+                        or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                    data["messages"] = self._ensure_message_timestamps(
+                        merge_session_messages(data.get("messages", [])),
+                        fallback_ts,
+                    )
                     return data
         except Exception:
             return None
@@ -197,7 +212,16 @@ class HistoryManager:
 
     def get_session_by_index(self, index: int) -> Optional[List[Dict]]:
         if 0 <= index < len(self._history_sessions):
-            return merge_session_messages(self._history_sessions[index]["messages"])
+            session = self._history_sessions[index]
+            fallback_ts = (
+                session.get("last_time")
+                or session.get("saved_at")
+                or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            return self._ensure_message_timestamps(
+                merge_session_messages(session["messages"]),
+                fallback_ts,
+            )
         return None
 
     def update_session(self, index: int, messages: List[Dict]):
@@ -220,3 +244,26 @@ class HistoryManager:
     def _do_save(self):
         self._save_to_disk()
         self._save_timer = None
+
+    def _extract_last_message_time(self, messages: List[Dict]) -> str:
+        for msg in reversed(messages or []):
+            timestamp = msg.get("timestamp")
+            if timestamp:
+                return timestamp
+        return "未知"
+
+    def _ensure_message_timestamps(
+        self, messages: List[Dict], fallback_ts: str
+    ) -> List[Dict]:
+        normalized: List[Dict] = []
+        last_seen_ts = fallback_ts
+        for msg in messages or []:
+            if not isinstance(msg, dict):
+                continue
+            copied = dict(msg)
+            timestamp = copied.get("timestamp") or last_seen_ts
+            if timestamp:
+                copied["timestamp"] = timestamp
+                last_seen_ts = timestamp
+            normalized.append(copied)
+        return normalized

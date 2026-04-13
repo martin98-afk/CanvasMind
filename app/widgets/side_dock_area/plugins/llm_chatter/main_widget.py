@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+import sip
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -69,6 +70,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.widgets.conversation_node_pr
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.llm_config_popup import (
     LLMConfigPopup,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.history_popup import (
+    HistoryPopup,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.memory_manager import (
     MemoryManagerDialog,
@@ -150,6 +154,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def __init__(self, homepage, button):
         super().__init__(homepage, button)
+        self._session_card_cache: Dict[str, List[MessageCard]] = {}
+        self._welcome_card_cache: Dict[str, MessageCard] = {}
+        self._displayed_session_id: Optional[str] = None
+        self._history_popup = None
         self._gen_thread_pool = QThreadPool()
         self._gen_thread_pool.setMaxThreadCount(2)
         self.toolStartUiSyncRequested.connect(
@@ -437,10 +445,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self.memory_btn.setToolTip("长期记忆管理")
         self.memory_btn.clicked.connect(self._show_soul_memory)
 
-        self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
+        self.history_btn = TransparentToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setFixedSize(26, 26)
         self.history_btn.setToolTip("历史对话")
-        self.history_btn.toggled.connect(self._toggle_history_mode)
+        self.history_btn.clicked.connect(self._open_history_popup)
 
         self.shell_btn = TransparentToggleToolButton(get_icon("shell"), self)
         self.shell_btn.setFixedSize(26, 26)
@@ -514,6 +522,18 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._settings_popup.set_config(self.model_combo.currentText(), config)
         self._settings_popup.show_at(self.settings_btn)
+
+    def _open_history_popup(self):
+        if self._history_popup is None:
+            self._history_popup = HistoryPopup(parent=self)
+            self._history_popup.sessionSelected.connect(
+                self._load_history_session_from_popup
+            )
+            self._history_popup.sessionDeleted.connect(self._delete_history_session)
+
+        history_list = self.history_manager.get_history_list() if self.history_manager else []
+        self._history_popup.set_history(history_list, self._current_history_index)
+        self._history_popup.show_at(self.history_btn)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -731,12 +751,12 @@ class OpenAIChatToolWindow(ToolWindow):
                 "Failed to auto-save current session before creating a new one"
             )
 
+        self._cache_current_session_cards()
         session = self.session_manager.create_new_session()
         self._current_history_index = None
         self._history_preview_messages = None
         self._history_preview_session_data = None
         self._history_preview_opening = False
-        self.history_btn.setChecked(False)
         self._clear_chat_area()
         self.title_edit.setText("新对话")
         self.node_preview.clear_nodes()
@@ -749,60 +769,48 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_tool_call_id = None
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
-        agent = (
-            self._agent_manager.get_agent(self._current_agent)
-            if self._agent_manager
-            else None
-        )
-        agent_name = agent.name if agent else ""
-        agent_desc = agent.description if agent else ""
-        welcome_card = create_welcome_card(self, agent_name, agent_desc)
-        welcome_card._is_welcome = True
-        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
-        QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
+        QTimer.singleShot(0, self._show_initial_welcome)
         self._refresh_context_usage_indicator()
 
     def _display_current_session(self):
-        # 1. 清空当前 UI
-        self._clear_chat_area()
-
-        # 2. 获取当前会话
         session = self.session_manager.get_current_session()
         if not session:
+            self._clear_chat_area()
             return
 
-        # 3. 更新任务状态（左侧可能有的任务面板）
         self._on_task_state_changed(session.task_state)
+        self.title_edit.setText(session.topic_summary or session.name or "新对话")
 
-        # 4. 统一只渲染 canonical session messages
+        if self._restore_cached_session_cards(session):
+            self._update_node_preview()
+            self._refresh_context_usage_indicator()
+            QTimer.singleShot(10, self._scroll_to_bottom)
+            return
+
+        self._clear_chat_area()
         self._message_batch = consolidate_messages(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
-        # 5. 如果确实一条消息都没有，再显示欢迎语
         if not self._message_batch:
-            self._show_initial_welcome()  # 专门写个函数显示欢迎卡片，不要调 create_new_session
+            self._show_initial_welcome()
             return
 
-        # 6. 开始分批异步加载卡片（防止 UI 卡死）
         self._load_message_batch()
 
     def _show_initial_welcome(self):
         """仅在UI上显示欢迎卡片，不改动Session数据"""
-        agent = (
-            self._agent_manager.get_agent(self._current_agent)
-            if self._agent_manager
-            else None
-        )
-        agent_name = agent.name if agent else ""
-        agent_desc = agent.description if agent else ""
-        welcome_card = create_welcome_card(self, agent_name, agent_desc)
-        welcome_card._is_welcome = True
-        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
+        self._clear_chat_area(delete_widgets=False)
+        welcome_card = self._get_or_create_welcome_card()
+        self._displayed_session_id = None
         self._add_chat_widget(welcome_card)
 
     def _load_message_batch(self):
         """分批加载消息，避免卡顿"""
+        session = self.session_manager.get_current_session()
+        if session:
+            self._displayed_session_id = session.session_id
+
         batch = self._message_batch[
             self._message_batch_index : self._message_batch_index + self._batch_size
         ]
@@ -837,6 +845,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         restored = ChatSession.from_dict(
             {
+                "session_id": latest.get("session_id"),
                 "name": latest.get("title") or latest.get("name") or "最近会话",
                 "messages": messages,
                 "topic_summary": latest.get("title", ""),
@@ -853,6 +862,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
+            self._cache_current_session_cards()
             # 【进入历史模式】
             # 如果当前是一个还没保存过的新对话，先备份它，防止切回来时丢了
             if self._current_history_index is None:
@@ -991,12 +1001,93 @@ class OpenAIChatToolWindow(ToolWindow):
 
         return card
 
-    def _clear_chat_area(self):
+    def _clear_chat_area(self, delete_widgets: bool = True):
         self._current_assistant_card = None
+        self._displayed_session_id = None
         while self.chat_layout.count():
             item = self.chat_layout.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                if delete_widgets:
+                    item.widget().deleteLater()
+                else:
+                    item.widget().hide()
+
+    def _take_chat_widgets(self) -> List[QWidget]:
+        widgets: List[QWidget] = []
+        self._current_assistant_card = None
+        self._displayed_session_id = None
+        while self.chat_layout.count():
+            item = self.chat_layout.takeAt(0)
+            if item and item.widget():
+                item.widget().hide()
+                widgets.append(item.widget())
+        return widgets
+
+    def _cache_current_session_cards(self):
+        session = self.session_manager.get_current_session()
+        widgets = self._take_chat_widgets()
+        if not session or not session.messages:
+            return
+
+        message_cards = [
+            w
+            for w in widgets
+            if isinstance(w, MessageCard) and self._is_widget_alive(w)
+        ]
+        if message_cards:
+            self._session_card_cache[session.session_id] = message_cards
+
+    def _is_widget_alive(self, widget: Optional[QWidget]) -> bool:
+        if widget is None:
+            return False
+        try:
+            return not sip.isdeleted(widget)
+        except Exception:
+            return False
+
+    def _restore_cached_session_cards(self, session: ChatSession) -> bool:
+        if not session.messages:
+            return False
+
+        cached_cards = self._session_card_cache.get(session.session_id)
+        if not cached_cards:
+            return False
+
+        alive_cards = [card for card in cached_cards if self._is_widget_alive(card)]
+        if len(alive_cards) != len(cached_cards):
+            self._session_card_cache.pop(session.session_id, None)
+        if not alive_cards:
+            return False
+
+        self._clear_chat_area(delete_widgets=False)
+        for card in alive_cards:
+            self._add_chat_widget(card)
+        self._displayed_session_id = session.session_id
+        self._current_assistant_card = (
+            alive_cards[-1]
+            if alive_cards and alive_cards[-1].role == "assistant"
+            else None
+        )
+        return True
+
+    def _get_or_create_welcome_card(self) -> MessageCard:
+        agent = (
+            self._agent_manager.get_agent(self._current_agent)
+            if self._agent_manager
+            else None
+        )
+        agent_name = agent.name if agent else ""
+        agent_desc = agent.description if agent else ""
+        cache_key = agent_name or "__default__"
+        welcome_card = self._welcome_card_cache.get(cache_key)
+        if not self._is_widget_alive(welcome_card):
+            welcome_card = create_welcome_card(self, agent_name, agent_desc)
+            welcome_card._is_welcome = True
+            welcome_card.contextActionRequested.connect(
+                self.handle_recommended_question
+            )
+            self._welcome_card_cache[cache_key] = welcome_card
+        return welcome_card
 
     def _sanitize_user_message_for_display(self, content: str) -> str:
         if not isinstance(content, str):
@@ -1107,26 +1198,22 @@ class OpenAIChatToolWindow(ToolWindow):
         return safe_messages
 
     def _on_clear_shortcut(self):
+        session = self.session_manager.get_current_session()
+        if session:
+            self._session_card_cache.pop(session.session_id, None)
         self._clear_chat_area()
         self.node_preview.clear_nodes()
-        session = self.session_manager.get_current_session()
         if session:
             session.clear()
             self._on_task_state_changed(session.task_state)
-        agent = (
-            self._agent_manager.get_agent(self._current_agent)
-            if self._agent_manager
-            else None
-        )
-        agent_name = agent.name if agent else ""
-        agent_desc = agent.description if agent else ""
-        welcome_card = create_welcome_card(self, agent_name, agent_desc)
-        welcome_card._is_welcome = True
-        welcome_card.contextActionRequested.connect(self.handle_recommended_question)
-        QTimer.singleShot(300, lambda: self._add_chat_widget(welcome_card))
+        welcome_card = self._get_or_create_welcome_card()
+        QTimer.singleShot(0, lambda: self._add_chat_widget(welcome_card))
         self.title_edit.setText("新对话")
 
     def _add_chat_widget(self, widget: QWidget):
+        if not self._is_widget_alive(widget):
+            return
+        widget.show()
         if isinstance(widget, MessageCard):
             widget.sync_width()
             if widget.role == "user":
@@ -1138,18 +1225,42 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _delete_history_session(self, index: int):
         self.history_manager.delete_history(index)
-        self._display_history_sessions()
+        if self._current_history_index == index:
+            self._current_history_index = None
+        elif (
+            self._current_history_index is not None
+            and index < self._current_history_index
+        ):
+            self._current_history_index -= 1
+
+        if self._history_popup and self._history_popup.isVisible():
+            self._history_popup.set_history(
+                self.history_manager.get_history_list(),
+                self._current_history_index,
+            )
 
     def _load_history_session(self, index: int):
-        # 1. 获取数据库里的历史消息
+        self._load_history_session_from_popup(index)
+
+    def _load_history_session_from_popup(self, index: int):
+        if self._is_streaming:
+            self._on_stop_clicked()
+
+        try:
+            self._auto_save_current_session()
+        except Exception:
+            logger.exception("Failed to auto-save current session before loading history")
+
         messages = self.history_manager.get_session_by_index(index)
         if not messages:
             return
 
-        # 2. 直接用历史消息重建 session，避免 UI 预览数据和真实 session 分叉
         title = self.history_manager.get_current_title(index)
         restored = ChatSession.from_dict(
             {
+                "session_id": self.history_manager.get_history_list()[index].get(
+                    "session_id"
+                ),
                 "name": title or "历史对话",
                 "messages": self._build_api_safe_messages_from_history(messages),
                 "topic_summary": title or "",
@@ -1157,20 +1268,18 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self.session_manager.set_current_session(restored)
         self._history_preview_messages = None
-
-        # 4. 同步状态变量
         self._current_history_index = index
-        self._history_preview_opening = True  # 标记：我是通过点击历史项关闭菜单的
-
-        # 5. 更新标题显示
         self.title_edit.setText(title or "历史对话")
-
-        # 6. 关闭历史界面 (这会触发 _toggle_history_mode(False))
-        self.history_btn.setChecked(False)
+        if self._history_popup:
+            self._history_popup.close()
+        self._display_current_session()
 
     def _append_user_message(
         self, content: str, timestamp: str = None, tag_params: dict = None
     ):
+        session = self.session_manager.get_current_session()
+        if session:
+            self._displayed_session_id = session.session_id
         card = MessageCard(
             parent=self,
             role="user",
@@ -1190,6 +1299,9 @@ class OpenAIChatToolWindow(ToolWindow):
         return card
 
     def _append_assistant_message(self, timestamp: str = None) -> MessageCard:
+        session = self.session_manager.get_current_session()
+        if session:
+            self._displayed_session_id = session.session_id
         card = MessageCard(parent=self, role="assistant", timestamp=timestamp)
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
@@ -1314,7 +1426,11 @@ class OpenAIChatToolWindow(ToolWindow):
         cutoff_index = index_map[rendered_index]
         session.messages = canonical_messages[:cutoff_index]
         self._persist_session_after_mutation()
-        self._display_current_session()
+        self._remove_rendered_cards_from_index(rendered_index)
+        if not session.messages:
+            self._show_initial_welcome()
+        else:
+            self._update_node_preview()
         self._refresh_context_usage_indicator()
         return True
 
@@ -1355,8 +1471,36 @@ class OpenAIChatToolWindow(ToolWindow):
 
         session.messages = canonical_messages
         self._persist_session_after_mutation()
-        self._display_current_session()
+        self._remove_rendered_card_pair(rendered_index, role)
+        if not session.messages:
+            self._show_initial_welcome()
+        else:
+            self._update_node_preview()
         self._refresh_context_usage_indicator()
+
+    def _remove_rendered_cards_from_index(self, rendered_index: int):
+        cards = self._get_rendered_message_cards()
+        for card in cards[rendered_index:]:
+            self.chat_layout.removeWidget(card)
+            card.hide()
+
+    def _remove_rendered_card_pair(self, rendered_index: int, role: str):
+        cards = self._get_rendered_message_cards()
+        if rendered_index >= len(cards):
+            return
+
+        indices = {rendered_index}
+        if role == "user" and rendered_index + 1 < len(cards):
+            if cards[rendered_index + 1].role == "assistant":
+                indices.add(rendered_index + 1)
+        elif role == "assistant" and rendered_index - 1 >= 0:
+            if cards[rendered_index - 1].role == "user":
+                indices.add(rendered_index - 1)
+
+        for idx in sorted(indices, reverse=True):
+            card = cards[idx]
+            self.chat_layout.removeWidget(card)
+            card.hide()
 
     def _undo_from_message(self, card: MessageCard):
         cards = self._get_rendered_message_cards()
@@ -1420,9 +1564,8 @@ class OpenAIChatToolWindow(ToolWindow):
         if not isinstance(question, str) or not question.strip():
             return
 
-        if self._in_history_mode:
-            self.history_btn.setChecked(False)
-            self._toggle_history_mode(False)
+        if self._history_popup and self._history_popup.isVisible():
+            self._history_popup.close()
         self._on_send_clicked(user_text=question.strip())
 
     def _on_send_clicked(self, user_text: str = ""):

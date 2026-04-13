@@ -3,6 +3,7 @@ import json
 import re
 import time
 import traceback
+from datetime import datetime
 from threading import Event
 from typing import Any, Dict, List
 from loguru import logger
@@ -403,6 +404,7 @@ class OpenAIChatWorker(QThread):
             self._handle_error(e)
 
     def _build_response_message_sequence(self, tool_results=None) -> List[Dict]:
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         tool_call_args_by_id = {}
         tool_call_map = {}
         for tc in self._current_tool_calls or []:
@@ -444,6 +446,7 @@ class OpenAIChatWorker(QThread):
                 "result": item.get("content", ""),
                 "success": item.get("success", True),
                 "round_id": item.get("round_id"),
+                "timestamp": item.get("timestamp", now_ts),
             }
 
         sequence: List[Dict] = []
@@ -468,6 +471,7 @@ class OpenAIChatWorker(QThread):
             assistant_message = {
                 "role": "assistant",
                 "content": pending_text_blocks,
+                "timestamp": now_ts,
             }
             tool_call = tool_call_map.get(tool_call_id)
             if tool_call:
@@ -481,16 +485,23 @@ class OpenAIChatWorker(QThread):
                 sequence.append(tool_result)
 
         if pending_text_blocks:
-            sequence.append({"role": "assistant", "content": pending_text_blocks})
+            sequence.append(
+                {
+                    "role": "assistant",
+                    "content": pending_text_blocks,
+                    "timestamp": now_ts,
+                }
+            )
         elif not sequence and self.full_response:
             sequence.append(
                 {
                     "role": "assistant",
                     "content": append_text_block([], self.full_response),
+                    "timestamp": now_ts,
                 }
             )
         elif not sequence and not saw_marker:
-            sequence.append({"role": "assistant", "content": []})
+            sequence.append({"role": "assistant", "content": [], "timestamp": now_ts})
 
         return sequence
 

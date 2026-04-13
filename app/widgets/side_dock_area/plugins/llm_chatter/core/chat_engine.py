@@ -282,6 +282,8 @@ class ChatEngine:
 
             content = _normalize_message_content(msg.get("content", ""))
             normalized_msg: Dict[str, Any] = {"role": role, "content": content}
+            if msg.get("timestamp"):
+                normalized_msg["timestamp"] = msg.get("timestamp")
 
             if role == "assistant":
                 tool_calls = msg.get("tool_calls", [])
@@ -315,6 +317,8 @@ class ChatEngine:
                             "tool_call_id": tool_call_id,
                             "content": result_content,
                         }
+                        if result.get("timestamp"):
+                            tool_msg["timestamp"] = result.get("timestamp")
                         if result.get("name"):
                             tool_msg["name"] = result.get("name")
                         normalized.append(tool_msg)
@@ -629,10 +633,12 @@ class ChatEngine:
             session.get_context_messages()
         )
         latest_user_message = ""
+        latest_user_timestamp = ""
         params = {}
         history_messages = normalized_session_messages
         if history_messages and history_messages[-1].get("role") == "user":
             latest_user_message = history_messages[-1].get("content", "")
+            latest_user_timestamp = history_messages[-1].get("timestamp", "")
             params = history_messages[-1].get("params", {})
             history_messages = history_messages[:-1]
 
@@ -667,14 +673,16 @@ class ChatEngine:
             if has_image:
                 user_content = context_provider.get_multimodal_context_items()
                 user_content.append({"type": "text", "text": latest_user_message})
-                messages.append(
-                    {"role": "user", "content": user_content, "params": params}
-                )
+                user_msg = {"role": "user", "content": user_content, "params": params}
+                if latest_user_timestamp:
+                    user_msg["timestamp"] = latest_user_timestamp
+                messages.append(user_msg)
                 return messages
 
-        messages.append(
-            {"role": "user", "content": latest_user_message, "params": params}
-        )
+        user_msg = {"role": "user", "content": latest_user_message, "params": params}
+        if latest_user_timestamp:
+            user_msg["timestamp"] = latest_user_timestamp
+        messages.append(user_msg)
         return messages
 
     def _get_context_budget(self, llm_config: Dict) -> int:
