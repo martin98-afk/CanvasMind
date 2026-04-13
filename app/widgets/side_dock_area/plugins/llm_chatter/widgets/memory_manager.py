@@ -185,13 +185,17 @@ class MemoryManagerDialog(QDialog):
             self.segmented_widget.addItem(k, MEMORY_CATEGORY_SHORT_NAMES[k])
         self.segmented_widget.setCurrentItem(segment_keys[0])
         self.segmented_widget.currentItemChanged.connect(self._on_category_changed)
-        for i, k in enumerate(segment_keys):
-            self._category_indices[k] = i
         layout.addWidget(self.segmented_widget)
 
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(10)
         self.category_header = BodyLabel(self)
-        self.category_header.setStyleSheet("font-weight: bold; font-size: 14px; padding: 5px 0;")
-        layout.addWidget(self.category_header)
+        self.category_header.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.category_count_label = BodyLabel(self)
+        self.category_count_label.setStyleSheet("color: #888; font-size: 12px;")
+        header_layout.addWidget(self.category_header, 1)
+        header_layout.addWidget(self.category_count_label, 0, Qt.AlignVCenter | Qt.AlignRight)  # type: ignore
+        layout.addLayout(header_layout)
 
         self.list_widget = ListWidget(self)
         self.list_widget.setSelectionMode(QListWidget.ExtendedSelection)
@@ -240,6 +244,16 @@ class MemoryManagerDialog(QDialog):
             self.category_header.setText(MEMORY_CATEGORIES_WIDGET[self._current_category])
             self._load_memories()
 
+    def _update_category_count_label(self, category_memories: Dict[str, List]):
+        counts = {k: len(v) for k, v in category_memories.items()}
+        total = sum(counts.values())
+        current_count = counts.get(self._current_category, 0)
+        from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import MEMORY_CATEGORY_LIMITS
+        limit = MEMORY_CATEGORY_LIMITS.get(self._current_category, 20)
+        self.category_count_label.setText(
+            f"当前分类: {current_count}/{limit} | 总记忆: {total}"
+        )
+
     def _load_memories(self):
         self.list_widget.clear()
 
@@ -252,11 +266,27 @@ class MemoryManagerDialog(QDialog):
                 enabled = mem.get("enabled", True)
                 source = mem.get("source", "manual")
                 confidence = mem.get("confidence", 0.8)
-                conflict_group = mem.get("conflict_group", "")
+                hit_count = mem.get("hit_count", 0)
+                last_used = mem.get("last_used_at", "")
                 category = mem.get("category", "task_preference")
-                meta_parts = [f"source={source}", f"confidence={confidence:.2f}"]
-                if conflict_group:
-                    meta_parts.append(f"group={conflict_group}")
+                meta_parts = [f"source={source}", f"conf={confidence:.2f}"]
+                if hit_count > 0:
+                    meta_parts.append(f"hits={hit_count}")
+                if last_used:
+                    days_ago = ""
+                    try:
+                        from datetime import datetime as dt
+                        used_date = dt.strptime(last_used, "%Y-%m-%d %H:%M:%S")
+                        days = (dt.now() - used_date).days
+                        if days == 0:
+                            days_ago = "today"
+                        elif days == 1:
+                            days_ago = "1d"
+                        else:
+                            days_ago = f"{days}d"
+                        meta_parts.append(f"used={days_ago}")
+                    except:
+                        pass
                 meta_text = " | ".join(meta_parts)
             else:
                 content = str(mem)
@@ -271,6 +301,7 @@ class MemoryManagerDialog(QDialog):
             global_index += 1
 
         self.category_header.setText(MEMORY_CATEGORIES_WIDGET[self._current_category])
+        self._update_category_count_label(category_memories)
         current_memories = category_memories.get(self._current_category, [])
 
         for idx, (item_id, content, enabled, meta_text) in enumerate(current_memories):

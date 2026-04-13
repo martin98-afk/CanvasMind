@@ -30,6 +30,20 @@ MEMORY_CATEGORY_SUMMARIES = {
     "task_taboos": "用户明确指出不能做的事、禁忌或雷区",
 }
 
+MEMORY_CATEGORY_LIMITS = {
+    "agent_identity": 10,
+    "user_identity": 10,
+    "task_preference": 20,
+    "task_taboos": 15,
+}
+
+MEMORY_DECAY_CONFIG = {
+    "enabled": True,
+    "decay_days": 30,
+    "decay_rate": 0.1,
+    "min_confidence": 0.3,
+}
+
 
 class MemoryManagerCore:
     """长期记忆管理器核心类"""
@@ -104,6 +118,7 @@ class MemoryManagerCore:
                 "confidence": 0.7,
                 "source": "legacy",
                 "last_used_at": "",
+                "hit_count": 0,
                 "category": "task_preference",
             }
 
@@ -121,6 +136,7 @@ class MemoryManagerCore:
         normalized.setdefault("confidence", 0.8)
         normalized.setdefault("source", "manual")
         normalized.setdefault("last_used_at", "")
+        normalized.setdefault("hit_count", 0)
         normalized.setdefault("conflict_group", "")
         normalized.setdefault("category", "task_preference")
         if normalized["category"] not in MEMORY_CATEGORIES:
@@ -256,7 +272,8 @@ class MemoryManagerCore:
                     updated["conflict_group"] = conflict_group
                 updated["category"] = category
                 user_memories[index] = updated
-                memory_data["user_memories"] = user_memories[-50:]
+                user_memories = self._enforce_category_limits(user_memories)
+                memory_data["user_memories"] = user_memories
                 return self.save_memory(memory_data)
 
             new_entry = {
@@ -272,11 +289,39 @@ class MemoryManagerCore:
             user_memories = self._resolve_conflicts(user_memories, new_entry)
             user_memories.append(new_entry)
             user_memories.sort(key=self._memory_sort_key, reverse=True)
-            memory_data["user_memories"] = user_memories[:50]
+            user_memories = self._enforce_category_limits(user_memories)
+            memory_data["user_memories"] = user_memories
             return self.save_memory(memory_data)
         except Exception as e:
             logger.error(f"[MemoryManager] Failed to add user memory: {e}")
             return False
+
+    def _enforce_category_limits(self, memories: List[Dict]) -> List[Dict]:
+        """强制执行每类记忆上限，移除最低confidence的记忆"""
+        category_memories: Dict[str, List[Dict]] = {
+            cat: [] for cat in MEMORY_CATEGORIES
+        }
+
+        for mem in memories:
+            cat = mem.get("category", "task_preference")
+            if cat not in MEMORY_CATEGORIES:
+                cat = "task_preference"
+            category_memories[cat].append(mem)
+
+        result = []
+        for cat, limit in MEMORY_CATEGORY_LIMITS.items():
+            cat_memories = category_memories.get(cat, [])
+            cat_memories.sort(key=self._memory_sort_key, reverse=True)
+            if len(cat_memories) > limit:
+                removed = cat_memories[limit:]
+                for r in removed:
+                    logger.info(f"[MemoryManager] Removed low-confidence memory [{cat}]: {r.get('content', '')[:30]}...")
+                result.extend(cat_memories[:limit])
+            else:
+                result.extend(cat_memories)
+
+        result.sort(key=self._memory_sort_key, reverse=True)
+        return result
 
     def update_user_memories(self, memories: List[Dict]) -> bool:
         """更新用户记忆列表"""
@@ -400,6 +445,7 @@ class MemoryManagerCore:
                     in normalized_keys
                 ):
                     normalized["last_used_at"] = now
+                    normalized["hit_count"] = normalized.get("hit_count", 0) + 1
                     changed = True
                 updated_memories.append(normalized)
             if not changed:
@@ -409,6 +455,55 @@ class MemoryManagerCore:
         except Exception as e:
             logger.error(f"[MemoryManager] Failed to touch memories: {e}")
             return False
+
+    def apply_confidence_decay(self, memory_data: Optional[Dict] = None) -> int:
+        """对长期未使用的记忆降低置信度，返回衰减的记忆条数"""
+        if not MEMORY_DECAY_CONFIG.get("enabled", True):
+            return 0
+
+        try:
+            if memory_data is None:
+                memory_data = self.load_memory()
+            now = datetime.now()
+            decay_days = MEMORY_DECAY_CONFIG.get("decay_days", 30)
+            decay_rate = MEMORY_DECAY_CONFIG.get("decay_rate", 0.1)
+            min_confidence = MEMORY_DECAY_CONFIG.get("min_confidence", 0.3)
+            decayed_count = 0
+
+            updated_memories = []
+            for memory in memory_data.get("user_memories", []):
+                normalized = self._normalize_memory_entry(memory)
+                if not normalized:
+                    continue
+
+                last_used = normalized.get("last_used_at") or normalized.get("timestamp", "")
+                if last_used:
+                    try:
+                        last_used_date = datetime.strptime(last_used, "%Y-%m-%d %H:%M:%S")
+                        days_since_used = (now - last_used_date).days
+                        if days_since_used > decay_days:
+                            current_conf = normalized.get("confidence", 0.8)
+                            if current_conf > min_confidence:
+                                new_conf = max(min_confidence, current_conf - decay_rate)
+                                normalized["confidence"] = round(new_conf, 2)
+                                decayed_count += 1
+                                logger.info(
+                                    f"[MemoryManager] Decayed memory [{normalized.get('category')}]: "
+                                    f"{normalized.get('content', '')[:30]}... conf {current_conf:.2f} -> {new_conf:.2f}"
+                                )
+                    except ValueError:
+                        pass
+                updated_memories.append(normalized)
+
+            if decayed_count > 0:
+                memory_data["user_memories"] = updated_memories
+                self.save_memory(memory_data)
+                logger.info(f"[MemoryManager] Confidence decay applied to {decayed_count} memories")
+
+            return decayed_count
+        except Exception as e:
+            logger.error(f"[MemoryManager] Failed to apply confidence decay: {e}")
+            return 0
 
     def consolidate_from_messages(
         self,
