@@ -149,7 +149,8 @@ class TopicSummaryTask(QRunnable):
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
                     '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
-                    '  "memory_category": "分类key（如：task_preference）"\n'
+                    '  "memory_category": "分类key（如：task_preference）",\n'
+                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
                     "```"
                 )
@@ -174,7 +175,8 @@ class TopicSummaryTask(QRunnable):
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
                     '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
-                    '  "memory_category": "分类key（如：task_preference）"\n'
+                    '  "memory_category": "分类key（如：task_preference）",\n'
+                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
                     "```"
                 )
@@ -204,6 +206,7 @@ class TopicSummaryTask(QRunnable):
                     "should_update_memory": result.get("should_update_memory", False),
                     "memory_content": result.get("memory_content", ""),
                     "memory_category": result.get("memory_category", "task_preference"),
+                    "hit_memories": result.get("hit_memories", []),
                 }
                 self.callback(callback_data)
             else:
@@ -213,6 +216,7 @@ class TopicSummaryTask(QRunnable):
                         "should_update_memory": False,
                         "memory_content": "",
                         "memory_category": "task_preference",
+                        "hit_memories": [],
                     }
                 )
         except Exception as e:

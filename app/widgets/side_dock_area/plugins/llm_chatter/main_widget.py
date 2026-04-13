@@ -2019,11 +2019,13 @@ class OpenAIChatToolWindow(ToolWindow):
             should_update_memory = result.get("should_update_memory", False)
             memory_content = result.get("memory_content", "")
             memory_category = result.get("memory_category", "task_preference")
+            hit_memories = result.get("hit_memories", [])
         else:
             summary = result
             should_update_memory = False
             memory_content = ""
             memory_category = "task_preference"
+            hit_memories = []
 
         if not summary:
             return
@@ -2062,6 +2064,10 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.info(
                 f"[Topic Summary] Memory update skipped (should_update={should_update_memory}, content={bool(memory_content)})"
             )
+
+        if hit_memories and self._memory_manager:
+            self._memory_manager.touch_memories(hit_memories)
+            logger.info(f"[Topic Summary] Touched {len(hit_memories)} existing memories")
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)

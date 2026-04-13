@@ -623,11 +623,6 @@ class MemoryManagerCore:
             selected_memories = self.get_context_memories(
                 limit=limit, memory_data=memory_data
             )
-        if selected_memories:
-            self.touch_memories(
-                [item.get("content", "") for item in selected_memories],
-                memory_data=memory_data,
-            )
         lines = [self.format_memories_for_prompt(selected_memories)]
         if topics:
             recent_topics = topics[-5:]
