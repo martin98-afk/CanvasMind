@@ -1,6 +1,6 @@
-import os
 import json
 import uuid
+import re
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -18,53 +18,87 @@ def merge_session_messages(messages: List[Dict]) -> List[Dict]:
     return consolidate_messages(messages or [])
 
 
+def sanitize_filename(name: str) -> str:
+    """移除文件名中不合法的字符"""
+    return re.sub(r'[<>:"/\\|?*]', '_', name)
+
+
 class HistoryManager:
     def __init__(self, canvas_name: str):
         self.canvas_name = canvas_name
         self.history_dir = Path("canvas_files") / "workflows" / canvas_name
         self.history_file = self.history_dir / f"llm_history.json"
-        self.daily_dir = self.history_dir / "daily"
-        self.latest_session_file = self.history_dir / "session_latest.json"
+        self.archive_dir = self.history_dir / "archived"
         self.history_dir.mkdir(parents=True, exist_ok=True)
-        self.daily_dir.mkdir(parents=True, exist_ok=True)
+        self.archive_dir.mkdir(parents=True, exist_ok=True)
         self._history_sessions: List[Dict] = self._load_history()
-        self._topic_summaries: Dict[str, str] = {}
-        self._daily_limit = 5
         self._history_limit = 100
         self._save_timer: Optional[QTimer] = None
-        self._save_delay_ms = 2000
+        self._save_delay_ms = 1000
 
     def _load_history(self) -> List[Dict]:
         if self.history_file.exists():
             try:
                 with open(self.history_file, "r", encoding="utf-8") as f:
                     data = deserialize_from_json(json.load(f))
+                    if not isinstance(data, list):
+                        return []
+                    normalized = []
+                    seen_ids = set()
                     for item in data:
-                        item["messages"] = merge_session_messages(item.get("messages", []))
+                        if not isinstance(item, dict):
+                            continue
+                        sid = item.get("session_id")
+                        if sid and sid in seen_ids:
+                            continue
+                        if sid:
+                            seen_ids.add(sid)
+                        fallback_ts = (
+                            item.get("last_time")
+                            or item.get("saved_at")
+                            or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                        item["messages"] = self._ensure_message_timestamps(
+                            merge_session_messages(item.get("messages", [])),
+                            fallback_ts,
+                        )
                         if "title" not in item:
                             item["title"] = item.get("topic_summary", "新对话")
                         if "last_time" not in item:
-                            item["last_time"] = item.get("messages", [{}])[-1].get(
-                                "timestamp", "未知"
+                            item["last_time"] = self._extract_last_message_time(
+                                item.get("messages", [])
                             )
                         if "message_count" not in item:
                             item["message_count"] = len(item.get("messages", []))
-                    return data
+                        if "session_id" not in item:
+                            item["session_id"] = uuid.uuid4().hex[:8]
+                        normalized.append(item)
+                    return normalized
             except Exception:
                 pass
         return []
 
-    def save_session(self, messages: List[Dict], title: str = None):
+    def save_session(self, messages: List[Dict], title: str = None, session_id: str = None):
         if not messages:
             return
 
         merged_messages = merge_session_messages(messages)
-        session_record = self._build_session_record(merged_messages, title)
+        session_record = self._build_session_record(merged_messages, title, session_id)
+        new_session_id = session_record["session_id"]
 
-        self._history_sessions.insert(0, session_record)
+        existing_index = None
+        for i, s in enumerate(self._history_sessions):
+            if s.get("session_id") == new_session_id:
+                existing_index = i
+                break
+
+        if existing_index is not None:
+            self._history_sessions[existing_index] = session_record
+        else:
+            self._history_sessions.insert(0, session_record)
+
         self._history_sessions = self._history_sessions[: self._history_limit]
         self._save_to_disk()
-        self._save_latest_and_daily(session_record)
 
     def _build_session_record(
         self, merged_messages: List[Dict], title: str = None, session_id: str = None
@@ -73,9 +107,8 @@ class HistoryManager:
         saved_at = now.strftime("%Y-%m-%d %H:%M:%S")
         session_id = session_id or uuid.uuid4().hex[:8]
 
-        last_msg_time = merged_messages[-1].get(
-            "timestamp", now.strftime("%Y-%m-%d %H:%M")
-        )
+        merged_messages = self._ensure_message_timestamps(merged_messages, saved_at)
+        last_msg_time = self._extract_last_message_time(merged_messages)
         if not title:
             for msg in merged_messages:
                 if msg.get("role") == "user":
@@ -96,46 +129,9 @@ class HistoryManager:
             "message_count": self._count_conversation_pairs(merged_messages),
         }
 
-    def _save_latest_and_daily(self, session_record: Dict):
-        try:
-            with open(self.latest_session_file, "w", encoding="utf-8") as f:
-                json.dump(
-                    serialize_for_json(session_record),
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                )
-        except Exception:
-            pass
-
-        day_dir = self.daily_dir / datetime.now().strftime("%Y-%m-%d")
-        day_dir.mkdir(parents=True, exist_ok=True)
-        file_name = (
-            f"session_{datetime.now().strftime('%H%M%S')}_"
-            f"{session_record.get('session_id', 'unknown')}.json"
-        )
-        try:
-            with open(day_dir / file_name, "w", encoding="utf-8") as f:
-                json.dump(
-                    serialize_for_json(session_record),
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                )
-        except Exception:
-            pass
-
-        daily_files = sorted(day_dir.glob("session_*.json"), key=lambda p: p.stat().st_mtime)
-        if len(daily_files) > self._daily_limit:
-            for old_file in daily_files[: len(daily_files) - self._daily_limit]:
-                try:
-                    old_file.unlink()
-                except Exception:
-                    pass
-
     def get_current_title(self, index: int) -> str:
         if 0 <= index < len(self._history_sessions):
-            return self._history_sessions[index]["title"]
+            return self._history_sessions[index].get("title", "")
         return ""
 
     def update_session_title(self, index: int, new_title: str):
@@ -158,7 +154,6 @@ class HistoryManager:
         return False
 
     def _count_conversation_pairs(self, messages: List[Dict]) -> int:
-        """计算对话轮数（用户消息数量）"""
         count = 0
         for msg in messages:
             if msg.get("role") == "user":
@@ -175,29 +170,62 @@ class HistoryManager:
             )
 
     def load_latest_session(self) -> Optional[Dict]:
-        if not self.latest_session_file.exists():
+        if not self._history_sessions:
             return None
-        try:
-            with open(self.latest_session_file, "r", encoding="utf-8") as f:
-                data = deserialize_from_json(json.load(f))
-                if isinstance(data, dict) and data.get("messages"):
-                    data["messages"] = merge_session_messages(data.get("messages", []))
-                    return data
-        except Exception:
+        latest = self._history_sessions[0]
+        if not latest.get("messages"):
             return None
-        return None
+        return latest
 
     def get_history_list(self) -> List[Dict]:
         return self._history_sessions
 
-    def delete_history(self, index: int):
+    def archive_history(self, index: int) -> bool:
+        """将历史记录归档到单独的文件中"""
         if 0 <= index < len(self._history_sessions):
+            session = self._history_sessions[index]
+            title = session.get("title", "未命名")
+            last_time = session.get("last_time", datetime.now().strftime("%Y-%m-%d"))
+            session_id = session.get("session_id", "unknown")
+
+            safe_title = sanitize_filename(title[:50])
+            date_str = last_time[:10] if last_time else datetime.now().strftime("%Y-%m-%d")
+            filename = f"{safe_title}_{date_str}_{session_id}.json"
+
+            archive_file = self.archive_dir / filename
+            try:
+                with open(archive_file, "w", encoding="utf-8") as f:
+                    json.dump(
+                        serialize_for_json(session),
+                        f,
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+            except Exception:
+                return False
+
             self._history_sessions.pop(index)
             self._save_to_disk()
+            return True
+        return False
 
     def get_session_by_index(self, index: int) -> Optional[List[Dict]]:
         if 0 <= index < len(self._history_sessions):
-            return merge_session_messages(self._history_sessions[index]["messages"])
+            session = self._history_sessions[index]
+            fallback_ts = (
+                session.get("last_time")
+                or session.get("saved_at")
+                or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            return self._ensure_message_timestamps(
+                merge_session_messages(session.get("messages", [])),
+                fallback_ts,
+            )
+        return None
+
+    def get_session_id_by_index(self, index: int) -> Optional[str]:
+        if 0 <= index < len(self._history_sessions):
+            return self._history_sessions[index].get("session_id")
         return None
 
     def update_session(self, index: int, messages: List[Dict]):
@@ -210,7 +238,6 @@ class HistoryManager:
                 session_id=existing.get("session_id"),
             )
             self._history_sessions[index] = updated
-            self._save_latest_and_daily(updated)
             self._schedule_save()
 
     def _schedule_save(self):
@@ -220,3 +247,62 @@ class HistoryManager:
     def _do_save(self):
         self._save_to_disk()
         self._save_timer = None
+
+    def _extract_last_message_time(self, messages: List[Dict]) -> str:
+        for msg in reversed(messages or []):
+            timestamp = msg.get("timestamp")
+            if timestamp:
+                return timestamp
+        return "未知"
+
+    def _ensure_message_timestamps(
+        self, messages: List[Dict], fallback_ts: str
+    ) -> List[Dict]:
+        normalized: List[Dict] = []
+        last_seen_ts = fallback_ts
+        for msg in messages or []:
+            if not isinstance(msg, dict):
+                continue
+            copied = dict(msg)
+            timestamp = copied.get("timestamp") or last_seen_ts
+            if timestamp:
+                copied["timestamp"] = timestamp
+                last_seen_ts = timestamp
+            normalized.append(copied)
+        return normalized
+
+    def get_session_preview(self, index: int, max_len: int = 50) -> str:
+        if 0 <= index < len(self._history_sessions):
+            messages = self._history_sessions[index].get("messages", [])
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    content = msg.get("content", "")
+                    if isinstance(content, list):
+                        content = content_to_text(content)
+                    return content[:max_len].strip() + ("..." if len(content) > max_len else "")
+        return ""
+
+    def get_total_storage_size(self) -> int:
+        total_size = 0
+        if self.history_file.exists():
+            try:
+                total_size += self.history_file.stat().st_size
+            except Exception:
+                pass
+        return total_size
+
+    def get_memory_stats(self) -> Dict:
+        total_messages = sum(s.get("message_count", 0) for s in self._history_sessions)
+        total_chars = 0
+        for session in self._history_sessions:
+            for msg in session.get("messages", []):
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    content = content_to_text(content)
+                total_chars += len(content)
+        return {
+            "session_count": len(self._history_sessions),
+            "total_messages": total_messages,
+            "total_chars": total_chars,
+            "storage_size": self.get_total_storage_size(),
+        }

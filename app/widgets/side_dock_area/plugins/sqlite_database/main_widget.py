@@ -39,7 +39,11 @@ from qfluentwidgets import (
 )
 
 from app.utils.utils import get_icon
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from .db_manager import DatabaseManager
 
 
@@ -96,7 +100,7 @@ class SQLiteDatabaseWindow(ToolWindow):
     name = "SQLite数据库"
     icon = get_icon("数据库操作")
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 100
 
     def setup_ui(self):

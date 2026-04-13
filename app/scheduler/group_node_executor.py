@@ -1,11 +1,14 @@
+import copy
 import traceback
 from PyQt5.QtCore import QObject, pyqtSignal
 from loguru import logger
 
 from app.nodes.base.status_node import NodeStatus
+from app.nodes.group_node import GroupPortInputNode, GroupPortOutputNode
 from app.scheduler.single_node_executor import execute_node
 from app.utils.utils import get_port_node
-from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
+from app.utils.utils import topological_sort
+from app.widgets.custom_nodegraphqt.custom_nodegraph import CustomNodeGraph, CustomNodeViewer, GraphSplitter
 
 
 class GroupNodeExecutor(QObject):
@@ -83,10 +86,29 @@ class GroupNodeExecutor(QObject):
         sub_graph = self.group_node.get_sub_graph()
         if sub_graph:
             return sub_graph.all_nodes()
-        
-        # 如果组节点未展开，通常需要 scheduler 协助通过 session 数据在内存中实例化
-        # 这里简化处理，假设 scheduler 已经处理好或提供相应接口
-        return getattr(self.group_node, "_internal_nodes", [])
+
+        session = self.group_node.get_sub_graph_session() or {}
+        if not session:
+            return []
+
+        parent_window = getattr(self.group_node, "parent_window", None)
+        if not parent_window:
+            return []
+
+        viewer = CustomNodeViewer(parent=parent_window)
+        splitter = GraphSplitter(parent=parent_window)
+        splitter.add_viewer(viewer)
+        temp_graph = CustomNodeGraph(
+            viewer=viewer,
+            parent=parent_window,
+            splitter=splitter,
+            node_factory=copy.deepcopy(self.group_node.graph.node_factory),
+        )
+        viewer.graph = temp_graph
+        temp_graph.graph_splitter = splitter
+        temp_graph.deserialize_session(session)
+        self._runtime_graph = temp_graph
+        return temp_graph.all_nodes()
 
     def _sync_external_to_internal(self, internal_nodes):
         """
@@ -96,16 +118,25 @@ class GroupNodeExecutor(QObject):
         external_input_data = {}
         for port in self.group_node.input_ports():
             val = None
-            for out_port in port.connected_ports():
-                upstream = get_port_node(out_port)
-                if upstream and hasattr(upstream, '_output_values'):
-                    val = upstream._output_values.get(out_port.name())
-                    break 
+            connected_ports = port.connected_ports()
+            if port.model.multi_connection:
+                values = []
+                for out_port in connected_ports:
+                    upstream = get_port_node(out_port)
+                    if upstream and hasattr(upstream, '_output_values'):
+                        values.append(upstream._output_values.get(out_port.name()))
+                val = values
+            else:
+                for out_port in connected_ports:
+                    upstream = get_port_node(out_port)
+                    if upstream and hasattr(upstream, '_output_values'):
+                        val = upstream._output_values.get(out_port.name())
+                        break
             external_input_data[port.name()] = val
 
         # B. 寻找内部 PortInputNode 并赋值
         for node in internal_nodes:
-            if isinstance(node, PortInputNode):
+            if isinstance(node, GroupPortInputNode):
                 # 匹配逻辑：内部 PortInputNode 的名字通常等于组节点输入端口的名字
                 port_name = node.name()
                 if port_name in external_input_data:
@@ -121,7 +152,7 @@ class GroupNodeExecutor(QObject):
         """
         results = {}
         for node in internal_nodes:
-            if isinstance(node, PortOutputNode):
+            if isinstance(node, GroupPortOutputNode):
                 port_name = node.name()
                 # 提取该节点输入端口收到的数据
                 # PortOutputNode 只有一个输入端口，名字也叫 port_name
@@ -145,23 +176,20 @@ class GroupNodeExecutor(QObject):
         执行子图内部节点。
         此处可以使用简单的拓扑遍历，或者复用 BackdropExecutor 中的并行执行逻辑。
         """
-        # 排除掉 PortInputNode 和 PortOutputNode，或者让 execute_node 处理它们（通常它们是空操作）
-        # 1. 过滤掉禁用的节点
         executable_nodes = [n for n in nodes if not n.get_property("disabled")]
-        
-        # 2. 拓扑排序或按序执行
-        # 简单起见，这里采用拓扑执行逻辑
-        for node in nodes:
+        execution_order = topological_sort(executable_nodes) or executable_nodes
+
+        for node in execution_order:
             if self.ctx.is_cancelled(): break
             self.ctx.wait_if_paused()
 
             # PortInputNode 不需要执行（数据已由 _sync_external_to_internal 注入）
-            if isinstance(node, PortInputNode):
+            if isinstance(node, GroupPortInputNode):
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                 continue
             
             # PortOutputNode 只需要确保状态，数据同步在最后一步
-            if isinstance(node, PortOutputNode):
+            if isinstance(node, GroupPortOutputNode):
                 self.scheduler.set_node_status(node, NodeStatus.NODE_STATUS_SUCCESS)
                 continue
 

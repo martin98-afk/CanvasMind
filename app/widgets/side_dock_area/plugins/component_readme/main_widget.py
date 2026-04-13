@@ -6,14 +6,18 @@ from PyQt5.QtWidgets import QVBoxLayout, QTextBrowser, QFrame
 from qfluentwidgets import StrongBodyLabel, FluentIcon, CaptionLabel
 
 from app.utils.utils import resource_path
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class NodeDocToolWindow(ToolWindow):
     name = "节点说明"
     icon = FluentIcon.INFO
     default_position = DockPosition.TOP
-    CATEGORIES = ["运行画布"]
+    CATEGORIES = [DockCategory.CANVAS]
     display_order = 20
 
     def setup_ui(self):

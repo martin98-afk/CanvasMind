@@ -106,7 +106,7 @@ class BaseExecutor(ABC):
             return False
 
         workspace_dir = ctx.cache_path / "workspace" / ctx.node.persistent_id
-        return self.sync_directory_if_needed(extension_dir, workspace_dir, {"upload"})
+        return self.sync_directory_if_needed(extension_dir, workspace_dir, {"upload", "result"})
 
     def cleanup(self, ctx) -> None:
         """清理执行环境 - 可被覆盖"""

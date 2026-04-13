@@ -11,7 +11,11 @@ from watchfiles import watch, Change
 
 from app.utils.utils import ansi_to_html, get_icon
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 
 
 class LogCardForTool(QWidget):
@@ -124,7 +128,7 @@ class ProjectLogTool(ToolWindow):
     name = "项目日志"
     icon = get_icon("日志")
     default_position = DockPosition.BOTTOM
-    CATEGORIES = ["项目管理"]
+    CATEGORIES = [DockCategory.PROJECT]
     display_order = 30
     project_path = None
 

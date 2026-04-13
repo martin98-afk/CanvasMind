@@ -3,6 +3,7 @@ import json
 import re
 import time
 import traceback
+from datetime import datetime
 from threading import Event
 from typing import Any, Dict, List
 from loguru import logger
@@ -15,6 +16,9 @@ from openai import (
 
 from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
     get_provider_profile,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
+    MEMORY_CATEGORIES,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
@@ -82,10 +86,6 @@ class TopicSummaryTask(QRunnable):
 
                 summary_text += f"用户：{content[:500]}\n"
 
-            memory_context = ""
-            if self.long_term_memory:
-                memory_context = f"\n\n## 用户偏好和长期记忆\n{self.long_term_memory}\n"
-
             existing_memories_text = ""
             if self.existing_memories:
                 mem_lines = []
@@ -103,25 +103,47 @@ class TopicSummaryTask(QRunnable):
                         + "\n".join(mem_lines)
                     )
 
+            category_list = "\n".join(
+                f"- {k}: {v.replace('【', '').replace('】', '')}"
+                for k, v in MEMORY_CATEGORIES.items()
+            )
+
+            memory_criteria = (
+                "【值得记忆的内容】（当满足以下条件时应设为true）：\n"
+                "- 用户的长期偏好或习惯（如：喜欢用Markdown格式、喜欢简洁回复）\n"
+                "- 用户表达的禁忌或限制（如：不要用第三方库、不能用中文注释）\n"
+                "- 用户说明的身份信息或背景，或对你设定的角色信息（如：我是后端开发、主要用Python）\n"
+                "- 用户提出了需要长期遵守的规则或规范（如：代码必须遵循PEP8）\n"
+                "【不应记忆的内容】（当满足以下条件时请务必设为false）：\n"
+                "- 一次性任务请求（如：帮我生成这个ppt、调试这个bug）\n"
+                "- 临时性、偶然的对话内容\n"
+                "- 已有记忆的重复或相似内容（相似度超过70%则忽略）\n"
+                "- 琐碎的、不影响未来交互的信息\n\n"
+                "**原则：保持平衡。既不要遗漏明显的长期偏好，也不要创建过多相似记忆。当难以判断时，倾向于记录简洁、通用、可复用的偏好。**"
+            )
+
             if self.previous_summary:
                 prompt = (
-                    "你是一个对话标题生成助手。\n"
+                    "你是一个对话标题和长期记忆辅助助手。\n"
                     "请为用户对话生成一个简短标题。\n\n"
                     "【标题要求】\n"
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    "【长期记忆判断标准】\n"
+                    f"{memory_criteria}\n\n"
+                    "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
-                    "【长期记忆】判断是否需要更新：\n"
-                    f"{memory_context}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
                     f"最新对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
+                    '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
+                    '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
+                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
+                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
                     "```"
                 )
@@ -133,20 +155,23 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    "【长期记忆判断标准】\n"
+                    f"{memory_criteria}\n\n"
+                    "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
-                    "【长期记忆】判断是否需要更新：\n"
-                    f"{memory_context}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
+                    '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
+                    '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
+                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
+                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
                     "```"
                 )
-
+            print(prompt)
             client = OpenAI(
                 api_key=self.llm_config.get("API_KEY", ""),
                 base_url=self.llm_config.get("API_URL"),
@@ -171,6 +196,8 @@ class TopicSummaryTask(QRunnable):
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),
                     "memory_content": result.get("memory_content", ""),
+                    "memory_category": result.get("memory_category", "task_preference"),
+                    "hit_memories": result.get("hit_memories", []),
                 }
                 self.callback(callback_data)
             else:
@@ -179,6 +206,8 @@ class TopicSummaryTask(QRunnable):
                         "topic_summary": raw_response,
                         "should_update_memory": False,
                         "memory_content": "",
+                        "memory_category": "task_preference",
+                        "hit_memories": [],
                     }
                 )
         except Exception as e:
@@ -403,6 +432,7 @@ class OpenAIChatWorker(QThread):
             self._handle_error(e)
 
     def _build_response_message_sequence(self, tool_results=None) -> List[Dict]:
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         tool_call_args_by_id = {}
         tool_call_map = {}
         for tc in self._current_tool_calls or []:
@@ -444,6 +474,7 @@ class OpenAIChatWorker(QThread):
                 "result": item.get("content", ""),
                 "success": item.get("success", True),
                 "round_id": item.get("round_id"),
+                "timestamp": item.get("timestamp", now_ts),
             }
 
         sequence: List[Dict] = []
@@ -468,6 +499,7 @@ class OpenAIChatWorker(QThread):
             assistant_message = {
                 "role": "assistant",
                 "content": pending_text_blocks,
+                "timestamp": now_ts,
             }
             tool_call = tool_call_map.get(tool_call_id)
             if tool_call:
@@ -481,16 +513,23 @@ class OpenAIChatWorker(QThread):
                 sequence.append(tool_result)
 
         if pending_text_blocks:
-            sequence.append({"role": "assistant", "content": pending_text_blocks})
+            sequence.append(
+                {
+                    "role": "assistant",
+                    "content": pending_text_blocks,
+                    "timestamp": now_ts,
+                }
+            )
         elif not sequence and self.full_response:
             sequence.append(
                 {
                     "role": "assistant",
                     "content": append_text_block([], self.full_response),
+                    "timestamp": now_ts,
                 }
             )
         elif not sequence and not saw_marker:
-            sequence.append({"role": "assistant", "content": []})
+            sequence.append({"role": "assistant", "content": [], "timestamp": now_ts})
 
         return sequence
 

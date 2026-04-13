@@ -38,7 +38,11 @@ from qfluentwidgets import (
 # 假设这些是你项目中的原有引用，保持不变
 from app.widgets.dialog_widget.service_request_dialog import RequestWorker
 from app.widgets.basic_widget.splitter import ModernSplitter
-from app.widgets.side_dock_area.tool_window import ToolWindow, DockPosition
+from app.widgets.side_dock_area.tool_window import (
+    ToolWindow,
+    DockPosition,
+    DockCategory,
+)
 from app.utils.utils import get_icon
 
 
@@ -82,7 +86,7 @@ class ServiceTestTool(ToolWindow):
     name = "API 调试台"
     icon = get_icon("API测试")
     default_position = DockPosition.TOP
-    CATEGORIES = ["项目管理"]
+    CATEGORIES = [DockCategory.PROJECT]
     display_order = 20
     thread_pool = QThreadPool.globalInstance()
 

@@ -74,6 +74,7 @@ class CanvasPage(QWidget):
         # 异步注册或分批注册节点
         self.node_operations.register_components()
         self.canvas_widget = self.graph.viewer()
+        self._active_graph_signals = None
 
         # 全局变量与基础 IO 工具
         self.canvas_io = CanvasIO(self.graph, self.global_variables, self)
@@ -451,15 +452,10 @@ class CanvasPage(QWidget):
         """连接调度器信号到 UI 回调"""
         # 界面刷新信号
         self.ui_manager.connect_signals()
-        self.graph.node_created.connect(self.node_operations.on_node_created)
-        self.graph.node_double_clicked.connect(
-            self.node_operations.on_node_double_clicked
+        self.ui_manager.canvas_manager.current_graph_changed.connect(
+            self._on_active_graph_changed
         )
-        self.graph.port_connected.connect(self._on_port_connected)
-        self.graph.port_disconnected.connect(self._invalidate_pipe_cache)
-        self.graph.node_selection_changed.connect(
-            lambda: QtCore.QTimer.singleShot(0, self.on_selection_changed)
-        )
+        self._on_active_graph_changed(self.graph)
         self.ui_manager.log_window.cardDoubleClicked.connect(
             self.node_operations.select_nodes_by_name
         )
@@ -516,6 +512,42 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_vars_changed.connect(
             self.property_panel.refresh_node_vars_page
         )
+
+    def _on_active_graph_changed(self, graph):
+        """当前活跃 graph 变化时，同步工具对象和图信号绑定。"""
+        if graph is None:
+            return
+
+        old_graph = self._active_graph_signals
+        if old_graph is not None:
+            for signal, slot in (
+                (old_graph.node_created, self.node_operations.on_node_created),
+                (old_graph.node_double_clicked, self.node_operations.on_node_double_clicked),
+                (old_graph.port_connected, self._on_port_connected),
+                (old_graph.port_disconnected, self._invalidate_pipe_cache),
+                (old_graph.node_selection_changed, self._schedule_selection_changed),
+            ):
+                try:
+                    signal.disconnect(slot)
+                except (TypeError, RuntimeError):
+                    pass
+
+        self._active_graph_signals = graph
+        self.node_operations.graph = graph
+        self.node_operations._invalidate_node_cache()
+        self.canvas_io.graph = graph
+        if hasattr(self, "llm_context_provider"):
+            self.llm_context_provider.graph = graph
+            self.llm_context_provider.canvas_tools.graph = graph
+
+        graph.node_created.connect(self.node_operations.on_node_created)
+        graph.node_double_clicked.connect(self.node_operations.on_node_double_clicked)
+        graph.port_connected.connect(self._on_port_connected)
+        graph.port_disconnected.connect(self._invalidate_pipe_cache)
+        graph.node_selection_changed.connect(self._schedule_selection_changed)
+
+    def _schedule_selection_changed(self, *args):
+        QtCore.QTimer.singleShot(0, self.on_selection_changed)
 
     # 断开信号
     def _disconnect_signals(self):

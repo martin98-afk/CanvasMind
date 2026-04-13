@@ -82,27 +82,28 @@ class WorkflowCanvasManager(QWidget):
             if not self.parent_window:
                 logger.error("Parent window is dead, cannot create graph.")
                 return
-            # 1. 创建视图分割器容器 (这将是实际显示在 UI 上的控件)
-            self.graph_splitter = GraphSplitter(parent=self.parent_window)
-
-            # 2. 创建主视角 (Master Viewer)
-            # 注意：parent 依然传 parent_window，保证业务逻辑正常
+            graph_splitter = GraphSplitter(parent=self.parent_window)
             master_viewer = CustomNodeViewer(parent=self.parent_window)
             master_viewer._is_main = True
-            # 3. 将主视角加入分割器
-            self.graph_splitter.add_viewer(master_viewer)
-
-            # 4. 初始化 Graph，依然绑定主视角
-            # NodeGraphQt 的逻辑主要依赖一个 viewer 进行初始化
+            graph_splitter.add_viewer(master_viewer)
             root_graph = CustomNodeGraph(
                 viewer=master_viewer,
                 parent=self.parent_window,
-                splitter=self.graph_splitter
+                splitter=graph_splitter
             )
             root_graph.master_viewer = master_viewer
             master_viewer.graph = root_graph
+            root_graph.graph_splitter = graph_splitter
+            self.graph_splitter = graph_splitter
+        elif getattr(root_graph, "graph_splitter", None) is not None:
+            self.graph_splitter = root_graph.graph_splitter
         self._apply_style_to_graph(root_graph)
-        self._add_graph_to_stack(root_graph, "Main Workflow", self._root_graph_id)
+        if self.stack_widget.indexOf(root_graph.graph_splitter) < 0:
+            self.stack_widget.addWidget(root_graph.graph_splitter)
+        self.stack_widget.setCurrentWidget(root_graph.graph_splitter)
+        self._show_graph(root_graph)
+        root_name = getattr(self.parent_window, "workflow_name", None) or "Main Workflow"
+        self._add_graph_to_stack(root_graph, root_name, self._root_graph_id)
 
     def  current_graph(self) -> Optional[CustomNodeGraph]:
         """获取当前显示的 Graph 实例"""
@@ -132,11 +133,18 @@ class WorkflowCanvasManager(QWidget):
 
         self.setUpdatesEnabled(False)
         try:
-            # 1. 实例化
+            graph_splitter = GraphSplitter(parent=self.parent_window)
+            viewer = CustomNodeViewer(parent=self.parent_window)
+            viewer._is_main = True
+            graph_splitter.add_viewer(viewer)
+
             new_graph = CustomNodeGraph(
-                viewer=CustomNodeViewer(parent=self.parent_window),
-                parent=self.parent_window
+                viewer=viewer,
+                parent=self.parent_window,
+                splitter=graph_splitter
             )
+            new_graph._viewer.graph = new_graph
+            new_graph.graph_splitter = graph_splitter
 
             # 2. 同步环境
             if not self._sync_environment(new_graph):
@@ -144,6 +152,7 @@ class WorkflowCanvasManager(QWidget):
 
             # 3. 加入堆栈（关键：先更新索引再添加到UI）
             self._add_graph_to_stack(new_graph, name, graph_id)
+            self._show_graph(new_graph)
 
             logger.debug(f"Created sub-graph '{name}' with ID: {graph_id}")
             return graph_id, new_graph
@@ -170,21 +179,23 @@ class WorkflowCanvasManager(QWidget):
             return False
 
         target_index = self._graph_id_index[graph_id]
+        original_top_index = len(self._graph_stack_data) - 1
 
         # 性能优化：批量操作期间禁止界面刷新
         self.stack_widget.setUpdatesEnabled(False)
         try:
             # 销毁中间层级（如果需要）
+            destroyed_any = False
             if destroy_intermediates and len(self._graph_stack_data) > target_index + 1:
                 self._destroy_graphs_above_level(target_index)
+                destroyed_any = True
 
             # 切换显示
             target_graph = self._graph_stack_data[target_index]['graph']
-            if self.stack_widget.currentWidget() != target_graph.widget:
-                self.stack_widget.setCurrentWidget(target_graph.widget)
+            self._show_graph(target_graph)
 
             # 仅当实际切换了层级时才发送信号
-            if target_index != len(self._graph_stack_data) - 1:
+            if destroyed_any or target_index != original_top_index:
                 self._emit_updates()
 
             logger.debug(f"Switched to graph '{self._graph_stack_data[target_index]['name']}' (ID: {graph_id})")
@@ -234,8 +245,9 @@ class WorkflowCanvasManager(QWidget):
         self._active_graph_ids.discard(graph_id)
 
         # 从 UI 移除
-        if graph_instance.widget and self.stack_widget.indexOf(graph_instance.widget) >= 0:
-            self.stack_widget.removeWidget(graph_instance.widget)
+        graph_widget = getattr(graph_instance, "graph_splitter", None)
+        if graph_widget and self.stack_widget.indexOf(graph_widget) >= 0:
+            self.stack_widget.removeWidget(graph_widget)
 
         # 清理资源
         self._cleanup_graph_resources(graph_instance)
@@ -261,16 +273,18 @@ class WorkflowCanvasManager(QWidget):
                 graph.clear()
 
             # 3. 安全销毁Widget
-            if hasattr(graph, 'widget') and graph.widget:
+            graph_widget = getattr(graph, "graph_splitter", None)
+            if graph_widget:
                 try:
-                    graph.widget.setParent(None)
-                    graph.widget.deleteLater()
+                    graph_widget.setParent(None)
+                    graph_widget.deleteLater()
                 except RuntimeError:
                     pass  # Widget可能已被销毁
 
             # 4. 清理引用
             graph._viewer = None
             graph._model = None
+            graph.graph_splitter = None
 
         except Exception as e:
             logger.error(f"Error during graph cleanup: {e}", exc_info=True)
@@ -282,9 +296,9 @@ class WorkflowCanvasManager(QWidget):
         self._graph_id_index[graph_id] = stack_index
         self._active_graph_ids.add(graph_id)
 
-        # 添加到UI
-        self.stack_widget.addWidget(self.graph_splitter)
-        self.stack_widget.setCurrentWidget(self.graph_splitter)
+        graph_widget = getattr(graph, "graph_splitter", None)
+        if graph_widget and self.stack_widget.indexOf(graph_widget) < 0:
+            self.stack_widget.addWidget(graph_widget)
 
         # 添加到数据栈
         self._graph_stack_data.append({
@@ -295,6 +309,25 @@ class WorkflowCanvasManager(QWidget):
 
         self._emit_updates()
         logger.debug(f"Added graph to stack: ID={graph_id}, name='{name}', index={stack_index}")
+
+    def _show_graph(self, graph: CustomNodeGraph):
+        """切换到目标 graph 自己的 splitter 和主 viewer。"""
+        target_splitter = getattr(graph, "graph_splitter", None)
+        if not target_splitter or not graph:
+            return
+
+        target_viewer = getattr(graph, "_viewer", None)
+        if target_viewer is None:
+            return
+
+        self.graph_splitter = target_splitter
+        target_viewer.graph = graph
+        self.stack_widget.setCurrentWidget(target_splitter)
+        target_splitter.set_active_viewer(target_viewer)
+        target_viewer.show()
+        target_viewer.viewport().show()
+        target_viewer.scene().update()
+        target_splitter.update()
 
     def _emit_updates(self):
         """统一发送状态更新信号"""

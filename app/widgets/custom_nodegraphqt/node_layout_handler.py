@@ -25,9 +25,13 @@ class NodeLayoutHandler:
                 # 遍历输入输出端口获取连接的节点
                 if not hasattr(curr, 'inputs') or curr.inputs() is None: continue
                 for port in curr.inputs().values():
-                    neighbors.extend([p.node() for p in port.connected_ports()])
+                    neighbors.extend(
+                        [pn for pn in (p.node() for p in port.connected_ports()) if pn is not None]
+                    )
                 for port in curr.outputs().values():
-                    neighbors.extend([p.node() for p in port.connected_ports()])
+                    neighbors.extend(
+                        [pn for pn in (p.node() for p in port.connected_ports()) if pn is not None]
+                    )
                 for n in neighbors:
                     if n in node_set and n not in visited:
                         visited.add(n)
@@ -239,7 +243,9 @@ class NodeLayoutHandler:
                 if n.inputs() is None: return 0
                 for port in n.inputs().values():
                     # 仅关注当前组内的连接
-                    inputs.extend([p.node() for p in port.connected_ports() if p.node() in group])
+                    inputs.extend(
+                        [pn for pn in (p.node() for p in port.connected_ports()) if pn is not None and pn in group]
+                    )
                 level = 0 if not inputs else max(get_level(i_n) for i_n in inputs) + 1
                 node_to_level[n] = level
                 return level

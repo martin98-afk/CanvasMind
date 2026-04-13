@@ -7,6 +7,7 @@ import orjson
 import traceback
 
 from NodeGraphQt import NodeGraph, BaseNode, NodeGraphMenu, GroupNode, SubGraph
+from NodeGraphQt.base.commands import NodeMovedCmd
 from NodeGraphQt.constants import (
     Z_VAL_PIPE,
     ViewerEnum,
@@ -30,6 +31,7 @@ from qfluentwidgets import InfoBar
 from qtpy import QtGui, QtCore, QtWidgets
 
 from app.components.base import GlobalVariableContext
+from app.nodes.group_node import is_group_node_instance
 from app.nodes.base.status_node import NodeStatus
 from app.utils.config import Settings
 from app.utils.utils import serialize_for_json, deserialize_from_json
@@ -213,10 +215,8 @@ class CustomNodeScene(NodeScene):
         connecting_viewer = self._get_connecting_viewer()
         if connecting_viewer:
             self._event_viewer = connecting_viewer
-            if hasattr(connecting_viewer.home_window.graph, "graph_splitter"):
-                connecting_viewer.home_window.graph.graph_splitter.set_active_viewer(
-                    connecting_viewer
-                )
+            if getattr(connecting_viewer, "graph", None) and getattr(connecting_viewer.graph, "graph_splitter", None):
+                connecting_viewer.graph.graph_splitter.set_active_viewer(connecting_viewer)
             connecting_viewer.sceneMousePressEvent(event)
             self._event_viewer = None
             return
@@ -229,8 +229,8 @@ class CustomNodeScene(NodeScene):
 
         if source_v:
             self._event_viewer = source_v
-            if hasattr(source_v.home_window.graph, "graph_splitter"):
-                source_v.home_window.graph.graph_splitter.set_active_viewer(source_v)
+            if getattr(source_v, "graph", None) and getattr(source_v.graph, "graph_splitter", None):
+                source_v.graph.graph_splitter.set_active_viewer(source_v)
             source_v.sceneMousePressEvent(event)
 
         if event.button() != QtCore.Qt.MiddleButton:
@@ -835,7 +835,8 @@ class CustomNodeViewer(NodeViewer):
     # ---------------------------
 
     def wheelEvent(self, event):
-        self.home_window.graph.graph_splitter.set_active_viewer(self)
+        if getattr(self, "graph", None) and getattr(self.graph, "graph_splitter", None):
+            self.graph.graph_splitter.set_active_viewer(self)
         # 保持你原本的逻辑不变
         pos = event.pos()
         item = self.itemAt(pos)
@@ -879,7 +880,8 @@ class CustomNodeViewer(NodeViewer):
             pipe.hide()
 
     def mousePressEvent(self, event):
-        self.home_window.graph.graph_splitter.set_active_viewer(self)
+        if getattr(self, "graph", None) and getattr(self.graph, "graph_splitter", None):
+            self.graph.graph_splitter.set_active_viewer(self)
         item = self.itemAt(event.pos())
         if isinstance(item, NodeActionButton):
             # 如果点的是按钮，直接让基类处理分发，不要执行后续的隐藏和拉框逻辑
@@ -2061,7 +2063,11 @@ class CustomNodeGraph(NodeGraph):
         self.master_viewer = None
 
     def viewer(self):
-        return self.graph_splitter.get_active_viewer()
+        if self.graph_splitter:
+            viewer = self.graph_splitter.get_active_viewer()
+            if viewer:
+                return viewer
+        return self._viewer
 
     def _wire_signals(self, viewer=None):
         """
@@ -2144,9 +2150,43 @@ class CustomNodeGraph(NodeGraph):
         """
         nodes = []
         for item in self.viewer().selected_nodes():
-            node = self._model.nodes[item.id]
+            node = self._model.nodes.get(item.id)
+            if node is None:
+                try:
+                    item.setSelected(False)
+                except RuntimeError:
+                    pass
+                continue
             nodes.append(node)
         return nodes
+
+    def _on_nodes_moved(self, node_data):
+        """
+        忽略已经从 model 删除、但仍残留在场景事件里的 node_view。
+        """
+        valid_items = []
+        for node_view, prev_pos in node_data.items():
+            node = self._model.nodes.get(node_view.id)
+            if node is None:
+                continue
+            valid_items.append((node, prev_pos))
+
+        if not valid_items:
+            return
+
+        self._undo_stack.beginMacro("move nodes")
+        for node, prev_pos in valid_items:
+            self._undo_stack.push(NodeMovedCmd(node, node.pos(), prev_pos))
+        self._undo_stack.endMacro()
+
+    def _on_node_double_clicked(self, node_id):
+        """
+        避免场景里的过期 item 双击时向外发出 None。
+        """
+        node = self.get_node_by_id(node_id)
+        if node is None:
+            return
+        self.node_double_clicked.emit(node)
 
     def selected_pipes(self):
         """
@@ -2280,7 +2320,7 @@ class CustomNodeGraph(NodeGraph):
         Returns:
             SubGraph: sub node graph used to manage the group node session.
         """
-        if not isinstance(node, GroupNode):
+        if not is_group_node_instance(node):
             return
         if self._widget is None:
             raise RuntimeError("NodeGraph.widget not initialized!")
@@ -2499,6 +2539,21 @@ class CustomNodeGraph(NodeGraph):
                     self.add_node(
                         node, n_data.get("pos"), inherite_graph_style=adjust_graph_style
                     )
+                    if n_data.get("port_deletion_allowed", None):
+                        input_ports = n_data.get("input_ports", [])
+                        output_ports = n_data.get("output_ports", [])
+                        for port in input_ports:
+                            if "display_name" not in port:
+                                port["display_name"] = True
+                        for port in output_ports:
+                            if "display_name" not in port:
+                                port["display_name"] = True
+                        node.set_ports(
+                            {
+                                "input_ports": input_ports,
+                                "output_ports": output_ports,
+                            }
+                        )
                     # set custom properties.
                     for prop, val in n_data.get("custom", {}).items():
                         try:
