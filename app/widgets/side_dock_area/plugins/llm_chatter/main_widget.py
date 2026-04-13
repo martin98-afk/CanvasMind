@@ -2018,10 +2018,12 @@ class OpenAIChatToolWindow(ToolWindow):
             summary = result.get("topic_summary", "")
             should_update_memory = result.get("should_update_memory", False)
             memory_content = result.get("memory_content", "")
+            memory_category = result.get("memory_category", "task_preference")
         else:
             summary = result
             should_update_memory = False
             memory_content = ""
+            memory_category = "task_preference"
 
         if not summary:
             return
@@ -2051,9 +2053,10 @@ class OpenAIChatToolWindow(ToolWindow):
                 memory_content,
                 source="topic_summary",
                 confidence=0.8,
+                category=memory_category,
             )
             logger.info(
-                f"[Topic Summary] Added to long-term memory: {memory_content[:50]}..."
+                f"[Topic Summary] Added to long-term memory [{memory_category}]: {memory_content[:50]}..."
             )
         else:
             logger.info(

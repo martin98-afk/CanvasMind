@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -7,16 +7,36 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QWidget,
-    QFrame,
+    QScrollArea,
 )
+from typing import Dict, List
 from qfluentwidgets import (
     BodyLabel,
     LineEdit,
     PrimaryPushButton,
     PushButton,
-    SwitchButton, ToggleToolButton, FluentIcon, TransparentToolButton, ListWidget,
+    SwitchButton,
+    FluentIcon,
+    TransparentToolButton,
+    ListWidget,
+    ComboBox,
+    SegmentedWidget,
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
+
+MEMORY_CATEGORIES_WIDGET = {
+    "agent_identity": "【智能体自身身份记忆】",
+    "user_identity": "【用户身份记忆】",
+    "task_preference": "【用户任务偏好】",
+    "task_taboos": "【任务忌讳】",
+}
+
+MEMORY_CATEGORY_SHORT_NAMES = {
+    "agent_identity": "智能体身份",
+    "user_identity": "用户身份",
+    "task_preference": "任务偏好",
+    "task_taboos": "任务忌讳",
+}
 
 
 class MemoryItemWidget(QWidget):
@@ -84,6 +104,8 @@ class MemoryManagerDialog(QDialog):
     def __init__(self, memories: list, parent=None):
         super().__init__(parent)
         self.memories = memories if memories else []
+        self._current_category = "agent_identity"
+        self._category_indices: Dict[str, int] = {}
         self._init_ui()
 
     def _init_ui(self):
@@ -100,13 +122,13 @@ class MemoryManagerDialog(QDialog):
                 color: #e0e0e0;
             }
             QListWidget::item {
-                padding: 5px;
+                padding: 0;
                 border-bottom: 1px solid #3e3e42;
             }
             QListWidget::item:selected {
                 background-color: #094771;
             }
-            QLineEdit, QTextEdit {
+            QLineEdit {
                 background-color: #252526;
                 border: 1px solid #3e3e42;
                 color: #e0e0e0;
@@ -125,11 +147,23 @@ class MemoryManagerDialog(QDialog):
             QPushButton:pressed {
                 background-color: #0d5a8f;
             }
-            QCheckBox {
-                color: #e0e0e0;
-            }
             BodyLabel {
                 color: #e0e0e0;
+            }
+            QComboBox {
+                background-color: #252526;
+                border: 1px solid #3e3e42;
+                color: #e0e0e0;
+                padding: 5px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #e0e0e0;
             }
         """)
 
@@ -141,17 +175,27 @@ class MemoryManagerDialog(QDialog):
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
-        desc = BodyLabel("管理用户的偏好、特定需求和用户导向型内容", self)
+        desc = BodyLabel("分类管理用户的偏好、特定需求和用户导向型内容", self)
         desc.setStyleSheet("color: #888; font-size: 12px;")
         layout.addWidget(desc)
 
-        layout.addWidget(BodyLabel("记忆列表（勾选启用）:", self))
+        self.segmented_widget = SegmentedWidget(self)
+        segment_keys = list(MEMORY_CATEGORIES_WIDGET.keys())
+        for k in segment_keys:
+            self.segmented_widget.addItem(k, MEMORY_CATEGORY_SHORT_NAMES[k])
+        self.segmented_widget.setCurrentItem(segment_keys[0])
+        self.segmented_widget.currentItemChanged.connect(self._on_category_changed)
+        for i, k in enumerate(segment_keys):
+            self._category_indices[k] = i
+        layout.addWidget(self.segmented_widget)
+
+        self.category_header = BodyLabel(self)
+        self.category_header.setStyleSheet("font-weight: bold; font-size: 14px; padding: 5px 0;")
+        layout.addWidget(self.category_header)
 
         self.list_widget = ListWidget(self)
         self.list_widget.setSelectionMode(QListWidget.ExtendedSelection)
-        layout.addWidget(self.list_widget)
-
-        self._load_memories()
+        layout.addWidget(self.list_widget, 1)
 
         input_layout = QHBoxLayout()
         self.input_edit = LineEdit(self)
@@ -188,8 +232,20 @@ class MemoryManagerDialog(QDialog):
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
 
+        self._load_memories()
+
+    def _on_category_changed(self, key: str):
+        if key in MEMORY_CATEGORIES_WIDGET:
+            self._current_category = key
+            self.category_header.setText(MEMORY_CATEGORIES_WIDGET[self._current_category])
+            self._load_memories()
+
     def _load_memories(self):
         self.list_widget.clear()
+
+        category_memories: Dict[str, List[tuple]] = {k: [] for k in MEMORY_CATEGORIES_WIDGET}
+
+        global_index = 0
         for i, mem in enumerate(self.memories):
             if isinstance(mem, dict):
                 content = mem.get("content", "")
@@ -197,6 +253,7 @@ class MemoryManagerDialog(QDialog):
                 source = mem.get("source", "manual")
                 confidence = mem.get("confidence", 0.8)
                 conflict_group = mem.get("conflict_group", "")
+                category = mem.get("category", "task_preference")
                 meta_parts = [f"source={source}", f"confidence={confidence:.2f}"]
                 if conflict_group:
                     meta_parts.append(f"group={conflict_group}")
@@ -205,57 +262,79 @@ class MemoryManagerDialog(QDialog):
                 content = str(mem)
                 enabled = True
                 meta_text = "source=legacy"
+                category = "task_preference"
 
+            if category not in MEMORY_CATEGORIES_WIDGET:
+                category = "task_preference"
+
+            category_memories[category].append((global_index, content, enabled, meta_text))
+            global_index += 1
+
+        self.category_header.setText(MEMORY_CATEGORIES_WIDGET[self._current_category])
+        current_memories = category_memories.get(self._current_category, [])
+
+        for idx, (item_id, content, enabled, meta_text) in enumerate(current_memories):
             item = QListWidgetItem(self.list_widget)
-            widget = MemoryItemWidget(i, content, enabled, meta_text=meta_text)
+            widget = MemoryItemWidget(item_id, content, enabled, meta_text=meta_text)
             widget.deleted.connect(self._delete_item)
             widget.toggled.connect(self._toggle_item)
             self.list_widget.setItemWidget(item, widget)
             item.setSizeHint(widget.sizeHint())
+
+    def _get_memory_index_from_item_id(self, item_id: int) -> int:
+        category_memories: Dict[str, List[tuple]] = {k: [] for k in MEMORY_CATEGORIES_WIDGET}
+        global_index = 0
+        for i, mem in enumerate(self.memories):
+            if isinstance(mem, dict):
+                category = mem.get("category", "task_preference")
+            else:
+                category = "task_preference"
+            if category not in MEMORY_CATEGORIES_WIDGET:
+                category = "task_preference"
+            category_memories[category].append((global_index, i))
+            global_index += 1
+
+        current_memories = category_memories.get(self._current_category, [])
+        for local_idx, (item_id_check, mem_idx) in enumerate(current_memories):
+            if item_id_check == item_id:
+                return mem_idx
+        return -1
 
     def _add_memory(self):
         content = self.input_edit.text().strip()
         if not content:
             return
 
+        new_entry = {
+            "content": content,
+            "enabled": True,
+            "confidence": 0.8,
+            "source": "manual",
+            "last_used_at": "",
+            "conflict_group": "",
+            "category": self._current_category,
+        }
+
         if isinstance(self.memories, list):
-            self.memories.append(
-                {
-                    "content": content,
-                    "enabled": True,
-                    "confidence": 0.8,
-                    "source": "manual",
-                    "last_used_at": "",
-                    "conflict_group": "",
-                }
-            )
-        else:
-            self.memories.append(
-                {
-                    "content": content,
-                    "enabled": True,
-                    "confidence": 0.8,
-                    "source": "manual",
-                    "last_used_at": "",
-                    "conflict_group": "",
-                }
-            )
+            self.memories.append(new_entry)
 
         self.input_edit.clear()
         self._load_memories()
 
     def _delete_item(self, item_id: int):
-        if 0 <= item_id < len(self.memories):
-            self.memories.pop(item_id)
+        mem_idx = self._get_memory_index_from_item_id(item_id)
+        if 0 <= mem_idx < len(self.memories):
+            self.memories.pop(mem_idx)
             self._load_memories()
 
     def _toggle_item(self, item_id: int, enabled: bool):
-        if 0 <= item_id < len(self.memories):
-            if isinstance(self.memories[item_id], dict):
-                self.memories[item_id]["enabled"] = enabled
+        mem_idx = self._get_memory_index_from_item_id(item_id)
+        if 0 <= mem_idx < len(self.memories):
+            if isinstance(self.memories[mem_idx], dict):
+                self.memories[mem_idx]["enabled"] = enabled
             else:
-                self.memories[item_id] = {
-                    "content": str(self.memories[item_id]),
+                self.memories[mem_idx] = {
+                    "content": str(self.memories[mem_idx]),
                     "enabled": enabled,
                 }
 
@@ -280,7 +359,7 @@ class MemoryManagerDialog(QDialog):
                 if mem.get("enabled", True):
                     enabled_memories.append(mem)
             else:
-                enabled_memories.append({"content": str(mem), "enabled": True})
+                enabled_memories.append({"content": str(mem), "enabled": True, "category": "task_preference"})
 
         self.memories = enabled_memories
         self._load_memories()

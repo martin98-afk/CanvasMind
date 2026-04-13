@@ -17,6 +17,9 @@ from openai import (
 from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import (
     get_provider_profile,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
+    MEMORY_CATEGORIES,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
     content_to_text,
@@ -104,6 +107,11 @@ class TopicSummaryTask(QRunnable):
                         + "\n".join(mem_lines)
                     )
 
+            category_list = "\n".join(
+                f"- {k}: {v.replace('【', '').replace('】', '')}"
+                for k, v in MEMORY_CATEGORIES.items()
+            )
+
             if self.previous_summary:
                 prompt = (
                     "你是一个对话标题生成助手。\n"
@@ -112,6 +120,8 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    "【记忆分类】：\n"
+                    f"{category_list}\n\n"
                     f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
@@ -122,7 +132,8 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）",\n'
+                    '  "memory_category": "分类key（如：task_preference）"\n'
                     "}\n"
                     "```"
                 )
@@ -134,6 +145,8 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
+                    "【记忆分类】：\n"
+                    f"{category_list}\n\n"
                     f"{existing_memories_text}\n\n"
                     "【长期记忆】判断是否需要更新：\n"
                     f"{memory_context}\n\n"
@@ -143,7 +156,8 @@ class TopicSummaryTask(QRunnable):
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false,\n'
-                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）"\n'
+                    '  "memory_content": "用户偏好或特定需求（必须与已有记忆不同）",\n'
+                    '  "memory_category": "分类key（如：task_preference）"\n'
                     "}\n"
                     "```"
                 )
@@ -172,6 +186,7 @@ class TopicSummaryTask(QRunnable):
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),
                     "memory_content": result.get("memory_content", ""),
+                    "memory_category": result.get("memory_category", "task_preference"),
                 }
                 self.callback(callback_data)
             else:
@@ -180,6 +195,7 @@ class TopicSummaryTask(QRunnable):
                         "topic_summary": raw_response,
                         "should_update_memory": False,
                         "memory_content": "",
+                        "memory_category": "task_preference",
                     }
                 )
         except Exception as e:

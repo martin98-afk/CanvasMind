@@ -375,6 +375,7 @@ class BuiltinTools(QObject):
                     source=item.get("source", "session"),
                     confidence=float(item.get("confidence", 0.8) or 0.8),
                     conflict_group=str(item.get("conflict_group", "") or ""),
+                    category=str(item.get("category", "task_preference") or "task_preference"),
                 ):
                     saved_count += 1
 

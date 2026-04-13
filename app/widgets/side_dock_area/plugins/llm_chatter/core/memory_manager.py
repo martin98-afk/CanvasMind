@@ -16,6 +16,21 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.retry_helper import (
 )
 
 
+MEMORY_CATEGORIES = {
+    "agent_identity": "【智能体自身身份记忆】",
+    "user_identity": "【用户身份记忆】",
+    "task_preference": "【用户任务偏好】",
+    "task_taboos": "【任务忌讳】",
+}
+
+MEMORY_CATEGORY_SUMMARIES = {
+    "agent_identity": "关于智能体自身角色、能力边界的认知",
+    "user_identity": "关于用户身份、背景、角色的认知",
+    "task_preference": "关于用户处理任务的习惯、方式偏好",
+    "task_taboos": "用户明确指出不能做的事、禁忌或雷区",
+}
+
+
 class MemoryManagerCore:
     """长期记忆管理器核心类"""
 
@@ -89,6 +104,7 @@ class MemoryManagerCore:
                 "confidence": 0.7,
                 "source": "legacy",
                 "last_used_at": "",
+                "category": "task_preference",
             }
 
         if not isinstance(memory, dict):
@@ -106,6 +122,9 @@ class MemoryManagerCore:
         normalized.setdefault("source", "manual")
         normalized.setdefault("last_used_at", "")
         normalized.setdefault("conflict_group", "")
+        normalized.setdefault("category", "task_preference")
+        if normalized["category"] not in MEMORY_CATEGORIES:
+            normalized["category"] = "task_preference"
         return normalized
 
     def _normalize_content_key(self, content: str) -> str:
@@ -204,10 +223,14 @@ class MemoryManagerCore:
         source: str = "assistant",
         confidence: float = 0.8,
         conflict_group: str = "",
+        category: str = "task_preference",
     ) -> bool:
         """添加用户偏好记忆"""
         if not content:
             return False
+
+        if category not in MEMORY_CATEGORIES:
+            category = "task_preference"
 
         try:
             memory_data = self.load_memory()
@@ -231,6 +254,7 @@ class MemoryManagerCore:
                 updated["last_used_at"] = now
                 if conflict_group:
                     updated["conflict_group"] = conflict_group
+                updated["category"] = category
                 user_memories[index] = updated
                 memory_data["user_memories"] = user_memories[-50:]
                 return self.save_memory(memory_data)
@@ -243,6 +267,7 @@ class MemoryManagerCore:
                 "source": source or "assistant",
                 "last_used_at": now,
                 "conflict_group": conflict_group or "",
+                "category": category,
             }
             user_memories = self._resolve_conflicts(user_memories, new_entry)
             user_memories.append(new_entry)
@@ -298,13 +323,18 @@ class MemoryManagerCore:
         title: str = "长期记忆摘要",
         include_disabled: bool = False,
     ) -> str:
-        lines = [f"## {title}"]
-        enabled = []
-        disabled = []
+        lines = [f"## {title}", ""]
+
+        categorized: Dict[str, List[tuple]] = {cat: [] for cat in MEMORY_CATEGORIES}
+        disabled: List[tuple] = []
+
         for memory in memories:
             normalized = self._normalize_memory_entry(memory)
             if not normalized:
                 continue
+            category = normalized.get("category", "task_preference")
+            if category not in MEMORY_CATEGORIES:
+                category = "task_preference"
             payload = (
                 float(normalized.get("confidence", 0.5) or 0.5),
                 normalized.get("last_used_at") or normalized.get("timestamp", ""),
@@ -312,29 +342,35 @@ class MemoryManagerCore:
                 normalized.get("content", ""),
             )
             if normalized.get("enabled", True):
-                enabled.append(payload)
+                categorized[category].append(payload)
             elif include_disabled:
                 disabled.append(payload)
 
-        enabled.sort(reverse=True)
-        disabled.sort(reverse=True)
+        for cat_key in MEMORY_CATEGORIES:
+            categorized[cat_key].sort(reverse=True)
 
-        if enabled:
-            lines.append("【当前相关记忆】：")
-            for idx, (confidence, _, source, content) in enumerate(enabled, 1):
+        has_any_memory = False
+        for cat_key, cat_title in MEMORY_CATEGORIES.items():
+            items = categorized.get(cat_key, [])
+            if not items:
+                continue
+            has_any_memory = True
+            lines.append(f"### {cat_title}")
+            lines.append(f"*{MEMORY_CATEGORY_SUMMARIES.get(cat_key, '')}*")
+            for idx, (confidence, _, source, content) in enumerate(items, 1):
                 lines.append(f"{idx}. ({source}, conf={confidence:.2f}) {content}")
             lines.append("")
 
         if include_disabled and disabled:
-            lines.append("【冲突/禁用记忆，仅供参考】：")
+            lines.append("### 【冲突/禁用记忆，仅供参考】")
             for confidence, _, source, content in disabled[:5]:
                 lines.append(f"- ({source}, conf={confidence:.2f}) {content}")
             lines.append("")
 
-        if len(lines) == 1:
+        if not has_any_memory:
             lines.append("暂无长期记忆，系统将逐步积累用户偏好与会话要点。")
+            lines.append("")
 
-        lines.append("")
         lines.append("请优先遵循高置信度且最近使用的记忆。")
         return "\n".join(lines)
 
@@ -399,14 +435,22 @@ class MemoryManagerCore:
 
         existing = self.get_user_memories()[:12]
         existing_text = "\n".join(
-            f"- {item.get('content', '')}" for item in existing if item.get("content")
+            f"- [{item.get('category', 'task_preference')}] {item.get('content', '')}"
+            for item in existing if item.get("content")
         )
+
+        category_list = "\n".join(
+            f"- {k}: {v.replace('【', '').replace('】', '')}" for k, v in MEMORY_CATEGORIES.items()
+        )
+
         prompt = (
             "请从下面的会话中提炼最多 3 条适合写入长期记忆的内容。\n"
             "只保留稳定的用户偏好、项目约束、明确纠正、长期决策。\n"
-            "不要提炼一次性任务细节，不要重复已有记忆。\n"
+            "不要提炼一次性任务细节，不要重复已有记忆。\n\n"
+            "**记忆分类说明**：\n"
+            f"{category_list}\n\n"
             "输出 JSON 数组，每项格式为 "
-            '{"content":"...","confidence":0.0-1.0,"source":"session","conflict_group":"可选"}。\n\n'
+            '{"content":"...","category":"分类key","confidence":0.0-1.0,"source":"session","conflict_group":"可选"}。\n\n'
             f"【已有记忆】\n{existing_text or '无'}\n\n"
             f"【近期会话】\n{chr(10).join(transcript)}"
         )
@@ -450,6 +494,10 @@ class MemoryManagerCore:
             normalized["source"] = item.get("source", "session")
             normalized["confidence"] = float(item.get("confidence", 0.8) or 0.8)
             normalized["conflict_group"] = str(item.get("conflict_group", "") or "")
+            category = str(item.get("category", "task_preference") or "task_preference")
+            if category not in MEMORY_CATEGORIES:
+                category = "task_preference"
+            normalized["category"] = category
             results.append(normalized)
         return results
 
