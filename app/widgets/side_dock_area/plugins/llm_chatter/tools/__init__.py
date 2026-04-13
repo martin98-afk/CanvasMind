@@ -712,49 +712,49 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
-        {
-            "type": "function",
-            "function": {
-                "name": "memory_save",
-                "description": "保存一条新的长期记忆，适合写入稳定的用户偏好、项目约束、明确纠正和长期决策",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "content": {"type": "string", "description": "记忆内容"},
-                        "confidence": {
-                            "type": "number",
-                            "description": "置信度，0 到 1",
-                        },
-                        "source": {"type": "string", "description": "记忆来源"},
-                        "conflict_group": {
-                            "type": "string",
-                            "description": "冲突组，相同组的新记忆会压制旧记忆",
-                        },
-                    },
-                    "required": ["content"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "memory_consolidate",
-                "description": "基于当前会话消息和当前 provider 配置，自动提炼适合写入长期记忆的稳定信息，并可直接保存",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "max_items": {
-                            "type": "integer",
-                            "description": "最多提炼多少条记忆",
-                        },
-                        "save": {
-                            "type": "boolean",
-                            "description": "是否直接保存提炼结果到长期记忆",
-                        },
-                    },
-                },
-            },
-        },
+        # {
+        #     "type": "function",
+        #     "function": {
+        #         "name": "memory_save",
+        #         "description": "保存一条新的长期记忆，适合写入稳定的用户偏好、项目约束、明确纠正和长期决策",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {
+        #                 "content": {"type": "string", "description": "记忆内容"},
+        #                 "confidence": {
+        #                     "type": "number",
+        #                     "description": "置信度，0 到 1",
+        #                 },
+        #                 "source": {"type": "string", "description": "记忆来源"},
+        #                 "conflict_group": {
+        #                     "type": "string",
+        #                     "description": "冲突组，相同组的新记忆会压制旧记忆",
+        #                 },
+        #             },
+        #             "required": ["content"],
+        #         },
+        #     },
+        # },
+        # {
+        #     "type": "function",
+        #     "function": {
+        #         "name": "memory_consolidate",
+        #         "description": "基于当前会话消息和当前 provider 配置，自动提炼适合写入长期记忆的稳定信息，并可直接保存",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {
+        #                 "max_items": {
+        #                     "type": "integer",
+        #                     "description": "最多提炼多少条记忆",
+        #                 },
+        #                 "save": {
+        #                     "type": "boolean",
+        #                     "description": "是否直接保存提炼结果到长期记忆",
+        #                 },
+        #             },
+        #         },
+        #     },
+        # },
         {
             "type": "function",
             "function": {
