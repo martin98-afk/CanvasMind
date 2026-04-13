@@ -8,7 +8,7 @@ from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
 
 class _HistoryItemCard(CardWidget):
-    clicked = pyqtSignal(int)
+    sessionClicked = pyqtSignal(int)
     deleteRequested = pyqtSignal(int)
 
     def __init__(
@@ -71,7 +71,7 @@ class _HistoryItemCard(CardWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.clicked.emit(self._index)
+            self.sessionClicked.emit(self._index)
         super().mousePressEvent(event)
 
 
@@ -139,12 +139,12 @@ class HistoryPopup(QWidget):
                 margin: 2px 0;
             }
             QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 0.18);
+                background: rgba(140, 148, 160, 0.45);
                 border-radius: 5px;
                 min-height: 24px;
             }
             QScrollBar::handle:vertical:hover {
-                background: rgba(255, 255, 255, 0.28);
+                background: rgba(160, 168, 180, 0.62);
             }
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
                 background: transparent;
@@ -189,7 +189,7 @@ class HistoryPopup(QWidget):
                     is_current=current_index == index,
                     parent=self.content_widget,
                 )
-                card.clicked.connect(self.sessionSelected.emit)
+                card.sessionClicked.connect(self.sessionSelected.emit)
                 card.deleteRequested.connect(self.sessionDeleted.emit)
                 self.content_layout.addWidget(card)
 
