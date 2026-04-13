@@ -21,6 +21,8 @@ from qfluentwidgets import (
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
+from app.utils.utils import get_icon
+
 
 def format_relative_time(time_str: str) -> str:
     """将时间字符串转换为相对时间显示"""
@@ -147,7 +149,7 @@ class _HistoryItemCard(CardWidget):
         self.edit_btn.clicked.connect(self._start_edit)
         btn_container.addWidget(self.edit_btn)
 
-        self.delete_btn = TransparentToolButton(FluentIcon.FOLDER, self)
+        self.delete_btn = TransparentToolButton(get_icon("归档"), self)
         self.delete_btn.setToolTip("归档")
         self.delete_btn.setFixedSize(24, 24)
         self.delete_btn.clicked.connect(lambda: self.deleteRequested.emit(self._index))
