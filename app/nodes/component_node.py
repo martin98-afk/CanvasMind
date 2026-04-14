@@ -166,7 +166,8 @@ def create_node_class(full_path, file_path, parent_window=None):
                 self.delete_output(port_name)
             for name in expected_names:
                 node_name = re.sub(r"\s+", "_", self.name())
-                if f"{node_name}__{name}" in parent_window.global_variables.node_vars:
+                safe_name = re.sub(r".", "_", name)
+                if f"{node_name}__{safe_name}" in parent_window.global_variables.node_vars:
                     self.add_output(name, painter_func=draw_special_outputport)
                 else:
                     self.add_output(name)
