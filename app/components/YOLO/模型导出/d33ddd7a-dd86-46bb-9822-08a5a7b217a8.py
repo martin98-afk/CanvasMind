@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class ModelExportToOnnx(BaseComponent):
     name = "模型导出为 ONNX"
-    category = "YOLO"
+    category = "YOLO/模型导出"
     description = "将训练好的模型导出为 ONNX 格式，便于跨平台部署与推理"
     requirements = "onnx,torch"
     inputs = [

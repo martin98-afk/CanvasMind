@@ -108,20 +108,6 @@ class TopicSummaryTask(QRunnable):
                 for k, v in MEMORY_CATEGORIES.items()
             )
 
-            memory_criteria = (
-                "【值得记忆的内容】（当满足以下条件时应设为true）：\n"
-                "- 用户的长期偏好或习惯（如：喜欢用Markdown格式、喜欢简洁回复）\n"
-                "- 用户表达的禁忌或限制（如：不要用第三方库、不能用中文注释）\n"
-                "- 用户说明的身份信息或背景，或对你设定的角色信息（如：我是后端开发、主要用Python）\n"
-                "- 用户提出了需要长期遵守的规则或规范（如：代码必须遵循PEP8）\n"
-                "【不应记忆的内容】（当满足以下条件时请务必设为false）：\n"
-                "- 一次性任务请求（如：帮我生成这个ppt、调试这个bug）\n"
-                "- 临时性、偶然的对话内容\n"
-                "- 已有记忆的重复或相似内容（相似度超过70%则忽略）\n"
-                "- 琐碎的、不影响未来交互的信息\n\n"
-                "**原则：保持平衡。既不要遗漏明显的长期偏好，也不要创建过多相似记忆。当难以判断时，倾向于记录简洁、通用、可复用的偏好。**"
-            )
-
             if self.previous_summary:
                 prompt = (
                     "你是一个对话标题和长期记忆辅助助手。\n"
@@ -130,8 +116,6 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
-                    "【长期记忆判断标准】\n"
-                    f"{memory_criteria}\n\n"
                     "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
@@ -140,8 +124,8 @@ class TopicSummaryTask(QRunnable):
                     "```json\n"
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
-                    '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
+                    '  "should_update_memory": true/false, \n'
+                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
                     f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
                     '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
@@ -155,8 +139,6 @@ class TopicSummaryTask(QRunnable):
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
                     "- 体现用户意图，不要描述过程\n"
                     "- 不超过20字\n\n"
-                    "【长期记忆判断标准】\n"
-                    f"{memory_criteria}\n\n"
                     "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
@@ -164,8 +146,8 @@ class TopicSummaryTask(QRunnable):
                     "```json\n"
                     "{\n"
                     '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false（默认false，只有满足记忆标准时才true）, \n'
-                    '  "memory_content": "用户长期偏好/禁忌（只有should_update_memory为true时才填写）",\n'
+                    '  "should_update_memory": true/false, \n'
+                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
                     f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
                     '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
                     "}\n"
@@ -191,6 +173,7 @@ class TopicSummaryTask(QRunnable):
             json_match = re.search(r"\{[^{}]*\}", raw_response, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
+                print(result)
                 callback_data = {
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),

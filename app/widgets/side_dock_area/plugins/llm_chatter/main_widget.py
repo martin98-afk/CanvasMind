@@ -2060,8 +2060,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         clean_summary = summary.strip()
-        if len(clean_summary) > 20:
-            clean_summary = clean_summary[:20] + "..."
 
         if self._current_history_index is None:
             self.history_manager.save_session(

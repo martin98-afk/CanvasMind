@@ -20,7 +20,7 @@ MEMORY_CATEGORIES = {
     "agent_identity": "【智能体自身身份记忆】",
     "user_identity": "【用户身份记忆】",
     "task_preference": "【用户任务偏好】",
-    "task_taboos": "【任务忌讳】",
+    "task_taboos": "【用户任务忌讳】",
     "key_knowledge": "【关键事实】",
 }
 
