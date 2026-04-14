@@ -60,8 +60,8 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: s
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Icons]
-Name: "{autoprograms}\CanvasMind"; Filename: "{app}\main.exe"
-Name: "{autodesktop}\CanvasMind"; Filename: "{app}\main.exe"; Tasks: desktopicon
+Name: "{autoprograms}\CanvasMind"; Filename: "{app}\CanvasMind.exe"
+Name: "{autodesktop}\CanvasMind"; Filename: "{app}\CanvasMind.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

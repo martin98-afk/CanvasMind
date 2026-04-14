@@ -229,7 +229,7 @@ class HistoryPopup(QWidget):
     sessionSelected = pyqtSignal(int)
     sessionArchived = pyqtSignal(int)
     sessionRenamed = pyqtSignal(int, str)
-    MAX_CONTENT_HEIGHT = 400
+    MAX_CONTENT_HEIGHT = 600
 
     def __init__(self, parent=None):
         super().__init__(parent)

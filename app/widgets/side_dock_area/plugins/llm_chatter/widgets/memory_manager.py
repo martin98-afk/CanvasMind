@@ -29,6 +29,7 @@ MEMORY_CATEGORIES_WIDGET = {
     "user_identity": "【用户身份记忆】",
     "task_preference": "【用户任务偏好】",
     "task_taboos": "【任务忌讳】",
+    "key_knowledge": "【关键事实】",
 }
 
 MEMORY_CATEGORY_SHORT_NAMES = {
@@ -36,6 +37,7 @@ MEMORY_CATEGORY_SHORT_NAMES = {
     "user_identity": "用户身份",
     "task_preference": "任务偏好",
     "task_taboos": "任务忌讳",
+    "key_knowledge": "关键事实",
 }
 
 

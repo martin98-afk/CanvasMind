@@ -103,8 +103,8 @@ class TopicSummaryTask(QRunnable):
                         + "\n".join(mem_lines)
                     )
 
-            category_list = "\n".join(
-                f"- {k}: {v.replace('【', '').replace('】', '')}"
+            category_list = ";".join(
+                f"{k}: {v.replace('【', '').replace('】', '')}"
                 for k, v in MEMORY_CATEGORIES.items()
             )
 
@@ -171,7 +171,6 @@ class TopicSummaryTask(QRunnable):
                     "}\n"
                     "```"
                 )
-            print(prompt)
             client = OpenAI(
                 api_key=self.llm_config.get("API_KEY", ""),
                 base_url=self.llm_config.get("API_URL"),

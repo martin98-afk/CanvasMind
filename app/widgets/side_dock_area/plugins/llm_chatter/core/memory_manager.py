@@ -21,6 +21,7 @@ MEMORY_CATEGORIES = {
     "user_identity": "【用户身份记忆】",
     "task_preference": "【用户任务偏好】",
     "task_taboos": "【任务忌讳】",
+    "key_knowledge": "【关键事实】",
 }
 
 MEMORY_CATEGORY_SUMMARIES = {
@@ -28,13 +29,15 @@ MEMORY_CATEGORY_SUMMARIES = {
     "user_identity": "关于用户身份、背景、角色的认知",
     "task_preference": "关于用户处理任务的习惯、方式偏好",
     "task_taboos": "用户明确指出不能做的事、禁忌或雷区",
+    "key_knowledge": "关键知识、事实、信息",
 }
 
 MEMORY_CATEGORY_LIMITS = {
     "agent_identity": 10,
     "user_identity": 10,
-    "task_preference": 20,
+    "task_preference": 30,
     "task_taboos": 15,
+    "key_knowledge": 50,
 }
 
 MEMORY_DECAY_CONFIG = {
@@ -239,14 +242,14 @@ class MemoryManagerCore:
         source: str = "assistant",
         confidence: float = 0.8,
         conflict_group: str = "",
-        category: str = "task_preference",
+        category: str = "key_knowledge",
     ) -> bool:
         """添加用户偏好记忆"""
         if not content:
             return False
 
         if category not in MEMORY_CATEGORIES:
-            category = "task_preference"
+            category = "key_knowledge"
 
         try:
             memory_data = self.load_memory()
