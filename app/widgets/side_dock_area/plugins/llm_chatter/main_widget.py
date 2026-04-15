@@ -611,7 +611,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         self._valid_configs.clear()
-        self.model_combo.clear()
+        self.model_combo.blockSignals(True)
 
         setting = Settings.get_instance()
         default_config = {
@@ -656,7 +656,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._setup_combo_with_icons(all_model_names)
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
-        saved_model = setting.llm_selected_model.value
         if saved_model and saved_model in self._valid_configs:
             idx = self.model_combo.findText(saved_model)
             if idx >= 0:
@@ -668,6 +667,7 @@ class OpenAIChatToolWindow(ToolWindow):
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
 
+        self.model_combo.blockSignals(False)
         self._refresh_context_usage_indicator()
 
     def _setup_combo_with_icons(self, model_names: List[str]):

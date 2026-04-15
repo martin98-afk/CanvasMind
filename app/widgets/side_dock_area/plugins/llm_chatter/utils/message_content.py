@@ -173,9 +173,7 @@ def content_to_markdown(content: Any) -> str:
             if text:
                 parts.append(text)
         elif block_type == "tool_result":
-            args_json = json.dumps(
-                block.get("arguments", {}) or {}, ensure_ascii=False
-            )
+            args_json = json.dumps(block.get("arguments", {}) or {}, ensure_ascii=False)
             result = str(block.get("result", ""))
             success = bool(block.get("success", True))
             parts.append(
@@ -210,7 +208,9 @@ def dedupe_tool_result_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, An
         key = (
             block.get("tool_call_id"),
             block.get("name"),
-            json.dumps(block.get("arguments", {}) or {}, ensure_ascii=False, sort_keys=True),
+            json.dumps(
+                block.get("arguments", {}) or {}, ensure_ascii=False, sort_keys=True
+            ),
             block.get("result", ""),
             bool(block.get("success", True)),
         )
@@ -267,9 +267,7 @@ def repair_misordered_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str
 
     repaired: List[Dict[str, Any]] = [make_text_block(before)]
     repaired.extend(
-        block
-        for block in normalized_blocks
-        if block.get("type") == "tool_result"
+        block for block in normalized_blocks if block.get("type") == "tool_result"
     )
     repaired.append(make_text_block(after))
     return repaired
@@ -513,6 +511,32 @@ def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 current_assistant.get("content", [])
             ) + ensure_content_blocks(msg.get("content", []))
 
+            deduped_content: List[Dict[str, Any]] = []
+            seen_content_tool_keys: set = set()
+            for block in current_assistant["content"]:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "text":
+                    deduped_content.append(block)
+                    continue
+                if block.get("type") == "tool_result":
+                    key = (
+                        block.get("tool_call_id"),
+                        block.get("name"),
+                        json.dumps(
+                            normalize_tool_arguments(block.get("arguments", {})),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
+                        block.get("result", ""),
+                        bool(block.get("success", True)),
+                    )
+                    if key in seen_content_tool_keys:
+                        continue
+                    seen_content_tool_keys.add(key)
+                    deduped_content.append(block)
+            current_assistant["content"] = deduped_content
+
             if msg.get("tool_calls"):
                 existing = current_assistant.setdefault("tool_calls", [])
                 existing.extend(
@@ -521,11 +545,38 @@ def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
             if msg.get("tool_results"):
                 existing_results = current_assistant.setdefault("tool_results", [])
-                existing_results.extend(
-                    dict(item)
-                    for item in msg.get("tool_results", [])
-                    if isinstance(item, dict)
-                )
+                seen_result_keys: set = set()
+                for existing in existing_results:
+                    key = (
+                        existing.get("tool_call_id"),
+                        existing.get("name"),
+                        json.dumps(
+                            normalize_tool_arguments(existing.get("arguments", {})),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
+                        existing.get("result", ""),
+                        bool(existing.get("success", True)),
+                    )
+                    seen_result_keys.add(key)
+                for item in msg.get("tool_results", []):
+                    if not isinstance(item, dict):
+                        continue
+                    key = (
+                        item.get("tool_call_id"),
+                        item.get("name"),
+                        json.dumps(
+                            normalize_tool_arguments(item.get("arguments", {})),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
+                        item.get("result", ""),
+                        bool(item.get("success", True)),
+                    )
+                    if key in seen_result_keys:
+                        continue
+                    seen_result_keys.add(key)
+                    existing_results.append(dict(item))
             continue
 
         if role == "tool":
