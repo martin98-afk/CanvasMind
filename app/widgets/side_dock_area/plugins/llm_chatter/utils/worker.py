@@ -568,10 +568,24 @@ class OpenAIChatWorker(QThread):
                         }
                     )
 
+                valid_tool_call_ids = {tc["id"] for tc in tool_calls}
+                if isinstance(content, list):
+                    cleaned_content = []
+                    for block in content:
+                        if (
+                            isinstance(block, dict)
+                            and block.get("type") == "tool_result"
+                        ):
+                            tc_id = block.get("tool_call_id")
+                            if tc_id and tc_id not in valid_tool_call_ids:
+                                continue
+                        cleaned_content.append(block)
+                    content = cleaned_content if cleaned_content else None
+
                 if tool_calls:
                     api_msg["tool_calls"] = tool_calls
-
-                if assistant_text or not tool_calls:
+                    api_msg["content"] = assistant_text if assistant_text else None
+                elif assistant_text:
                     api_msg["content"] = assistant_text
             elif role == "tool":
                 tool_call_id = msg.get("tool_call_id")
@@ -1092,8 +1106,16 @@ class OpenAIChatWorker(QThread):
                         )
                         continue
 
-            result = self.tool_executor.execute(tool_name, arguments)
-            result_content = str(result) if result else ""
+            try:
+                result = self.tool_executor.execute(tool_name, arguments)
+            except Exception as e:
+                logger.error(f"[Tool] Tool '{tool_name}' execution failed: {e}")
+                result = None
+                result_content = f"Tool execution error: {str(e)}"
+                success = False
+            else:
+                result_content = str(result) if result else ""
+                success = bool(getattr(result, "success", True)) if result else False
 
             self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
             QApplication.processEvents()
@@ -1105,7 +1127,7 @@ class OpenAIChatWorker(QThread):
                     "arguments": arguments or {},
                     "content": result_content,
                     "result": result_content,
-                    "success": bool(getattr(result, "success", True)),
+                    "success": success,
                     "round_id": round_id,
                 }
             )

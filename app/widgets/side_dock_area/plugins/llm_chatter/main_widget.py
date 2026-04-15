@@ -532,7 +532,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._history_popup.sessionArchived.connect(self._archive_history_session)
             self._history_popup.sessionRenamed.connect(self._rename_history_session)
 
-        history_list = self.history_manager.get_history_list() if self.history_manager else []
+        history_list = (
+            self.history_manager.get_history_list() if self.history_manager else []
+        )
         self._history_popup.set_history(history_list, self._current_history_index)
         self._history_popup.show_at(self.history_btn)
 
@@ -1169,7 +1171,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if not session.messages:
             if self._current_history_index is not None and self.history_manager:
-                self.history_manager.delete_history(self._current_history_index)
+                self.history_manager.archive_history(self._current_history_index)
                 self._current_history_index = None
             return
 
@@ -1276,7 +1278,9 @@ class OpenAIChatToolWindow(ToolWindow):
         try:
             self._auto_save_current_session()
         except Exception:
-            logger.exception("Failed to auto-save current session before loading history")
+            logger.exception(
+                "Failed to auto-save current session before loading history"
+            )
 
         messages = self.history_manager.get_session_by_index(index)
         if not messages:
@@ -2094,7 +2098,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if hit_memories and self._memory_manager:
             self._memory_manager.touch_memories(hit_memories)
-            logger.info(f"[Topic Summary] Touched {len(hit_memories)} existing memories")
+            logger.info(
+                f"[Topic Summary] Touched {len(hit_memories)} existing memories"
+            )
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)

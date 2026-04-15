@@ -297,9 +297,7 @@ class ChatEngine:
 
                 if tool_calls and tool_results:
                     existing_tool_ids = {
-                        m["tool_call_id"]
-                        for m in history_messages
-                        if m.get("role") == "tool"
+                        m["tool_call_id"] for m in normalized if m.get("role") == "tool"
                     }
                     for result in tool_results:
                         if not isinstance(result, dict):
