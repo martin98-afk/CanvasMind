@@ -160,6 +160,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._history_popup = None
         self._gen_thread_pool = QThreadPool()
         self._gen_thread_pool.setMaxThreadCount(2)
+        self._pending_scroll_to_bottom = False
+        self._last_visible_user_pair_index = -1
+        self._scroll_bottom_timer = QTimer(self)
+        self._scroll_bottom_timer.setSingleShot(True)
+        self._scroll_bottom_timer.setInterval(24)
+        self._scroll_bottom_timer.timeout.connect(self._do_scroll_to_bottom)
         self.toolStartUiSyncRequested.connect(
             self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
         )
@@ -379,12 +385,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._sub_agent_floating_widget = SubAgentFloatingWidget(self)
         self._sub_agent_floating_widget.setVisible(False)
-        layout.addWidget(self._sub_agent_floating_widget)
 
         self._tool_floating_widget = ToolFloatingWidget(self)
         self._tool_floating_widget.setVisible(False)
         self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
-        layout.addWidget(self._tool_floating_widget)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -410,6 +414,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_scroll_area.setWidget(self.chat_container)
 
         layout.addWidget(self.chat_scroll_area, 1)
+
+        layout.addWidget(self._sub_agent_floating_widget)
+        layout.addWidget(self._tool_floating_widget)
 
         self.node_preview = ConversationNodePreview(self)
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
@@ -1384,37 +1391,26 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.update_nodes(node_data)
 
     def _on_node_preview_clicked(self, index: int):
-        session = self.session_manager.get_current_session()
-        if not session:
-            return
-        messages = consolidate_messages(session.messages)
-
         pair_index = 0
-        for i, msg in enumerate(messages):
-            if msg["role"] == "user":
+        target_widget = None
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if widget.role == "user":
                 if pair_index == index:
-                    card_index = i
-                    for j in range(i, len(messages) - 1):
-                        if isinstance(self.chat_layout.itemAt(j), type(None)):
-                            continue
-                        widget = self.chat_layout.itemAt(j).widget()
-                        if (
-                            widget
-                            and hasattr(widget, "role")
-                            and widget.role == "assistant"
-                        ):
-                            card_index = j
-                            break
-                    scroll_area = self.chat_scroll_area
-                    if scroll_area:
-                        y = 0
-                        for k in range(card_index):
-                            item = self.chat_layout.itemAt(k)
-                            if item and item.widget():
-                                y += item.widget().height() + 5
-                        scroll_area.verticalScrollBar().setValue(y)
-                    return
+                    target_widget = widget
+                    continue
                 pair_index += 1
+            elif target_widget and widget.role == "assistant":
+                target_widget = widget
+                break
+
+        if target_widget:
+            self.chat_scroll_area.verticalScrollBar().setValue(target_widget.y())
 
     def _on_scroll_changed(self, value):
         scroll_bar = self.chat_scroll_area.verticalScrollBar()
@@ -1422,7 +1418,8 @@ class OpenAIChatToolWindow(ToolWindow):
         visible_top = scroll_bar.value()
         visible_bottom = visible_top + viewport_height
 
-        user_msg_indices = []
+        first_visible_pair = -1
+        pair_index = 0
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
             if not item or not item.widget():
@@ -1432,26 +1429,16 @@ class OpenAIChatToolWindow(ToolWindow):
                 continue
             if widget.role != "user":
                 continue
-            y = 0
-            for j in range(i):
-                item_j = self.chat_layout.itemAt(j)
-                if item_j and item_j.widget():
-                    y += item_j.widget().height() + 5
-            widget_bottom = y + widget.height()
-            if widget_bottom > visible_top and y < visible_bottom:
-                user_msg_indices.append(i)
+            widget_top = widget.y()
+            widget_bottom = widget_top + widget.height()
+            if widget_bottom > visible_top and widget_top < visible_bottom:
+                first_visible_pair = pair_index
+                break
+            pair_index += 1
 
-        if user_msg_indices:
-            first_visible_idx = user_msg_indices[0]
-            pair_index = 0
-            for i in range(first_visible_idx):
-                item = self.chat_layout.itemAt(i)
-                if item and item.widget() and isinstance(item.widget(), MessageCard):
-                    if item.widget().role == "user":
-                        pair_index += 1
-            self.node_preview.set_visible_node(pair_index)
-        else:
-            self.node_preview.set_visible_node(-1)
+        if first_visible_pair != self._last_visible_user_pair_index:
+            self._last_visible_user_pair_index = first_visible_pair
+            self.node_preview.set_visible_node(first_visible_pair)
 
     def _truncate_session_from_rendered_index(self, rendered_index: int) -> bool:
         session = self.session_manager.get_current_session()
@@ -1581,19 +1568,21 @@ class OpenAIChatToolWindow(ToolWindow):
             )
 
     def _scroll_to_bottom(self):
-        def _do_scroll():
-            self.chat_scroll_area.verticalScrollBar().setValue(
-                self.chat_scroll_area.verticalScrollBar().maximum()
-            )
-            session = self.session_manager.get_current_session()
-            if session:
-                user_count = sum(
-                    1 for msg in session.messages if msg.get("role") == "user"
-                )
-                if user_count > 0:
-                    self.node_preview.set_visible_node(user_count - 1)
+        self._pending_scroll_to_bottom = True
+        self._scroll_bottom_timer.start()
 
-        QTimer.singleShot(10, _do_scroll)
+    def _do_scroll_to_bottom(self):
+        if not self._pending_scroll_to_bottom:
+            return
+        self._pending_scroll_to_bottom = False
+        scroll_bar = self.chat_scroll_area.verticalScrollBar()
+        scroll_bar.setValue(scroll_bar.maximum())
+        session = self.session_manager.get_current_session()
+        if session:
+            user_count = sum(1 for msg in session.messages if msg.get("role") == "user")
+            visible_index = user_count - 1 if user_count > 0 else -1
+            self._last_visible_user_pair_index = visible_index
+            self.node_preview.set_visible_node(visible_index)
 
     def handle_recommended_question(self, content: str, action: str):
         if action == "ask":

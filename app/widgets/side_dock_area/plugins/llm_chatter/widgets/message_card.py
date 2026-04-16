@@ -404,7 +404,9 @@ class CodeWebViewer(QWebEngineView):
         self._streaming = True
         self._is_js_ready = False
         self._last_rendered_html = ""
-        self._min_render_interval = 80
+        self._last_rendered_markdown = ""
+        self._min_render_interval = 120
+        self._height_report_pending = False
 
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
@@ -486,12 +488,14 @@ class CodeWebViewer(QWebEngineView):
         try:
             # 再次检查 page 是否存在，避免 C++ 对象已删除错误
             if self.page():
+                self._height_report_pending = False
                 self.page().runJavaScript("reportHeight();")
         except RuntimeError:
             # 捕获可能的 "wrapped C/C++ object has been deleted"
             pass
 
     def _on_height_reported(self, h):
+        self._height_report_pending = False
         final_h = h + 2
         if abs(self.height() - final_h) > 2:
             self.contentHeightChanged.emit(final_h)
@@ -940,20 +944,31 @@ class CodeWebViewer(QWebEngineView):
                 self._render_timer.stop()
             self._perform_update()
             return
-        if not self._render_timer.isActive():
-            self._render_timer.start(self._min_render_interval)
+        interval = self._min_render_interval if self._streaming else 40
+        if self._render_timer.isActive():
+            return
+        self._render_timer.start(interval)
 
     def _perform_update(self):
         try:
             if not self.page():
                 return
+            if self._markdown_text == self._last_rendered_markdown:
+                if not self._height_report_pending:
+                    self._height_report_pending = True
+                    self._resize_timer.start()
+                return
 
             html_content = self._render_markdown_to_html(self._markdown_text)
+            self._last_rendered_markdown = self._markdown_text
             if html_content == self._last_rendered_html:
-                self._safe_report_height()
+                if not self._height_report_pending:
+                    self._height_report_pending = True
+                    self._resize_timer.start()
                 return
 
             self._last_rendered_html = html_content
+            self._height_report_pending = True
             js_code = f"updateContent({json.dumps(html_content, ensure_ascii=False)});"
             self.page().runJavaScript(js_code)
         except RuntimeError:
@@ -972,6 +987,8 @@ class CodeWebViewer(QWebEngineView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # 使用成员变量 timer，替代 lambda
+        if not self._height_report_pending:
+            self._height_report_pending = True
         self._resize_timer.start()
 
     def wheelEvent(self, event: QWheelEvent):
@@ -1112,6 +1129,7 @@ class MessageCard(SimpleCardWidget):
         self._height_anim.setEasingCurve(QEasingCurve.OutCubic)
         self._height_anim.valueChanged.connect(self._apply_viewer_height)
         self._target_viewer_height = 40
+        self._last_applied_viewer_height = 40
         self._theme = self._build_theme(role, error)
         self._base_bg = self._theme["bg"]
         self._base_border = self._theme["border"]
@@ -1497,6 +1515,9 @@ class MessageCard(SimpleCardWidget):
 
     def _apply_viewer_height(self, value):
         height = max(40, int(value))
+        if height == self._last_applied_viewer_height:
+            return
+        self._last_applied_viewer_height = height
         self.viewer.setFixedHeight(height)
         self.updateGeometry()
         parent = self.parentWidget()

@@ -43,6 +43,10 @@ class ToolPopupDialog(QDialog):
         self._restore_btn = None
         self._normal_geometry = None
         self._is_closing = False
+        self._geometry_save_timer = QTimer(self)
+        self._geometry_save_timer.setSingleShot(True)
+        self._geometry_save_timer.setInterval(160)
+        self._geometry_save_timer.timeout.connect(self._save_geometry)
         self.setWindowTitle(tool_instance.name)
         self.setWindowFlags(
             Qt.Dialog
@@ -123,6 +127,8 @@ class ToolPopupDialog(QDialog):
     def _save_geometry(self):
         from PyQt5.QtCore import QSettings
 
+        if self._is_maximized:
+            return
         settings = QSettings("WorkFlowGUI", "ToolPopup")
         key = f"popup_geometry_{self.tool_instance.name}"
         settings.setValue(key, self.saveGeometry())
@@ -228,13 +234,14 @@ class ToolPopupDialog(QDialog):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._save_geometry()
+        if not self._is_closing:
+            self._geometry_save_timer.start()
 
     def moveEvent(self, event):
         super().moveEvent(event)
-        if self._is_maximized:
+        if self._is_maximized or self._is_closing:
             return
-        self._save_geometry()
+        self._geometry_save_timer.start()
 
     def _on_destroyed(self):
         if hasattr(self.tool_instance, "set_allowed_update"):
@@ -265,6 +272,7 @@ class SideDockArea(QWidget):
             self._top_visible = False
             self._bottom_visible = False
             self.last_content_visible = False
+            self._last_splitter_state = None
 
             self.splitter.addWidget(self.top_stack)
             self.splitter.addWidget(self.bottom_stack)
@@ -512,6 +520,11 @@ class SideDockArea(QWidget):
         self._handle_tool_reposition(tool_name, new_pos)
 
     def _update_splitter(self):
+        state = (self._top_visible, self._bottom_visible, self.last_content_visible)
+        if state == self._last_splitter_state:
+            return
+        self._last_splitter_state = state
+
         if self.last_content_visible and not (
             self._top_visible or self._bottom_visible
         ):
