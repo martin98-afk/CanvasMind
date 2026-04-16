@@ -173,7 +173,6 @@ class TopicSummaryTask(QRunnable):
             json_match = re.search(r"\{[^{}]*\}", raw_response, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
-                print(result)
                 callback_data = {
                     "topic_summary": result.get("topic_summary", ""),
                     "should_update_memory": result.get("should_update_memory", False),
