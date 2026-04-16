@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import json
-import re
 from typing import Any, Dict, List, Optional
 
 
@@ -16,7 +15,8 @@ def normalize_tool_arguments(arguments: Any) -> Dict[str, Any]:
             if isinstance(parsed, dict):
                 return parsed
         except Exception:
-            return {}
+            pass
+        return {}
     return {}
 
 
@@ -173,9 +173,7 @@ def content_to_markdown(content: Any) -> str:
             if text:
                 parts.append(text)
         elif block_type == "tool_result":
-            args_json = json.dumps(
-                block.get("arguments", {}) or {}, ensure_ascii=False
-            )
+            args_json = json.dumps(block.get("arguments", {}) or {}, ensure_ascii=False)
             result = str(block.get("result", ""))
             success = bool(block.get("success", True))
             parts.append(
@@ -210,7 +208,9 @@ def dedupe_tool_result_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, An
         key = (
             block.get("tool_call_id"),
             block.get("name"),
-            json.dumps(block.get("arguments", {}) or {}, ensure_ascii=False, sort_keys=True),
+            json.dumps(
+                block.get("arguments", {}) or {}, ensure_ascii=False, sort_keys=True
+            ),
             block.get("result", ""),
             bool(block.get("success", True)),
         )
@@ -229,333 +229,75 @@ def dedupe_tool_result_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, An
     return deduped
 
 
-def repair_misordered_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    normalized_blocks = ensure_content_blocks(blocks)
-    if not normalized_blocks:
-        return []
-
-    text_indices = [
-        i for i, block in enumerate(normalized_blocks) if block.get("type") == "text"
-    ]
-    tool_indices = [
-        i
-        for i, block in enumerate(normalized_blocks)
-        if block.get("type") == "tool_result"
-    ]
-
-    if (
-        len(text_indices) != 1
-        or not tool_indices
-        or text_indices[0] != 0
-        or any(idx < text_indices[0] for idx in tool_indices)
-    ):
-        return normalized_blocks
-
-    text = str(normalized_blocks[0].get("text", ""))
-    if text.count("<think>") < 2:
-        return normalized_blocks
-
-    match = re.search(r"</think>\s*", text, re.IGNORECASE)
-    if not match:
-        return normalized_blocks
-
-    split_pos = match.end()
-    before = text[:split_pos]
-    after = text[split_pos:]
-    if not before.strip() or not after.strip():
-        return normalized_blocks
-
-    repaired: List[Dict[str, Any]] = [make_text_block(before)]
-    repaired.extend(
-        block
-        for block in normalized_blocks
-        if block.get("type") == "tool_result"
-    )
-    repaired.append(make_text_block(after))
-    return repaired
-
-
-def repair_grouped_tool_blocks(blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    normalized_blocks = ensure_content_blocks(blocks)
-    if len(normalized_blocks) < 4:
-        return normalized_blocks
-
-    if normalized_blocks[0].get("type") != "text":
-        return normalized_blocks
-    if normalized_blocks[-1].get("type") != "text":
-        return normalized_blocks
-
-    middle_blocks = normalized_blocks[1:-1]
-    if not middle_blocks or any(
-        block.get("type") != "tool_result" for block in middle_blocks
-    ):
-        return normalized_blocks
-
-    trailing_text = str(normalized_blocks[-1].get("text", ""))
-    think_matches = list(
-        re.finditer(r"<think>[\s\S]*?</think>\s*", trailing_text, re.IGNORECASE)
-    )
-    if not think_matches:
-        return normalized_blocks
-
-    text_segments: List[str] = []
-    leading_text = trailing_text[: think_matches[0].start()]
-    if leading_text.strip():
-        text_segments.append(leading_text)
-
-    for idx, match in enumerate(think_matches):
-        next_start = (
-            think_matches[idx + 1].start()
-            if idx + 1 < len(think_matches)
-            else len(trailing_text)
-        )
-        segment = trailing_text[match.start() : next_start]
-        if segment.strip():
-            text_segments.append(segment)
-
-    if not text_segments:
-        return normalized_blocks
-
-    repaired: List[Dict[str, Any]] = [normalized_blocks[0]]
-    for idx, tool_block in enumerate(middle_blocks):
-        repaired.append(tool_block)
-        if idx < len(text_segments):
-            repaired.append(make_text_block(text_segments[idx]))
-
-    if len(text_segments) > len(middle_blocks):
-        remaining = "".join(text_segments[len(middle_blocks) :])
-        if remaining.strip():
-            repaired.append(make_text_block(remaining))
-
-    return repaired
-
-
-def normalize_message(message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    if not isinstance(message, dict):
-        return None
-
-    role = message.get("role")
-    if role not in ("system", "user", "assistant", "tool"):
-        return None
-
-    normalized: Dict[str, Any] = {"role": role}
-    if message.get("timestamp"):
-        normalized["timestamp"] = message.get("timestamp")
-
-    if role == "assistant":
-        tool_call_args_by_id: Dict[str, Dict[str, Any]] = {}
-        for tc in message.get("tool_calls", []) or []:
-            if not isinstance(tc, dict):
-                continue
-            tool_call_id = str(tc.get("id") or "")
-            function = tc.get("function", {}) or {}
-            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
-            if tool_call_id and parsed_args:
-                tool_call_args_by_id[tool_call_id] = parsed_args
-
-        content_blocks = ensure_content_blocks(message.get("content", []))
-        normalized_blocks: List[Dict[str, Any]] = []
-        seen_tool_keys = set()
-
-        for block in content_blocks:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") == "text":
-                text = str(block.get("text", ""))
-                if text.strip():
-                    normalized_blocks.append(make_text_block(text))
-                continue
-            if block.get("type") == "tool_result":
-                tool_call_id = block.get("tool_call_id")
-                tool_arguments = normalize_tool_arguments(block.get("arguments", {}))
-                if not tool_arguments and tool_call_id:
-                    tool_arguments = tool_call_args_by_id.get(str(tool_call_id), {})
-                tool_block = make_tool_result_block(
-                    tool_name=block.get("name", "tool"),
-                    arguments=tool_arguments,
-                    result=block.get("result", ""),
-                    success=block.get("success", True),
-                    tool_call_id=tool_call_id,
-                )
-                key = (
-                    tool_block.get("tool_call_id"),
-                    tool_block.get("name"),
-                    json.dumps(
-                        tool_block.get("arguments", {}) or {},
-                        ensure_ascii=False,
-                        sort_keys=True,
-                    ),
-                    tool_block.get("result", ""),
-                    bool(tool_block.get("success", True)),
-                )
-                if key in seen_tool_keys:
-                    continue
-                seen_tool_keys.add(key)
-                normalized_blocks.append(tool_block)
-
-        extra_tool_blocks = [
-            make_tool_result_block(
-                tool_name=item.get("name", "tool"),
-                arguments=(
-                    normalize_tool_arguments(item.get("arguments", {}))
-                    or tool_call_args_by_id.get(str(item.get("tool_call_id") or ""), {})
-                ),
-                result=item.get("result", item.get("content", "")),
-                success=item.get("success", True),
-                tool_call_id=item.get("tool_call_id"),
-            )
-            for item in (message.get("tool_results", []) or [])
-            if isinstance(item, dict)
-        ]
-        for tool_block in extra_tool_blocks:
-            key = (
-                tool_block.get("tool_call_id"),
-                tool_block.get("name"),
-                json.dumps(
-                    tool_block.get("arguments", {}) or {},
-                    ensure_ascii=False,
-                    sort_keys=True,
-                ),
-                tool_block.get("result", ""),
-                bool(tool_block.get("success", True)),
-            )
-            if key in seen_tool_keys:
-                continue
-            seen_tool_keys.add(key)
-            normalized_blocks.append(tool_block)
-
-        normalized["content"] = repair_grouped_tool_blocks(
-            repair_misordered_tool_blocks(normalized_blocks)
-        )
-
-        if message.get("tool_calls"):
-            normalized["tool_calls"] = [
-                dict(tc) for tc in message.get("tool_calls", []) if isinstance(tc, dict)
-            ]
-        tool_blocks = extract_tool_result_blocks(normalized["content"])
-        if tool_blocks:
-            normalized["tool_results"] = [
-                {
-                    "tool_call_id": block.get("tool_call_id"),
-                    "name": block.get("name", "tool"),
-                    "arguments": block.get("arguments", {}),
-                    "result": block.get("result", ""),
-                    "content": block.get("result", ""),
-                    "success": bool(block.get("success", True)),
-                }
-                for block in tool_blocks
-            ]
-        if message.get("round_id"):
-            normalized["round_id"] = message.get("round_id")
-        return normalized
-
-    if role == "tool":
-        tool_call_id = message.get("tool_call_id")
-        if not tool_call_id:
-            return None
-        normalized["tool_call_id"] = tool_call_id
-        if message.get("name"):
-            normalized["name"] = message.get("name")
-        normalized["arguments"] = message.get("arguments", {})
-        normalized["content"] = str(
-            message.get("result", message.get("content", "")) or ""
-        )
-        normalized["result"] = normalized["content"]
-        normalized["success"] = bool(message.get("success", True))
-        if message.get("round_id"):
-            normalized["round_id"] = message.get("round_id")
-        return normalized
-
-    normalized["content"] = str(message.get("content", "") or "")
-    if role == "user":
-        normalized["params"] = message.get("params", {}) or {}
-    return normalized
-
-
 def consolidate_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    consolidated: List[Dict[str, Any]] = []
-    current_assistant: Optional[Dict[str, Any]] = None
+    """
+    保持消息列表平坦，不再合并。
+    每个 assistant 消息只包含自己的内容和 tool_calls。
+    每个 tool 结果独立为一条 tool 消息。
+    """
+    return list(messages or [])
 
-    def flush_assistant():
-        nonlocal current_assistant
-        if not current_assistant:
-            return
-        normalized = normalize_message(current_assistant)
-        if normalized:
-            consolidated.append(normalized)
-        current_assistant = None
 
-    for raw_msg in messages or []:
-        msg = normalize_message(raw_msg)
-        if not msg:
-            continue
-
-        role = msg.get("role")
-        if role in ("system", "user"):
-            flush_assistant()
-            consolidated.append(msg)
-            continue
-
-        if role == "assistant":
-            if current_assistant is None:
-                current_assistant = {
-                    "role": "assistant",
-                    "content": [],
-                    "tool_calls": [],
-                    "tool_results": [],
-                }
-                if msg.get("timestamp"):
-                    current_assistant["timestamp"] = msg.get("timestamp")
-                if msg.get("round_id"):
-                    current_assistant["round_id"] = msg.get("round_id")
-
-            current_assistant["content"] = ensure_content_blocks(
-                current_assistant.get("content", [])
-            ) + ensure_content_blocks(msg.get("content", []))
-
-            if msg.get("tool_calls"):
-                existing = current_assistant.setdefault("tool_calls", [])
-                existing.extend(
-                    dict(tc) for tc in msg.get("tool_calls", []) if isinstance(tc, dict)
-                )
-
-            if msg.get("tool_results"):
-                existing_results = current_assistant.setdefault("tool_results", [])
-                existing_results.extend(
-                    dict(item)
-                    for item in msg.get("tool_results", [])
-                    if isinstance(item, dict)
-                )
-            continue
-
-        if role == "tool":
-            if current_assistant is None:
-                current_assistant = {
-                    "role": "assistant",
-                    "content": [],
-                    "tool_calls": [],
-                    "tool_results": [],
-                }
-            tool_block = make_tool_result_block(
-                tool_name=msg.get("name", "tool"),
-                arguments=msg.get("arguments", {}),
-                result=msg.get("result", msg.get("content", "")),
-                success=msg.get("success", True),
-                tool_call_id=msg.get("tool_call_id"),
-            )
-            current_assistant["content"] = ensure_content_blocks(
-                current_assistant.get("content", [])
-            ) + [tool_block]
-            current_assistant.setdefault("tool_results", []).append(
+def to_api_message(message: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    将内部消息格式转换为标准API请求格式。
+    用于发送给API的消息构建。
+    """
+    role = message.get("role")
+    if role == "system":
+        return {
+            "role": "system",
+            "content": _extract_text_content(message.get("content", "")),
+        }
+    elif role == "user":
+        return {
+            "role": "user",
+            "content": _extract_text_content(message.get("content", "")),
+        }
+    elif role == "assistant":
+        api_msg: Dict[str, Any] = {
+            "role": "assistant",
+        }
+        text = _extract_text_content(message.get("content", ""))
+        if text:
+            api_msg["content"] = text
+        tool_calls = message.get("tool_calls")
+        if tool_calls:
+            api_msg["tool_calls"] = [
                 {
-                    "tool_call_id": tool_block.get("tool_call_id"),
-                    "name": tool_block.get("name", "tool"),
-                    "arguments": tool_block.get("arguments", {}),
-                    "result": tool_block.get("result", ""),
-                    "content": tool_block.get("result", ""),
-                    "success": bool(tool_block.get("success", True)),
+                    "id": str(tc.get("id", "")),
+                    "type": "function",
+                    "function": {
+                        "name": tc.get("function", {}).get("name", ""),
+                        "arguments": tc.get("function", {}).get("arguments", "{}"),
+                    },
                 }
-            )
+                for tc in tool_calls
+                if isinstance(tc, dict)
+            ]
+        return api_msg
+    elif role == "tool":
+        return {
+            "role": "tool",
+            "tool_call_id": str(message.get("tool_call_id", "")),
+            "content": str(message.get("content", "") or ""),
+        }
+    return {"role": role, "content": _extract_text_content(message.get("content", ""))}
 
-    flush_assistant()
-    return consolidated
+
+def _extract_text_content(content: Any) -> str:
+    """从复杂内容中提取纯文本"""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "text":
+                    txt = str(block.get("text", ""))
+                    if txt:
+                        parts.append(txt)
+        return " ".join(parts)
+    return str(content)

@@ -415,7 +415,6 @@ class OpenAIChatWorker(QThread):
 
     def _build_response_message_sequence(self, tool_results=None) -> List[Dict]:
         now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        tool_call_args_by_id = {}
         tool_call_map = {}
         for tc in self._current_tool_calls or []:
             if not isinstance(tc, dict):
@@ -424,7 +423,6 @@ class OpenAIChatWorker(QThread):
             if not tool_call_id:
                 continue
             function = tc.get("function", {}) or {}
-            parsed_args = normalize_tool_arguments(function.get("arguments", {}))
             normalized_tc = {
                 "id": tool_call_id,
                 "type": tc.get("type", "function"),
@@ -434,8 +432,6 @@ class OpenAIChatWorker(QThread):
                 },
             }
             tool_call_map[tool_call_id] = normalized_tc
-            if parsed_args:
-                tool_call_args_by_id[tool_call_id] = parsed_args
 
         tool_result_map = {}
         for item in tool_results or []:
@@ -444,14 +440,11 @@ class OpenAIChatWorker(QThread):
             tool_call_id = str(item.get("tool_call_id") or "")
             if not tool_call_id:
                 continue
-            arguments = normalize_tool_arguments(item.get("arguments", {}))
-            if not arguments:
-                arguments = tool_call_args_by_id.get(tool_call_id, {})
             tool_result_map[tool_call_id] = {
                 "role": "tool",
                 "tool_call_id": tool_call_id,
                 "name": item.get("name", "tool"),
-                "arguments": arguments,
+                "arguments": item.get("arguments", {}),
                 "content": item.get("content", ""),
                 "result": item.get("content", ""),
                 "success": item.get("success", True),
@@ -461,7 +454,6 @@ class OpenAIChatWorker(QThread):
 
         sequence: List[Dict] = []
         pending_text_blocks = []
-        saw_marker = False
 
         for block in self._response_content_blocks or []:
             if not isinstance(block, dict):
@@ -476,18 +468,18 @@ class OpenAIChatWorker(QThread):
             if block_type != "tool_call_marker":
                 continue
 
-            saw_marker = True
             tool_call_id = str(block.get("tool_call_id") or "")
-            assistant_message = {
+            assistant_msg: Dict[str, Any] = {
                 "role": "assistant",
-                "content": pending_text_blocks,
                 "timestamp": now_ts,
             }
+            if pending_text_blocks:
+                assistant_msg["content"] = pending_text_blocks
             tool_call = tool_call_map.get(tool_call_id)
             if tool_call:
-                assistant_message["tool_calls"] = [tool_call]
-            if assistant_message.get("content") or assistant_message.get("tool_calls"):
-                sequence.append(assistant_message)
+                assistant_msg["tool_calls"] = [tool_call]
+            if assistant_msg.get("content") or assistant_msg.get("tool_calls"):
+                sequence.append(assistant_msg)
 
             pending_text_blocks = []
             tool_result = tool_result_map.get(tool_call_id)
@@ -510,7 +502,7 @@ class OpenAIChatWorker(QThread):
                     "timestamp": now_ts,
                 }
             )
-        elif not sequence and not saw_marker:
+        elif not sequence and not self._response_content_blocks:
             sequence.append({"role": "assistant", "content": [], "timestamp": now_ts})
 
         return sequence
@@ -543,65 +535,58 @@ class OpenAIChatWorker(QThread):
                 continue
 
             api_msg: Dict[str, Any] = {"role": role}
-            content = msg.get("content", "")
 
             if role == "assistant":
-                assistant_text = content_to_text(content)
-                tool_calls = []
-                for tool_call in msg.get("tool_calls", []) or []:
-                    if not isinstance(tool_call, dict):
-                        continue
-                    tool_id = tool_call.get("id")
-                    function = tool_call.get("function") or {}
-                    function_name = function.get("name")
-                    function_args = function.get("arguments")
-                    if not tool_id or not function_name or function_args is None:
-                        continue
-                    tool_calls.append(
+                tool_calls = msg.get("tool_calls", [])
+                if tool_calls:
+                    api_msg["tool_calls"] = [
                         {
-                            "id": str(tool_id),
+                            "id": str(tc.get("id", "")),
                             "type": "function",
                             "function": {
-                                "name": function_name,
-                                "arguments": function_args,
+                                "name": tc.get("function", {}).get("name", ""),
+                                "arguments": tc.get("function", {}).get(
+                                    "arguments", "{}"
+                                ),
                             },
                         }
-                    )
+                        for tc in tool_calls
+                        if isinstance(tc, dict) and tc.get("id") and tc.get("function")
+                    ]
 
-                valid_tool_call_ids = {tc["id"] for tc in tool_calls}
-                if isinstance(content, list):
-                    cleaned_content = []
-                    for block in content:
-                        if (
-                            isinstance(block, dict)
-                            and block.get("type") == "tool_result"
-                        ):
-                            tc_id = block.get("tool_call_id")
-                            if tc_id and tc_id not in valid_tool_call_ids:
-                                continue
-                        cleaned_content.append(block)
-                    content = cleaned_content if cleaned_content else None
+                text_content = content_to_text(msg.get("content", ""))
+                if text_content:
+                    api_msg["content"] = text_content
 
-                if tool_calls:
-                    api_msg["tool_calls"] = tool_calls
-                    api_msg["content"] = assistant_text if assistant_text else None
-                elif assistant_text:
-                    api_msg["content"] = assistant_text
+                if msg.get("tool_call_id"):
+                    api_msg["tool_call_id"] = str(msg["tool_call_id"])
+
             elif role == "tool":
                 tool_call_id = msg.get("tool_call_id")
                 if not tool_call_id:
                     continue
                 api_msg["tool_call_id"] = str(tool_call_id)
-                api_msg["content"] = content_to_text(content)
+                content = content_to_text(msg.get("content", ""))
+                if content:
+                    api_msg["content"] = content
                 if msg.get("name"):
-                    api_msg["name"] = msg.get("name")
-            elif role == "user" and msg.get("params"):
-                context_text = "\n\n".join(
-                    [msg["params"][param][1] for param in msg["params"]]
-                )
-                api_msg["content"] = f"{context_text}\n\n{content}"
+                    api_msg["name"] = msg["name"]
             else:
-                api_msg["content"] = content
+                content = content_to_text(msg.get("content", ""))
+                if role == "user" and msg.get("params"):
+                    context_parts = [
+                        str(msg["params"][p][1])
+                        for p in msg["params"]
+                        if p in msg["params"]
+                    ]
+                    combined = "\n\n".join(context_parts)
+                    if combined:
+                        content = combined + "\n\n" + content if content else combined
+
+                if content:
+                    api_msg["content"] = content
+                elif role == "user":
+                    continue
 
             sanitized.append(api_msg)
 
@@ -611,12 +596,15 @@ class OpenAIChatWorker(QThread):
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
-        req_kwargs = {
+
+        sanitized = self._sanitize_messages_for_api(messages)
+
+        req_kwargs: Dict[str, Any] = {
             "model": model,
-            "messages": self._sanitize_messages_for_api(messages),
+            "messages": sanitized,
             "stream": self.stream,
         }
-
+        print(sanitized)
         extra_body = {}
         mapping = {
             "温度": "temperature",
@@ -627,44 +615,35 @@ class OpenAIChatWorker(QThread):
             "思考等级": "reasoning_effort",
         }
 
+        skip_params = {"temperature", "top_p", "presence_penalty", "frequency_penalty", "reasoning_effort"}
+        if model and (model.startswith("o1") or model.startswith("o3")):
+            skip_params.update({"temperature", "top_p"})
+
         for cn_key, value in self.llm_config.items():
             if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
                 continue
 
             if cn_key == "是否思考":
-                status = (
-                    "enabled"
-                    if (value is True or str(value).lower() == "true")
-                    else "disabled"
-                )
+                status = "enabled" if (value is True or str(value).lower() == "true") else "disabled"
                 extra_body["enable_thinking"] = status == "enabled"
                 extra_body["include_reasoning"] = status == "enabled"
+                continue
 
             en_key = mapping.get(cn_key)
             if not en_key and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", cn_key):
                 en_key = cn_key
             if not en_key:
                 continue
-            elif en_key in ["temperature", "top_p"] and (
-                model.startswith("o1") or model.startswith("o3")
-            ):
+
+            if en_key in skip_params:
                 continue
-            elif en_key in [
-                "temperature",
-                "max_tokens",
-                "top_p",
-                "presence_penalty",
-                "frequency_penalty",
-                "reasoning_effort",
-            ]:
+            if en_key in ["max_tokens"]:
                 req_kwargs[en_key] = value
             else:
                 extra_body[en_key] = value
 
         if "max_tokens" in req_kwargs:
-            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
-                model, req_kwargs["max_tokens"]
-            )
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(model, req_kwargs["max_tokens"])
 
         if extra_body:
             req_kwargs["extra_body"] = extra_body
@@ -675,7 +654,6 @@ class OpenAIChatWorker(QThread):
         auth_type = self.llm_config.get("认证方式", "bearer")
         if auth_type == "bce":
             import base64
-
             auth_str = f"{api_key}:{api_key}"
             b64_auth = base64.b64encode(auth_str.encode()).decode()
             req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
@@ -690,6 +668,18 @@ class OpenAIChatWorker(QThread):
             req_kwargs.pop("stream", None)
             self.stream = False
 
+        logger.warning(f"[API] Request: model={model}, msg_count={len(sanitized)}, tools={bool(self.tools)}, extra_body_keys={list(extra_body.keys())}")
+        if len(sanitized) > 0:
+            for i, m in enumerate(sanitized):
+                role = m.get("role")
+                has_tc = "tool_calls" in m
+                has_tcid = "tool_call_id" in m
+                content_preview = str(m.get("content", ""))[:80] if m.get("content") else None
+                logger.warning(f"[API] msg[{i}] role={role}, has_tool_calls={has_tc}, has_tool_call_id={has_tcid}, content={content_preview}")
+                if has_tc:
+                    tc_names = [tc.get("function", {}).get("name") for tc in m.get("tool_calls", [])]
+                    logger.warning(f"[API] msg[{i}] tool_calls={tc_names}")
+
         max_retries = 3
         retry_delay = 5
         last_error = None
@@ -700,10 +690,11 @@ class OpenAIChatWorker(QThread):
                 break
             except Exception as e:
                 last_error = e
+                error_str = str(e)
                 from openai import RateLimitError, APIError
 
                 is_rate_limit = isinstance(e, RateLimitError)
-                is_server_overload = isinstance(e, APIError) and "2064" in str(e)
+                is_server_overload = isinstance(e, APIError) and "2064" in error_str
 
                 if (is_rate_limit or is_server_overload) and attempt < max_retries - 1:
                     wait_time = retry_delay * (attempt + 1)
@@ -713,6 +704,10 @@ class OpenAIChatWorker(QThread):
                     )
                     time.sleep(wait_time)
                     continue
+
+                if hasattr(e, "response") and e.response is not None:
+                    resp_body = getattr(e.response, "text", "") or ""
+                    logger.error(f"[API] Error response body: {resp_body[:500]}")
                 raise
 
         return self._process_response(response)
@@ -1157,6 +1152,21 @@ class OpenAIChatWorker(QThread):
         )
 
         error_msg = str(error)
+
+        if (
+            "peer closed connection" in error_msg.lower()
+            or "incomplete chunked read" in error_msg.lower()
+        ):
+            self.error_occurred.emit(
+                f"[连接中断] 服务器在响应中途关闭了连接，可能是服务器过载或网络不稳定。请稍后重试。"
+            )
+            return
+        if "ProtocolError" in error_msg or "RemoteProtocolError" in error_msg:
+            self.error_occurred.emit(
+                f"[连接错误] 网络协议错误，可能是服务器关闭了连接。请稍后重试。"
+            )
+            return
+
         if isinstance(error, BadRequestError):
             if "json" in error_msg.lower() or "format" in error_msg.lower():
                 self.error_occurred.emit(

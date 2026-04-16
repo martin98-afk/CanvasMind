@@ -27,7 +27,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
     consolidate_messages,
     content_to_text,
     ensure_content_blocks,
-    extract_tool_result_blocks,
 )
 
 
@@ -277,63 +276,35 @@ class ChatEngine:
         normalized: List[Dict[str, Any]] = []
         for msg in history_messages:
             role = msg.get("role")
-            if role not in ("user", "assistant", "tool"):
+            if role not in ("system", "user", "assistant", "tool"):
                 continue
 
-            content = _normalize_message_content(msg.get("content", ""))
-            normalized_msg: Dict[str, Any] = {"role": role, "content": content}
-            if msg.get("timestamp"):
-                normalized_msg["timestamp"] = msg.get("timestamp")
-
+            normalized_msg: Dict[str, Any] = {"role": role}
+            content = msg.get("content", "")
             if role == "assistant":
+                text = content_to_text(content)
+                if text:
+                    normalized_msg["content"] = text
                 tool_calls = msg.get("tool_calls", [])
-                tool_results = list(msg.get("tool_results", []) or [])
-                tool_results.extend(extract_tool_result_blocks(msg.get("content", [])))
                 if tool_calls:
                     normalized_msg["tool_calls"] = tool_calls
-                if not content and not tool_calls:
+                if not text and not tool_calls:
                     continue
-                normalized.append(normalized_msg)
-
-                if tool_calls and tool_results:
-                    existing_tool_ids = {
-                        m["tool_call_id"] for m in normalized if m.get("role") == "tool"
-                    }
-                    for result in tool_results:
-                        if not isinstance(result, dict):
-                            continue
-                        tool_call_id = result.get("tool_call_id")
-                        if tool_call_id in existing_tool_ids:
-                            continue
-                        result_content = _normalize_message_content(
-                            result.get("result", result.get("content", ""))
-                        )
-                        if not tool_call_id or not result_content:
-                            continue
-                        tool_msg: Dict[str, Any] = {
-                            "role": "tool",
-                            "tool_call_id": tool_call_id,
-                            "content": result_content,
-                        }
-                        if result.get("timestamp"):
-                            tool_msg["timestamp"] = result.get("timestamp")
-                        if result.get("name"):
-                            tool_msg["name"] = result.get("name")
-                        normalized.append(tool_msg)
-                continue
             elif role == "tool":
                 tool_call_id = msg.get("tool_call_id")
-                if not tool_call_id or not content:
+                if not tool_call_id:
                     continue
                 normalized_msg["tool_call_id"] = tool_call_id
+                normalized_msg["content"] = content_to_text(content)
                 if msg.get("name"):
                     normalized_msg["name"] = msg.get("name")
-            elif role == "user" and msg.get("params"):
-                normalized_msg["params"] = msg.get("params")
             else:
-                if not content:
-                    continue
+                normalized_msg["content"] = content_to_text(content)
+                if role == "user" and msg.get("params"):
+                    normalized_msg["params"] = msg.get("params")
 
+            if msg.get("timestamp"):
+                normalized_msg["timestamp"] = msg.get("timestamp")
             normalized.append(normalized_msg)
 
         return normalized
@@ -619,12 +590,15 @@ class ChatEngine:
         if custom_prompt:
             prompt_parts.append(custom_prompt)
 
-        messages.append(
-            {
-                "role": "system",
-                "content": "\n\n".join(part for part in prompt_parts if part),
-            }
-        )
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = "\n\n".join(part for part in prompt_parts if part)
+        else:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": "\n\n".join(part for part in prompt_parts if part),
+                }
+            )
 
         max_context_tokens = self._get_context_budget(llm_config)
         normalized_session_messages = self._normalize_history_messages(
@@ -662,7 +636,9 @@ class ChatEngine:
             history_messages, available_history_budget
         )
         session.set_compaction_state(compaction_state)
-        messages.extend(history_for_api)
+
+        filtered_history = [m for m in history_for_api if m.get("role") != "system"]
+        messages.extend(filtered_history)
 
         if supports_vision and context_provider:
             has_image = any(

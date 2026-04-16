@@ -1293,7 +1293,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     "session_id"
                 ),
                 "name": title or "历史对话",
-                "messages": self._build_api_safe_messages_from_history(messages),
+                "messages": messages,
                 "topic_summary": title or "",
             }
         )
@@ -1879,7 +1879,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = consolidate_messages(messages or [])
+        session.messages = list(messages or [])
         session._update_timestamp()
         self._refresh_context_usage_indicator()
 
