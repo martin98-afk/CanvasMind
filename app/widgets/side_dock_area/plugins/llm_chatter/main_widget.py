@@ -823,21 +823,23 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             self._displayed_session_id = session.session_id
 
-        batch = self._message_batch[
-            self._message_batch_index : self._message_batch_index + self._batch_size
-        ]
+        batches = []
+        single_round = []
+        for msg in self._message_batch:
+            if msg.get("role") in ["system", "user"]:
+                if single_round:
+                    batches.append(single_round)
+                batches.append([msg])
+                single_round = []
+            else:
+                single_round.append(msg)
+        if single_round:
+            batches.append(single_round)
+        self._render_message_to_card(batches)
 
-        for msg in batch:
-            self._render_message_to_card(msg)
-
-        self._message_batch_index += len(batch)
-
-        if self._message_batch_index < len(self._message_batch):
-            QTimer.singleShot(0, self._load_message_batch)
-        else:
-            QTimer.singleShot(10, self._scroll_to_bottom)
-            self._update_node_preview()
-            self._refresh_context_usage_indicator()
+        QTimer.singleShot(10, self._scroll_to_bottom)
+        self._update_node_preview()
+        self._refresh_context_usage_indicator()
 
     def _initialize_history_manager(self):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
@@ -1111,26 +1113,35 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return pattern.sub("", content, count=1)
 
-    def _render_message_to_card(self, msg: Dict[str, Any]):
-        if not isinstance(msg, dict):
-            return
+    def _render_message_to_card(self, batches: List[List[Dict[str, Any]]]):
+        print(batches)
+        for batch in batches:
+            role = batch[0].get("role")
+            timestamp = batch[0].get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-        role = msg.get("role")
-        timestamp = msg.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+            if role == "user":
+                content = self._sanitize_user_message_for_display(batch[0].get("content", ""))
+                self._append_user_message(
+                    content,
+                    timestamp=timestamp,
+                    tag_params=batch[0].get("params", {}),
+                )
 
-        if role == "user":
-            content = self._sanitize_user_message_for_display(msg.get("content", ""))
-            self._append_user_message(
-                content,
-                timestamp=timestamp,
-                tag_params=msg.get("params", {}),
-            )
-            return
-
-        if role == "assistant":
-            card = self._append_assistant_message(timestamp=timestamp)
-            card.set_content(msg.get("content", []))
-            card.finish_streaming()
+            if role == "assistant" or role == "tool":
+                assistant_card = self._append_assistant_message(timestamp=timestamp)
+                for msg in batch:
+                    if msg.get("role") == "assistant":
+                        assistant_card.append_text(msg.get("content", ""))
+                    elif msg.get("role") == "tool":
+                        print(msg.get("success"))
+                        assistant_card.append_tool_result(
+                            tool_name= msg.get("name", ""),
+                            arguments= msg.get("arguments", {}),
+                            result= msg.get("content", ""),
+                            success= bool(msg.get("success", True)),
+                            tool_call_id = msg.get("tool_call_id", ""),
+                        )
+                assistant_card.finish_streaming()
 
     def _get_rendered_message_cards(self) -> List[MessageCard]:
         cards: List[MessageCard] = []
