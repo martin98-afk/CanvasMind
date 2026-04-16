@@ -1114,7 +1114,6 @@ class OpenAIChatToolWindow(ToolWindow):
         return pattern.sub("", content, count=1)
 
     def _render_message_to_card(self, batches: List[List[Dict[str, Any]]]):
-        print(batches)
         for batch in batches:
             role = batch[0].get("role")
             timestamp = batch[0].get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
