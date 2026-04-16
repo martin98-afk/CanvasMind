@@ -1842,34 +1842,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.input_area:
             self.input_area.setFocus()
 
-    def _sync_current_assistant_card_to_session(self):
-        session = self.session_manager.get_current_session()
-        if not session or not self._current_assistant_card:
-            return
-
-        viewer = getattr(self._current_assistant_card, "viewer", None)
-        if not viewer:
-            return
-
-        content = self._current_assistant_card.get_content_data()
-        if not content:
-            return
-
-        assistant_message = {
-            "role": "assistant",
-            "content": content,
-            "timestamp": self._current_assistant_card.timestamp,
-        }
-
-        if session.messages and session.messages[-1].get("role") == "assistant":
-            preserved = dict(session.messages[-1])
-            preserved.update(assistant_message)
-            session.messages[-1] = preserved
-        else:
-            session.messages.append(assistant_message)
-        session.messages = consolidate_messages(session.messages)
-        session._update_timestamp()
-
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
         saved_messages = list(session.messages or []) if session else []
@@ -1898,7 +1870,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_assistant_card.stop_streaming_anim()
             self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
-            self._sync_current_assistant_card_to_session()
         self._is_streaming = False
         self._toggle_send_stop(False)
 

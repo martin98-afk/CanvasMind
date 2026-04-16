@@ -280,6 +280,7 @@ def to_api_message(message: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "role": "tool",
             "tool_call_id": str(message.get("tool_call_id", "")),
+            "name": str(message.get("name", "")),
             "content": str(message.get("content", "") or ""),
         }
     return {"role": role, "content": _extract_text_content(message.get("content", ""))}
