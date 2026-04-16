@@ -128,7 +128,7 @@ class _HistoryItemCard(CardWidget):
             """
         )
         self.title_edit.hide()
-        self.title_edit.setMaximumWidth(200)
+        self.title_edit.setMaximumWidth(250)
         self.title_edit.returnPressed.connect(self._finish_edit)
         self.title_edit.editingFinished.connect(self._finish_edit)
         top_row.addWidget(self.title_edit, 1, Qt.AlignLeft)
@@ -178,7 +178,7 @@ class _HistoryItemCard(CardWidget):
                 "color: rgba(255, 255, 255, 0.4); font-style: italic;"
             )
             self.preview_label.setWordWrap(True)
-            self.preview_label.setMaximumWidth(220)
+            self.preview_label.setMaximumWidth(260)
             bottom_row.addWidget(self.preview_label, 0, Qt.AlignRight)
 
         layout.addLayout(bottom_row)
@@ -294,8 +294,8 @@ class HistoryPopup(QWidget):
         self.scroll_area.setWidget(self.content_widget)
         layout.addWidget(self.scroll_area)
 
-        self.setMinimumWidth(360)
-        self.setMaximumWidth(420)
+        self.setMinimumWidth(420)
+        self.setMaximumWidth(500)
 
     def _get_date_category(self, last_time_str: str) -> str:
         """将时间字符串分类为: 今天, 昨天, 本周, 上周, 本月, [月份], [年份]"""

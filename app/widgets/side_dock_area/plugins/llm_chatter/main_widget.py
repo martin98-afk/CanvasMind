@@ -532,7 +532,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._history_popup.sessionArchived.connect(self._archive_history_session)
             self._history_popup.sessionRenamed.connect(self._rename_history_session)
 
-        history_list = self.history_manager.get_history_list() if self.history_manager else []
+        history_list = (
+            self.history_manager.get_history_list() if self.history_manager else []
+        )
         self._history_popup.set_history(history_list, self._current_history_index)
         self._history_popup.show_at(self.history_btn)
 
@@ -609,7 +611,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         self._valid_configs.clear()
-        self.model_combo.clear()
+        self.model_combo.blockSignals(True)
 
         setting = Settings.get_instance()
         default_config = {
@@ -654,7 +656,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self._setup_combo_with_icons(all_model_names)
         self.model_combo.setDisabled(len(all_model_names) == 0)
 
-        saved_model = setting.llm_selected_model.value
         if saved_model and saved_model in self._valid_configs:
             idx = self.model_combo.findText(saved_model)
             if idx >= 0:
@@ -666,6 +667,7 @@ class OpenAIChatToolWindow(ToolWindow):
         elif self.model_combo.count() > 0:
             self.model_combo.setCurrentIndex(0)
 
+        self.model_combo.blockSignals(False)
         self._refresh_context_usage_indicator()
 
     def _setup_combo_with_icons(self, model_names: List[str]):
@@ -821,21 +823,23 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             self._displayed_session_id = session.session_id
 
-        batch = self._message_batch[
-            self._message_batch_index : self._message_batch_index + self._batch_size
-        ]
+        batches = []
+        single_round = []
+        for msg in self._message_batch:
+            if msg.get("role") in ["system", "user"]:
+                if single_round:
+                    batches.append(single_round)
+                batches.append([msg])
+                single_round = []
+            else:
+                single_round.append(msg)
+        if single_round:
+            batches.append(single_round)
+        self._render_message_to_card(batches)
 
-        for msg in batch:
-            self._render_message_to_card(msg)
-
-        self._message_batch_index += len(batch)
-
-        if self._message_batch_index < len(self._message_batch):
-            QTimer.singleShot(0, self._load_message_batch)
-        else:
-            QTimer.singleShot(10, self._scroll_to_bottom)
-            self._update_node_preview()
-            self._refresh_context_usage_indicator()
+        QTimer.singleShot(10, self._scroll_to_bottom)
+        self._update_node_preview()
+        self._refresh_context_usage_indicator()
 
     def _initialize_history_manager(self):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
@@ -1109,26 +1113,33 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         return pattern.sub("", content, count=1)
 
-    def _render_message_to_card(self, msg: Dict[str, Any]):
-        if not isinstance(msg, dict):
-            return
+    def _render_message_to_card(self, batches: List[List[Dict[str, Any]]]):
+        for batch in batches:
+            role = batch[0].get("role")
+            timestamp = batch[0].get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-        role = msg.get("role")
-        timestamp = msg.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+            if role == "user":
+                content = self._sanitize_user_message_for_display(batch[0].get("content", ""))
+                self._append_user_message(
+                    content,
+                    timestamp=timestamp,
+                    tag_params=batch[0].get("params", {}),
+                )
 
-        if role == "user":
-            content = self._sanitize_user_message_for_display(msg.get("content", ""))
-            self._append_user_message(
-                content,
-                timestamp=timestamp,
-                tag_params=msg.get("params", {}),
-            )
-            return
-
-        if role == "assistant":
-            card = self._append_assistant_message(timestamp=timestamp)
-            card.set_content(msg.get("content", []))
-            card.finish_streaming()
+            if role == "assistant" or role == "tool":
+                assistant_card = self._append_assistant_message(timestamp=timestamp)
+                for msg in batch:
+                    if msg.get("role") == "assistant" and msg.get("content", ""):
+                        assistant_card.append_text(msg.get("content", {}))
+                    elif msg.get("role") == "tool" and msg.get("content", ""):
+                        assistant_card.append_tool_result(
+                            tool_name= msg.get("name", ""),
+                            arguments= msg.get("arguments", {}),
+                            result= msg.get("content", ""),
+                            success= bool(msg.get("success", True)),
+                            tool_call_id = msg.get("tool_call_id", ""),
+                        )
+                assistant_card.finish_streaming()
 
     def _get_rendered_message_cards(self) -> List[MessageCard]:
         cards: List[MessageCard] = []
@@ -1169,7 +1180,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if not session.messages:
             if self._current_history_index is not None and self.history_manager:
-                self.history_manager.delete_history(self._current_history_index)
+                self.history_manager.archive_history(self._current_history_index)
                 self._current_history_index = None
             return
 
@@ -1276,7 +1287,9 @@ class OpenAIChatToolWindow(ToolWindow):
         try:
             self._auto_save_current_session()
         except Exception:
-            logger.exception("Failed to auto-save current session before loading history")
+            logger.exception(
+                "Failed to auto-save current session before loading history"
+            )
 
         messages = self.history_manager.get_session_by_index(index)
         if not messages:
@@ -1289,7 +1302,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     "session_id"
                 ),
                 "name": title or "历史对话",
-                "messages": self._build_api_safe_messages_from_history(messages),
+                "messages": messages,
                 "topic_summary": title or "",
             }
         )
@@ -1828,34 +1841,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.input_area:
             self.input_area.setFocus()
 
-    def _sync_current_assistant_card_to_session(self):
-        session = self.session_manager.get_current_session()
-        if not session or not self._current_assistant_card:
-            return
-
-        viewer = getattr(self._current_assistant_card, "viewer", None)
-        if not viewer:
-            return
-
-        content = self._current_assistant_card.get_content_data()
-        if not content:
-            return
-
-        assistant_message = {
-            "role": "assistant",
-            "content": content,
-            "timestamp": self._current_assistant_card.timestamp,
-        }
-
-        if session.messages and session.messages[-1].get("role") == "assistant":
-            preserved = dict(session.messages[-1])
-            preserved.update(assistant_message)
-            session.messages[-1] = preserved
-        else:
-            session.messages.append(assistant_message)
-        session.messages = consolidate_messages(session.messages)
-        session._update_timestamp()
-
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
         saved_messages = list(session.messages or []) if session else []
@@ -1875,7 +1860,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = consolidate_messages(messages or [])
+        session.messages = list(messages or [])
         session._update_timestamp()
         self._refresh_context_usage_indicator()
 
@@ -1884,7 +1869,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_assistant_card.stop_streaming_anim()
             self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
-            self._sync_current_assistant_card_to_session()
         self._is_streaming = False
         self._toggle_send_stop(False)
 
@@ -2060,8 +2044,6 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         clean_summary = summary.strip()
-        if len(clean_summary) > 20:
-            clean_summary = clean_summary[:20] + "..."
 
         if self._current_history_index is None:
             self.history_manager.save_session(
@@ -2096,7 +2078,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if hit_memories and self._memory_manager:
             self._memory_manager.touch_memories(hit_memories)
-            logger.info(f"[Topic Summary] Touched {len(hit_memories)} existing memories")
+            logger.info(
+                f"[Topic Summary] Touched {len(hit_memories)} existing memories"
+            )
 
     def _update_title_display(self, title: str):
         self.title_edit.setText(title)

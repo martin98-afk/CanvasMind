@@ -1588,11 +1588,6 @@ class MessageCard(SimpleCardWidget):
         self.viewer._markdown_text = content_to_markdown(self._content_data)
         self.viewer._schedule_render(immediate=True)
 
-    def get_content_data(self) -> Any:
-        if self.role == "assistant":
-            return ensure_content_blocks(self._content_data)
-        return str(self._content_data or "")
-
     def get_plain_text(self) -> str:
         if self.role == "assistant":
             return content_to_text(self._content_data, include_tool_results=True)
