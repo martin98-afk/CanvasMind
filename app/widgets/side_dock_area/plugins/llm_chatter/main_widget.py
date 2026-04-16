@@ -1130,10 +1130,9 @@ class OpenAIChatToolWindow(ToolWindow):
             if role == "assistant" or role == "tool":
                 assistant_card = self._append_assistant_message(timestamp=timestamp)
                 for msg in batch:
-                    if msg.get("role") == "assistant":
-                        assistant_card.append_text(msg.get("content", ""))
-                    elif msg.get("role") == "tool":
-                        print(msg.get("success"))
+                    if msg.get("role") == "assistant" and msg.get("content", ""):
+                        assistant_card.append_text(msg.get("content", {}))
+                    elif msg.get("role") == "tool" and msg.get("content", ""):
                         assistant_card.append_tool_result(
                             tool_name= msg.get("name", ""),
                             arguments= msg.get("arguments", {}),

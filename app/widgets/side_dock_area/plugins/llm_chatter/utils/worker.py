@@ -474,7 +474,7 @@ class OpenAIChatWorker(QThread):
                 "timestamp": now_ts,
             }
             if pending_text_blocks:
-                assistant_msg["content"] = pending_text_blocks
+                assistant_msg["content"] = pending_text_blocks[0].get("text")
             tool_call = tool_call_map.get(tool_call_id)
             if tool_call:
                 assistant_msg["tool_calls"] = [tool_call]
@@ -490,7 +490,7 @@ class OpenAIChatWorker(QThread):
             sequence.append(
                 {
                     "role": "assistant",
-                    "content": pending_text_blocks,
+                    "content": pending_text_blocks[0].get("text"),
                     "timestamp": now_ts,
                 }
             )
@@ -498,7 +498,7 @@ class OpenAIChatWorker(QThread):
             sequence.append(
                 {
                     "role": "assistant",
-                    "content": append_text_block([], self.full_response),
+                    "content": append_text_block([], self.full_response)[0].get("text"),
                     "timestamp": now_ts,
                 }
             )

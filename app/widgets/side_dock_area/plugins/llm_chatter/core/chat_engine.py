@@ -294,10 +294,7 @@ class ChatEngine:
                 tool_call_id = msg.get("tool_call_id")
                 if not tool_call_id:
                     continue
-                normalized_msg["tool_call_id"] = tool_call_id
-                normalized_msg["content"] = content_to_text(content)
-                if msg.get("name"):
-                    normalized_msg["name"] = msg.get("name")
+                normalized.append(msg)
             else:
                 normalized_msg["content"] = content_to_text(content)
                 if role == "user" and msg.get("params"):

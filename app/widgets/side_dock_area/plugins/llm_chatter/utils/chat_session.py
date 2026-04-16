@@ -68,7 +68,6 @@ class ChatSession:
                 "content": content,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "params": params or {},
-                "_normalized": True,
             }
         )
         self._update_timestamp()
