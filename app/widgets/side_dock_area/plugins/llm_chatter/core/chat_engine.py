@@ -28,41 +28,34 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
     content_to_text,
     ensure_content_blocks,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.token_estimator import (
+    estimate_tokens,
+    count_messages_tokens,
+)
 
 
-TOKEN_ESTIMATION_RATIO = 0.25
 MAX_HISTORY_SNIPPET_CHARS = 1200
 RECENT_HISTORY_MIN_MESSAGES = 6
 
 
 def estimate_tokens(text: str) -> int:
+    """
+    估算文本的 token 数量 (向后兼容接口)
+    
+    使用 tiktoken 精确计算 (如果可用)，否则使用优化的快速估算
+    """
     if not text:
         return 0
-    return int(len(text) * TOKEN_ESTIMATION_RATIO) + len(re.findall(r"\w+", text))
+    return estimate_tokens(text)
 
 
 def estimate_tokens_from_messages(messages: List[Dict]) -> int:
-    total = 0
-    for msg in messages:
-        total += 4
-        if "role" in msg:
-            total += len(msg["role"])
-        content = msg.get("content", "")
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict):
-                    total += len(item.get("text", ""))
-                    total += len(str(item.get("result", "")))
-        elif isinstance(content, str):
-            total += estimate_tokens(content)
-        for tool_call in msg.get("tool_calls", []):
-            if not isinstance(tool_call, dict):
-                continue
-            function = tool_call.get("function", {})
-            total += estimate_tokens(str(function.get("name", "")))
-            total += estimate_tokens(str(function.get("arguments", "")))
-        total += estimate_tokens(str(msg.get("tool_call_id", "")))
-    return total
+    """
+    计算消息列表的 token 总数 (向后兼容接口)
+    """
+    if not messages:
+        return 0
+    return count_messages_tokens(messages)
 
 
 def _normalize_message_content(content: Any) -> str:
