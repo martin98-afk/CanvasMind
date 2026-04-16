@@ -153,9 +153,9 @@ class CanvasUISetUp:
                 "general.StickyNote", init_io=False
             )
         )
-        self.group_node.clicked.connect(
-            lambda: self.parent.create_group_node()
-        )
+        # self.group_node.clicked.connect(
+        #     lambda: self.parent.create_group_node()
+        # )
         self.trigger_node.clicked.connect(
             lambda: self.parent.create_next_node("general.trigger")
         )
@@ -342,7 +342,7 @@ class CanvasUISetUp:
         self.echart_node = self._build_tool_btn(get_icon("多媒体"), "媒体展示")
         self.code_node = self._build_tool_btn(get_icon("代码执行"), "代码节点")
         self.note_node = self._build_tool_btn(get_icon("文本注释"), "注释节点")
-        self.group_node = self._build_tool_btn(get_icon("收集"), "创建分组")
+        # self.group_node = self._build_tool_btn(get_icon("收集"), "创建分组")
 
         for btn in [
             self.iterate_node,
