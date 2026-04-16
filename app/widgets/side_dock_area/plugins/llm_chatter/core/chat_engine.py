@@ -38,17 +38,6 @@ MAX_HISTORY_SNIPPET_CHARS = 1200
 RECENT_HISTORY_MIN_MESSAGES = 6
 
 
-def estimate_tokens(text: str) -> int:
-    """
-    估算文本的 token 数量 (向后兼容接口)
-    
-    使用 tiktoken 精确计算 (如果可用)，否则使用优化的快速估算
-    """
-    if not text:
-        return 0
-    return estimate_tokens(text)
-
-
 def estimate_tokens_from_messages(messages: List[Dict]) -> int:
     """
     计算消息列表的 token 总数 (向后兼容接口)
