@@ -1,4 +1,6 @@
+# Core dependencies
 NodeGraphQt
+tiktoken
 PyQt5~=5.15.11
 loguru~=0.7.3
 numpy~=2.2.5

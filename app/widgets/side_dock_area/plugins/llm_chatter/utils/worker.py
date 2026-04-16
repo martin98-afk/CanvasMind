@@ -445,7 +445,6 @@ class OpenAIChatWorker(QThread):
                 "name": item.get("name", "tool"),
                 "arguments": item.get("arguments", {}),
                 "content": item.get("content", ""),
-                "result": item.get("content", ""),
                 "success": item.get("success", True),
                 "round_id": item.get("round_id"),
                 "timestamp": item.get("timestamp", now_ts),
@@ -1119,7 +1118,6 @@ class OpenAIChatWorker(QThread):
                     "name": tool_name,
                     "arguments": arguments or {},
                     "content": result_content,
-                    "result": result_content,
                     "success": success,
                     "round_id": round_id,
                 }
