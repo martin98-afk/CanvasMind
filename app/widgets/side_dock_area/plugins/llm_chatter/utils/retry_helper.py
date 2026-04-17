@@ -35,7 +35,7 @@ def get_error_type_name(e):
     return "Unknown"
 
 
-def retry_on_api_error(max_retries=3, retry_delay=5, backoff_multiplier=1):
+def retry_on_api_error(max_retries=15, retry_delay=5, backoff_multiplier=1):
     """
     API调用重试装饰器
 
@@ -84,7 +84,7 @@ def retry_on_api_error(max_retries=3, retry_delay=5, backoff_multiplier=1):
     return decorator
 
 
-def create_api_call_with_retry(client, create_func, max_retries=3, retry_delay=5):
+def create_api_call_with_retry(client, create_func, max_retries=15, retry_delay=5):
     """
     执行带重试的API调用
 

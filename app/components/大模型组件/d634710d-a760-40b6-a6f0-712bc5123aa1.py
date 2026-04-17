@@ -135,7 +135,7 @@ class Component(BaseComponent):
     
         try:
             # 初始化客户端
-            if self.global_variable.get(params.model[1]).get("API_KEY"):
+            if params.model[1].get("API_KEY"):
                 client = OpenAI(
                     api_key=params.model[1].get("API_KEY"),
                     base_url=params.model[1].get("API_URL")
