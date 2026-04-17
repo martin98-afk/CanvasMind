@@ -626,7 +626,7 @@ class PluginMarketplace(QWidget):
             cards.append(cat_check)
 
         cat_check.stateChanged.connect(
-            lambda st, cs=items: self._on_category_select_all(st, cs, mode)
+            lambda st, cv=view: self._on_category_select_all(st, cv, mode)
         )
         v_lay.addLayout(grid)
         return view
@@ -1012,12 +1012,11 @@ class PluginMarketplace(QWidget):
 
         cat_check.blockSignals(False)
 
-    def _on_category_select_all(self, state, cards, mode):
+    def _on_category_select_all(self, state, cat_widget, mode):
         if state == Qt.PartiallyChecked:
             return
 
-        page = self.pages[mode].widget()
-        for card in page.findChildren(ComponentCard):
+        for card in cat_widget.findChildren(ComponentCard):
             if card.isVisible():
                 card.check_box.setChecked(state == Qt.Checked)
 
