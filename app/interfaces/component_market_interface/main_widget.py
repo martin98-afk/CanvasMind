@@ -285,12 +285,23 @@ class PluginMarketplace(QWidget):
         self.category_filter.setVisible(not is_settings)
         self.sort_combo.setVisible(not is_settings)
         self.batch_btn.setVisible(mode in ["market", "installed"])
+        if mode == "market":
+            self.batch_btn.setText("批量安装")
+            self.batch_btn.setIcon(FluentIcon.DOWNLOAD)
+        elif mode == "installed":
+            self.batch_btn.setText("批量上传")
+            self.batch_btn.setIcon(get_icon("upload"))
         self.upload_btn.setVisible(mode in ["installed", "uploads"])
         self.refresh_btn.setVisible(not is_settings)
         self.select_all_check.setVisible(not is_settings)
 
         if not is_settings:
             self._refresh_current_view()
+
+    def _cleanup_worker(self, worker):
+        if worker in self._workers:
+            self._workers.remove(worker)
+        worker.deleteLater()
 
     def _refresh_current_view(self):
         idx = self.stack.currentIndex()
@@ -409,8 +420,17 @@ class PluginMarketplace(QWidget):
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
         self.active_worker = GenericWorker(manager.fetch_all)
-        self.active_worker.finished.connect(self._on_cloud_loaded)
-        self.active_worker.error.connect(self._on_error)
+
+        def on_done(data):
+            self._cleanup_worker(self.active_worker)
+            self._on_cloud_loaded(data)
+
+        def on_error(msg):
+            self._cleanup_worker(self.active_worker)
+            self._on_error(msg)
+
+        self.active_worker.finished.connect(on_done)
+        self.active_worker.error.connect(on_error)
         self.active_worker.start()
 
     def _on_cloud_loaded(self, data):
@@ -560,7 +580,18 @@ class PluginMarketplace(QWidget):
                 status = "match"
 
             is_mine = item.get("author") == self.cloud_mgr.config.user_name.value
-            is_admin = self.cloud_mgr.config.user_name.value == "martin98-afk"
+            admin_list = (
+                getattr(self.cloud_mgr.config, "admin_list", []).value
+                if hasattr(self.cloud_mgr.config, "admin_list")
+                else []
+            )
+            if isinstance(admin_list, str):
+                admin_list = [u.strip() for u in admin_list.split(",") if u.strip()]
+            is_admin = (
+                self.cloud_mgr.config.user_name.value in admin_list
+                if admin_list
+                else False
+            )
 
             card = ComponentCard(
                 item, mode, is_linked, is_admin or is_mine, status, view
@@ -649,21 +680,17 @@ class PluginMarketplace(QWidget):
                 manager.download_component, plugin_id, resource_path("")
             )
 
-        worker.finished.connect(
-            lambda: [
-                self._stop_task(),
-                self.force_refresh(),
-                InfoBar.success(
-                    "安装成功",
-                    data.get("name")
-                    or data.get("组件名称")
-                    or data.get("canvas_name")
-                    or "插件",
-                    parent=self,
-                ),
-            ]
-        )
-        worker.error.connect(self._on_error)
+        def on_done():
+            self._cleanup_worker(worker)
+            self._stop_task()
+            self.force_refresh()
+
+        def on_error(msg):
+            self._cleanup_worker(worker)
+            self._on_error(msg)
+
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
         self._workers.append(worker)
         worker.start()
 
@@ -697,21 +724,17 @@ class PluginMarketplace(QWidget):
                 resource_dir=data["resource_dir"],
             )
 
-        worker.finished.connect(
-            lambda: [
-                self._stop_task(),
-                self.force_refresh(),
-                InfoBar.success(
-                    "上传成功",
-                    data.get("name")
-                    or data.get("组件名称")
-                    or data.get("canvas_name")
-                    or "插件",
-                    parent=self,
-                ),
-            ]
-        )
-        worker.error.connect(self._on_error)
+        def on_done():
+            self._cleanup_worker(worker)
+            self._stop_task()
+            self.force_refresh()
+
+        def on_error(msg):
+            self._cleanup_worker(worker)
+            self._on_error(msg)
+
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
         self._workers.append(worker)
         worker.start()
 
@@ -743,7 +766,8 @@ class PluginMarketplace(QWidget):
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
 
-        def step_done():
+        def step_done(w):
+            self._cleanup_worker(w)
             nonlocal completed
             completed += 1
             self.progress_bar.setValue(completed)
@@ -753,6 +777,10 @@ class PluginMarketplace(QWidget):
                     "批量安装完成", f"成功安装 {completed} 个插件", parent=self
                 )
                 self.force_refresh()
+
+        def step_error(w, msg):
+            self._cleanup_worker(w)
+            self._on_error(msg)
 
         for item in selected:
             plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -770,8 +798,8 @@ class PluginMarketplace(QWidget):
                     manager.download_component, plugin_id, resource_path("")
                 )
 
-            worker.finished.connect(step_done)
-            worker.error.connect(self._on_error)
+            worker.finished.connect(lambda w=worker: step_done(w))
+            worker.error.connect(lambda msg, w=worker: step_error(w, msg))
             self._workers.append(worker)
             worker.start()
 
@@ -794,7 +822,8 @@ class PluginMarketplace(QWidget):
                 self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
             )
 
-            def step_done():
+            def step_done(w):
+                self._cleanup_worker(w)
                 nonlocal completed
                 completed += 1
                 self.progress_bar.setValue(completed)
@@ -804,6 +833,10 @@ class PluginMarketplace(QWidget):
                     InfoBar.success(
                         "上传完成", f"成功上传 {completed} 个插件", parent=self
                     )
+
+            def step_error(w, msg):
+                self._cleanup_worker(w)
+                self._on_error(msg)
 
             for item in selected:
                 plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -835,8 +868,8 @@ class PluginMarketplace(QWidget):
                         resource_dir=item["resource_dir"],
                     )
 
-                worker.finished.connect(step_done)
-                worker.error.connect(self._on_error)
+                worker.finished.connect(lambda w=worker: step_done(w))
+                worker.error.connect(lambda msg, w=worker: step_error(w, msg))
                 self._workers.append(worker)
                 worker.start()
 
@@ -856,21 +889,18 @@ class PluginMarketplace(QWidget):
         ).exec():
             self._start_task()
             worker = GenericWorker(delete_method, plugin_id)
-            worker.finished.connect(
-                lambda: [
-                    self._stop_task(),
-                    self.force_refresh(),
-                    InfoBar.success(
-                        "已删除",
-                        data.get("name")
-                        or data.get("组件名称")
-                        or data.get("canvas_name")
-                        or "插件",
-                        parent=self,
-                    ),
-                ]
-            )
-            worker.error.connect(self._on_error)
+
+            def on_done():
+                self._cleanup_worker(worker)
+                self._stop_task()
+                self.force_refresh()
+
+            def on_error(msg):
+                self._cleanup_worker(worker)
+                self._on_error(msg)
+
+            worker.finished.connect(on_done)
+            worker.error.connect(on_error)
             self._workers.append(worker)
             worker.start()
 
