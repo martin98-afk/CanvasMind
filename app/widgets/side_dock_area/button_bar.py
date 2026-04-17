@@ -166,17 +166,15 @@ class ToolSeparator(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(16)  # 占用高度，方便留白
+        self.setFixedHeight(16)
 
     def paintEvent(self, e):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # 根据主题设置线条颜色
         color = QColor(255, 255, 255, 40) if isDarkTheme() else QColor(0, 0, 0, 20)
         painter.setPen(QPen(color, 3))
 
-        # 绘制中间的横线，左右留边距
         margin = 3
         y = self.height() // 2
         painter.drawLine(margin, y, self.width() - margin, y)
