@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
 from loguru import logger
 from pypinyin import lazy_pinyin, Style
 from qfluentwidgets import (
-    SearchLineEdit,
     IndeterminateProgressRing,
     SmoothScrollArea,
     CardWidget,
@@ -43,6 +42,12 @@ from app.interfaces.component_market_interface.utils.utils import (
 )
 from app.interfaces.component_market_interface.widgets.component_card import (
     ComponentCard,
+)
+from app.interfaces.component_market_interface.ui.search_bar import (
+    SearchBarWithHistory,
+)
+from app.interfaces.component_market_interface.ui.search_history import (
+    SearchHistoryManager,
 )
 from app.scan_components import ComponentScanner
 from app.server_manager.cloud_bakup.canvas_cloud_manager import CanvasCloudManager
@@ -78,6 +83,9 @@ class PluginMarketplace(QWidget):
 
         self.scanner.register_on_change(self._on_local_changed)
         self.current_type = "component"
+
+        self._search_history_mgr = SearchHistoryManager()
+        self._search_bar = None
 
         self.init_ui()
         StyleSheet.COMPONENT_MARKET.apply(self)
@@ -172,9 +180,9 @@ class PluginMarketplace(QWidget):
     def _create_toolbar(self, parent_lay):
         toolbar = QHBoxLayout()
 
-        self.search_bar = SearchLineEdit()
-        self.search_bar.setPlaceholderText("搜索插件...")
-        self.search_bar.textChanged.connect(self._on_filter_changed)
+        self.search_bar = SearchBarWithHistory()
+        self.search_bar.search_signal.connect(self._on_filter_changed)
+        self.search_bar.history_changed.connect(self._on_history_changed)
         toolbar.addWidget(self.search_bar, 1)
 
         self.creator_filter = ComboBox()
@@ -302,6 +310,11 @@ class PluginMarketplace(QWidget):
         if worker in self._workers:
             self._workers.remove(worker)
         worker.deleteLater()
+
+    def _on_history_changed(self):
+        if self._search_bar is not None:
+            self._search_history_mgr._history = self._search_bar.get_history()
+            self._search_history_mgr._save_history()
 
     def _refresh_current_view(self):
         idx = self.stack.currentIndex()
