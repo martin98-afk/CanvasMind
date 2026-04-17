@@ -427,24 +427,29 @@ class PluginMarketplace(QWidget):
             self._render_installed()
 
     def _fetch_cloud_plugins(self):
-        if self.active_worker and self.active_worker.isRunning():
+        if self.active_worker is not None and self.active_worker.isRunning():
             return
         self._start_task()
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
-        self.active_worker = GenericWorker(manager.fetch_all)
+        worker = GenericWorker(manager.fetch_all)
+        self.active_worker = worker
 
         def on_done(data):
-            self._cleanup_worker(self.active_worker)
+            self._cleanup_worker(worker)
+            if self.active_worker == worker:
+                self.active_worker = None
             self._on_cloud_loaded(data)
 
         def on_error(msg):
-            self._cleanup_worker(self.active_worker)
+            self._cleanup_worker(worker)
+            if self.active_worker == worker:
+                self.active_worker = None
             self._on_error(msg)
 
-        self.active_worker.finished.connect(on_done)
-        self.active_worker.error.connect(on_error)
-        self.active_worker.start()
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
+        worker.start()
 
     def _on_cloud_loaded(self, data):
         self._cloud_plugins = data or []
