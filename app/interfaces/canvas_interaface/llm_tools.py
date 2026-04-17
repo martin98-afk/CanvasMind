@@ -164,7 +164,7 @@ class CanvasTools:
         )
 
     def canvas_get_logs(
-        self, node_name: str, log_type: str = "historical"
+        self, node_name: str, log_type: str = "current"
     ) -> ToolResult:
         """
         获取节点日志
@@ -184,7 +184,7 @@ class CanvasTools:
         if log_type == "current":
             logs = self._get_current_run_logs(node)
         else:
-            logs = node.get_logs()
+            logs = node.get_logs()[-5000:]
 
         if not logs:
             return ToolResult(True, content=f"[{node_name}] {log_type} 日志为空")
@@ -457,21 +457,6 @@ def get_canvas_tools_schema() -> List[Dict]:
                         },
                     },
                     "required": ["node_name"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "canvas_edit_run",
-                "description": "修改节点代码并立即运行",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "node_name": {"type": "string", "description": "节点名称"},
-                        "code": {"type": "string", "description": "新的代码内容"},
-                    },
-                    "required": ["node_name", "code"],
                 },
             },
         },
