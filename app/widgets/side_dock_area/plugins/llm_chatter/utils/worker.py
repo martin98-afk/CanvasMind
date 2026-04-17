@@ -665,19 +665,7 @@ class OpenAIChatWorker(QThread):
             req_kwargs.pop("stream", None)
             self.stream = False
 
-        logger.warning(f"[API] Request: model={model}, msg_count={len(sanitized)}, tools={bool(self.tools)}, extra_body_keys={list(extra_body.keys())}")
-        if len(sanitized) > 0:
-            for i, m in enumerate(sanitized):
-                role = m.get("role")
-                has_tc = "tool_calls" in m
-                has_tcid = "tool_call_id" in m
-                content_preview = str(m.get("content", ""))[:80] if m.get("content") else None
-                logger.warning(f"[API] msg[{i}] role={role}, has_tool_calls={has_tc}, has_tool_call_id={has_tcid}, content={content_preview}")
-                if has_tc:
-                    tc_names = [tc.get("function", {}).get("name") for tc in m.get("tool_calls", [])]
-                    logger.warning(f"[API] msg[{i}] tool_calls={tc_names}")
-
-        max_retries = 3
+        max_retries = 15
         retry_delay = 5
         last_error = None
 

@@ -154,7 +154,6 @@ class CanvasTools:
             "inputs": self._serialize_port_links(node, "input_ports", "upstream"),
             "outputs": self._serialize_port_links(node, "output_ports", "downstream"),
         }
-
         if include_input_data:
             snapshot["input_data"] = {
                 k: self._truncate_value(v, data_truncation)
@@ -166,7 +165,6 @@ class CanvasTools:
                 k: self._truncate_value(v, data_truncation)
                 for k, v in self._get_output_port_values(node).items()
             }
-
         if include_logs:
             logs = (
                 self._get_current_run_logs(node)
