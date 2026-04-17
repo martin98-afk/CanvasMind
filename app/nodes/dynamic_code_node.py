@@ -210,6 +210,21 @@ def create_dynamic_code_node(parent_window=None):
                 name = "b_" + name
             return name
 
+        @property
+        def port_info(self):
+            type_dict = {item.value: item.name for item in ArgumentType}
+            port_info = "输入端口: "
+            for port, port_def in zip(
+                    self.input_ports(), self.get_property("input_ports")
+            ):
+                port_info += f"{port.name()} ({type_dict[port_def["type"]]});"
+            port_info += "\n输出端口: "
+            for port, port_def in zip(
+                    self.output_ports(), self.get_property("output_ports")
+            ):
+                port_info += f"{port.name()} ({type_dict[port_def["type"]]});"
+            return port_info
+
         def _sync_inputs_ports(self):
             input_configs = self.get_property("input_ports") or []
 

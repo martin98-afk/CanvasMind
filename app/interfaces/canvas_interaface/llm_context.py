@@ -71,16 +71,15 @@ class LLMContextProvider:
         rows = [
             "## 画布结构说明",
             "下表描述了画布中各节点的类型、原组件、配置属性、输入来源及输出去向。",
-            "- 端口格式为：`端口名 (数据类型)`。",
-            "",
-            "| 节点名称 | 类型 | 原组件名 | 组件代码 | 属性 | 输入来源 | 输出去向 |",
-            "|----------|------|--------|--------|------|----------|----------|",
+            "| 节点名称 | 类型 | 组件名称 | 组件描述 | 组件代码（或文件地址）| 端口信息 | 节点属性 | 输入来源 | 输出去向 |",
+            "|----------|------|--------|--------|--------|------|------|----------|----------|",
         ]
 
         for node in nodes:
             if not hasattr(node, "input_ports"):
                 continue
-            name = f"[{node.name()}](jump)"
+            name = node.name()
+            description = getattr(node, "description", "无")
             # ✅ 新增：原组件名称
             component_name = "/"
             node_type = "未知"
@@ -89,7 +88,7 @@ class LLMContextProvider:
                 component_name = str(node.FULL_PATH.split("/")[1])
             # 获取节点代码
             if hasattr(node, "comp_cls"):
-                code = node.comp_cls._source_code
+                code = node.comp_cls._source_file
             elif hasattr(node, "format_code"):
                 code = node.format_code()
             else:
@@ -113,15 +112,15 @@ class LLMContextProvider:
             for port in node.input_ports():
                 conns = []
                 for upstream in port.connected_ports():
-                    upstream_nodename = f"[{upstream.node().name()}](jump)"
-                    conns.append(f"节点:{upstream_nodename} 输出端口:{upstream.name()}")
+                    upstream_nodename = upstream.node().name()
+                    conns.append(f"节点名称:{upstream_nodename} 输出端口:{upstream.name()}")
                 if conns:
                     input_lines.append(
-                        f"{port.name()} ({port.model.type_}): {', '.join(conns)}"
+                        f"节点端口({port.model.type_}):{port.name()}; 连接端口: {', '.join(conns)}"
                     )
                 else:
                     input_lines.append(f"{port.name()} ({port.model.type_}): /")
-            inputs_str = "<br>".join(input_lines) if input_lines else "/"
+            inputs_str = "；".join(input_lines) if input_lines else "无连接"
 
             # 输出去向：端口名 (类型): 节点:下游节点名 输入端口:端口名
             output_lines = []
@@ -129,19 +128,19 @@ class LLMContextProvider:
                 conns = []
                 for downstream in port.connected_ports():
                     # ✅ 修复：这里必须用 downstream，不是 upstream！
-                    downstream_nodename = f"[{downstream.node().name()}](jump)"
+                    downstream_nodename = downstream.node().name()
                     conns.append(
-                        f"节点:{downstream_nodename} 输入端口:{downstream.name()}"
+                        f"节点名称:{downstream_nodename} 输入端口:{downstream.name()}"
                     )
                 if conns:
                     output_lines.append(
-                        f"{port.name()} ({port.model.type_}): {', '.join(conns)}"
+                        f"节点端口({port.model.type_}):{port.name()}; 连接端口: {', '.join(conns)}"
                     )
                 else:
                     output_lines.append(f"{port.name()} ({port.model.type_}): /")
-            outputs_str = "<br>".join(output_lines) if output_lines else "/"
+            outputs_str = "；".join(output_lines) if output_lines else "无连接"
 
-            row = f"| {name} | {node_type} | {component_name} | {code} | {props_str} | {inputs_str} | {outputs_str} |"
+            row = f"| {name} | {node_type} | {component_name} | {description} | {code} | {getattr(node, 'port_info', '无信息')} | {props_str} | {inputs_str} | {outputs_str} |"
             rows.append(row)
 
         return "\n".join(rows)

@@ -5,6 +5,8 @@ Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 from typing import List, Dict, Optional, Any, cast
 import time
 
+from PyQt5.QtCore import QTimer
+
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 
 
@@ -309,7 +311,7 @@ class CanvasTools:
 
         try:
             for prop_name, prop_value in properties.items():
-                node.set_property(prop_name, prop_value)
+                QTimer.singleShot(0, lambda: node.set_property(prop_name, prop_value))
             return ToolResult(
                 True, content=f"已设置节点 [{node_name}] 的属性: {properties}"
             )
