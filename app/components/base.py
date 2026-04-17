@@ -928,14 +928,15 @@ class DataHandler:
         if isinstance(data, (dict, list)):
             return data
         if isinstance(data, (str, Path)):
-            path = Path(data)
-            if path.is_file():
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                except:
-                    return data
             try:
+                path = Path(data)
+                if path.is_file():
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            return json.load(f)
+                    except:
+                        return data
+            
                 return json.loads(data)
             except:
                 try:
