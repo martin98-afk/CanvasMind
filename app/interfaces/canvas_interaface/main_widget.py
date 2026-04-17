@@ -38,6 +38,8 @@ class CanvasPage(QWidget):
     canvas_saved = pyqtSignal(Path)
     global_variables_changed = pyqtSignal(str, str)  # 用于刷新组件中的变量下拉菜单
     env_changed = pyqtSignal(str)
+    canvas_set_prop_requested = pyqtSignal(str, dict)
+    canvas_run_node_requested = pyqtSignal(str, str)
 
     _component_cache = {}  # 类级别缓存
 
@@ -370,6 +372,35 @@ class CanvasPage(QWidget):
         )
         self._pending_property_update.start(10)
 
+    def _on_canvas_set_prop_requested(self, node_name: str, properties: dict):
+        node = None
+        for n in self.graph.all_nodes():
+            if n.name() == node_name:
+                node = n
+                break
+        if not node:
+            return
+        for prop_name, prop_value in properties.items():
+            node.set_property(prop_name, prop_value)
+        self._schedule_property_update(node)
+
+    def _on_canvas_run_node_requested(self, mode: str, node_name: str):
+        node = None
+        for n in self.graph.all_nodes():
+            if n.name() == node_name:
+                node = n
+                break
+        if mode == "node":
+            self.canvas_runner.run_node(node)
+        elif mode == "to":
+            self.canvas_runner.run_to(node)
+        elif mode == "from":
+            self.canvas_runner.run_from(node)
+        elif mode == "subgraph":
+            self.canvas_runner.run_subgraph(node)
+        elif mode == "workflow":
+            self.canvas_runner.run_workflow()
+
     # --- 信号绑定 ---
     def _invalidate_component_cache(self):
         """组件变化时清除缓存"""
@@ -512,6 +543,8 @@ class CanvasPage(QWidget):
         self.canvas_runner.node_vars_changed.connect(
             self.property_panel.refresh_node_vars_page
         )
+        self.canvas_set_prop_requested.connect(self._on_canvas_set_prop_requested)
+        self.canvas_run_node_requested.connect(self._on_canvas_run_node_requested)
 
     def _on_active_graph_changed(self, graph):
         """当前活跃 graph 变化时，同步工具对象和图信号绑定。"""
@@ -522,7 +555,10 @@ class CanvasPage(QWidget):
         if old_graph is not None:
             for signal, slot in (
                 (old_graph.node_created, self.node_operations.on_node_created),
-                (old_graph.node_double_clicked, self.node_operations.on_node_double_clicked),
+                (
+                    old_graph.node_double_clicked,
+                    self.node_operations.on_node_double_clicked,
+                ),
                 (old_graph.port_connected, self._on_port_connected),
                 (old_graph.port_disconnected, self._invalidate_pipe_cache),
                 (old_graph.node_selection_changed, self._schedule_selection_changed),

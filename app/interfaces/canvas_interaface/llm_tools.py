@@ -140,15 +140,11 @@ class CanvasTools:
             return ToolResult(False, error=f"mode={mode} 时必须指定 node_name")
 
         if mode == "workflow":
-            runner = self._get_runner()
-            if not runner:
-                return ToolResult(False, error="CanvasRunner 不可用")
-            task_id = runner.run_workflow()
+            self.parent.canvas_run_node_requested.emit(mode, "")
             return ToolResult(
                 True,
                 content={
                     "message": "已触发：运行整个画布",
-                    "task_id": task_id,
                     "mode": mode,
                 },
             )
@@ -157,52 +153,15 @@ class CanvasTools:
         if not node:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
-        if mode == "node":
-            task_id = self.parent.run_node(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行节点 [{node_name}]",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "to":
-            task_id = self.parent.run_to(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行到节点 [{node_name}]",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "from":
-            task_id = self.parent.run_from(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：从节点 [{node_name}] 开始运行",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "subgraph":
-            task_id = self.parent.run_subgraph(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行节点 [{node_name}] 所在子图",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-
-        return ToolResult(False, error="未知的运行模式")
+        self.parent.canvas_run_node_requested.emit(mode, node_name)
+        return ToolResult(
+            True,
+            content={
+                "message": f"已触发：运行节点 [{node_name}]",
+                "mode": mode,
+                "node_name": node_name,
+            },
+        )
 
     def canvas_get_logs(
         self, node_name: str, log_type: str = "historical"
@@ -310,8 +269,7 @@ class CanvasTools:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
         try:
-            for prop_name, prop_value in properties.items():
-                QTimer.singleShot(0, lambda: node.set_property(prop_name, prop_value))
+            self.parent.canvas_set_prop_requested.emit(node_name, properties)
             return ToolResult(
                 True, content=f"已设置节点 [{node_name}] 的属性: {properties}"
             )

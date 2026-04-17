@@ -34,9 +34,7 @@ params = [
     '--name=CanvasMind',  # 直接指定名称，省去后期改名麻烦
 
     # 数据文件包含
-    f'--add-data=app/components{os.pathsep}app/components',
-    f'--add-data=app/component_extensions{os.pathsep}app/component_extensions',
-    f'--add-data=app/widgets/side_dock_area{os.pathsep}app/widgets/side_dock_area',
+    f'--add-data=app{os.pathsep}app',
     f'--add-data=resource{os.pathsep}resource',
     f'--add-data=examples{os.pathsep}examples',
 

@@ -7,7 +7,6 @@ from PyQt5.QtGui import QColor, QPalette, QCursor, QTextCursor, QFont
 from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFontMetrics
 from PyQt5.QtWidgets import (QTextEdit, QLineEdit, QListWidget, QAbstractItemView)
 from pypinyin import lazy_pinyin, Style
-from qfluentwidgets import TextEdit
 
 
 # --- 样式配置 ---
@@ -297,7 +296,7 @@ class CompletionMixin:
 # -----------------------
 # TextEdit 与 LineEdit 类（保持逻辑，仅结构复用）
 # -----------------------
-class VariableCompletionTextEdit(TextEdit, CompletionMixin):
+class VariableCompletionTextEdit(QTextEdit, CompletionMixin):
     def __init__(self, get_variable_list_func, use_qcursor=False, parent=None):
         super().__init__(parent)
         # 1. 应用现代化编辑器样式
