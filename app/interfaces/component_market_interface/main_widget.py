@@ -299,7 +299,7 @@ class PluginMarketplace(QWidget):
         elif mode == "installed":
             self.batch_btn.setText("批量上传")
             self.batch_btn.setIcon(get_icon("upload"))
-        self.upload_btn.setVisible(mode in ["installed", "uploads"])
+        self.upload_btn.setVisible(mode in ["uploads"])
         self.refresh_btn.setVisible(not is_settings)
         self.select_all_check.setVisible(not is_settings)
 
@@ -594,7 +594,11 @@ class PluginMarketplace(QWidget):
                         or ""
                     )
             else:
-                is_linked = True
+                cloud_ids = {
+                    p.get("plugin_id") or p.get("unique_id")
+                    for p in self._cloud_plugins
+                }
+                is_linked = plugin_id in cloud_ids
                 status = "match"
 
             is_mine = item.get("author") == self.cloud_mgr.config.user_name.value
@@ -784,21 +788,27 @@ class PluginMarketplace(QWidget):
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
 
-        def step_done(w):
-            self._cleanup_worker(w)
-            nonlocal completed
-            completed += 1
-            self.progress_bar.setValue(completed)
-            if completed >= len(selected):
-                self._stop_task()
-                InfoBar.success(
-                    "批量安装完成", f"成功安装 {completed} 个插件", parent=self
-                )
-                self.force_refresh()
+        def make_done_callback(w):
+            def step_done():
+                self._cleanup_worker(w)
+                nonlocal completed
+                completed += 1
+                self.progress_bar.setValue(completed)
+                if completed >= len(selected):
+                    self._stop_task()
+                    InfoBar.success(
+                        "批量安装完成", f"成功安装 {completed} 个插件", parent=self
+                    )
+                    self.force_refresh()
 
-        def step_error(w, msg):
-            self._cleanup_worker(w)
-            self._on_error(msg)
+            return step_done
+
+        def make_error_callback(w):
+            def step_error(msg):
+                self._cleanup_worker(w)
+                self._on_error(msg)
+
+            return step_error
 
         for item in selected:
             plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -816,8 +826,8 @@ class PluginMarketplace(QWidget):
                     manager.download_component, plugin_id, resource_path("")
                 )
 
-            worker.finished.connect(lambda w=worker: step_done(w))
-            worker.error.connect(lambda msg, w=worker: step_error(w, msg))
+            worker.finished.connect(make_done_callback(worker))
+            worker.error.connect(make_error_callback(worker))
             self._workers.append(worker)
             worker.start()
 
@@ -840,21 +850,27 @@ class PluginMarketplace(QWidget):
                 self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
             )
 
-            def step_done(w):
-                self._cleanup_worker(w)
-                nonlocal completed
-                completed += 1
-                self.progress_bar.setValue(completed)
-                if completed >= len(selected):
-                    self._stop_task()
-                    self.force_refresh()
-                    InfoBar.success(
-                        "上传完成", f"成功上传 {completed} 个插件", parent=self
-                    )
+            def make_done_callback(w):
+                def step_done():
+                    self._cleanup_worker(w)
+                    nonlocal completed
+                    completed += 1
+                    self.progress_bar.setValue(completed)
+                    if completed >= len(selected):
+                        self._stop_task()
+                        self.force_refresh()
+                        InfoBar.success(
+                            "上传完成", f"成功上传 {completed} 个插件", parent=self
+                        )
 
-            def step_error(w, msg):
-                self._cleanup_worker(w)
-                self._on_error(msg)
+                return step_done
+
+            def make_error_callback(w):
+                def step_error(msg):
+                    self._cleanup_worker(w)
+                    self._on_error(msg)
+
+                return step_error
 
             for item in selected:
                 plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -886,8 +902,8 @@ class PluginMarketplace(QWidget):
                         resource_dir=item["resource_dir"],
                     )
 
-                worker.finished.connect(lambda w=worker: step_done(w))
-                worker.error.connect(lambda msg, w=worker: step_error(w, msg))
+                worker.finished.connect(make_done_callback(worker))
+                worker.error.connect(make_error_callback(worker))
                 self._workers.append(worker)
                 worker.start()
 
