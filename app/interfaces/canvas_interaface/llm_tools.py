@@ -87,6 +87,50 @@ class CanvasTools:
             )
         return result
 
+    def _get_input_port_values(self, node) -> Dict[str, Any]:
+        result = {}
+        input_ports_getter = getattr(node, "input_ports", None)
+        if not callable(input_ports_getter):
+            return result
+
+        for port in input_ports_getter():
+            port_name = port.name()
+            value = None
+            for connected_port in port.connected_ports():
+                peer_node = connected_port.node()
+                peer_output_values = getattr(peer_node, "_output_values", None)
+                if peer_output_values:
+                    peer_port_name = connected_port.name()
+                    value = peer_output_values.get(peer_port_name)
+                    break
+            result[port_name] = value
+        return result
+
+    def _get_output_port_values(self, node) -> Dict[str, Any]:
+        output_values = getattr(node, "_output_values", None)
+        if output_values is None:
+            return {}
+        return dict(output_values)
+
+    def _truncate_value(self, value: Any, max_length: int = 2000) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            if len(value) > max_length:
+                return value[:max_length] + "...[truncated]"
+            return value
+        if isinstance(value, (list, dict)):
+            try:
+                import json
+
+                json_str = json.dumps(value, ensure_ascii=False, default=str)
+                if len(json_str) > max_length:
+                    return json_str[:max_length] + "...[truncated]"
+                return value
+            except Exception:
+                return str(value)[:max_length] + "...[truncated]"
+        return value
+
     def _collect_node_snapshot(
         self,
         node,
@@ -94,6 +138,9 @@ class CanvasTools:
         log_type: str = "historical",
         log_tail_chars: int = 4000,
         include_code: bool = False,
+        include_input_data: bool = False,
+        include_output_data: bool = False,
+        data_truncation: int = 2000,
     ) -> Dict[str, Any]:
         component_path = getattr(node, "FULL_PATH", "") or ""
         snapshot = {
@@ -107,6 +154,18 @@ class CanvasTools:
             "inputs": self._serialize_port_links(node, "input_ports", "upstream"),
             "outputs": self._serialize_port_links(node, "output_ports", "downstream"),
         }
+
+        if include_input_data:
+            snapshot["input_data"] = {
+                k: self._truncate_value(v, data_truncation)
+                for k, v in self._get_input_port_values(node).items()
+            }
+
+        if include_output_data:
+            snapshot["output_data"] = {
+                k: self._truncate_value(v, data_truncation)
+                for k, v in self._get_output_port_values(node).items()
+            }
 
         if include_logs:
             logs = (
@@ -163,9 +222,7 @@ class CanvasTools:
             },
         )
 
-    def canvas_get_logs(
-        self, node_name: str, log_type: str = "current"
-    ) -> ToolResult:
+    def canvas_get_logs(self, node_name: str, log_type: str = "current") -> ToolResult:
         """
         获取节点日志
 
@@ -387,6 +444,9 @@ class CanvasTools:
         log_type: str = "historical",
         log_tail_chars: int = 4000,
         include_code: bool = False,
+        include_input_data: bool = False,
+        include_output_data: bool = False,
+        data_truncation: int = 2000,
     ) -> ToolResult:
         if node_names is None:
             nodes = list(self.graph.all_nodes())
@@ -406,6 +466,9 @@ class CanvasTools:
                     log_type=log_type,
                     log_tail_chars=log_tail_chars,
                     include_code=include_code,
+                    include_input_data=include_input_data,
+                    include_output_data=include_output_data,
+                    data_truncation=data_truncation,
                 )
                 for node in nodes
             ]
@@ -504,7 +567,7 @@ def get_canvas_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "canvas_snapshot",
-                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码。支持单节点、多节点或空（所有节点）查询",
+                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码、输入数据、输出数据。支持单节点、多节点或空（所有节点）查询",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -529,6 +592,18 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "include_code": {
                             "type": "boolean",
                             "description": "是否附带节点当前执行代码",
+                        },
+                        "include_input_data": {
+                            "type": "boolean",
+                            "description": "是否附带节点的输入数据（通过上游连接节点获取）",
+                        },
+                        "include_output_data": {
+                            "type": "boolean",
+                            "description": "是否附带节点的输出数据（从节点运行结果获取）",
+                        },
+                        "data_truncation": {
+                            "type": "integer",
+                            "description": "输入/输出数据的最大字符数，超出部分会被截断",
                         },
                     },
                 },
