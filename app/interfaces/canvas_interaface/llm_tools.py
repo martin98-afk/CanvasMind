@@ -147,6 +147,7 @@ class CanvasTools:
             "node_name": node.name(),
             "node_id": getattr(node, "persistent_id", None),
             "status": getattr(node, "status", None),
+            "pos": node.pos(),
             "node_type": component_path.split("/")[0] if component_path else "未知",
             "component_path": component_path or None,
             "debug_enabled": bool(getattr(node, "_debug_enabled", False)),

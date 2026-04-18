@@ -71,8 +71,8 @@ class LLMContextProvider:
         rows = [
             "## 画布结构说明",
             "下表描述了画布中各节点的类型、原组件、配置属性、输入来源及输出去向。",
-            "| 节点名称 | 类型 | 组件名称 | 组件描述 | 组件代码（或文件地址）| 端口信息 | 节点属性 | 输入来源 | 输出去向 |",
-            "|----------|------|--------|--------|--------|------|------|----------|----------|",
+            "| 节点名称 | 节点位置| 类型 | 组件名称 | 组件描述 | 组件代码（或文件地址）| 端口信息 | 节点属性 | 输入来源 | 输出去向 |",
+            "|----------|------|------|--------|--------|--------|------|------|----------|----------|",
         ]
 
         for node in nodes:
@@ -140,7 +140,7 @@ class LLMContextProvider:
                     output_lines.append(f"{port.name()} ({port.model.type_}): /")
             outputs_str = "；".join(output_lines) if output_lines else "无连接"
 
-            row = f"| {name} | {node_type} | {component_name} | {description} | {code} | {getattr(node, 'port_info', '无信息')} | {props_str} | {inputs_str} | {outputs_str} |"
+            row = f"| {name} | {node.pos()}  | {node_type} | {component_name} | {description} | {code} | {getattr(node, 'port_info', '无信息')} | {props_str} | {inputs_str} | {outputs_str} |"
             rows.append(row)
 
         return "\n".join(rows)

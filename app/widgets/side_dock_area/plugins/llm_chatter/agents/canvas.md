@@ -48,7 +48,7 @@ canvas_connect_nodes(
 ```
 
 ### 步骤5：验证和调试
-使用 `canvas_run_node` 运行整个画布或单个节点进行验证。
+使用 `canvas_run_node` 运行整个画布或单个节点进行验证，如果有错误，请使用 `canvas_get_logs` 查看错误信息并修复，使用 `canvas_snapshot` 获取节点输出数据验证执行是否成功。
 
 ---
 
