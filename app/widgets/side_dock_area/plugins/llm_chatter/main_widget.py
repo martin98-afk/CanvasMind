@@ -297,15 +297,78 @@ class OpenAIChatToolWindow(ToolWindow):
         return list(session.messages or [])
 
     def showEvent(self, event):
+        logger.info(f"[DEBUG] showEvent called: _first_show={self._first_show}")
         if not self._first_show:
             self._first_show = True
             QTimer.singleShot(0, self._restore_latest_or_create_session)
+        else:
+            is_canvas = self._is_on_canvas()
+            logger.info(
+                f"[DEBUG] showEvent: is_on_canvas={is_canvas}, switching to canvas agent if needed"
+            )
+            if is_canvas and self._current_agent != "canvas":
+                QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
         super().showEvent(event)
+
+    def _is_on_canvas(self):
+        """检查当前是否在画布界面"""
+        if not hasattr(self.homepage, "ui_manager") or not self.homepage.ui_manager:
+            logger.info(
+                f"[DEBUG] _is_on_canvas: no ui_manager on homepage {type(self.homepage)}"
+            )
+            return False
+        side_dock = getattr(self.homepage.ui_manager, "side_dock_area", None)
+        if not side_dock:
+            logger.info(f"[DEBUG] _is_on_canvas: no side_dock_area")
+            return False
+        is_canvas = side_dock.context_id == DockCategory.CANVAS
+        logger.info(
+            f"[DEBUG] _is_on_canvas: context_id={side_dock.context_id}, DockCategory.CANVAS={DockCategory.CANVAS}, is_canvas={is_canvas}"
+        )
+        return is_canvas
 
     def _restore_latest_or_create_session(self):
         if self._restore_latest_session():
             return
         self._create_new_session()
+
+    def _create_new_session(self):
+        if self._is_streaming and self._chat_engine:
+            self._chat_engine.stop()
+            self._is_streaming = False
+            self._toggle_send_stop(False)
+
+        try:
+            self._auto_save_current_session()
+        except Exception:
+            logger.exception(
+                "Failed to auto-save current session before creating a new one"
+            )
+
+        self._cache_current_session_cards()
+        session = self.session_manager.create_new_session()
+        self._current_history_index = None
+        self._history_preview_messages = None
+        self._history_preview_session_data = None
+        self._history_preview_opening = False
+        self._clear_chat_area()
+        self.title_edit.setText("新对话")
+        self.node_preview.clear_nodes()
+        if self._todo_floating_widget:
+            self._todo_floating_widget.clear()
+        if self._tool_executor:
+            self._tool_executor.clear_todo_list()
+        if self._question_floating_widget:
+            self._question_floating_widget.clear()
+        self._question_tool_call_id = None
+        self._load_agent_list()
+        self._on_task_state_changed(session.task_state)
+
+        if self._is_on_canvas():
+            self._on_agent_changed("canvas")
+
+        QTimer.singleShot(0, self._show_initial_welcome)
+        self._refresh_context_usage_indicator()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -703,10 +766,20 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_agent_changed(self, agent_name: str):
         """智能体切换处理"""
+        logger.info(f"[DEBUG] _on_agent_changed called: agent_name={agent_name}")
         if not agent_name or not self._chat_engine:
+            logger.info(
+                f"[DEBUG] _on_agent_changed: early return, agent_name={agent_name}, _chat_engine={self._chat_engine}"
+            )
             return
         self._current_agent = agent_name
         self._chat_engine.switch_agent(agent_name)
+        if hasattr(self, "input_area") and hasattr(self.input_area, "_agent_combo"):
+            idx = self.input_area._agent_combo.findText(agent_name)
+            if idx >= 0:
+                self.input_area._agent_combo.blockSignals(True)
+                self.input_area._agent_combo.setCurrentIndex(idx)
+                self.input_area._agent_combo.blockSignals(False)
         self._update_agent_status(agent_name)
         if not getattr(self, "_suppress_agent_intro", False):
             self._show_agent_intro(agent_name)
@@ -758,7 +831,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._auto_save_current_session()
         except Exception:
             logger.exception(
-                "Failed to auto-save current session before creating a new one"
+                "Failed to auto-save current session before creating a new session"
             )
 
         self._cache_current_session_cards()
@@ -779,6 +852,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_tool_call_id = None
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
+
+        is_canvas = self._is_on_canvas()
+        logger.info(f"[DEBUG] _create_new_session: is_on_canvas={is_canvas}")
+        if is_canvas:
+            self._on_agent_changed("canvas")
+
         QTimer.singleShot(0, self._show_initial_welcome)
         self._refresh_context_usage_indicator()
 
@@ -854,14 +933,17 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _restore_latest_session(self) -> bool:
         if not self.history_manager:
+            logger.info("[DEBUG] _restore_latest_session: no history_manager")
             return False
 
         latest = self.history_manager.load_latest_session()
         if not latest:
+            logger.info("[DEBUG] _restore_latest_session: no latest session")
             return False
 
         messages = latest.get("messages", [])
         if not messages:
+            logger.info("[DEBUG] _restore_latest_session: no messages")
             return False
 
         restored = ChatSession.from_dict(
@@ -877,6 +959,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = 0
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
+        is_canvas = self._is_on_canvas()
+        logger.info(f"[DEBUG] _restore_latest_session: is_on_canvas={is_canvas}")
+        if is_canvas:
+            self._on_agent_changed("canvas")
         self._display_current_session()
         self._refresh_context_usage_indicator()
         return True
@@ -1123,10 +1209,14 @@ class OpenAIChatToolWindow(ToolWindow):
     def _render_message_to_card(self, batches: List[List[Dict[str, Any]]]):
         for batch in batches:
             role = batch[0].get("role")
-            timestamp = batch[0].get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+            timestamp = batch[0].get(
+                "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+            )
 
             if role == "user":
-                content = self._sanitize_user_message_for_display(batch[0].get("content", ""))
+                content = self._sanitize_user_message_for_display(
+                    batch[0].get("content", "")
+                )
                 self._append_user_message(
                     content,
                     timestamp=timestamp,
@@ -1140,11 +1230,11 @@ class OpenAIChatToolWindow(ToolWindow):
                         assistant_card.append_text(msg.get("content", {}))
                     elif msg.get("role") == "tool" and msg.get("content", ""):
                         assistant_card.append_tool_result(
-                            tool_name= msg.get("name", ""),
-                            arguments= msg.get("arguments", {}),
-                            result= msg.get("content", ""),
-                            success= bool(msg.get("success", True)),
-                            tool_call_id = msg.get("tool_call_id", ""),
+                            tool_name=msg.get("name", ""),
+                            arguments=msg.get("arguments", {}),
+                            result=msg.get("content", ""),
+                            success=bool(msg.get("success", True)),
+                            tool_call_id=msg.get("tool_call_id", ""),
                         )
                 assistant_card.finish_streaming()
 

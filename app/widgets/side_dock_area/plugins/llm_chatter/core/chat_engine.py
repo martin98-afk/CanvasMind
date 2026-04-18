@@ -541,6 +541,15 @@ class ChatEngine:
             available_tools = get_builtin_tools_schema()
 
         canvas_tools = self._get_canvas_tools()
+        if self._current_agent == "canvas":
+            context_provider = self._get_context_provider()
+            if (
+                context_provider
+                and hasattr(context_provider, "parent")
+                and hasattr(context_provider.parent, "homepage")
+                and hasattr(context_provider.parent.homepage, "llm_context_provider")
+            ):
+                canvas_tools = context_provider.parent.homepage.llm_context_provider.get_canvas_tools_schema()
         if canvas_tools:
             available_tools = available_tools + canvas_tools
 
