@@ -773,7 +773,7 @@ class CanvasPage(QWidget):
         src_path = getattr(out_node, "FULL_PATH", None)
         dst_path = getattr(in_node, "FULL_PATH", None)
         if src_path and dst_path:
-            self.manager.recommendation_engine._stats_manager.record_connection(
+            self.manager._recommendation_engine._stats_manager.record_connection(
                 src_path, dst_path
             )
 
