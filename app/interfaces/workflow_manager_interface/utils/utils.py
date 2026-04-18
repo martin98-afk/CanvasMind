@@ -207,6 +207,36 @@ class WorkflowFileInfoScanner(QThread):
         if should_stop:
             return
 
+        for root in self.workflow_dir:
+            if not root.exists():
+                continue
+            legacy_files = [
+                f
+                for f in root.iterdir()
+                if f.is_file()
+                and f.suffix == ".json"
+                and f.name.endswith(".workflow.json")
+            ]
+            for wf_file in legacy_files:
+                with QMutexLocker(self._mutex):
+                    if self._should_stop:
+                        return
+                name = wf_file.stem
+                if name.endswith(".workflow"):
+                    name = name[:-9]
+                if not name:
+                    continue
+                canvas_folder = root / name
+                canvas_folder.mkdir(exist_ok=True)
+                new_wf_path = canvas_folder / wf_file.name
+                if not new_wf_path.exists():
+                    shutil.move(str(wf_file), str(new_wf_path))
+                png_file = root / f"{name}.png"
+                if png_file.exists():
+                    new_png_path = canvas_folder / f"{name}.png"
+                    if not new_png_path.exists():
+                        shutil.move(str(png_file), str(new_png_path))
+
         workflow_files = iter_workflow_files(self.workflow_dir)
         file_info_map = {}
 

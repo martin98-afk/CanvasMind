@@ -25,6 +25,8 @@ from app.interfaces.workflow_manager_interface.utils.utils import (
     FolderSizeCache,
 )
 
+VIEW_MODE_LIST = "list"
+
 
 class WorkflowListItem(QWidget):
     item_selected = pyqtSignal(Path)
@@ -253,9 +255,9 @@ class WorkflowListItem(QWidget):
 
 
 class WorkflowListView(QWidget):
-    LIST_INITIAL_BATCH_SIZE = 40
-    LIST_INCREMENTAL_BATCH_SIZE = 20
-    LIST_LOAD_MORE_THRESHOLD_PX = 800
+    LIST_INITIAL_BATCH_SIZE = 10
+    LIST_INCREMENTAL_BATCH_SIZE = 5
+    LIST_LOAD_MORE_THRESHOLD_PX = 200
 
     current_changed = pyqtSignal(Path)
 
@@ -362,9 +364,12 @@ class WorkflowListView(QWidget):
 
     def set_view_mode(self, mode: str):
         self._view_mode = mode
-        if mode == "list" and self._ordered_paths:
+        if mode == "list":
             self._render_count = 0
-            self._render_more_items(len(self._ordered_paths))
+            self._batch_inflight = False
+            if self._ordered_paths:
+                self._render_more_items(len(self._ordered_paths))
+                QTimer.singleShot(0, self._ensure_viewport_filled)
 
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
@@ -467,7 +472,7 @@ class WorkflowListView(QWidget):
         return target
 
     def _initial_batch_size(self) -> int:
-        viewport_height = max(self.scroll_area.viewport().height(), 1)
+        viewport_height = max(self.scroll_area.viewport().height(), 200)
         estimated_item_height = 58
         estimated_rows = max(1, viewport_height // estimated_item_height + 2)
         return max(self.LIST_INITIAL_BATCH_SIZE, estimated_rows * 2)
@@ -486,15 +491,24 @@ class WorkflowListView(QWidget):
             return False
 
         for path in self._ordered_paths[self._render_count : end]:
-            widget = self._ensure_item_widget(path)
-            self.content_layout.removeWidget(widget)
-            self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
-            widget.set_selected(path == self._current_path)
-            widget.show()
+            if path not in self._item_widgets:
+                file_info = self._file_info_map.get(str(path))
+                item_widget = WorkflowListItem(path, file_info, self)
+                item_widget.item_selected.connect(self._on_item_selected)
+                self._item_widgets[path] = item_widget
+                self.content_layout.insertWidget(
+                    self.content_layout.count() - 1, item_widget
+                )
+            else:
+                widget = self._item_widgets[path]
+                self.content_layout.removeWidget(widget)
+                self.content_layout.insertWidget(
+                    self.content_layout.count() - 1, widget
+                )
+            self._item_widgets[path].set_selected(path == self._current_path)
+            self._item_widgets[path].show()
 
         self._render_count = end
-        self.content_layout.update()
-        self.content_widget.updateGeometry()
         return True
 
     def _ensure_viewport_filled(self):

@@ -74,7 +74,7 @@ class CanvasPage(QWidget):
         self.node_operations = NodeOperations(
             self,
             self.graph,
-            self.manager.recommendation_engine,
+            self.manager._recommendation_engine,
             QThreadPool.globalInstance(),
         )
         # 异步注册或分批注册节点
