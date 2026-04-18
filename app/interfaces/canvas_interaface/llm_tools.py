@@ -5,6 +5,8 @@ Canvas Tools - 画布调试工具，供 LLM 在画布场景下调用
 from typing import List, Dict, Optional, Any, cast
 import time
 
+from PyQt5.QtCore import QTimer
+
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 
 
@@ -85,6 +87,50 @@ class CanvasTools:
             )
         return result
 
+    def _get_input_port_values(self, node) -> Dict[str, Any]:
+        result = {}
+        input_ports_getter = getattr(node, "input_ports", None)
+        if not callable(input_ports_getter):
+            return result
+
+        for port in input_ports_getter():
+            port_name = port.name()
+            value = None
+            for connected_port in port.connected_ports():
+                peer_node = connected_port.node()
+                peer_output_values = getattr(peer_node, "_output_values", None)
+                if peer_output_values:
+                    peer_port_name = connected_port.name()
+                    value = peer_output_values.get(peer_port_name)
+                    break
+            result[port_name] = value
+        return result
+
+    def _get_output_port_values(self, node) -> Dict[str, Any]:
+        output_values = getattr(node, "_output_values", None)
+        if output_values is None:
+            return {}
+        return dict(output_values)
+
+    def _truncate_value(self, value: Any, max_length: int = 2000) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            if len(value) > max_length:
+                return value[:max_length] + "...[truncated]"
+            return value
+        if isinstance(value, (list, dict)):
+            try:
+                import json
+
+                json_str = json.dumps(value, ensure_ascii=False, default=str)
+                if len(json_str) > max_length:
+                    return json_str[:max_length] + "...[truncated]"
+                return value
+            except Exception:
+                return str(value)[:max_length] + "...[truncated]"
+        return value
+
     def _collect_node_snapshot(
         self,
         node,
@@ -92,12 +138,16 @@ class CanvasTools:
         log_type: str = "historical",
         log_tail_chars: int = 4000,
         include_code: bool = False,
+        include_input_data: bool = False,
+        include_output_data: bool = False,
+        data_truncation: int = 2000,
     ) -> Dict[str, Any]:
         component_path = getattr(node, "FULL_PATH", "") or ""
         snapshot = {
             "node_name": node.name(),
             "node_id": getattr(node, "persistent_id", None),
             "status": getattr(node, "status", None),
+            "pos": node.pos(),
             "node_type": component_path.split("/")[0] if component_path else "未知",
             "component_path": component_path or None,
             "debug_enabled": bool(getattr(node, "_debug_enabled", False)),
@@ -105,7 +155,17 @@ class CanvasTools:
             "inputs": self._serialize_port_links(node, "input_ports", "upstream"),
             "outputs": self._serialize_port_links(node, "output_ports", "downstream"),
         }
+        if include_input_data:
+            snapshot["input_data"] = {
+                k: self._truncate_value(v, data_truncation)
+                for k, v in self._get_input_port_values(node).items()
+            }
 
+        if include_output_data:
+            snapshot["output_data"] = {
+                k: self._truncate_value(v, data_truncation)
+                for k, v in self._get_output_port_values(node).items()
+            }
         if include_logs:
             logs = (
                 self._get_current_run_logs(node)
@@ -138,15 +198,11 @@ class CanvasTools:
             return ToolResult(False, error=f"mode={mode} 时必须指定 node_name")
 
         if mode == "workflow":
-            runner = self._get_runner()
-            if not runner:
-                return ToolResult(False, error="CanvasRunner 不可用")
-            task_id = runner.run_workflow()
+            self.parent.canvas_run_node_requested.emit(mode, "")
             return ToolResult(
                 True,
                 content={
                     "message": "已触发：运行整个画布",
-                    "task_id": task_id,
                     "mode": mode,
                 },
             )
@@ -155,56 +211,17 @@ class CanvasTools:
         if not node:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
-        if mode == "node":
-            task_id = self.parent.run_node(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行节点 [{node_name}]",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "to":
-            task_id = self.parent.run_to(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行到节点 [{node_name}]",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "from":
-            task_id = self.parent.run_from(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：从节点 [{node_name}] 开始运行",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
-        elif mode == "subgraph":
-            task_id = self.parent.run_subgraph(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已触发：运行节点 [{node_name}] 所在子图",
-                    "task_id": task_id,
-                    "mode": mode,
-                    "node_name": node_name,
-                },
-            )
+        self.parent.canvas_run_node_requested.emit(mode, node_name)
+        return ToolResult(
+            True,
+            content={
+                "message": f"已触发：运行节点 [{node_name}]",
+                "mode": mode,
+                "node_name": node_name,
+            },
+        )
 
-        return ToolResult(False, error="未知的运行模式")
-
-    def canvas_get_logs(
-        self, node_name: str, log_type: str = "historical"
-    ) -> ToolResult:
+    def canvas_get_logs(self, node_name: str, log_type: str = "current") -> ToolResult:
         """
         获取节点日志
 
@@ -223,7 +240,7 @@ class CanvasTools:
         if log_type == "current":
             logs = self._get_current_run_logs(node)
         else:
-            logs = node.get_logs()
+            logs = node.get_logs()[-5000:]
 
         if not logs:
             return ToolResult(True, content=f"[{node_name}] {log_type} 日志为空")
@@ -291,6 +308,65 @@ class CanvasTools:
 
         return ToolResult(True, content="\n".join(lines))
 
+    def canvas_create_node(
+        self,
+        node_name: Optional[str] = None,
+        position: Optional[Dict[str, float]] = None,
+    ) -> ToolResult:
+        """
+        创建代码编辑节点
+
+        Args:
+            node_name: 可选，节点名称，默认自动生成
+            position: 可选，节点位置 {"x": float, "y": float}，默认在画布中央
+        """
+        try:
+            self.parent.canvas_create_node_requested.emit(
+                node_name or "", position or {}
+            )
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已发送创建代码编辑节点请求: {node_name or '自动命名'}",
+                    "node_name": node_name or "自动生成",
+                },
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"创建节点失败: {str(e)}")
+
+    def canvas_connect_nodes(
+        self,
+        from_node: str,
+        from_port: str,
+        to_node: str,
+        to_port: str,
+    ) -> ToolResult:
+        """
+        连接两个节点的端口
+
+        Args:
+            from_node: 输出节点名称
+            from_port: 输出端口名称
+            to_node: 输入节点名称
+            to_port: 输入端口名称
+        """
+        try:
+            self.parent.canvas_connect_nodes_requested.emit(
+                from_node, from_port, to_node, to_port
+            )
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已发送连接请求: {from_node}.{from_port} -> {to_node}.{to_port}",
+                    "from_node": from_node,
+                    "from_port": from_port,
+                    "to_node": to_node,
+                    "to_port": to_port,
+                },
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"连接失败: {str(e)}")
+
     def canvas_set_prop(
         self, node_name: str, properties: Dict, target: Optional[str] = None
     ) -> ToolResult:
@@ -308,8 +384,7 @@ class CanvasTools:
             return ToolResult(False, error=f"未找到节点: {node_name}")
 
         try:
-            for prop_name, prop_value in properties.items():
-                node.set_property(prop_name, prop_value)
+            self.parent.canvas_set_prop_requested.emit(node_name, properties)
             return ToolResult(
                 True, content=f"已设置节点 [{node_name}] 的属性: {properties}"
             )
@@ -427,6 +502,9 @@ class CanvasTools:
         log_type: str = "historical",
         log_tail_chars: int = 4000,
         include_code: bool = False,
+        include_input_data: bool = False,
+        include_output_data: bool = False,
+        data_truncation: int = 2000,
     ) -> ToolResult:
         if node_names is None:
             nodes = list(self.graph.all_nodes())
@@ -446,6 +524,9 @@ class CanvasTools:
                     log_type=log_type,
                     log_tail_chars=log_tail_chars,
                     include_code=include_code,
+                    include_input_data=include_input_data,
+                    include_output_data=include_output_data,
+                    data_truncation=data_truncation,
                 )
                 for node in nodes
             ]
@@ -503,24 +584,62 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
-                "name": "canvas_edit_run",
-                "description": "修改节点代码并立即运行",
+                "name": "canvas_nodes",
+                "description": "列出画布上的所有节点",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_create_node",
+                "description": "创建代码编辑节点，用于编写自定义代码逻辑",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "node_name": {"type": "string", "description": "节点名称"},
-                        "code": {"type": "string", "description": "新的代码内容"},
+                        "node_name": {
+                            "type": "string",
+                            "description": "可选，节点名称，默认自动生成",
+                        },
+                        "position": {
+                            "type": "object",
+                            "description": '可选，节点位置，例如 {"x": 100, "y": 200}',
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                            },
+                        },
                     },
-                    "required": ["node_name", "code"],
                 },
             },
         },
         {
             "type": "function",
             "function": {
-                "name": "canvas_nodes",
-                "description": "列出画布上的所有节点",
-                "parameters": {"type": "object", "properties": {}},
+                "name": "canvas_connect_nodes",
+                "description": "连接两个节点的端口，建立数据流",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "from_node": {
+                            "type": "string",
+                            "description": "输出节点名称",
+                        },
+                        "from_port": {
+                            "type": "string",
+                            "description": "输出端口名称",
+                        },
+                        "to_node": {
+                            "type": "string",
+                            "description": "输入节点名称",
+                        },
+                        "to_port": {
+                            "type": "string",
+                            "description": "输入端口名称",
+                        },
+                    },
+                    "required": ["from_node", "from_port", "to_node", "to_port"],
+                },
             },
         },
         {
@@ -559,7 +678,7 @@ def get_canvas_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "canvas_snapshot",
-                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码。支持单节点、多节点或空（所有节点）查询",
+                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码、输入数据、输出数据。支持单节点、多节点或空（所有节点）查询",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -584,6 +703,18 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "include_code": {
                             "type": "boolean",
                             "description": "是否附带节点当前执行代码",
+                        },
+                        "include_input_data": {
+                            "type": "boolean",
+                            "description": "是否附带节点的输入数据（通过上游连接节点获取）",
+                        },
+                        "include_output_data": {
+                            "type": "boolean",
+                            "description": "是否附带节点的输出数据（从节点运行结果获取）",
+                        },
+                        "data_truncation": {
+                            "type": "integer",
+                            "description": "输入/输出数据的最大字符数，超出部分会被截断",
                         },
                     },
                 },

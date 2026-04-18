@@ -160,6 +160,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._history_popup = None
         self._gen_thread_pool = QThreadPool()
         self._gen_thread_pool.setMaxThreadCount(2)
+        self._pending_scroll_to_bottom = False
+        self._last_visible_user_pair_index = -1
+        self._scroll_bottom_timer = QTimer(self)
+        self._scroll_bottom_timer.setSingleShot(True)
+        self._scroll_bottom_timer.setInterval(24)
+        self._scroll_bottom_timer.timeout.connect(self._do_scroll_to_bottom)
         self.toolStartUiSyncRequested.connect(
             self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
         )
@@ -291,15 +297,78 @@ class OpenAIChatToolWindow(ToolWindow):
         return list(session.messages or [])
 
     def showEvent(self, event):
+        logger.info(f"[DEBUG] showEvent called: _first_show={self._first_show}")
         if not self._first_show:
             self._first_show = True
             QTimer.singleShot(0, self._restore_latest_or_create_session)
+        else:
+            is_canvas = self._is_on_canvas()
+            logger.info(
+                f"[DEBUG] showEvent: is_on_canvas={is_canvas}, switching to canvas agent if needed"
+            )
+            if is_canvas and self._current_agent != "canvas":
+                QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
         super().showEvent(event)
+
+    def _is_on_canvas(self):
+        """检查当前是否在画布界面"""
+        if not hasattr(self.homepage, "ui_manager") or not self.homepage.ui_manager:
+            logger.info(
+                f"[DEBUG] _is_on_canvas: no ui_manager on homepage {type(self.homepage)}"
+            )
+            return False
+        side_dock = getattr(self.homepage.ui_manager, "side_dock_area", None)
+        if not side_dock:
+            logger.info(f"[DEBUG] _is_on_canvas: no side_dock_area")
+            return False
+        is_canvas = side_dock.context_id == DockCategory.CANVAS
+        logger.info(
+            f"[DEBUG] _is_on_canvas: context_id={side_dock.context_id}, DockCategory.CANVAS={DockCategory.CANVAS}, is_canvas={is_canvas}"
+        )
+        return is_canvas
 
     def _restore_latest_or_create_session(self):
         if self._restore_latest_session():
             return
         self._create_new_session()
+
+    def _create_new_session(self):
+        if self._is_streaming and self._chat_engine:
+            self._chat_engine.stop()
+            self._is_streaming = False
+            self._toggle_send_stop(False)
+
+        try:
+            self._auto_save_current_session()
+        except Exception:
+            logger.exception(
+                "Failed to auto-save current session before creating a new one"
+            )
+
+        self._cache_current_session_cards()
+        session = self.session_manager.create_new_session()
+        self._current_history_index = None
+        self._history_preview_messages = None
+        self._history_preview_session_data = None
+        self._history_preview_opening = False
+        self._clear_chat_area()
+        self.title_edit.setText("新对话")
+        self.node_preview.clear_nodes()
+        if self._todo_floating_widget:
+            self._todo_floating_widget.clear()
+        if self._tool_executor:
+            self._tool_executor.clear_todo_list()
+        if self._question_floating_widget:
+            self._question_floating_widget.clear()
+        self._question_tool_call_id = None
+        self._load_agent_list()
+        self._on_task_state_changed(session.task_state)
+
+        if self._is_on_canvas():
+            self._on_agent_changed("canvas")
+
+        QTimer.singleShot(0, self._show_initial_welcome)
+        self._refresh_context_usage_indicator()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -379,12 +448,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._sub_agent_floating_widget = SubAgentFloatingWidget(self)
         self._sub_agent_floating_widget.setVisible(False)
-        layout.addWidget(self._sub_agent_floating_widget)
 
         self._tool_floating_widget = ToolFloatingWidget(self)
         self._tool_floating_widget.setVisible(False)
         self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
-        layout.addWidget(self._tool_floating_widget)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -410,6 +477,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self.chat_scroll_area.setWidget(self.chat_container)
 
         layout.addWidget(self.chat_scroll_area, 1)
+
+        layout.addWidget(self._sub_agent_floating_widget)
+        layout.addWidget(self._tool_floating_widget)
 
         self.node_preview = ConversationNodePreview(self)
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
@@ -696,10 +766,20 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_agent_changed(self, agent_name: str):
         """智能体切换处理"""
+        logger.info(f"[DEBUG] _on_agent_changed called: agent_name={agent_name}")
         if not agent_name or not self._chat_engine:
+            logger.info(
+                f"[DEBUG] _on_agent_changed: early return, agent_name={agent_name}, _chat_engine={self._chat_engine}"
+            )
             return
         self._current_agent = agent_name
         self._chat_engine.switch_agent(agent_name)
+        if hasattr(self, "input_area") and hasattr(self.input_area, "_agent_combo"):
+            idx = self.input_area._agent_combo.findText(agent_name)
+            if idx >= 0:
+                self.input_area._agent_combo.blockSignals(True)
+                self.input_area._agent_combo.setCurrentIndex(idx)
+                self.input_area._agent_combo.blockSignals(False)
         self._update_agent_status(agent_name)
         if not getattr(self, "_suppress_agent_intro", False):
             self._show_agent_intro(agent_name)
@@ -751,7 +831,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._auto_save_current_session()
         except Exception:
             logger.exception(
-                "Failed to auto-save current session before creating a new one"
+                "Failed to auto-save current session before creating a new session"
             )
 
         self._cache_current_session_cards()
@@ -772,6 +852,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_tool_call_id = None
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
+
+        is_canvas = self._is_on_canvas()
+        logger.info(f"[DEBUG] _create_new_session: is_on_canvas={is_canvas}")
+        if is_canvas:
+            self._on_agent_changed("canvas")
+
         QTimer.singleShot(0, self._show_initial_welcome)
         self._refresh_context_usage_indicator()
 
@@ -847,14 +933,17 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _restore_latest_session(self) -> bool:
         if not self.history_manager:
+            logger.info("[DEBUG] _restore_latest_session: no history_manager")
             return False
 
         latest = self.history_manager.load_latest_session()
         if not latest:
+            logger.info("[DEBUG] _restore_latest_session: no latest session")
             return False
 
         messages = latest.get("messages", [])
         if not messages:
+            logger.info("[DEBUG] _restore_latest_session: no messages")
             return False
 
         restored = ChatSession.from_dict(
@@ -870,6 +959,10 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = 0
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
+        is_canvas = self._is_on_canvas()
+        logger.info(f"[DEBUG] _restore_latest_session: is_on_canvas={is_canvas}")
+        if is_canvas:
+            self._on_agent_changed("canvas")
         self._display_current_session()
         self._refresh_context_usage_indicator()
         return True
@@ -1116,10 +1209,14 @@ class OpenAIChatToolWindow(ToolWindow):
     def _render_message_to_card(self, batches: List[List[Dict[str, Any]]]):
         for batch in batches:
             role = batch[0].get("role")
-            timestamp = batch[0].get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+            timestamp = batch[0].get(
+                "timestamp", datetime.now().strftime("%Y-%m-%d %H:%M")
+            )
 
             if role == "user":
-                content = self._sanitize_user_message_for_display(batch[0].get("content", ""))
+                content = self._sanitize_user_message_for_display(
+                    batch[0].get("content", "")
+                )
                 self._append_user_message(
                     content,
                     timestamp=timestamp,
@@ -1133,11 +1230,11 @@ class OpenAIChatToolWindow(ToolWindow):
                         assistant_card.append_text(msg.get("content", {}))
                     elif msg.get("role") == "tool" and msg.get("content", ""):
                         assistant_card.append_tool_result(
-                            tool_name= msg.get("name", ""),
-                            arguments= msg.get("arguments", {}),
-                            result= msg.get("content", ""),
-                            success= bool(msg.get("success", True)),
-                            tool_call_id = msg.get("tool_call_id", ""),
+                            tool_name=msg.get("name", ""),
+                            arguments=msg.get("arguments", {}),
+                            result=msg.get("content", ""),
+                            success=bool(msg.get("success", True)),
+                            tool_call_id=msg.get("tool_call_id", ""),
                         )
                 assistant_card.finish_streaming()
 
@@ -1384,37 +1481,26 @@ class OpenAIChatToolWindow(ToolWindow):
         self.node_preview.update_nodes(node_data)
 
     def _on_node_preview_clicked(self, index: int):
-        session = self.session_manager.get_current_session()
-        if not session:
-            return
-        messages = consolidate_messages(session.messages)
-
         pair_index = 0
-        for i, msg in enumerate(messages):
-            if msg["role"] == "user":
+        target_widget = None
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if widget.role == "user":
                 if pair_index == index:
-                    card_index = i
-                    for j in range(i, len(messages) - 1):
-                        if isinstance(self.chat_layout.itemAt(j), type(None)):
-                            continue
-                        widget = self.chat_layout.itemAt(j).widget()
-                        if (
-                            widget
-                            and hasattr(widget, "role")
-                            and widget.role == "assistant"
-                        ):
-                            card_index = j
-                            break
-                    scroll_area = self.chat_scroll_area
-                    if scroll_area:
-                        y = 0
-                        for k in range(card_index):
-                            item = self.chat_layout.itemAt(k)
-                            if item and item.widget():
-                                y += item.widget().height() + 5
-                        scroll_area.verticalScrollBar().setValue(y)
-                    return
+                    target_widget = widget
+                    continue
                 pair_index += 1
+            elif target_widget and widget.role == "assistant":
+                target_widget = widget
+                break
+
+        if target_widget:
+            self.chat_scroll_area.verticalScrollBar().setValue(target_widget.y())
 
     def _on_scroll_changed(self, value):
         scroll_bar = self.chat_scroll_area.verticalScrollBar()
@@ -1422,7 +1508,8 @@ class OpenAIChatToolWindow(ToolWindow):
         visible_top = scroll_bar.value()
         visible_bottom = visible_top + viewport_height
 
-        user_msg_indices = []
+        first_visible_pair = -1
+        pair_index = 0
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
             if not item or not item.widget():
@@ -1432,26 +1519,16 @@ class OpenAIChatToolWindow(ToolWindow):
                 continue
             if widget.role != "user":
                 continue
-            y = 0
-            for j in range(i):
-                item_j = self.chat_layout.itemAt(j)
-                if item_j and item_j.widget():
-                    y += item_j.widget().height() + 5
-            widget_bottom = y + widget.height()
-            if widget_bottom > visible_top and y < visible_bottom:
-                user_msg_indices.append(i)
+            widget_top = widget.y()
+            widget_bottom = widget_top + widget.height()
+            if widget_bottom > visible_top and widget_top < visible_bottom:
+                first_visible_pair = pair_index
+                break
+            pair_index += 1
 
-        if user_msg_indices:
-            first_visible_idx = user_msg_indices[0]
-            pair_index = 0
-            for i in range(first_visible_idx):
-                item = self.chat_layout.itemAt(i)
-                if item and item.widget() and isinstance(item.widget(), MessageCard):
-                    if item.widget().role == "user":
-                        pair_index += 1
-            self.node_preview.set_visible_node(pair_index)
-        else:
-            self.node_preview.set_visible_node(-1)
+        if first_visible_pair != self._last_visible_user_pair_index:
+            self._last_visible_user_pair_index = first_visible_pair
+            self.node_preview.set_visible_node(first_visible_pair)
 
     def _truncate_session_from_rendered_index(self, rendered_index: int) -> bool:
         session = self.session_manager.get_current_session()
@@ -1581,19 +1658,21 @@ class OpenAIChatToolWindow(ToolWindow):
             )
 
     def _scroll_to_bottom(self):
-        def _do_scroll():
-            self.chat_scroll_area.verticalScrollBar().setValue(
-                self.chat_scroll_area.verticalScrollBar().maximum()
-            )
-            session = self.session_manager.get_current_session()
-            if session:
-                user_count = sum(
-                    1 for msg in session.messages if msg.get("role") == "user"
-                )
-                if user_count > 0:
-                    self.node_preview.set_visible_node(user_count - 1)
+        self._pending_scroll_to_bottom = True
+        self._scroll_bottom_timer.start()
 
-        QTimer.singleShot(10, _do_scroll)
+    def _do_scroll_to_bottom(self):
+        if not self._pending_scroll_to_bottom:
+            return
+        self._pending_scroll_to_bottom = False
+        scroll_bar = self.chat_scroll_area.verticalScrollBar()
+        scroll_bar.setValue(scroll_bar.maximum())
+        session = self.session_manager.get_current_session()
+        if session:
+            user_count = sum(1 for msg in session.messages if msg.get("role") == "user")
+            visible_index = user_count - 1 if user_count > 0 else -1
+            self._last_visible_user_pair_index = visible_index
+            self.node_preview.set_visible_node(visible_index)
 
     def handle_recommended_question(self, content: str, action: str):
         if action == "ask":

@@ -257,9 +257,9 @@ class ToolExecutor:
                 node_name=args.get("node_name", ""),
                 log_type=args.get("log_type", "historical"),
             ),
-            "canvas_edit_run": lambda: self._canvas_tools_executor.canvas_edit_run(
-                node_name=args.get("node_name", ""), code=args.get("code", "")
-            ),
+            # "canvas_edit_run": lambda: self._canvas_tools_executor.canvas_edit_run(
+            #     node_name=args.get("node_name", ""), code=args.get("code", "")
+            # ),
             "canvas_nodes": lambda: self._canvas_tools_executor.canvas_nodes(),
             "canvas_exec_state": lambda: self._canvas_tools_executor.canvas_exec_state(
                 task_id=args.get("task_id"),
@@ -274,6 +274,9 @@ class ToolExecutor:
                 log_type=args.get("log_type", "historical"),
                 log_tail_chars=args.get("log_tail_chars", 4000),
                 include_code=args.get("include_code", False),
+                include_input_data=args.get("include_input_data", False),
+                include_output_data=args.get("include_output_data", False),
+                data_truncation=args.get("data_truncation", 2000),
             ),
             "canvas_set_prop": lambda: self._canvas_tools_executor.canvas_set_prop(
                 node_name=args.get("node_name", ""),
@@ -283,6 +286,16 @@ class ToolExecutor:
             "canvas_get_prop": lambda: self._canvas_tools_executor.canvas_get_prop(
                 node_name=args.get("node_name", ""),
                 property_names=args.get("property_names"),
+            ),
+            "canvas_create_node": lambda: self._canvas_tools_executor.canvas_create_node(
+                node_name=args.get("node_name"),
+                position=args.get("position"),
+            ),
+            "canvas_connect_nodes": lambda: self._canvas_tools_executor.canvas_connect_nodes(
+                from_node=args.get("from_node", ""),
+                from_port=args.get("from_port", ""),
+                to_node=args.get("to_node", ""),
+                to_port=args.get("to_port", ""),
             ),
         }
 

@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
 from loguru import logger
 from pypinyin import lazy_pinyin, Style
 from qfluentwidgets import (
-    SearchLineEdit,
     IndeterminateProgressRing,
     SmoothScrollArea,
     CardWidget,
@@ -43,6 +42,12 @@ from app.interfaces.component_market_interface.utils.utils import (
 )
 from app.interfaces.component_market_interface.widgets.component_card import (
     ComponentCard,
+)
+from app.interfaces.component_market_interface.ui.search_bar import (
+    SearchBarWithHistory,
+)
+from app.interfaces.component_market_interface.ui.search_history import (
+    SearchHistoryManager,
 )
 from app.scan_components import ComponentScanner
 from app.server_manager.cloud_bakup.canvas_cloud_manager import CanvasCloudManager
@@ -78,6 +83,9 @@ class PluginMarketplace(QWidget):
 
         self.scanner.register_on_change(self._on_local_changed)
         self.current_type = "component"
+
+        self._search_history_mgr = SearchHistoryManager()
+        self._search_bar = None
 
         self.init_ui()
         StyleSheet.COMPONENT_MARKET.apply(self)
@@ -172,9 +180,9 @@ class PluginMarketplace(QWidget):
     def _create_toolbar(self, parent_lay):
         toolbar = QHBoxLayout()
 
-        self.search_bar = SearchLineEdit()
-        self.search_bar.setPlaceholderText("搜索插件...")
-        self.search_bar.textChanged.connect(self._on_filter_changed)
+        self.search_bar = SearchBarWithHistory()
+        self.search_bar.search_signal.connect(self._on_filter_changed)
+        self.search_bar.history_changed.connect(self._on_history_changed)
         toolbar.addWidget(self.search_bar, 1)
 
         self.creator_filter = ComboBox()
@@ -285,12 +293,28 @@ class PluginMarketplace(QWidget):
         self.category_filter.setVisible(not is_settings)
         self.sort_combo.setVisible(not is_settings)
         self.batch_btn.setVisible(mode in ["market", "installed"])
-        self.upload_btn.setVisible(mode in ["installed", "uploads"])
+        if mode == "market":
+            self.batch_btn.setText("批量安装")
+            self.batch_btn.setIcon(FluentIcon.DOWNLOAD)
+        elif mode == "installed":
+            self.batch_btn.setText("批量上传")
+            self.batch_btn.setIcon(get_icon("upload"))
+        self.upload_btn.setVisible(mode in ["uploads"])
         self.refresh_btn.setVisible(not is_settings)
         self.select_all_check.setVisible(not is_settings)
 
         if not is_settings:
             self._refresh_current_view()
+
+    def _cleanup_worker(self, worker):
+        if worker in self._workers:
+            self._workers.remove(worker)
+        worker.deleteLater()
+
+    def _on_history_changed(self):
+        if self._search_bar is not None:
+            self._search_history_mgr._history = self._search_bar.get_history()
+            self._search_history_mgr._save_history()
 
     def _refresh_current_view(self):
         idx = self.stack.currentIndex()
@@ -403,15 +427,29 @@ class PluginMarketplace(QWidget):
             self._render_installed()
 
     def _fetch_cloud_plugins(self):
-        if self.active_worker and self.active_worker.isRunning():
+        if self.active_worker is not None and self.active_worker.isRunning():
             return
         self._start_task()
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
-        self.active_worker = GenericWorker(manager.fetch_all)
-        self.active_worker.finished.connect(self._on_cloud_loaded)
-        self.active_worker.error.connect(self._on_error)
-        self.active_worker.start()
+        worker = GenericWorker(manager.fetch_all)
+        self.active_worker = worker
+
+        def on_done(data):
+            self._cleanup_worker(worker)
+            if self.active_worker == worker:
+                self.active_worker = None
+            self._on_cloud_loaded(data)
+
+        def on_error(msg):
+            self._cleanup_worker(worker)
+            if self.active_worker == worker:
+                self.active_worker = None
+            self._on_error(msg)
+
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
+        worker.start()
 
     def _on_cloud_loaded(self, data):
         self._cloud_plugins = data or []
@@ -556,11 +594,26 @@ class PluginMarketplace(QWidget):
                         or ""
                     )
             else:
-                is_linked = True
+                cloud_ids = {
+                    p.get("plugin_id") or p.get("unique_id")
+                    for p in self._cloud_plugins
+                }
+                is_linked = plugin_id in cloud_ids
                 status = "match"
 
             is_mine = item.get("author") == self.cloud_mgr.config.user_name.value
-            is_admin = self.cloud_mgr.config.user_name.value == "martin98-afk"
+            admin_list = (
+                getattr(self.cloud_mgr.config, "admin_list", []).value
+                if hasattr(self.cloud_mgr.config, "admin_list")
+                else []
+            )
+            if isinstance(admin_list, str):
+                admin_list = [u.strip() for u in admin_list.split(",") if u.strip()]
+            is_admin = (
+                self.cloud_mgr.config.user_name.value in admin_list
+                if admin_list
+                else False
+            )
 
             card = ComponentCard(
                 item, mode, is_linked, is_admin or is_mine, status, view
@@ -577,7 +630,7 @@ class PluginMarketplace(QWidget):
             cards.append(cat_check)
 
         cat_check.stateChanged.connect(
-            lambda st, cs=items: self._on_category_select_all(st, cs, mode)
+            lambda st, cv=view: self._on_category_select_all(st, cv, mode)
         )
         v_lay.addLayout(grid)
         return view
@@ -649,21 +702,17 @@ class PluginMarketplace(QWidget):
                 manager.download_component, plugin_id, resource_path("")
             )
 
-        worker.finished.connect(
-            lambda: [
-                self._stop_task(),
-                self.force_refresh(),
-                InfoBar.success(
-                    "安装成功",
-                    data.get("name")
-                    or data.get("组件名称")
-                    or data.get("canvas_name")
-                    or "插件",
-                    parent=self,
-                ),
-            ]
-        )
-        worker.error.connect(self._on_error)
+        def on_done():
+            self._cleanup_worker(worker)
+            self._stop_task()
+            self.force_refresh()
+
+        def on_error(msg):
+            self._cleanup_worker(worker)
+            self._on_error(msg)
+
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
         self._workers.append(worker)
         worker.start()
 
@@ -697,21 +746,17 @@ class PluginMarketplace(QWidget):
                 resource_dir=data["resource_dir"],
             )
 
-        worker.finished.connect(
-            lambda: [
-                self._stop_task(),
-                self.force_refresh(),
-                InfoBar.success(
-                    "上传成功",
-                    data.get("name")
-                    or data.get("组件名称")
-                    or data.get("canvas_name")
-                    or "插件",
-                    parent=self,
-                ),
-            ]
-        )
-        worker.error.connect(self._on_error)
+        def on_done():
+            self._cleanup_worker(worker)
+            self._stop_task()
+            self.force_refresh()
+
+        def on_error(msg):
+            self._cleanup_worker(worker)
+            self._on_error(msg)
+
+        worker.finished.connect(on_done)
+        worker.error.connect(on_error)
         self._workers.append(worker)
         worker.start()
 
@@ -743,16 +788,27 @@ class PluginMarketplace(QWidget):
 
         manager = self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
 
-        def step_done():
-            nonlocal completed
-            completed += 1
-            self.progress_bar.setValue(completed)
-            if completed >= len(selected):
-                self._stop_task()
-                InfoBar.success(
-                    "批量安装完成", f"成功安装 {completed} 个插件", parent=self
-                )
-                self.force_refresh()
+        def make_done_callback(w):
+            def step_done():
+                self._cleanup_worker(w)
+                nonlocal completed
+                completed += 1
+                self.progress_bar.setValue(completed)
+                if completed >= len(selected):
+                    self._stop_task()
+                    InfoBar.success(
+                        "批量安装完成", f"成功安装 {completed} 个插件", parent=self
+                    )
+                    self.force_refresh()
+
+            return step_done
+
+        def make_error_callback(w):
+            def step_error(msg):
+                self._cleanup_worker(w)
+                self._on_error(msg)
+
+            return step_error
 
         for item in selected:
             plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -770,8 +826,8 @@ class PluginMarketplace(QWidget):
                     manager.download_component, plugin_id, resource_path("")
                 )
 
-            worker.finished.connect(step_done)
-            worker.error.connect(self._on_error)
+            worker.finished.connect(make_done_callback(worker))
+            worker.error.connect(make_error_callback(worker))
             self._workers.append(worker)
             worker.start()
 
@@ -794,16 +850,27 @@ class PluginMarketplace(QWidget):
                 self.canvas_mgr if self.current_type == "canvas" else self.cloud_mgr
             )
 
-            def step_done():
-                nonlocal completed
-                completed += 1
-                self.progress_bar.setValue(completed)
-                if completed >= len(selected):
-                    self._stop_task()
-                    self.force_refresh()
-                    InfoBar.success(
-                        "上传完成", f"成功上传 {completed} 个插件", parent=self
-                    )
+            def make_done_callback(w):
+                def step_done():
+                    self._cleanup_worker(w)
+                    nonlocal completed
+                    completed += 1
+                    self.progress_bar.setValue(completed)
+                    if completed >= len(selected):
+                        self._stop_task()
+                        self.force_refresh()
+                        InfoBar.success(
+                            "上传完成", f"成功上传 {completed} 个插件", parent=self
+                        )
+
+                return step_done
+
+            def make_error_callback(w):
+                def step_error(msg):
+                    self._cleanup_worker(w)
+                    self._on_error(msg)
+
+                return step_error
 
             for item in selected:
                 plugin_id = item.get("plugin_id") or item.get("unique_id")
@@ -835,8 +902,8 @@ class PluginMarketplace(QWidget):
                         resource_dir=item["resource_dir"],
                     )
 
-                worker.finished.connect(step_done)
-                worker.error.connect(self._on_error)
+                worker.finished.connect(make_done_callback(worker))
+                worker.error.connect(make_error_callback(worker))
                 self._workers.append(worker)
                 worker.start()
 
@@ -856,21 +923,18 @@ class PluginMarketplace(QWidget):
         ).exec():
             self._start_task()
             worker = GenericWorker(delete_method, plugin_id)
-            worker.finished.connect(
-                lambda: [
-                    self._stop_task(),
-                    self.force_refresh(),
-                    InfoBar.success(
-                        "已删除",
-                        data.get("name")
-                        or data.get("组件名称")
-                        or data.get("canvas_name")
-                        or "插件",
-                        parent=self,
-                    ),
-                ]
-            )
-            worker.error.connect(self._on_error)
+
+            def on_done():
+                self._cleanup_worker(worker)
+                self._stop_task()
+                self.force_refresh()
+
+            def on_error(msg):
+                self._cleanup_worker(worker)
+                self._on_error(msg)
+
+            worker.finished.connect(on_done)
+            worker.error.connect(on_error)
             self._workers.append(worker)
             worker.start()
 
@@ -964,12 +1028,11 @@ class PluginMarketplace(QWidget):
 
         cat_check.blockSignals(False)
 
-    def _on_category_select_all(self, state, cards, mode):
+    def _on_category_select_all(self, state, cat_widget, mode):
         if state == Qt.PartiallyChecked:
             return
 
-        page = self.pages[mode].widget()
-        for card in page.findChildren(ComponentCard):
+        for card in cat_widget.findChildren(ComponentCard):
             if card.isVisible():
                 card.check_box.setChecked(state == Qt.Checked)
 

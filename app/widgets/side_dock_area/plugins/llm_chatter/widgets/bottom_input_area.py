@@ -65,7 +65,7 @@ class SendableTextEdit(QTextEdit):
         """)
 
         self._agent_combo = ComboBox(self)
-        self._agent_combo.setFixedSize(126, 28)
+        self._agent_combo.setFixedSize(86, 28)
         self._agent_combo.setStyleSheet("""
             ComboBox {
                 background-color: rgba(255, 255, 255, 0.05);

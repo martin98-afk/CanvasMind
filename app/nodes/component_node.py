@@ -124,10 +124,21 @@ def create_node_class(full_path, file_path, parent_window=None):
         def uuid(self):
             return self.model.type_.split("StatusDynamicNode_")[1]
 
+        @property
+        def port_info(self):
+            port_info = "输入端口: "
+            port_infos = self.comp_cls.get_inputs()
+            for port_name, label, connection, port_type, description in port_infos:
+                port_info += f"{port_name} ({label})({port_type.value})({connection.value}) {description};"
+            port_info += "\n输出端口: "
+            port_infos = self.comp_cls.get_outputs()
+            for port_name, label, port_type, description in port_infos:
+                port_info += f"{port_name} ({label})({port_type.value}) {description};"
+            return port_info
+
         def build_outputs(self):
-            comp_cls = ComponentScanner().get_component_by_uuid(self.uuid)
-            port_infos = comp_cls.get_outputs()
-            port_sub_types = comp_cls.get_output_sub_types()
+            port_infos = self.comp_cls.get_outputs()
+            port_sub_types = self.comp_cls.get_output_sub_types()
             for (port_name, label, port_type, description), sub_type in zip(
                 port_infos, port_sub_types
             ):

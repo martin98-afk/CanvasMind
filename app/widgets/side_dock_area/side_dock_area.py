@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Type, Optional, Dict
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QSize, QTimer, QRectF, QEvent, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QTimer, QRectF, QEvent, QPoint, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget,
     QStackedWidget,
@@ -18,6 +18,113 @@ from .registry import SideDockRegistry
 from .tool_window import DockPosition, ToolWindow, ToolWindowTitleBar
 from ..basic_widget.splitter import ModernSplitter
 from ...utils.utils import get_icon
+
+
+class OpacitySlider(QWidget):
+    opacityChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._opacity = 100
+        self.setFixedWidth(36)
+        self.setFixedHeight(200)
+        self._is_dragging = False
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self._knob_height = 12
+        self._track_padding = 10
+
+    def paintEvent(self, e):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+
+        bg_color = (
+            QColor(38, 38, 38, 230) if isDarkTheme() else QColor(245, 245, 245, 230)
+        )
+        painter.setBrush(bg_color)
+        painter.drawRoundedRect(self.rect(), 8, 8)
+
+        track_height = self.height() - 2 * self._track_padding
+        track_width = 4
+        track_x = (self.width() - track_width) // 2
+        track_y = self._track_padding
+
+        track_bg = (
+            QColor(100, 100, 100, 150) if isDarkTheme() else QColor(180, 180, 180, 150)
+        )
+        painter.setBrush(track_bg)
+        painter.drawRoundedRect(track_x, track_y, track_width, track_height, 2, 2)
+
+        fill_height = int(track_height * self._opacity / 100)
+        fill_color = QColor("#0078d4")
+        painter.setBrush(fill_color)
+        painter.drawRoundedRect(
+            track_x,
+            track_y + track_height - fill_height,
+            track_width,
+            fill_height,
+            2,
+            2,
+        )
+
+        knob_y = track_y + track_height - fill_height - self._knob_height // 2
+        knob_color = QColor(255, 255, 255) if isDarkTheme() else QColor(80, 80, 80)
+        painter.setBrush(knob_color)
+        painter.drawEllipse(
+            QPoint(self.width() // 2, knob_y + self._knob_height // 2), 7, 7
+        )
+
+        painter.setPen(QColor(200, 200, 200) if isDarkTheme() else QColor(80, 80, 80))
+        painter.setFont(self.font())
+        painter.drawText(
+            self.rect(), Qt.AlignBottom | Qt.AlignHCenter, f"{self._opacity}%"
+        )
+
+    def setOpacity(self, value: int):
+        self._opacity = max(0, min(100, value))
+        self.update()
+        self.opacityChanged.emit(self._opacity)
+
+    def opacity(self) -> int:
+        return self._opacity
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self._is_dragging = True
+            self._update_from_mouse(e.pos())
+            self.update()
+
+    def mouseMoveEvent(self, e):
+        if self._is_dragging:
+            self._update_from_mouse(e.pos())
+            self.update()
+
+    def mouseReleaseEvent(self, e):
+        self._is_dragging = False
+
+    def enterEvent(self, e):
+        super().enterEvent(e)
+        if (
+            hasattr(self.parent(), "_hide_timer")
+            and self.parent()._hide_timer.isActive()
+        ):
+            self.parent()._hide_timer.stop()
+
+    def leaveEvent(self, e):
+        super().leaveEvent(e)
+        if hasattr(self.parent(), "_hide_timer"):
+            self.parent()._hide_timer.start()
+
+    def _update_from_mouse(self, pos: QPoint):
+        track_height = self.height() - 2 * self._track_padding
+        rel_y = pos.y() - self._track_padding
+        value = int((1 - rel_y / track_height) * 100)
+        self.setOpacity(value)
+
+    def wheelEvent(self, e):
+        delta = e.angleDelta().y()
+        self.setOpacity(self._opacity + (delta // 120) * 5)
 
 
 class AdaptiveStackedWidget(QStackedWidget):
@@ -43,6 +150,10 @@ class ToolPopupDialog(QDialog):
         self._restore_btn = None
         self._normal_geometry = None
         self._is_closing = False
+        self._geometry_save_timer = QTimer(self)
+        self._geometry_save_timer.setSingleShot(True)
+        self._geometry_save_timer.setInterval(160)
+        self._geometry_save_timer.timeout.connect(self._save_geometry)
         self.setWindowTitle(tool_instance.name)
         self.setWindowFlags(
             Qt.Dialog
@@ -87,6 +198,14 @@ class ToolPopupDialog(QDialog):
 
         self.destroyed.connect(self._on_destroyed)
 
+        self._opacity_slider = None
+        self._original_opacity = None
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.setInterval(200)
+        self._hide_timer.timeout.connect(self._check_hide_slider)
+        self.setMouseTracking(True)
+
     def _toggle_maximize(self):
         if self._is_maximized:
             self.showNormal()
@@ -123,6 +242,8 @@ class ToolPopupDialog(QDialog):
     def _save_geometry(self):
         from PyQt5.QtCore import QSettings
 
+        if self._is_maximized:
+            return
         settings = QSettings("WorkFlowGUI", "ToolPopup")
         key = f"popup_geometry_{self.tool_instance.name}"
         settings.setValue(key, self.saveGeometry())
@@ -191,14 +312,16 @@ class ToolPopupDialog(QDialog):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        opacity = self.windowOpacity()
+
         if isDarkTheme():
-            bg_color = QColor(38, 38, 38)
-            border_color = QColor(55, 55, 55)
-            shadow_color = QColor(0, 0, 0, 120)
+            bg_color = QColor(38, 38, 38, int(255 * opacity))
+            border_color = QColor(55, 55, 55, int(255 * opacity))
+            shadow_color = QColor(0, 0, 0, int(120 * opacity))
         else:
-            bg_color = QColor(245, 245, 245)
-            border_color = QColor(200, 200, 200)
-            shadow_color = QColor(0, 0, 0, 50)
+            bg_color = QColor(245, 245, 245, int(255 * opacity))
+            border_color = QColor(200, 200, 200, int(255 * opacity))
+            shadow_color = QColor(0, 0, 0, int(50 * opacity))
 
         painter.setBrush(shadow_color)
         painter.setPen(Qt.NoPen)
@@ -212,6 +335,7 @@ class ToolPopupDialog(QDialog):
         if event.button() == Qt.LeftButton:
             title_bar = self.tool_instance.get_title_bar()
             if title_bar and event.y() < title_bar.height():
+                self._hide_opacity_slider()
                 self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
                 event.accept()
 
@@ -219,6 +343,9 @@ class ToolPopupDialog(QDialog):
         if event.buttons() == Qt.LeftButton and self._drag_pos:
             self.move(event.globalPos() - self._drag_pos)
             event.accept()
+        else:
+            self._show_opacity_slider()
+            self._hide_timer_start()
 
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
@@ -228,17 +355,66 @@ class ToolPopupDialog(QDialog):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._save_geometry()
+        if not self._is_closing:
+            self._geometry_save_timer.start()
 
     def moveEvent(self, event):
         super().moveEvent(event)
-        if self._is_maximized:
+        if self._is_maximized or self._is_closing:
             return
-        self._save_geometry()
+        self._geometry_save_timer.start()
 
     def _on_destroyed(self):
         if hasattr(self.tool_instance, "set_allowed_update"):
             self.tool_instance.set_allowed_update(False)
+
+    def _show_opacity_slider(self):
+        if self._opacity_slider is None:
+            self._opacity_slider = OpacitySlider(self)
+            self._opacity_slider.opacityChanged.connect(self._on_opacity_changed)
+        self._opacity_slider.setOpacity(int(self.windowOpacity() * 100))
+        pos = self.mapToGlobal(QPoint(self.width() + 5, 10))
+        self._opacity_slider.move(pos)
+        self._opacity_slider.show()
+        self._opacity_slider.raise_()
+
+    def _hide_opacity_slider(self):
+        if self._opacity_slider:
+            self._opacity_slider.hide()
+
+    def _hide_timer_start(self):
+        self._hide_timer.start()
+
+    def _on_opacity_changed(self, value: int):
+        self.setWindowOpacity(value / 100)
+
+    def _check_hide_slider(self):
+        if not self._opacity_slider or self._opacity_slider._is_dragging:
+            return
+        slider_pos = self._opacity_slider.mapFromGlobal(self.cursor().pos())
+        if self._opacity_slider.rect().contains(slider_pos):
+            return
+        dialog_pos = self.mapFromGlobal(self.cursor().pos())
+        if not self.rect().contains(dialog_pos):
+            self._hide_opacity_slider()
+
+    def eventFilter(self, obj, event):
+        if obj == self._popup_btn and event.type() == QEvent.Enter:
+            self._popup_btn.setStyleSheet(
+                "background-color: #e81123; border-radius: 4px;"
+            )
+        elif obj == self._popup_btn and event.type() == QEvent.Leave:
+            self._popup_btn.setStyleSheet("")
+        return super().eventFilter(obj, event)
+
+    def enterEvent(self, e):
+        super().enterEvent(e)
+        self._show_opacity_slider()
+        self._hide_timer.stop()
+
+    def leaveEvent(self, e):
+        super().leaveEvent(e)
+        self._hide_timer_start()
 
 
 class SideDockArea(QWidget):
@@ -265,6 +441,7 @@ class SideDockArea(QWidget):
             self._top_visible = False
             self._bottom_visible = False
             self.last_content_visible = False
+            self._last_splitter_state = None
 
             self.splitter.addWidget(self.top_stack)
             self.splitter.addWidget(self.bottom_stack)
@@ -512,6 +689,11 @@ class SideDockArea(QWidget):
         self._handle_tool_reposition(tool_name, new_pos)
 
     def _update_splitter(self):
+        state = (self._top_visible, self._bottom_visible, self.last_content_visible)
+        if state == self._last_splitter_state:
+            return
+        self._last_splitter_state = state
+
         if self.last_content_visible and not (
             self._top_visible or self._bottom_visible
         ):
