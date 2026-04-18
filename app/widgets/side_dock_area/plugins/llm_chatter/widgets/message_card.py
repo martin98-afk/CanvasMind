@@ -383,6 +383,8 @@ class ConsoleMonitorPage(QWebEnginePage):
                     )
                 except:
                     pass
+            elif "context_lost" in msg:
+                self._handle_context_lost()
             else:
                 try:
                     p = msg.split(":")
@@ -391,6 +393,9 @@ class ConsoleMonitorPage(QWebEnginePage):
                     )
                 except:
                     pass
+
+    def _handle_context_lost(self):
+        self.contentReady.emit()
 
 
 class CodeWebViewer(QWebEngineView):
@@ -405,8 +410,12 @@ class CodeWebViewer(QWebEngineView):
         self._is_js_ready = False
         self._last_rendered_html = ""
         self._last_rendered_markdown = ""
-        self._min_render_interval = 120
+        self._min_render_interval = 50
         self._height_report_pending = False
+        self._resize_debounce_timer = QTimer(self)
+        self._resize_debounce_timer.setSingleShot(True)
+        self._resize_debounce_timer.setInterval(100)
+        self._resize_debounce_timer.timeout.connect(self._do_resize_check)
 
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
@@ -492,6 +501,13 @@ class CodeWebViewer(QWebEngineView):
                 self.page().runJavaScript("reportHeight();")
         except RuntimeError:
             # 捕获可能的 "wrapped C/C++ object has been deleted"
+            pass
+
+    def _do_resize_check(self):
+        try:
+            if self.page():
+                self.page().runJavaScript("reportHeight();")
+        except RuntimeError:
             pass
 
     def _on_height_reported(self, h):
@@ -904,6 +920,14 @@ class CodeWebViewer(QWebEngineView):
                 window.addEventListener('load', () => {{
                     reportHeight();
                 }});
+                window.addEventListener('webglcontextlost', (e) => {{
+                    e.preventDefault();
+                    console.log('pywebview_action:context_lost');
+                }}, false);
+                window.addEventListener('webglcontextrestored', () => {{
+                    console.log('pywebview_ready');
+                    reportHeight();
+                }}, false);
                 window.pywebview = {{ reportHeight: reportHeight }};
             </script>
         </body>
@@ -919,7 +943,10 @@ class CodeWebViewer(QWebEngineView):
 
         if not self._is_js_ready:
             return
-        self._schedule_render()
+        if self._streaming and len(text) > 3:
+            self._schedule_render(immediate=True)
+        else:
+            self._schedule_render()
 
     def _render_markdown_to_html(self, raw_md: str) -> str:
         safe_md = _sanitize_incomplete_markdown(raw_md)
@@ -986,10 +1013,11 @@ class CodeWebViewer(QWebEngineView):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # 使用成员变量 timer，替代 lambda
+        if self._streaming:
+            return
         if not self._height_report_pending:
             self._height_report_pending = True
-        self._resize_timer.start()
+        self._resize_debounce_timer.start()
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）
@@ -1010,6 +1038,8 @@ class CodeWebViewer(QWebEngineView):
             self._render_timer.stop()
         if self._resize_timer.isActive():
             self._resize_timer.stop()
+        if self._resize_debounce_timer.isActive():
+            self._resize_debounce_timer.stop()
         if self.page():
             self.page().deleteLater()
         super().deleteLater()
