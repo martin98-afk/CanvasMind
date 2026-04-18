@@ -40,6 +40,10 @@ class CanvasPage(QWidget):
     env_changed = pyqtSignal(str)
     canvas_set_prop_requested = pyqtSignal(str, dict)
     canvas_run_node_requested = pyqtSignal(str, str)
+    canvas_create_node_requested = pyqtSignal(str, dict)  # node_name, position
+    canvas_connect_nodes_requested = pyqtSignal(
+        str, str, str, str
+    )  # from_node, from_port, to_node, to_port
 
     _component_cache = {}  # 类级别缓存
 
@@ -401,6 +405,53 @@ class CanvasPage(QWidget):
         elif mode == "workflow":
             self.canvas_runner.run_workflow()
 
+    def _on_canvas_create_node_requested(self, node_name: str, position: dict):
+        try:
+            node = self.graph.create_node("dynamic.DYNAMIC_CODE")
+            if node_name:
+                node.set_name(node_name)
+            if position and "x" in position and "y" in position:
+                node.set_pos(position["x"], position["y"])
+        except Exception as e:
+            logger.error(f"创建节点失败: {e}")
+
+    def _on_canvas_connect_nodes_requested(
+        self, from_node: str, from_port: str, to_node: str, to_port: str
+    ):
+        from_node_obj = None
+        to_node_obj = None
+        for n in self.graph.all_nodes():
+            if n.name() == from_node:
+                from_node_obj = n
+            if n.name() == to_node:
+                to_node_obj = n
+        if not from_node_obj or not to_node_obj:
+            logger.error(
+                f"连接失败: 未找到节点 from_node={from_node}, to_node={to_node}"
+            )
+            return
+
+        output_port = None
+        input_port = None
+        for port in from_node_obj.output_ports():
+            if port.name() == from_port:
+                output_port = port
+                break
+        for port in to_node_obj.input_ports():
+            if port.name() == to_port:
+                input_port = port
+                break
+        if not output_port or not input_port:
+            logger.error(
+                f"连接失败: 未找到端口 from_port={from_port}, to_port={to_port}"
+            )
+            return
+
+        try:
+            output_port.connect_to(input_port)
+        except Exception as e:
+            logger.error(f"连接失败: {e}")
+
     # --- 信号绑定 ---
     def _invalidate_component_cache(self):
         """组件变化时清除缓存"""
@@ -545,6 +596,10 @@ class CanvasPage(QWidget):
         )
         self.canvas_set_prop_requested.connect(self._on_canvas_set_prop_requested)
         self.canvas_run_node_requested.connect(self._on_canvas_run_node_requested)
+        self.canvas_create_node_requested.connect(self._on_canvas_create_node_requested)
+        self.canvas_connect_nodes_requested.connect(
+            self._on_canvas_connect_nodes_requested
+        )
 
     def _on_active_graph_changed(self, graph):
         """当前活跃 graph 变化时，同步工具对象和图信号绑定。"""

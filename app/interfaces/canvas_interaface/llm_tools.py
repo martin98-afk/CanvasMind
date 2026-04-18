@@ -307,6 +307,65 @@ class CanvasTools:
 
         return ToolResult(True, content="\n".join(lines))
 
+    def canvas_create_node(
+        self,
+        node_name: Optional[str] = None,
+        position: Optional[Dict[str, float]] = None,
+    ) -> ToolResult:
+        """
+        创建代码编辑节点
+
+        Args:
+            node_name: 可选，节点名称，默认自动生成
+            position: 可选，节点位置 {"x": float, "y": float}，默认在画布中央
+        """
+        try:
+            self.parent.canvas_create_node_requested.emit(
+                node_name or "", position or {}
+            )
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已发送创建代码编辑节点请求: {node_name or '自动命名'}",
+                    "node_name": node_name or "自动生成",
+                },
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"创建节点失败: {str(e)}")
+
+    def canvas_connect_nodes(
+        self,
+        from_node: str,
+        from_port: str,
+        to_node: str,
+        to_port: str,
+    ) -> ToolResult:
+        """
+        连接两个节点的端口
+
+        Args:
+            from_node: 输出节点名称
+            from_port: 输出端口名称
+            to_node: 输入节点名称
+            to_port: 输入端口名称
+        """
+        try:
+            self.parent.canvas_connect_nodes_requested.emit(
+                from_node, from_port, to_node, to_port
+            )
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已发送连接请求: {from_node}.{from_port} -> {to_node}.{to_port}",
+                    "from_node": from_node,
+                    "from_port": from_port,
+                    "to_node": to_node,
+                    "to_port": to_port,
+                },
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"连接失败: {str(e)}")
+
     def canvas_set_prop(
         self, node_name: str, properties: Dict, target: Optional[str] = None
     ) -> ToolResult:
@@ -527,6 +586,59 @@ def get_canvas_tools_schema() -> List[Dict]:
                 "name": "canvas_nodes",
                 "description": "列出画布上的所有节点",
                 "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_create_node",
+                "description": "创建代码编辑节点，用于编写自定义代码逻辑",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_name": {
+                            "type": "string",
+                            "description": "可选，节点名称，默认自动生成",
+                        },
+                        "position": {
+                            "type": "object",
+                            "description": '可选，节点位置，例如 {"x": 100, "y": 200}',
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "number"},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_connect_nodes",
+                "description": "连接两个节点的端口，建立数据流",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "from_node": {
+                            "type": "string",
+                            "description": "输出节点名称",
+                        },
+                        "from_port": {
+                            "type": "string",
+                            "description": "输出端口名称",
+                        },
+                        "to_node": {
+                            "type": "string",
+                            "description": "输入节点名称",
+                        },
+                        "to_port": {
+                            "type": "string",
+                            "description": "输入端口名称",
+                        },
+                    },
+                    "required": ["from_node", "from_port", "to_node", "to_port"],
+                },
             },
         },
         {

@@ -287,6 +287,16 @@ class ToolExecutor:
                 node_name=args.get("node_name", ""),
                 property_names=args.get("property_names"),
             ),
+            "canvas_create_node": lambda: self._canvas_tools_executor.canvas_create_node(
+                node_name=args.get("node_name"),
+                position=args.get("position"),
+            ),
+            "canvas_connect_nodes": lambda: self._canvas_tools_executor.canvas_connect_nodes(
+                from_node=args.get("from_node", ""),
+                from_port=args.get("from_port", ""),
+                to_node=args.get("to_node", ""),
+                to_port=args.get("to_port", ""),
+            ),
         }
 
         executor = canvas_tool_map.get(tool_name)
