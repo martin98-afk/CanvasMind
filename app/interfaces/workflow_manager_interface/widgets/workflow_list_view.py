@@ -40,6 +40,7 @@ class WorkflowListItem(QWidget):
         self.file_info = file_info
         self.is_selected = False
         self._load_cancelled = False
+        self._size_requested = False
         self._setup_ui()
         self._apply_file_info()
         self._load_thumbnail_delayed()
@@ -150,9 +151,11 @@ class WorkflowListItem(QWidget):
             self.ctime_label.setText("--")
             self.size_label.setText("--")
         self.folder_size_label.setText("...")
-        self._request_folder_size()
 
     def _request_folder_size(self):
+        if self._size_requested:
+            return
+        self._size_requested = True
         folder = self.workflow_path.parent
 
         def update(folder_size: int):
@@ -173,6 +176,7 @@ class WorkflowListItem(QWidget):
         FolderSizeCache.request(folder, update)
 
     def refresh_folder_size(self):
+        self._size_requested = False
         FolderSizeCache.invalidate(self.workflow_path.parent)
         self.folder_size_label.setText("...")
         self._request_folder_size()
@@ -203,12 +207,18 @@ class WorkflowListItem(QWidget):
         if watched is self or watched.parent() is self:
             if event.type() == QEvent.MouseButtonPress:
                 mouse_event = event
-                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                if (
+                    isinstance(mouse_event, QMouseEvent)
+                    and mouse_event.button() == Qt.LeftButton
+                ):
                     self.item_selected.emit(self.workflow_path)
                     return watched is not self
             elif event.type() == QEvent.MouseButtonDblClick:
                 mouse_event = event
-                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                if (
+                    isinstance(mouse_event, QMouseEvent)
+                    and mouse_event.button() == Qt.LeftButton
+                ):
                     self._on_open()
                     return True
         return super().eventFilter(watched, event)
@@ -237,6 +247,8 @@ class WorkflowListItem(QWidget):
 
     def showEvent(self, event):
         self._load_cancelled = False
+        if not self._size_requested:
+            self._request_folder_size()
         super().showEvent(event)
 
 
@@ -256,6 +268,7 @@ class WorkflowListView(QWidget):
         self._ordered_paths: List[Path] = []
         self._render_count = 0
         self._batch_inflight = False
+        self._view_mode = None
         self._setup_ui()
         self.scroll_area.viewport().installEventFilter(self)
 
@@ -347,6 +360,12 @@ class WorkflowListView(QWidget):
     def set_file_info_map(self, file_info_map: Dict[str, dict]):
         self._file_info_map = file_info_map
 
+    def set_view_mode(self, mode: str):
+        self._view_mode = mode
+        if mode == "list" and self._ordered_paths:
+            self._render_count = 0
+            self._render_more_items(len(self._ordered_paths))
+
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
         target_paths = set(ordered_paths)
@@ -357,13 +376,6 @@ class WorkflowListView(QWidget):
 
         if self._current_path not in target_paths:
             self._current_path = None
-
-        for path in self._ordered_paths:
-            if path in self._item_widgets:
-                widget = self._item_widgets[path]
-                widget.update_file_info(self._file_info_map.get(str(path)))
-                self.content_layout.removeWidget(widget)
-                widget.hide()
 
         self._render_count = 0
         self._batch_inflight = False
@@ -429,11 +441,18 @@ class WorkflowListView(QWidget):
 
     def eventFilter(self, watched, event):
         if watched is self.scroll_area.viewport():
-            target_item = self._item_at_viewport_pos(event.pos()) if hasattr(event, "pos") else None
+            target_item = (
+                self._item_at_viewport_pos(event.pos())
+                if hasattr(event, "pos")
+                else None
+            )
             if target_item is not None:
                 if event.type() == QEvent.MouseButtonDblClick:
                     mouse_event = event
-                    if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                    if (
+                        isinstance(mouse_event, QMouseEvent)
+                        and mouse_event.button() == Qt.LeftButton
+                    ):
                         target_item._on_open()
                         return True
         return super().eventFilter(watched, event)

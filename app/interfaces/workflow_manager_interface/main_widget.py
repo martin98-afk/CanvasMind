@@ -133,7 +133,12 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(
-            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称"), self.tr("缓存大小")]
+            [
+                self.tr("修改时间"),
+                self.tr("创建时间"),
+                self.tr("名称"),
+                self.tr("缓存大小"),
+            ]
         )
         self.sort_field_combo.setCurrentIndex(0)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
@@ -323,7 +328,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        removed_paths = [path for path in self._card_map if path not in self._known_files]
+        removed_paths = [
+            path for path in self._card_map if path not in self._known_files
+        ]
         for wf_path in removed_paths:
             card = self._card_map.pop(wf_path, None)
             if card is not None:
@@ -556,7 +563,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         if self._view_mode == VIEW_MODE_GRID:
             rendered_count = self._grid_render_count
         else:
-            rendered_count = getattr(self.workflow_list_view, "rendered_count", lambda: 0)()
+            rendered_count = getattr(
+                self.workflow_list_view, "rendered_count", lambda: 0
+            )()
 
         parts = [
             self.tr("总数 {0}").format(total_count),
