@@ -43,62 +43,76 @@ from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
 def fetch_provider_models(
     api_url: str, api_key: str, provider_name: str, auth_type: str = "bearer"
 ) -> list:
-    """Fetch model list from provider API."""
+    """Fetch model list from provider API. Returns (success, models_or_error_msg)."""
     headers = {"Authorization": f"Bearer {api_key}"} if auth_type == "bearer" else {}
-    url = f"{api_url.rstrip('/')}/models"
 
-    try:
-        print(f"[ProviderEditDialog] Fetching models from {url}")
-        response = requests.get(url, headers=headers, timeout=15)
-        print(f"[ProviderEditDialog] Response status: {response.status_code}")
-        print(f"[ProviderEditDialog] Response body: {response.text[:500]}")
+    urls_to_try = []
+    if provider_name == "MiniMax (月之暗面)":
+        urls_to_try = [
+            f"{api_url.rstrip('/')}/v1/models",
+            f"{api_url.rstrip('/')}/api/models",
+        ]
+    elif provider_name == "DeepSeek":
+        urls_to_try = [f"{api_url.rstrip('/')}/models"]
+    else:
+        urls_to_try = [
+            f"{api_url.rstrip('/')}/models",
+            f"{api_url.rstrip('/')}/v1/models",
+        ]
 
-        if response.status_code == 200:
-            data = response.json()
+    last_error = ""
+    for url in urls_to_try:
+        try:
+            print(f"[ProviderEditDialog] Trying {url}")
+            response = requests.get(url, headers=headers, timeout=10)
+            print(f"[ProviderEditDialog] Response status: {response.status_code}")
 
-            if isinstance(data, dict):
-                if "data" in data:
-                    models = []
-                    for m in data["data"]:
-                        if isinstance(m, dict):
-                            model_id = (
-                                m.get("id") or m.get("name") or m.get("model", "")
-                            )
-                            if model_id:
-                                models.append(model_id)
-                        elif isinstance(m, str):
-                            models.append(m)
-                    return models
-                elif "models" in data:
-                    return [
-                        m.get("id") or m.get("name", "")
-                        for m in data["models"]
-                        if isinstance(m, dict)
-                    ]
-                elif "object" in data and isinstance(data["object"], list):
-                    return [
-                        m.get("id", "") for m in data["object"] if isinstance(m, dict)
-                    ]
-                else:
-                    for key in ["models", "items", "result", "model_list"]:
+            if response.status_code == 200:
+                data = response.json()
+
+                if isinstance(data, dict):
+                    if "data" in data:
+                        return [
+                            m.get("id") or m.get("name", "") or m.get("model", "")
+                            for m in data["data"]
+                            if isinstance(m, dict)
+                        ]
+                    elif "models" in data:
+                        return [
+                            m.get("id") or m.get("name", "")
+                            for m in data["models"]
+                            if isinstance(m, dict)
+                        ]
+                    elif "object" in data and isinstance(data["object"], list):
+                        return [
+                            m.get("id", "")
+                            for m in data["object"]
+                            if isinstance(m, dict)
+                        ]
+                    for key in ["items", "result"]:
                         if key in data and isinstance(data[key], list):
                             return [
                                 m.get("id")
-                                or m.get("name")
+                                or m.get("name", "")
                                 or (m if isinstance(m, str) else "")
                                 for m in data[key]
                             ]
-            elif isinstance(data, list):
-                return [
-                    m.get("id", "") if isinstance(m, dict) else str(m) for m in data
-                ]
+                elif isinstance(data, list):
+                    return [
+                        m.get("id", "") if isinstance(m, dict) else str(m) for m in data
+                    ]
+            else:
+                last_error = f"HTTP {response.status_code}"
 
-    except requests.exceptions.Timeout:
-        print(f"[ProviderEditDialog] Timeout fetching models from {url}")
-    except requests.exceptions.ConnectionError as e:
-        print(f"[ProviderEditDialog] Connection error fetching models from {url}: {e}")
-    except Exception as e:
-        print(f"[ProviderEditDialog] Error fetching models: {e}")
+        except requests.exceptions.Timeout:
+            last_error = "请求超时"
+        except requests.exceptions.ConnectionError:
+            last_error = "连接失败"
+        except Exception as e:
+            last_error = str(e)
+
+    if last_error:
+        print(f"[ProviderEditDialog] All attempts failed. Last error: {last_error}")
     return []
 
 
@@ -355,7 +369,8 @@ class ProviderEditDialog(QDialog):
             self.nameCombo.currentTextChanged.connect(self._on_provider_changed)
             name_row.addWidget(self.nameCombo, 1)
             connection_layout.addLayout(name_row)
-            template = FREE_PROVIDERS.get("DeepSeek", {})
+            first_provider = self.nameCombo.currentText()
+            template = FREE_PROVIDERS.get(first_provider, {})
         elif self.provider_name in FREE_PROVIDERS:
             template = FREE_PROVIDERS[self.provider_name]
             name_row = QHBoxLayout()
@@ -508,11 +523,13 @@ class ProviderEditDialog(QDialog):
         self.cancelBtn.clicked.connect(self.reject)
         self.saveBtn.clicked.connect(self._on_save)
 
+        if self.is_new:
+            self._on_provider_changed(self.nameCombo.currentText())
+
     def _on_provider_changed(self, name: str):
         if name in FREE_PROVIDERS:
             template = FREE_PROVIDERS[name]
-            if not self.apiKeyEdit.text().strip():
-                self.apiUrlEdit.setText(template.get("API_URL", ""))
+            self.apiUrlEdit.setText(template.get("API_URL", ""))
             self.modelCombo.clear()
             if name in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS[name])
@@ -679,19 +696,9 @@ class ProviderListSettingCard(ExpandSettingCard):
             if isinstance(qconfig.get(self.configItem), dict)
             else {}
         )
-        print(
-            f"[_show_edit_dialog] name={name}, providers keys={list(self.providers.keys())}"
-        )
-        print(
-            f"[_show_edit_dialog] looking up '{name}', found={name in self.providers}"
-        )
-        if name in self.providers:
-            print(f"[_show_edit_dialog] found info: {self.providers[name]}")
         current_info = self.providers.get(name, {})
         if not current_info:
             current_info = info
-            print(f"[_show_edit_dialog] fell back to item info: {current_info}")
-        print(f"[_show_edit_dialog] using info: {current_info}")
         dialog = ProviderEditDialog(name, current_info, False, self.home)
         if dialog.exec():
             new_name, new_info = dialog.get_result()
