@@ -99,6 +99,7 @@ def create_trigger_node(parent_window):
             w = None
             if p_type == PropertyType.CHOICE:
                 w = ComboBoxWidgetWrapper(self.view, name, label, conf["choices"], z_value, self.parent_window)
+                self.set_property(f"_{name}_choices", conf["choices"])
             elif p_type == PropertyType.BOOL:
                 w = CheckBoxWidgetWrapper(self.view, name, label, conf["default"], self.parent_window, z_value)
             elif p_type == PropertyType.TEXT:

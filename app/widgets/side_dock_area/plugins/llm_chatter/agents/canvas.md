@@ -64,7 +64,7 @@ canvas_connect_nodes(
 ```python
 {
     "name": "端口名称",      # 端口的唯一标识符
-    "type": "文本;整数;;浮点数;布尔值列表/ARRAY;csv;json;excel;内存对象;文件;sklearn模型;torch模型;图片",  # 端口数据类型
+    "type": "文本;整数;浮点数;布尔值列表/ARRAY;csv;json;excel;内存对象;文件;sklearn模型;torch模型;图片",  # 端口数据类型
     "conn_type": "单输入/多输入"  # SINGLE=单输入, MULTIPLE=多输入
 }
 ```
@@ -73,7 +73,7 @@ canvas_connect_nodes(
 ```python
 {
     "name": "端口名称",      # 端口的唯一标识符
-    "type": "文本;整数;;浮点数;布尔值列表/ARRAY;csv;json;excel;内存对象;文件;上传;sklearn模型;torch模型;图片"  # 端口数据类型
+    "type": "文本;整数;浮点数;布尔值列表/ARRAY;csv;json;excel;内存对象;文件;上传;sklearn模型;torch模型;图片"  # 端口数据类型
 }
 ```
 
@@ -86,8 +86,6 @@ canvas_connect_nodes(
 | `input_ports` | 输入端口定义列表 | `[{"name": "data", "type": "TEXT"}]` |
 | `output_ports` | 输出端口定义列表 | `[{"name": "result", "type": "TEXT"}]` |
 | `code` | 执行代码 | `def run(self, params, inputs=None): ...` |
-| `requirements` | 依赖库 | `pandas, numpy` |
-| `glue_code_template` | 胶水代码模板 | 空白模板、数据处理模板等 |
 
 ### 执行代码规范
 
@@ -112,19 +110,14 @@ def run(self, params, inputs=None):
 ### 典型使用场景
 
 **场景1：数据转换节点**
-- 输入端口：`{"name": "data", "type": "TEXT"}`
+- 输入端口：`{"name": "data", "type": "文本"}`
 - 代码：接收文本，进行处理，返回结果
-- 输出端口：`{"name": "result", "type": "TEXT"}`
+- 输出端口：`{"name": "result", "type": "文本"}`
 
-**场景2：条件分支节点**
-- 输入端口：`{"name": "condition", "type": "BOOLEAN"}`, `{"name": "true_value", "type": "OBJECT"}`, `{"name": "false_value", "type": "OBJECT"}`
-- 代码：根据 condition 选择返回 true_value 或 false_value
-- 输出端口：`{"name": "output", "type": "OBJECT"}`
-
-**场景3：聚合处理节点**
-- 输入端口：`{"name": "items", "type": "OBJECT", "conn_type": "MULTIPLE"}` - 多输入
-- 代码：接收多个输入，聚合处理
-- 输出端口：`{"name": "result", "type": "OBJECT"}`
+**场景2：聚合处理节点**
+- 输入端口：`{"name": "items", "type": "文本", "conn_type": "多输入"}` - 多输入
+- 代码：接收多个输入，此时 items 格式为列表，每个元素为输入数据
+- 输出端口：`{"name": "result", "type": "列表/ARRAY"}`
 
 ---
 
@@ -198,7 +191,7 @@ canvas_set_prop(
 ## 工作原则
 
 1. **先规划后实施** - 设计好节点拓扑再开始创建
-2. **小而专注** - 每个代码编辑节点只做一件事
+2. **小而专注** - 每个代码编辑节点只做一件事，避免构建太多输入输出端口
 3. **清晰命名** - 节点名和端口名要有明确含义
 4. **及时验证** - 创建节点后运行验证功能正确性
 5. **完整连接** - 确保所有必要的连接都已建立

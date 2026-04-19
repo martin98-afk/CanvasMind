@@ -412,7 +412,7 @@ class CanvasTools:
                 if hasattr(node, "get_properties"):
                     all_props = node.get_properties()
                 elif hasattr(node, "properties"):
-                    all_props = node.properties or {}
+                    all_props = node.properties() or {}
                 return ToolResult(
                     True, content=f"节点 [{node_name}] 所有属性:\n{all_props}"
                 )
@@ -456,6 +456,7 @@ class CanvasTools:
             content = {
                 "canvas_name": getattr(self.parent, "workflow_name", None),
                 "runner": {
+                    "exec_env": self.parent.env_data,
                     "is_running": bool(getattr(runner, "_is_running", False))
                     if runner
                     else False,
@@ -550,7 +551,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                     "properties": {
                         "mode": {
                             "type": "string",
-                            "description": "运行模式: node(运行单个节点), to(运行到指定节点), from(从指定节点开始), subgraph(运行所在子图), workflow(运行整个画布)",
+                            "description": "运行模式: node(运行单个节点), to(运行到指定节点), from(从指定节点开始), subgraph(运行节点所在子图), workflow(运行整个画布)",
                             "enum": ["node", "to", "from", "subgraph", "workflow"],
                         },
                         "node_name": {
