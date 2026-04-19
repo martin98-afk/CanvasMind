@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, List
-
-from PyQt5.QtCore import pyqtSignal, QSize, Qt, QRect
+import requests
+from PyQt5.QtCore import pyqtSignal, QSize, Qt, QRect, QTimer
 from PyQt5.QtGui import QIcon, QPainter, QColor, QFont
 from PyQt5.QtWidgets import (
     QWidget,
@@ -13,6 +12,7 @@ from PyQt5.QtWidgets import (
     QDialog,
     QLineEdit,
     QDoubleSpinBox,
+    QFrame,
 )
 from qfluentwidgets import (
     ToolButton,
@@ -25,15 +25,81 @@ from qfluentwidgets import (
     Dialog,
     PrimaryPushButton,
     StrongBodyLabel,
-    IconWidget
+    IconWidget,
+    InfoBar,
+    BodyLabel,
 )
 from app.utils.utils import get_icon
-from app.widgets.basic_widget.searchable_editable_combobox import SearchableEditableComboBox
+from app.widgets.basic_widget.searchable_editable_combobox import (
+    SearchableEditableComboBox,
+)
 from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
     PROVIDER_ICONS,
     PROVIDER_MODELS,
     FREE_PROVIDERS,
 )
+
+
+def fetch_provider_models(
+    api_url: str, api_key: str, provider_name: str, auth_type: str = "bearer"
+) -> list:
+    """Fetch model list from provider API."""
+    headers = {"Authorization": f"Bearer {api_key}"} if auth_type == "bearer" else {}
+    url = f"{api_url.rstrip('/')}/models"
+
+    try:
+        print(f"[ProviderEditDialog] Fetching models from {url}")
+        response = requests.get(url, headers=headers, timeout=15)
+        print(f"[ProviderEditDialog] Response status: {response.status_code}")
+        print(f"[ProviderEditDialog] Response body: {response.text[:500]}")
+
+        if response.status_code == 200:
+            data = response.json()
+
+            if isinstance(data, dict):
+                if "data" in data:
+                    models = []
+                    for m in data["data"]:
+                        if isinstance(m, dict):
+                            model_id = (
+                                m.get("id") or m.get("name") or m.get("model", "")
+                            )
+                            if model_id:
+                                models.append(model_id)
+                        elif isinstance(m, str):
+                            models.append(m)
+                    return models
+                elif "models" in data:
+                    return [
+                        m.get("id") or m.get("name", "")
+                        for m in data["models"]
+                        if isinstance(m, dict)
+                    ]
+                elif "object" in data and isinstance(data["object"], list):
+                    return [
+                        m.get("id", "") for m in data["object"] if isinstance(m, dict)
+                    ]
+                else:
+                    for key in ["models", "items", "result", "model_list"]:
+                        if key in data and isinstance(data[key], list):
+                            return [
+                                m.get("id")
+                                or m.get("name")
+                                or (m if isinstance(m, str) else "")
+                                for m in data[key]
+                            ]
+            elif isinstance(data, list):
+                return [
+                    m.get("id", "") if isinstance(m, dict) else str(m) for m in data
+                ]
+
+    except requests.exceptions.Timeout:
+        print(f"[ProviderEditDialog] Timeout fetching models from {url}")
+    except requests.exceptions.ConnectionError as e:
+        print(f"[ProviderEditDialog] Connection error fetching models from {url}: {e}")
+    except Exception as e:
+        print(f"[ProviderEditDialog] Error fetching models: {e}")
+    return []
 
 
 class ProviderIconWidget(IconWidget):
@@ -207,8 +273,11 @@ class ProviderEditDialog(QDialog):
         self.provider_info = provider_info.copy() if provider_info else {}
         self.is_new = is_new
         self.setWindowTitle("添加服务商" if is_new else "编辑服务商")
-        self.setFixedSize(520, 500)
+        self.setMinimumSize(480, 480)
+        self.setMaximumSize(520, 800)
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint | Qt.WindowTitleHint)
+        self._original_info = provider_info.copy() if provider_info else {}
+        self._fetch_thread = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -234,6 +303,26 @@ class ProviderEditDialog(QDialog):
                 background-color: #3d3d3d;
                 border: none;
             }
+            QFrame#section_frame {
+                background-color: #333333;
+                border-radius: 8px;
+                border: none;
+            }
+            QPushButton#fetch_btn {
+                background-color: #1a8cd4;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 12px;
+            }
+            QPushButton#fetch_btn:hover {
+                background-color: #0078d4;
+            }
+            QPushButton#fetch_btn:disabled {
+                background-color: #555555;
+                color: #888888;
+            }
         """)
 
         main_layout = QVBoxLayout(self)
@@ -246,8 +335,15 @@ class ProviderEditDialog(QDialog):
         )
         main_layout.addWidget(header_label)
 
-        content_layout = QVBoxLayout()
-        content_layout.setSpacing(12)
+        connection_frame = QFrame()
+        connection_frame.setObjectName("section_frame")
+        connection_layout = QVBoxLayout(connection_frame)
+        connection_layout.setContentsMargins(16, 12, 16, 12)
+        connection_layout.setSpacing(12)
+
+        conn_title = BodyLabel("连接配置")
+        conn_title.setStyleSheet("color: #4fc3f7; font-size: 13px; font-weight: bold;")
+        connection_layout.addWidget(conn_title)
 
         if self.is_new:
             name_row = QHBoxLayout()
@@ -258,27 +354,29 @@ class ProviderEditDialog(QDialog):
             self.nameCombo.setCurrentIndex(0)
             self.nameCombo.currentTextChanged.connect(self._on_provider_changed)
             name_row.addWidget(self.nameCombo, 1)
-            content_layout.addLayout(name_row)
+            connection_layout.addLayout(name_row)
             template = FREE_PROVIDERS.get("DeepSeek", {})
         elif self.provider_name in FREE_PROVIDERS:
             template = FREE_PROVIDERS[self.provider_name]
             name_row = QHBoxLayout()
             name_row.addWidget(QLabel("服务商:"))
             name_row.addWidget(QLabel(self.provider_name))
-            content_layout.addLayout(name_row)
+            connection_layout.addLayout(name_row)
         else:
             template = self.provider_info
             name_row = QHBoxLayout()
             name_row.addWidget(QLabel("服务商:"))
             name_row.addWidget(QLabel(self.provider_name))
-            content_layout.addLayout(name_row)
+            connection_layout.addLayout(name_row)
 
         url_row = QHBoxLayout()
         url_row.addWidget(QLabel("API URL:"))
         self.apiUrlEdit = LineEdit()
-        self.apiUrlEdit.setText(template.get("API_URL", ""))
+        self.apiUrlEdit.setText(
+            self.provider_info.get("API_URL", template.get("API_URL", ""))
+        )
         url_row.addWidget(self.apiUrlEdit, 1)
-        content_layout.addLayout(url_row)
+        connection_layout.addLayout(url_row)
 
         key_row = QHBoxLayout()
         key_row.addWidget(QLabel("API Key:"))
@@ -286,7 +384,28 @@ class ProviderEditDialog(QDialog):
         self.apiKeyEdit.setEchoMode(QLineEdit.Password)
         self.apiKeyEdit.setText(self.provider_info.get("API_KEY", ""))
         key_row.addWidget(self.apiKeyEdit, 1)
-        content_layout.addLayout(key_row)
+        connection_layout.addLayout(key_row)
+
+        main_layout.addWidget(connection_frame)
+
+        model_frame = QFrame()
+        model_frame.setObjectName("section_frame")
+        model_layout = QVBoxLayout(model_frame)
+        model_layout.setContentsMargins(16, 12, 16, 12)
+        model_layout.setSpacing(12)
+
+        model_title_layout = QHBoxLayout()
+        model_title = BodyLabel("模型配置")
+        model_title.setStyleSheet("color: #4fc3f7; font-size: 13px; font-weight: bold;")
+        model_title_layout.addWidget(model_title)
+        model_title_layout.addStretch()
+
+        self.fetchBtn = QPushButton("从API获取模型列表")
+        self.fetchBtn.setObjectName("fetch_btn")
+        self.fetchBtn.setCursor(Qt.PointingHandCursor)
+        self.fetchBtn.clicked.connect(self._on_fetch_models)
+        model_title_layout.addWidget(self.fetchBtn)
+        model_layout.addLayout(model_title_layout)
 
         model_row = QHBoxLayout()
         model_row.addWidget(QLabel("默认模型:"))
@@ -306,17 +425,49 @@ class ProviderEditDialog(QDialog):
         if idx >= 0:
             self.modelCombo.setCurrentIndex(idx)
         model_row.addWidget(self.modelCombo, 1)
-        content_layout.addLayout(model_row)
+        model_layout.addLayout(model_row)
+
+        self.fetchStatusLabel = BodyLabel("")
+        self.fetchStatusLabel.setStyleSheet("color: #888888; font-size: 11px;")
+        model_layout.addWidget(self.fetchStatusLabel)
+
+        main_layout.addWidget(model_frame)
+
+        param_frame = QFrame()
+        param_frame.setObjectName("section_frame")
+        param_layout = QVBoxLayout(param_frame)
+        param_layout.setContentsMargins(16, 12, 16, 12)
+        param_layout.setSpacing(12)
+
+        param_title = BodyLabel("生成参数")
+        param_title.setStyleSheet("color: #4fc3f7; font-size: 13px; font-weight: bold;")
+        param_layout.addWidget(param_title)
 
         temp_row = QHBoxLayout()
         temp_row.addWidget(QLabel("温度:"))
         self.tempSpin = QDoubleSpinBox()
         self.tempSpin.setRange(0, 2)
         self.tempSpin.setSingleStep(0.1)
-        self.tempSpin.setValue(template.get("温度", 0.7))
+        self.tempSpin.setValue(
+            self._original_info.get("温度", template.get("温度", 0.7))
+        )
         self.tempSpin.setDecimals(2)
         temp_row.addWidget(self.tempSpin, 1)
-        content_layout.addLayout(temp_row)
+        param_layout.addLayout(temp_row)
+
+        context_row = QHBoxLayout()
+        context_row.addWidget(QLabel("上下文长度:"))
+        self.contextLengthSpin = QDoubleSpinBox()
+        self.contextLengthSpin.setRange(1, 99999999)
+        self.contextLengthSpin.setSingleStep(1000)
+        self.contextLengthSpin.setValue(
+            self._original_info.get("最大Token", template.get("最大Token", 4096))
+        )
+        self.contextLengthSpin.setDecimals(0)
+        context_row.addWidget(self.contextLengthSpin, 1)
+        param_layout.addLayout(context_row)
+
+        main_layout.addWidget(param_frame)
 
         if self.is_new:
             help_layout = QHBoxLayout()
@@ -341,11 +492,8 @@ class ProviderEditDialog(QDialog):
             )
             help_layout.addWidget(self.helpLabel)
             help_layout.addWidget(self.getKeyBtn)
-            content_layout.addLayout(help_layout)
+            main_layout.addLayout(help_layout)
             self._update_help_label("DeepSeek")
-
-        main_layout.addLayout(content_layout)
-        main_layout.addStretch()
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -363,13 +511,56 @@ class ProviderEditDialog(QDialog):
     def _on_provider_changed(self, name: str):
         if name in FREE_PROVIDERS:
             template = FREE_PROVIDERS[name]
-            self.apiUrlEdit.setText(template.get("API_URL", ""))
+            if not self.apiKeyEdit.text().strip():
+                self.apiUrlEdit.setText(template.get("API_URL", ""))
             self.modelCombo.clear()
             if name in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS[name])
             self.modelCombo.addItem(template.get("模型名称", ""))
             self.modelCombo.setCurrentIndex(0)
+            self.contextLengthSpin.setValue(template.get("最大Token", 4096))
             self._update_help_label(name)
+        self.fetchStatusLabel.setText("")
+
+    def _on_fetch_models(self):
+        api_url = self.apiUrlEdit.text().strip()
+        api_key = self.apiKeyEdit.text().strip()
+        provider_name = (
+            self.nameCombo.currentText() if self.is_new else self.provider_name
+        )
+
+        if not api_url or not api_key:
+            self.fetchStatusLabel.setText("请先填写 API URL 和 API Key")
+            self.fetchStatusLabel.setStyleSheet("color: #e74c3c; font-size: 11px;")
+            return
+
+        self.fetchBtn.setEnabled(False)
+        self.fetchStatusLabel.setText("正在获取模型列表...")
+        self.fetchStatusLabel.setStyleSheet("color: #888888; font-size: 11px;")
+
+        try:
+            models = fetch_provider_models(api_url, api_key, provider_name)
+            self._on_models_fetched(models)
+        except Exception as e:
+            self._on_models_fetched([])
+
+    def _on_models_fetched(self, models: list):
+        self.fetchBtn.setEnabled(True)
+        if not isinstance(models, list):
+            models = []
+        if models:
+            self.modelCombo.blockSignals(True)
+            current = self.modelCombo.currentText()
+            self.modelCombo.clear()
+            self.modelCombo.addItems(models)
+            if current and self.modelCombo.findText(current) >= 0:
+                self.modelCombo.setCurrentIndex(self.modelCombo.findText(current))
+            self.modelCombo.blockSignals(False)
+            self.fetchStatusLabel.setText(f"成功获取 {len(models)} 个模型")
+            self.fetchStatusLabel.setStyleSheet("color: #2ecc71; font-size: 11px;")
+        else:
+            self.fetchStatusLabel.setText("获取模型列表失败，请检查 API 配置")
+            self.fetchStatusLabel.setStyleSheet("color: #e74c3c; font-size: 11px;")
 
     def _open_help_url(self, name: str):
         if name in FREE_PROVIDERS:
@@ -401,7 +592,7 @@ class ProviderEditDialog(QDialog):
             "API_KEY": self.apiKeyEdit.text().strip(),
             "模型名称": self.modelCombo.currentText().strip(),
             "温度": self.tempSpin.value(),
-            "最大Token": 4096,
+            "最大Token": int(self.contextLengthSpin.value()),
             "认证方式": "bearer",
         }
         self.accept()
@@ -449,6 +640,12 @@ class ProviderListSettingCard(ExpandSettingCard):
         self.addProviderButton.clicked.connect(self._show_add_dialog)
 
     def _refresh_items(self):
+        self.providers = (
+            qconfig.get(self.configItem).copy()
+            if isinstance(qconfig.get(self.configItem), dict)
+            else {}
+        )
+        self.default_provider = qconfig.get(self.defaultProviderItem) or ""
         while self.viewLayout.count() > 0:
             item = self.viewLayout.takeAt(0)
             if item.widget() and item.widget() != self.addProviderButton:
@@ -477,7 +674,25 @@ class ProviderListSettingCard(ExpandSettingCard):
                 self.providerChanged.emit(self.providers)
 
     def _show_edit_dialog(self, name: str, info: dict, item: ProviderItem):
-        dialog = ProviderEditDialog(name, info, False, self.home)
+        self.providers = (
+            qconfig.get(self.configItem).copy()
+            if isinstance(qconfig.get(self.configItem), dict)
+            else {}
+        )
+        print(
+            f"[_show_edit_dialog] name={name}, providers keys={list(self.providers.keys())}"
+        )
+        print(
+            f"[_show_edit_dialog] looking up '{name}', found={name in self.providers}"
+        )
+        if name in self.providers:
+            print(f"[_show_edit_dialog] found info: {self.providers[name]}")
+        current_info = self.providers.get(name, {})
+        if not current_info:
+            current_info = info
+            print(f"[_show_edit_dialog] fell back to item info: {current_info}")
+        print(f"[_show_edit_dialog] using info: {current_info}")
+        dialog = ProviderEditDialog(name, current_info, False, self.home)
         if dialog.exec():
             new_name, new_info = dialog.get_result()
             if new_name in self.providers:
