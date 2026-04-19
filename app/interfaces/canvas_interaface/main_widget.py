@@ -389,6 +389,8 @@ class CanvasPage(QWidget):
         self._schedule_property_update(node)
 
     def _on_canvas_run_node_requested(self, mode: str, node_name: str):
+        if mode == "workflow":
+            self.canvas_runner.run_full(self.graph.all_nodes())
         node = None
         for n in self.graph.all_nodes():
             if n.name() == node_name:
@@ -402,8 +404,6 @@ class CanvasPage(QWidget):
             self.canvas_runner.run_from(node)
         elif mode == "subgraph":
             self.canvas_runner.run_subgraph(node)
-        elif mode == "workflow":
-            self.canvas_runner.run_workflow()
 
     def _on_canvas_create_node_requested(self, node_name: str, position: dict):
         try:
