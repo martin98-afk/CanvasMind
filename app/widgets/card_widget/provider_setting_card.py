@@ -450,17 +450,21 @@ class ProviderEditDialog(QDialog):
         self.modelCombo.setDisabled(False)
         current_model = self.provider_info.get("模型名称", template.get("模型名称", ""))
         saved_models = self.provider_info.get("模型列表", [])
+        if isinstance(saved_models, list):
+            saved_models_to_use = saved_models
+        else:
+            saved_models_to_use = []
         if self.is_new:
             selected_provider = self.nameCombo.currentText()
-            if saved_models:
-                self.modelCombo.addItems(saved_models)
+            if saved_models_to_use:
+                self.modelCombo.addItems(saved_models_to_use)
             elif selected_provider in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS[selected_provider])
             elif "DeepSeek" in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS["DeepSeek"])
         else:
-            if saved_models:
-                self.modelCombo.addItems(saved_models)
+            if saved_models_to_use:
+                self.modelCombo.addItems(saved_models_to_use)
             elif self.provider_name in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS[self.provider_name])
             elif (
@@ -702,16 +706,10 @@ class ProviderListSettingCard(ExpandSettingCard):
         dialog = ProviderEditDialog(name, current_info, False, self.home)
         if dialog.exec():
             new_name, new_info = dialog.get_result()
-            print(
-                f"[_show_edit_dialog] new_name={new_name}, in_providers={new_name in self.providers}"
-            )
             if new_name in self.providers:
                 self.providers[new_name] = new_info
                 qconfig.set(self.configItem, self.providers)
                 item.update_info(new_name, new_info)
-                print(
-                    f"[_show_edit_dialog] emitting providerChanged, providers={self.providers.keys()}"
-                )
                 self.providerChanged.emit(self.providers)
 
     def _show_confirm_dialog(self, item: ProviderItem):

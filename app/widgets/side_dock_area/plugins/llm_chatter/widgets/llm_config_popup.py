@@ -97,9 +97,9 @@ class LLMConfigPopup(QWidget):
 
             model_combo = SearchableEditableComboBox(self)
             saved_models = config.get("模型列表", [])
-            if saved_models:
+            if isinstance(saved_models, list) and len(saved_models) > 0:
                 model_combo.addItems(saved_models)
-            else:
+            elif provider_key in PROVIDER_MODELS:
                 model_combo.addItems(PROVIDER_MODELS[provider_key])
             current_model = config.get("模型名称", "")
             if current_model:

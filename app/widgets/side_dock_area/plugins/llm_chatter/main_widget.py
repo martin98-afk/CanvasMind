@@ -308,6 +308,7 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             if is_canvas and self._current_agent != "canvas":
                 QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
+        QTimer.singleShot(0, self._load_model_configs)
         super().showEvent(event)
 
     def _is_on_canvas(self):
