@@ -105,16 +105,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
 )
 
 
-class RefreshableComboBox(ComboBox):
-    """自定义下拉框，点击时自动刷新配置"""
-
-    aboutToShowPopup = pyqtSignal()
-
-    def showPopup(self):
-        self.aboutToShowPopup.emit()
-        super().showPopup()
-
-
 class OpenAIChatToolWindow(ToolWindow):
     name = "大模型对话"
     icon = get_icon("大模型")
@@ -461,11 +451,11 @@ class OpenAIChatToolWindow(ToolWindow):
         model_label.setStyleSheet("color: #ffffff;")
         right_layout.addWidget(model_label)
 
-        self.model_combo = RefreshableComboBox(self)
+        self.model_combo = ComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
         self.model_combo.currentTextChanged.connect(self._on_model_changed)
-        self.model_combo.aboutToShowPopup.connect(self._load_model_configs)
+        self.model_combo.pressed.connect(self._load_model_configs)
         right_layout.addWidget(self.model_combo)
         self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
         self.settings_btn.setToolTip("模型设置")
