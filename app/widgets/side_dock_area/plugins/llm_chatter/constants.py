@@ -117,7 +117,7 @@ FREE_PROVIDERS = {
         "温度": 0.7,
         "最大Token": 40960,
         "认证方式": "bearer",
-        "获取地址": "https://open.bigmodel.cn/usercenter/apikeys",
+        "获取地址": "https://open.bigmodel.cn/apikey/platform",
     },
     "DeepSeek": {
         "API_URL": "https://api.deepseek.com",
