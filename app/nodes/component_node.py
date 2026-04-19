@@ -351,6 +351,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                         self.set_property(
                             prop_name, default if default in choices else choices[0]
                         )
+                        self.set_property(f"_{prop_name}_choices", choices)
                 elif prop_type == PropertyType.LONGTEXT:
                     widget = LongTextWidgetWrapper(
                         parent=self.view,
@@ -382,6 +383,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     if description:
                         widget.setToolTip(description)
                     self.add_custom_widget(widget, tab="Properties")
+                    self.set_property(f"_{prop_name}_min_max", (min_val, max_val))
                 elif prop_type == PropertyType.DYNAMICTREE:
                     widget = DynamicTreeWidgetWrapper(
                         parent=self.view,

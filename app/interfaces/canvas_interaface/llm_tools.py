@@ -412,7 +412,7 @@ class CanvasTools:
                 if hasattr(node, "get_properties"):
                     all_props = node.get_properties()
                 elif hasattr(node, "properties"):
-                    all_props = node.properties or {}
+                    all_props = node.properties() or {}
                 return ToolResult(
                     True, content=f"节点 [{node_name}] 所有属性:\n{all_props}"
                 )

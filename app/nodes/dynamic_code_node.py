@@ -99,6 +99,7 @@ def create_dynamic_code_node(parent_window=None):
                 self.parent_window.property_panel.update_properties(self)
 
         def _init_properties(self):
+            self.set_property(f"_port_type_choices", [item.value for item in ArgumentType])
             input_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
@@ -136,7 +137,6 @@ def create_dynamic_code_node(parent_window=None):
                 z_value=4,
             )
             self.add_custom_widget(self.input_widget, tab="Properties")
-
             output_schema = {
                 "name": {
                     "type": PropertyType.TEXT.value,
