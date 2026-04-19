@@ -83,6 +83,7 @@ class SideDockRegistry:
         if context_id not in cls._registries:
             cls._registries[context_id] = {}
         entries = cls._registries[context_id]
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         if name in entries:
             return
         if position is None:
@@ -95,8 +96,7 @@ class SideDockRegistry:
         if name not in cls._plugin_states[context_id]:
             cls._plugin_states[context_id][name] = {
                 "enabled": True,
-                "position": position.value if position else DockPosition.HIDDEN.value,
-                "display_order": getattr(window_class, "display_order", 999),
+                "position": position.value if position else DockPosition.HIDDEN.value
             }
 
     @classmethod
@@ -144,6 +144,7 @@ class SideDockRegistry:
 
     @classmethod
     def get_all(cls, context_id: str):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         return cls._registries.get(context_id, {}).copy()
 
     @classmethod
@@ -162,10 +163,12 @@ class SideDockRegistry:
 
     @classmethod
     def clear_context(cls, context_id: str):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         cls._registries.pop(context_id, None)
 
     @classmethod
     def set_plugin_enabled(cls, context_id: str, plugin_name: str, enabled: bool):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         if context_id not in cls._plugin_states:
             cls._plugin_states[context_id] = {}
         if plugin_name not in cls._plugin_states[context_id]:
@@ -174,6 +177,7 @@ class SideDockRegistry:
 
     @classmethod
     def is_plugin_enabled(cls, context_id: str, plugin_name: str) -> bool:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
         return state.get("enabled", True)
 
@@ -181,6 +185,7 @@ class SideDockRegistry:
     def set_plugin_position(
         cls, context_id: str, plugin_name: str, position: DockPosition
     ):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         if context_id not in cls._plugin_states:
             cls._plugin_states[context_id] = {}
         if plugin_name not in cls._plugin_states[context_id]:
@@ -192,15 +197,18 @@ class SideDockRegistry:
 
     @classmethod
     def get_plugin_position(cls, context_id: str, plugin_name: str) -> DockPosition:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
         pos_value = state.get("position", DockPosition.HIDDEN.value)
         return DockPosition(pos_value)
 
     @classmethod
     def set_plugin_display_order(cls, context_id: str, plugin_name: str, order: int):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         if context_id not in cls._plugin_states:
             cls._plugin_states[context_id] = {}
         if plugin_name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][plugin_name] = {}
             cls._plugin_states[context_id][plugin_name] = {}
         cls._plugin_states[context_id][plugin_name]["display_order"] = order
 
@@ -209,11 +217,13 @@ class SideDockRegistry:
 
     @classmethod
     def get_plugin_display_order(cls, context_id: str, plugin_name: str) -> int:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
         return state.get("display_order", 999)
 
     @classmethod
     def get_plugin_state(cls, context_id: str, plugin_name: str) -> Dict[str, Any]:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         return cls._plugin_states.get(context_id, {}).get(
             plugin_name,
             {
@@ -225,6 +235,7 @@ class SideDockRegistry:
 
     @classmethod
     def get_all_plugin_states(cls, context_id: str) -> Dict[str, Dict[str, Any]]:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
         return cls._plugin_states.get(context_id, {}).copy()
 
     @classmethod
