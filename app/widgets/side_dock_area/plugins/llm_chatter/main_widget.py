@@ -638,6 +638,7 @@ class OpenAIChatToolWindow(ToolWindow):
             saved_providers = setting.llm_saved_providers.value or {}
             saved_providers[current_name] = new_config
             setting.set(setting.llm_saved_providers, saved_providers, save=True)
+            self._load_model_configs()
             InfoBar.success("已保存", "配置已保存到本地。", parent=self, duration=1500)
         else:
             if (
@@ -712,14 +713,11 @@ class OpenAIChatToolWindow(ToolWindow):
         setting = Settings.get_instance()
         saved_providers = setting.llm_saved_providers.value or {}
 
-        for provider_name, provider_config in FREE_PROVIDERS.items():
-            if provider_name not in self._valid_configs:
-                if provider_name in saved_providers:
-                    config = saved_providers[provider_name].copy()
-                else:
-                    config = provider_config.copy()
-                    config.pop("备注", None)
-                    config.pop("获取地址", None)
+        for provider_name, provider_config in saved_providers.items():
+            if provider_name in FREE_PROVIDERS:
+                config = provider_config.copy()
+                config.pop("备注", None)
+                config.pop("获取地址", None)
                 self._valid_configs[provider_name] = config
                 all_model_names.append(provider_name)
 

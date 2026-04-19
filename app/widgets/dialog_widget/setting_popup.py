@@ -456,6 +456,7 @@ class SettingDialog(QDialog):
             parent=self.llmGroup,
             home=self,
         )
+        self.llmProviderCard.providerChanged.connect(self._on_llm_providers_changed)
         self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
         self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
 
@@ -1065,6 +1066,33 @@ class SettingDialog(QDialog):
     def onConfigChanged(self):
         self.configChanged.emit()
         self._save_timer.start()
+
+    def _on_llm_providers_changed(self, providers: dict):
+        print(f"[_on_llm_providers_changed] called with providers={providers}")
+        self._notify_llm_widget_refresh()
+        self.configChanged.emit()
+        self._save_timer.start()
+
+    def _notify_llm_widget_refresh(self):
+        try:
+            from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import (
+                OpenAIChatToolWindow,
+            )
+
+            print(
+                f"[_notify_llm_widget_refresh] _parent_widget = {self._parent_widget}"
+            )
+            llm_widget = (
+                self._parent_widget.findChild(OpenAIChatToolWindow)
+                if self._parent_widget
+                else None
+            )
+            print(f"[_notify_llm_widget_refresh] llm_widget = {llm_widget}")
+            if llm_widget and hasattr(llm_widget, "_load_model_configs"):
+                llm_widget._load_model_configs()
+                print(f"[_notify_llm_widget_refresh] _load_model_configs called")
+        except Exception as e:
+            print(f"[_notify_llm_widget_refresh] Error: {e}")
 
     def _perform_save_to_disk(self):
         try:

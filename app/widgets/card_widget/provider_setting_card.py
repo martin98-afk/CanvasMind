@@ -359,6 +359,7 @@ class ProviderEditDialog(QDialog):
         conn_title.setStyleSheet("color: #4fc3f7; font-size: 13px; font-weight: bold;")
         connection_layout.addWidget(conn_title)
 
+        self.getKeyBtn = None
         if self.is_new:
             name_row = QHBoxLayout()
             name_row.addWidget(QLabel("服务商:"))
@@ -368,6 +369,27 @@ class ProviderEditDialog(QDialog):
             self.nameCombo.setCurrentIndex(0)
             self.nameCombo.currentTextChanged.connect(self._on_provider_changed)
             name_row.addWidget(self.nameCombo, 1)
+
+            self.getKeyBtn = QPushButton("获取API Key")
+            self.getKeyBtn.setFixedSize(90, 28)
+            self.getKeyBtn.setCursor(Qt.PointingHandCursor)
+            self.getKeyBtn.setStyleSheet("""
+                QPushButton {
+                    background-color: #0078d4;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: #1a8cd4;
+                }
+            """)
+            self.getKeyBtn.clicked.connect(
+                lambda: self._open_help_url(self.nameCombo.currentText())
+            )
+            name_row.addWidget(self.getKeyBtn)
+
             connection_layout.addLayout(name_row)
             first_provider = self.nameCombo.currentText()
             template = FREE_PROVIDERS.get(first_provider, {})
@@ -427,24 +449,39 @@ class ProviderEditDialog(QDialog):
         self.modelCombo = SearchableEditableComboBox()
         self.modelCombo.setDisabled(False)
         current_model = self.provider_info.get("模型名称", template.get("模型名称", ""))
+        saved_models = self.provider_info.get("模型列表", [])
         if self.is_new:
             selected_provider = self.nameCombo.currentText()
-            if selected_provider in PROVIDER_MODELS:
+            if saved_models:
+                self.modelCombo.addItems(saved_models)
+            elif selected_provider in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS[selected_provider])
             elif "DeepSeek" in PROVIDER_MODELS:
                 self.modelCombo.addItems(PROVIDER_MODELS["DeepSeek"])
-        elif self.provider_name in PROVIDER_MODELS:
-            self.modelCombo.addItems(PROVIDER_MODELS[self.provider_name])
-        self.modelCombo.addItem(current_model)
-        idx = self.modelCombo.findText(current_model)
-        if idx >= 0:
-            self.modelCombo.setCurrentIndex(idx)
+        else:
+            if saved_models:
+                self.modelCombo.addItems(saved_models)
+            elif self.provider_name in PROVIDER_MODELS:
+                self.modelCombo.addItems(PROVIDER_MODELS[self.provider_name])
+            elif (
+                self.provider_name in FREE_PROVIDERS
+                and "模型名称" in FREE_PROVIDERS[self.provider_name]
+            ):
+                self.modelCombo.addItem(
+                    FREE_PROVIDERS[self.provider_name].get("模型名称", "")
+                )
+        if current_model:
+            self.modelCombo.addItem(current_model)
+            idx = self.modelCombo.findText(current_model)
+            if idx >= 0:
+                self.modelCombo.setCurrentIndex(idx)
         model_row.addWidget(self.modelCombo, 1)
         model_layout.addLayout(model_row)
 
         self.fetchStatusLabel = BodyLabel("")
         self.fetchStatusLabel.setStyleSheet("color: #888888; font-size: 11px;")
         model_layout.addWidget(self.fetchStatusLabel)
+        self._fetched_models = []
 
         main_layout.addWidget(model_frame)
 
@@ -484,32 +521,6 @@ class ProviderEditDialog(QDialog):
 
         main_layout.addWidget(param_frame)
 
-        if self.is_new:
-            help_layout = QHBoxLayout()
-            self.helpLabel = QLabel()
-            self.getKeyBtn = QPushButton("获取API Key")
-            self.getKeyBtn.setFixedSize(100, 28)
-            self.getKeyBtn.setCursor(Qt.PointingHandCursor)
-            self.getKeyBtn.setStyleSheet("""
-                QPushButton {
-                    background-color: #0078d4;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    background-color: #1a8cd4;
-                }
-            """)
-            self.getKeyBtn.clicked.connect(
-                lambda: self._open_help_url(self.nameCombo.currentText())
-            )
-            help_layout.addWidget(self.helpLabel)
-            help_layout.addWidget(self.getKeyBtn)
-            main_layout.addLayout(help_layout)
-            self._update_help_label("DeepSeek")
-
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         self.cancelBtn = QPushButton("取消")
@@ -536,7 +547,6 @@ class ProviderEditDialog(QDialog):
             self.modelCombo.addItem(template.get("模型名称", ""))
             self.modelCombo.setCurrentIndex(0)
             self.contextLengthSpin.setValue(template.get("最大Token", 4096))
-            self._update_help_label(name)
         self.fetchStatusLabel.setText("")
 
     def _on_fetch_models(self):
@@ -565,6 +575,7 @@ class ProviderEditDialog(QDialog):
         self.fetchBtn.setEnabled(True)
         if not isinstance(models, list):
             models = []
+        self._fetched_models = models
         if models:
             self.modelCombo.blockSignals(True)
             current = self.modelCombo.currentText()
@@ -587,19 +598,6 @@ class ProviderEditDialog(QDialog):
             if url:
                 webbrowser.open(url)
 
-    def _update_help_label(self, name: str):
-        if name in FREE_PROVIDERS:
-            url = FREE_PROVIDERS[name].get("获取地址", "")
-            if url:
-                self.helpLabel.setText("获取地址: ")
-                self.getKeyBtn.setVisible(True)
-            else:
-                self.helpLabel.setText("")
-                self.getKeyBtn.setVisible(False)
-        else:
-            self.helpLabel.setText("")
-            self.getKeyBtn.setVisible(False)
-
     def _on_save(self):
         provider_name = (
             self.nameCombo.currentText() if self.is_new else self.provider_name
@@ -612,6 +610,8 @@ class ProviderEditDialog(QDialog):
             "最大Token": int(self.contextLengthSpin.value()),
             "认证方式": "bearer",
         }
+        if self._fetched_models:
+            self.provider_info["模型列表"] = self._fetched_models
         self.accept()
 
     def get_result(self):
@@ -702,10 +702,16 @@ class ProviderListSettingCard(ExpandSettingCard):
         dialog = ProviderEditDialog(name, current_info, False, self.home)
         if dialog.exec():
             new_name, new_info = dialog.get_result()
+            print(
+                f"[_show_edit_dialog] new_name={new_name}, in_providers={new_name in self.providers}"
+            )
             if new_name in self.providers:
                 self.providers[new_name] = new_info
                 qconfig.set(self.configItem, self.providers)
                 item.update_info(new_name, new_info)
+                print(
+                    f"[_show_edit_dialog] emitting providerChanged, providers={self.providers.keys()}"
+                )
                 self.providerChanged.emit(self.providers)
 
     def _show_confirm_dialog(self, item: ProviderItem):
