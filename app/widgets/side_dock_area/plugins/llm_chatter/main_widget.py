@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, List
 from PyQt5.QtCore import (
     Qt,
     QTimer,
+    QEvent,
     pyqtSignal,
     QThreadPool,
 )
@@ -102,6 +103,16 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
     consolidate_messages,
     content_to_text,
 )
+
+
+class RefreshableComboBox(ComboBox):
+    """自定义下拉框，点击时自动刷新配置"""
+
+    aboutToShowPopup = pyqtSignal()
+
+    def showPopup(self):
+        self.aboutToShowPopup.emit()
+        super().showPopup()
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -277,12 +288,34 @@ class OpenAIChatToolWindow(ToolWindow):
         return cards
 
     def _get_current_model_config(self) -> Dict[str, Any]:
-        """获取当前选中的模型配置"""
+        """获取当前选中的模型配置，实时从系统配置读取"""
         selected_name = (
             self.model_combo.currentText()
             if hasattr(self, "model_combo")
             else "系统默认配置"
         )
+
+        setting = Settings.get_instance()
+
+        if selected_name == "系统默认配置":
+            return {
+                "模型名称": setting.llm_model.value,
+                "API_KEY": setting.llm_api_key.value,
+                "API_URL": setting.llm_api_base.value,
+                "最大Token": setting.llm_max_tokens.value,
+                "温度": setting.llm_temperature.value,
+                "是否思考": setting.llm_enable_thinking.value,
+            }
+
+        saved_providers = setting.llm_saved_providers.value or {}
+        if selected_name in saved_providers:
+            return saved_providers[selected_name].copy()
+
+        custom_vars = getattr(self.homepage, "global_variables", None)
+        if custom_vars and hasattr(custom_vars, "custom"):
+            if selected_name in custom_vars.custom:
+                return custom_vars.custom[selected_name].value.copy()
+
         return self._valid_configs.get(selected_name, {})
 
     def _build_memory_context_for_engine(self, query: str = "") -> str:
@@ -308,7 +341,7 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             if is_canvas and self._current_agent != "canvas":
                 QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
-        QTimer.singleShot(0, self._load_model_configs)
+        QTimer.singleShot(100, self._load_model_configs)
         super().showEvent(event)
 
     def _is_on_canvas(self):
@@ -428,10 +461,11 @@ class OpenAIChatToolWindow(ToolWindow):
         model_label.setStyleSheet("color: #ffffff;")
         right_layout.addWidget(model_label)
 
-        self.model_combo = ComboBox(self)
+        self.model_combo = RefreshableComboBox(self)
         self._load_model_configs()
         setFont(self.model_combo, 12)
         self.model_combo.currentTextChanged.connect(self._on_model_changed)
+        self.model_combo.aboutToShowPopup.connect(self._load_model_configs)
         right_layout.addWidget(self.model_combo)
         self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
         self.settings_btn.setToolTip("模型设置")
@@ -578,10 +612,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._settings_popup.configApplied.connect(self._on_config_applied)
 
         current_name = self.model_combo.currentText()
-        if current_name in self._valid_configs:
-            config = self._valid_configs[current_name].copy()
-        else:
-            setting = Settings.get_instance()
+        setting = Settings.get_instance()
+
+        if current_name == "系统默认配置":
             config = {
                 "模型名称": setting.llm_model.value,
                 "API_KEY": setting.llm_api_key.value,
@@ -590,6 +623,20 @@ class OpenAIChatToolWindow(ToolWindow):
                 "温度": setting.llm_temperature.value,
                 "是否思考": setting.llm_enable_thinking.value,
             }
+        else:
+            saved_providers = setting.llm_saved_providers.value or {}
+            provider_config = saved_providers.get(current_name, {})
+            custom_vars = getattr(self.homepage, "global_variables", None)
+            if current_name in (
+                custom_vars.custom
+                if custom_vars and hasattr(custom_vars, "custom")
+                else {}
+            ):
+                config = custom_vars.custom[current_name].value.copy()
+            else:
+                config = provider_config.copy()
+                config.pop("备注", None)
+                config.pop("获取地址", None)
 
         self._settings_popup.set_config(self.model_combo.currentText(), config)
         self._settings_popup.show_at(self.settings_btn)
@@ -711,15 +758,14 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception as e:
             logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
 
-        setting = Settings.get_instance()
         saved_providers = setting.llm_saved_providers.value or {}
 
-        for provider_name, provider_config in saved_providers.items():
-            if provider_name in FREE_PROVIDERS:
-                config = provider_config.copy()
-                config.pop("备注", None)
-                config.pop("获取地址", None)
-                self._valid_configs[provider_name] = config
+        for provider_name in saved_providers:
+            config = saved_providers[provider_name].copy()
+            config.pop("备注", None)
+            config.pop("获取地址", None)
+            self._valid_configs[provider_name] = config
+            if provider_name not in all_model_names:
                 all_model_names.append(provider_name)
 
         self._setup_combo_with_icons(all_model_names)

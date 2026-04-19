@@ -1068,12 +1068,8 @@ class SettingDialog(QDialog):
         self._save_timer.start()
 
     def _on_llm_providers_changed(self, providers: dict):
-        self._notify_llm_widget_refresh()
         self.configChanged.emit()
         self._save_timer.start()
-
-    def _notify_llm_widget_refresh(self):
-        pass
 
     def _perform_save_to_disk(self):
         try:
@@ -1153,7 +1149,6 @@ class SettingDialog(QDialog):
     def hidePopup(self):
         self._follow_window = False
         self._remove_event_filter()
-        self._notify_llm_widget_refresh()
         self.hide()
 
     def deleteLater(self):
