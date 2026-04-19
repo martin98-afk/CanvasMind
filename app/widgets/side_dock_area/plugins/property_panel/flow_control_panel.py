@@ -412,7 +412,7 @@ class FlowControlPanelWidget(QWidget):
     def update_properties_trigger(self):
         # 触发父面板重新布局（由于配置容器切换了显隐）
         if hasattr(self.parent_panel, "update_properties"):
-            self.parent_panel.update_properties(self.current_node, node_changed=True)
+            self.parent_panel.update_properties(self.current_node)
 
     def _set_node_prop(self, key, value):
         if self.current_node:

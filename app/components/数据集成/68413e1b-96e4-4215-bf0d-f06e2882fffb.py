@@ -17,7 +17,7 @@ ConnectionType = base_module.ConnectionType
 
 class DynamicComponent(BaseComponent):
     name = "获取文件夹图像列表"
-    category = "数据可视化"
+    category = "数据集成"
     description = "显示指定文件夹下的所有图像，并显示图像列表"
     requirements = ""
 

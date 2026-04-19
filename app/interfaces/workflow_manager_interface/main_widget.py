@@ -54,8 +54,8 @@ VIEW_MODE_LIST = "list"
 
 
 class WorkflowCanvasGalleryPage(QWidget):
-    GRID_INITIAL_BATCH_SIZE = 24
-    GRID_INCREMENTAL_BATCH_SIZE = 12
+    GRID_INITIAL_BATCH_SIZE = 8
+    GRID_INCREMENTAL_BATCH_SIZE = 6
     GRID_LOAD_MORE_THRESHOLD_PX = 600
     SORT_BY_MTIME = 0
     SORT_BY_CTIME = 1
@@ -83,7 +83,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map: Dict[str, dict] = {}
         self._refresh_pending = False
         self._recommendation_engine_built = False
-        self.recommendation_engine = NodeRecommendationEngine()
+        self._recommendation_engine = None
         self._canvas_cloud_mgr = CanvasCloudManager()
         self._grid_render_count = 0
         self._grid_batch_inflight = False
@@ -94,7 +94,6 @@ class WorkflowCanvasGalleryPage(QWidget):
         )
 
         self._view_mode = VIEW_MODE_GRID
-
         self._setup_ui()
         self.load_workflows()
 
@@ -107,9 +106,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         return wf_dirs
 
     def get_recommendations_for_node(self, node_full_path: str):
-        if not self.recommendation_engine:
+        if not self._recommendation_engine:
             return []
-        return self.recommendation_engine.get_recommendations_sync(node_full_path)
+        return self._recommendation_engine.get_recommendations_sync(node_full_path)
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -133,7 +132,12 @@ class WorkflowCanvasGalleryPage(QWidget):
 
         self.sort_field_combo = ComboBox(self)
         self.sort_field_combo.addItems(
-            [self.tr("修改时间"), self.tr("创建时间"), self.tr("名称"), self.tr("缓存大小")]
+            [
+                self.tr("修改时间"),
+                self.tr("创建时间"),
+                self.tr("名称"),
+                self.tr("缓存大小"),
+            ]
         )
         self.sort_field_combo.setCurrentIndex(0)
         self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
@@ -250,6 +254,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         else:
             self._view_mode = VIEW_MODE_LIST
             self.content_container.setCurrentWidget(self.list_container)
+            QTimer.singleShot(10, self._refresh_list_view)
 
     def _on_list_selection_changed(self, workflow_path: Path):
         file_info = self._file_info_map.get(str(workflow_path))
@@ -259,9 +264,10 @@ class WorkflowCanvasGalleryPage(QWidget):
         if self._recommendation_engine_built:
             return
         self._recommendation_engine_built = True
+        self._recommendation_engine = NodeRecommendationEngine()
         component_map, _ = ComponentScanner().get_components()
-        self.recommendation_engine._recommendation_cache.clear()
-        self.recommendation_engine._build_index(component_map)
+        self._recommendation_engine._recommendation_cache.clear()
+        self._recommendation_engine._build_index(component_map)
 
     def _on_sort_order_changed(self):
         is_ascending = self.sort_order_button.isChecked()
@@ -288,7 +294,6 @@ class WorkflowCanvasGalleryPage(QWidget):
 
     def load_workflows(self):
         self.workflow_dir = self._get_workflow_dir()
-        _migrate_legacy_workflow_structure(self.workflow_dir)
         self._update_status_label(extra_text=self.tr("扫描中..."))
 
         if self._is_loading:
@@ -323,7 +328,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         self._file_info_map = file_info_map
         self._known_files = set(workflow_files)
 
-        removed_paths = [path for path in self._card_map if path not in self._known_files]
+        removed_paths = [
+            path for path in self._card_map if path not in self._known_files
+        ]
         for wf_path in removed_paths:
             card = self._card_map.pop(wf_path, None)
             if card is not None:
@@ -342,8 +349,9 @@ class WorkflowCanvasGalleryPage(QWidget):
             elif new_info:
                 card.update_file_info(new_info)
 
-        self._request_cache_sizes(workflow_files)
-        self._apply_sort_and_filter_and_refresh()
+        QTimer.singleShot(0, lambda: self._request_cache_sizes(workflow_files))
+        QTimer.singleShot(0, lambda: self._apply_sort_and_filter_and_refresh())
+        QTimer.singleShot(500, self.build_recommendation_engine)
         self.scan_finished.emit(workflow_files, file_info_map)
 
     def _apply_sort_and_filter_and_refresh(self):
@@ -385,8 +393,10 @@ class WorkflowCanvasGalleryPage(QWidget):
             file_with_info.sort(key=key_func, reverse=not is_ascending)
             self.all_workflow_paths = [item[0] for item in file_with_info]
 
-        self._refresh_grid_view()
-        self._refresh_list_view()
+        if self._view_mode == VIEW_MODE_GRID:
+            QTimer.singleShot(0, self._refresh_grid_view)
+        else:
+            QTimer.singleShot(0, self._refresh_list_view)
         self._update_status_label()
 
     def _refresh_grid_view(self):
@@ -519,6 +529,7 @@ class WorkflowCanvasGalleryPage(QWidget):
         super().showEvent(event)
 
     def _request_cache_sizes(self, workflow_files: List[Path]):
+        pending_updates = []
         for wf_path in workflow_files:
             folder = wf_path.parent
             cached_size = FolderSizeCache.get(folder)
@@ -533,10 +544,22 @@ class WorkflowCanvasGalleryPage(QWidget):
                 if info is None:
                     return
                 info["folder_size_bytes"] = total_size
-                self.workflow_list_view.update_workflow(current_path)
-                self._cache_size_refresh_timer.start(120)
+                pending_updates.append(current_path)
+                if len(pending_updates) >= 5:
+                    self._flush_pending_workflow_updates(pending_updates)
+                    pending_updates.clear()
 
             FolderSizeCache.request(folder, update)
+
+        if pending_updates:
+            QTimer.singleShot(
+                100, lambda: self._flush_pending_workflow_updates(pending_updates)
+            )
+
+    def _flush_pending_workflow_updates(self, paths):
+        for p in paths:
+            self.workflow_list_view.update_workflow(p)
+        self._cache_size_refresh_timer.start(120)
 
     def _refresh_after_cache_size_update(self):
         if self.sort_field_combo.currentIndex() == self.SORT_BY_CACHE_SIZE:
@@ -556,7 +579,9 @@ class WorkflowCanvasGalleryPage(QWidget):
         if self._view_mode == VIEW_MODE_GRID:
             rendered_count = self._grid_render_count
         else:
-            rendered_count = getattr(self.workflow_list_view, "rendered_count", lambda: 0)()
+            rendered_count = getattr(
+                self.workflow_list_view, "rendered_count", lambda: 0
+            )()
 
         parts = [
             self.tr("总数 {0}").format(total_count),

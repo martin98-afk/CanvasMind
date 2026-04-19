@@ -25,6 +25,8 @@ from app.interfaces.workflow_manager_interface.utils.utils import (
     FolderSizeCache,
 )
 
+VIEW_MODE_LIST = "list"
+
 
 class WorkflowListItem(QWidget):
     item_selected = pyqtSignal(Path)
@@ -40,6 +42,7 @@ class WorkflowListItem(QWidget):
         self.file_info = file_info
         self.is_selected = False
         self._load_cancelled = False
+        self._size_requested = False
         self._setup_ui()
         self._apply_file_info()
         self._load_thumbnail_delayed()
@@ -150,9 +153,11 @@ class WorkflowListItem(QWidget):
             self.ctime_label.setText("--")
             self.size_label.setText("--")
         self.folder_size_label.setText("...")
-        self._request_folder_size()
 
     def _request_folder_size(self):
+        if self._size_requested:
+            return
+        self._size_requested = True
         folder = self.workflow_path.parent
 
         def update(folder_size: int):
@@ -173,6 +178,7 @@ class WorkflowListItem(QWidget):
         FolderSizeCache.request(folder, update)
 
     def refresh_folder_size(self):
+        self._size_requested = False
         FolderSizeCache.invalidate(self.workflow_path.parent)
         self.folder_size_label.setText("...")
         self._request_folder_size()
@@ -203,12 +209,18 @@ class WorkflowListItem(QWidget):
         if watched is self or watched.parent() is self:
             if event.type() == QEvent.MouseButtonPress:
                 mouse_event = event
-                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                if (
+                    isinstance(mouse_event, QMouseEvent)
+                    and mouse_event.button() == Qt.LeftButton
+                ):
                     self.item_selected.emit(self.workflow_path)
                     return watched is not self
             elif event.type() == QEvent.MouseButtonDblClick:
                 mouse_event = event
-                if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                if (
+                    isinstance(mouse_event, QMouseEvent)
+                    and mouse_event.button() == Qt.LeftButton
+                ):
                     self._on_open()
                     return True
         return super().eventFilter(watched, event)
@@ -237,13 +249,15 @@ class WorkflowListItem(QWidget):
 
     def showEvent(self, event):
         self._load_cancelled = False
+        if not self._size_requested:
+            self._request_folder_size()
         super().showEvent(event)
 
 
 class WorkflowListView(QWidget):
-    LIST_INITIAL_BATCH_SIZE = 40
-    LIST_INCREMENTAL_BATCH_SIZE = 20
-    LIST_LOAD_MORE_THRESHOLD_PX = 800
+    LIST_INITIAL_BATCH_SIZE = 10
+    LIST_INCREMENTAL_BATCH_SIZE = 5
+    LIST_LOAD_MORE_THRESHOLD_PX = 200
 
     current_changed = pyqtSignal(Path)
 
@@ -256,6 +270,7 @@ class WorkflowListView(QWidget):
         self._ordered_paths: List[Path] = []
         self._render_count = 0
         self._batch_inflight = False
+        self._view_mode = None
         self._setup_ui()
         self.scroll_area.viewport().installEventFilter(self)
 
@@ -347,6 +362,15 @@ class WorkflowListView(QWidget):
     def set_file_info_map(self, file_info_map: Dict[str, dict]):
         self._file_info_map = file_info_map
 
+    def set_view_mode(self, mode: str):
+        self._view_mode = mode
+        if mode == "list":
+            self._render_count = 0
+            self._batch_inflight = False
+            if self._ordered_paths:
+                self._render_more_items(len(self._ordered_paths))
+                QTimer.singleShot(0, self._ensure_viewport_filled)
+
     def refresh(self, ordered_paths: List[Path]):
         existing_paths = set(self._item_widgets.keys())
         target_paths = set(ordered_paths)
@@ -357,13 +381,6 @@ class WorkflowListView(QWidget):
 
         if self._current_path not in target_paths:
             self._current_path = None
-
-        for path in self._ordered_paths:
-            if path in self._item_widgets:
-                widget = self._item_widgets[path]
-                widget.update_file_info(self._file_info_map.get(str(path)))
-                self.content_layout.removeWidget(widget)
-                widget.hide()
 
         self._render_count = 0
         self._batch_inflight = False
@@ -429,11 +446,18 @@ class WorkflowListView(QWidget):
 
     def eventFilter(self, watched, event):
         if watched is self.scroll_area.viewport():
-            target_item = self._item_at_viewport_pos(event.pos()) if hasattr(event, "pos") else None
+            target_item = (
+                self._item_at_viewport_pos(event.pos())
+                if hasattr(event, "pos")
+                else None
+            )
             if target_item is not None:
                 if event.type() == QEvent.MouseButtonDblClick:
                     mouse_event = event
-                    if isinstance(mouse_event, QMouseEvent) and mouse_event.button() == Qt.LeftButton:
+                    if (
+                        isinstance(mouse_event, QMouseEvent)
+                        and mouse_event.button() == Qt.LeftButton
+                    ):
                         target_item._on_open()
                         return True
         return super().eventFilter(watched, event)
@@ -448,7 +472,7 @@ class WorkflowListView(QWidget):
         return target
 
     def _initial_batch_size(self) -> int:
-        viewport_height = max(self.scroll_area.viewport().height(), 1)
+        viewport_height = max(self.scroll_area.viewport().height(), 200)
         estimated_item_height = 58
         estimated_rows = max(1, viewport_height // estimated_item_height + 2)
         return max(self.LIST_INITIAL_BATCH_SIZE, estimated_rows * 2)
@@ -467,15 +491,24 @@ class WorkflowListView(QWidget):
             return False
 
         for path in self._ordered_paths[self._render_count : end]:
-            widget = self._ensure_item_widget(path)
-            self.content_layout.removeWidget(widget)
-            self.content_layout.insertWidget(self.content_layout.count() - 1, widget)
-            widget.set_selected(path == self._current_path)
-            widget.show()
+            if path not in self._item_widgets:
+                file_info = self._file_info_map.get(str(path))
+                item_widget = WorkflowListItem(path, file_info, self)
+                item_widget.item_selected.connect(self._on_item_selected)
+                self._item_widgets[path] = item_widget
+                self.content_layout.insertWidget(
+                    self.content_layout.count() - 1, item_widget
+                )
+            else:
+                widget = self._item_widgets[path]
+                self.content_layout.removeWidget(widget)
+                self.content_layout.insertWidget(
+                    self.content_layout.count() - 1, widget
+                )
+            self._item_widgets[path].set_selected(path == self._current_path)
+            self._item_widgets[path].show()
 
         self._render_count = end
-        self.content_layout.update()
-        self.content_widget.updateGeometry()
         return True
 
     def _ensure_viewport_filled(self):

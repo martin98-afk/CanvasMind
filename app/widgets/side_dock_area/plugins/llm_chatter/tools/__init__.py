@@ -735,26 +735,26 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
-        {
-            "type": "function",
-            "function": {
-                "name": "memory_consolidate",
-                "description": "基于当前会话消息和当前 provider 配置，自动提炼适合写入长期记忆的稳定信息，并可直接保存",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "max_items": {
-                            "type": "integer",
-                            "description": "最多提炼多少条记忆",
-                        },
-                        "save": {
-                            "type": "boolean",
-                            "description": "是否直接保存提炼结果到长期记忆",
-                        },
-                    },
-                },
-            },
-        },
+        # {
+        #     "type": "function",
+        #     "function": {
+        #         "name": "memory_consolidate",
+        #         "description": "基于当前会话消息和当前 provider 配置，自动提炼适合写入长期记忆的稳定信息，并可直接保存",
+        #         "parameters": {
+        #             "type": "object",
+        #             "properties": {
+        #                 "max_items": {
+        #                     "type": "integer",
+        #                     "description": "最多提炼多少条记忆",
+        #                 },
+        #                 "save": {
+        #                     "type": "boolean",
+        #                     "description": "是否直接保存提炼结果到长期记忆",
+        #                 },
+        #             },
+        #         },
+        #     },
+        # },
         {
             "type": "function",
             "function": {
