@@ -12,6 +12,7 @@ class EnvironmentCardView(SimpleCardWidget):
 
     manageEnvSignal = pyqtSignal()
     addEnvSignal = pyqtSignal()
+    llmProviderSignal = pyqtSignal()
 
     def __init__(self, package_manager, title=None, parent=None):
         super().__init__(parent)
@@ -45,6 +46,15 @@ class EnvironmentCardView(SimpleCardWidget):
             if item.widget():
                 item.widget().deleteLater()
 
+        # 大模型服务商卡片
+        llm_card = StylishCard(
+            get_icon("大模型"),
+            self.tr("大模型服务商"),
+            self.tr("配置管理大模型服务商"),
+            self,
+        )
+        llm_card.clicked.connect(self.llmProviderSignal.emit)
+
         # 新建卡片
         if self.package_manager.envCombo.count() == 0:
             add_card = StylishCard(
@@ -67,6 +77,7 @@ class EnvironmentCardView(SimpleCardWidget):
 
         self.contentLayout.addWidget(add_card)
         self.contentLayout.addWidget(manage_card)
+        self.contentLayout.addWidget(llm_card)
 
     def update_cards_on_env_change(self):
         self._update_env_cards()

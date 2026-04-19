@@ -3,21 +3,26 @@ from pathlib import Path
 from typing import List, Dict
 
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGraphicsOpacityEffect,
-                             QOpenGLWidget)
-from qfluentwidgets import (
-    ScrollArea, setTheme, Theme
-)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsOpacityEffect, QOpenGLWidget
+from qfluentwidgets import ScrollArea, setTheme, Theme
 
-from app.interfaces.home_interface.widgets.environment_car_view import EnvironmentCardView
-from app.interfaces.home_interface.widgets.quick_start_card_view import QuickStartCardView
-from app.interfaces.home_interface.widgets.resource_link_card_view import ResourceLinkCardView
-from app.interfaces.home_interface.widgets.sample_model_card_view import SampleModelCardView
+from app.interfaces.home_interface.widgets.environment_car_view import (
+    EnvironmentCardView,
+)
+from app.interfaces.home_interface.widgets.quick_start_card_view import (
+    QuickStartCardView,
+)
+from app.interfaces.home_interface.widgets.resource_link_card_view import (
+    ResourceLinkCardView,
+)
+from app.interfaces.home_interface.widgets.sample_model_card_view import (
+    SampleModelCardView,
+)
 from app.interfaces.home_interface.widgets.welecome_banner import WelcomeBannerWidget
 
 
 class HomeInterface(ScrollArea):
-    """ 主界面 """
+    """主界面"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -26,10 +31,10 @@ class HomeInterface(ScrollArea):
         # 强制深色
         setTheme(Theme.DARK)
         self.setViewport(QOpenGLWidget())
-        self.workflow_manager = getattr(parent, 'workflow_manager', None)
-        self.package_manager = getattr(parent, 'package_manager', None)
+        self.workflow_manager = getattr(parent, "workflow_manager", None)
+        self.package_manager = getattr(parent, "package_manager", None)
 
-        self.setObjectName('homeInterface')
+        self.setObjectName("homeInterface")
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
 
@@ -61,9 +66,16 @@ class HomeInterface(ScrollArea):
         self.cardLayout.setContentsMargins(0, 0, 0, 0)
 
         # 初始化模块
-        self.environmentCard = EnvironmentCardView(self.package_manager, self.tr("环境管理 >"), parent=self)
-        self.environmentCard.manageEnvSignal.connect(lambda: self.home.switchTo(self.package_manager))
-        self.environmentCard.addEnvSignal.connect(lambda: self.package_manager.create_env(self))
+        self.environmentCard = EnvironmentCardView(
+            self.package_manager, self.tr("环境管理 >"), parent=self
+        )
+        self.environmentCard.manageEnvSignal.connect(
+            lambda: self.home.switchTo(self.package_manager)
+        )
+        self.environmentCard.addEnvSignal.connect(
+            lambda: self.package_manager.create_env(self)
+        )
+        self.environmentCard.llmProviderSignal.connect(self._on_open_llm_settings)
 
         self.quickStartCard = QuickStartCardView(self.tr("最近编辑 >"), self)
         self.quickStartCard.openFileSignal.connect(self._on_open_canvas_clicked)
@@ -80,10 +92,12 @@ class HomeInterface(ScrollArea):
         self.setWidget(self.view)
 
         # 信号
-        if self.workflow_manager and hasattr(self.workflow_manager, 'scan_finished'):
+        if self.workflow_manager and hasattr(self.workflow_manager, "scan_finished"):
             self.workflow_manager.scan_finished.connect(self._on_scan_finished)
-        if self.package_manager and hasattr(self.package_manager, 'env_changed'):
-            self.package_manager.env_changed.connect(self.environmentCard.update_cards_on_env_change)
+        if self.package_manager and hasattr(self.package_manager, "env_changed"):
+            self.package_manager.env_changed.connect(
+                self.environmentCard.update_cards_on_env_change
+            )
             self.package_manager.env_changed.connect(self._arrange_cards)
 
         # 进场动画
@@ -111,6 +125,11 @@ class HomeInterface(ScrollArea):
             self.cardLayout.addWidget(self.environmentCard)
         self.cardLayout.addWidget(self.resourceLinkCard)
 
+    def _on_open_llm_settings(self):
+        if hasattr(self.home, "settings_popup"):
+            self.home.settings_popup._select_nav("llm")
+            self.home.settings_popup.show_at_left(self.home, None)
+
     def _on_new_canvas_clicked(self):
         if self.workflow_manager:
             self.workflow_manager.new_canvas(self)
@@ -119,5 +138,7 @@ class HomeInterface(ScrollArea):
         if self.workflow_manager:
             self.workflow_manager.open_canvas(Path(file_path))
 
-    def _on_scan_finished(self, workflow_files: List[Path], file_info_map: Dict[str, dict]):
+    def _on_scan_finished(
+        self, workflow_files: List[Path], file_info_map: Dict[str, dict]
+    ):
         self.quickStartCard.update_recent_files(workflow_files, file_info_map)

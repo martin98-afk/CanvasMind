@@ -82,6 +82,8 @@ class Settings(QConfig):
             saved_states = self.side_dock_plugins.value
             if saved_states:
                 SideDockRegistry.load_states_from_config(saved_states)
+            else:
+                self.side_dock_plugins.value = SideDockRegistry.save_states_to_config()
         except Exception:
             pass
 

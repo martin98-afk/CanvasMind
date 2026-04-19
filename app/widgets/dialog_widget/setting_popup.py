@@ -24,6 +24,7 @@ from qfluentwidgets import (
 from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_unified_font
+from app.widgets.side_dock_area.tool_window import DockCategory
 
 
 class SettingDialog(QDialog):
@@ -455,6 +456,7 @@ class SettingDialog(QDialog):
             parent=self.llmGroup,
             home=self,
         )
+        self.llmProviderCard.providerChanged.connect(self._on_llm_providers_changed)
         self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
         self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
 
@@ -845,16 +847,16 @@ class SettingDialog(QDialog):
         self._plugin_cards = {}
 
         context_ids = [
-            "运行画布",
-            "组件开发",
-            "项目管理",
+            DockCategory.CANVAS,
+            DockCategory.COMPONENT,
+            DockCategory.PROJECT,
         ]
 
         for context_id in context_ids:
             entries = SideDockRegistry.get_all_entries(context_id)
             if not entries:
                 continue
-
+            context_id = context_id.value
             context_label = StrongBodyLabel(context_id)
             context_label.setStyleSheet(
                 "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 12px;"
@@ -1062,6 +1064,10 @@ class SettingDialog(QDialog):
                 )
 
     def onConfigChanged(self):
+        self.configChanged.emit()
+        self._save_timer.start()
+
+    def _on_llm_providers_changed(self, providers: dict):
         self.configChanged.emit()
         self._save_timer.start()
 
