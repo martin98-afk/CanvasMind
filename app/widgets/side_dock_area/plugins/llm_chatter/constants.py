@@ -79,6 +79,27 @@ PROVIDER_MODELS = {
         "qwen3-plus",
         "qwen3.5-max",
     ],
+    "OpenAI": [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo",
+    ],
+    "Anthropic (Claude)": [
+        "claude-sonnet-4-20250514",
+        "claude-3-5-sonnet-latest",
+        "claude-3-5-haiku-latest",
+        "claude-3-opus-latest",
+        "claude-3-haiku-latest",
+    ],
+    "Google Gemini": [
+        "gemini-2.5-pro-preview-06-05",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+    ],
 }
 
 FREE_PROVIDERS = {
@@ -154,6 +175,33 @@ FREE_PROVIDERS = {
         "认证方式": "none",
         "获取地址": "https://ollama.com",
     },
+    "OpenAI": {
+        "API_URL": "https://api.openai.com/v1",
+        "API_KEY": "",
+        "模型名称": "gpt-4o-mini",
+        "温度": 0.7,
+        "最大Token": 40960,
+        "认证方式": "bearer",
+        "获取地址": "https://platform.openai.com/api-keys",
+    },
+    "Anthropic (Claude)": {
+        "API_URL": "https://api.anthropic.com/v1",
+        "API_KEY": "",
+        "模型名称": "claude-sonnet-4-20250514",
+        "温度": 0.7,
+        "最大Token": 40960,
+        "认证方式": "anthropic",
+        "获取地址": "https://console.anthropic.com/settings/keys",
+    },
+    "Google Gemini": {
+        "API_URL": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "API_KEY": "",
+        "模型名称": "gemini-2.0-flash",
+        "温度": 0.7,
+        "最大Token": 40960,
+        "认证方式": "bearer",
+        "获取地址": "https://aistudio.google.com/app/apikey",
+    },
 }
 
 PROVIDER_ICONS = {
@@ -165,4 +213,7 @@ PROVIDER_ICONS = {
     "Groq (免费额度)": "groq",
     "百度千帆": "baidu",
     "Ollama (本地)": "Ollama",
+    "OpenAI": "大模型",
+    "Anthropic (Claude)": "Anthropic",
+    "Google Gemini": "gemini-ai",
 }
