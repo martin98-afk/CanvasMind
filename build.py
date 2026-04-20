@@ -59,6 +59,7 @@ params = [
     f"--add-data=app/components{os.pathsep}app/components",
     f"--add-data=app/plugins{os.pathsep}app/plugins",
     f"--add-data=app/widgets{os.pathsep}app/widgets",
+    f"--add-data=app/server_manager{os.pathsep}app/server_manager",
     f"--add-data=resource{os.pathsep}resource",
     f"--add-data=examples{os.pathsep}examples",
     # 隐藏导入：合并基础依赖与动态搜寻到的插件

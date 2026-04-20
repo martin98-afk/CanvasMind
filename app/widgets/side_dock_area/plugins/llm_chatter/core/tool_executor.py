@@ -292,10 +292,11 @@ class ToolExecutor:
                 position=args.get("position"),
             ),
             "canvas_connect_nodes": lambda: self._canvas_tools_executor.canvas_connect_nodes(
-                from_node=args.get("from_node", ""),
-                from_port=args.get("from_port", ""),
-                to_node=args.get("to_node", ""),
-                to_port=args.get("to_port", ""),
+                connections=args.get("connections", []),
+            ),
+            "canvas_edit_prop": lambda: self._canvas_tools_executor.canvas_edit_prop(
+                node_name=args.get("node_name", ""),
+                edits=args.get("edits", []),
             ),
         }
 
