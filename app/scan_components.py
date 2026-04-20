@@ -11,19 +11,13 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List, Counter
-
+from watchfiles import awatch, Change
 from PyQt5.QtCore import QTimer
 from loguru import logger
 
 from app.components.base import COMPONENT_IMPORT_CODE, ArgumentType
 from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 
-try:
-    from watchfiles import awatch, Change
-    HAS_WATCHFILES = True
-except ImportError:
-    HAS_WATCHFILES = False
-    logger.warning("watchfiles 未安装，组件使用统计将不自动更新")
 
 HISTORY_DIR = Path("canvas_files/node_histories")
 CANVAS_DIR = Path("canvas_files/workflows")
