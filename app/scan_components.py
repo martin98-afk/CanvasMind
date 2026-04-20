@@ -11,19 +11,13 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Tuple, Dict, Type, Optional, List, Counter
-
+from watchfiles import awatch, Change
 from PyQt5.QtCore import QTimer
 from loguru import logger
 
 from app.components.base import COMPONENT_IMPORT_CODE, ArgumentType
 from app.interfaces.component_developer.utils.component_history_manager import ComponentHistoryManager
 
-try:
-    from watchfiles import awatch, Change
-    HAS_WATCHFILES = True
-except ImportError:
-    HAS_WATCHFILES = False
-    logger.warning("watchfiles 未安装，组件使用统计将不自动更新")
 
 HISTORY_DIR = Path("canvas_files/node_histories")
 CANVAS_DIR = Path("canvas_files/workflows")
@@ -49,8 +43,7 @@ class ComponentUsageTracker:
             cls._instance = super().__new__(cls)
             cls._instance._index: Dict[str, List[UsageRecord]] = defaultdict(list)
             cls._running = False
-            if HAS_WATCHFILES:
-                cls._instance._start_watcher()
+            cls._instance._start_watcher()
         return cls._instance
 
     def _start_watcher(self):
@@ -167,8 +160,7 @@ class ComponentScanner:
             except RuntimeError:
                 # 未在 asyncio loop 中运行（例如在 Qt 主线程）
                 self._main_loop = None
-            if HAS_WATCHFILES:
-                self._start_component_watcher()
+            self._start_component_watcher()
 
     @classmethod
     def register_on_change(cls, callback, qtimer=True):
