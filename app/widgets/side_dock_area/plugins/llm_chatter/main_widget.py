@@ -137,6 +137,8 @@ class OpenAIChatToolWindow(ToolWindow):
     _tool_call_depth: int = 0
     _pending_tool_calls: int = 0
     _first_tool_result: bool = True
+    _tool_cancelled_by_user: bool = False
+    _cancelled_tool_call_id: Optional[str] = None
     _todo_floating_widget = None
     _question_floating_widget = None
     _question_tool_call_id = None
@@ -857,10 +859,19 @@ class OpenAIChatToolWindow(ToolWindow):
         self._latest_task_state = task_state
 
     def _create_new_session(self):
-        if self._is_streaming and self._chat_engine:
+        if self._chat_engine:
             self._chat_engine.stop()
-            self._is_streaming = False
-            self._toggle_send_stop(False)
+
+        self._is_streaming = False
+        self._tool_cancelled_by_user = False
+        self._toggle_send_stop(False)
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
+        if self._sub_agent_floating_widget:
+            self._sub_agent_floating_widget.setVisible(False)
 
         try:
             self._auto_save_current_session()
@@ -1875,6 +1886,9 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
         logger.info("[ToolFloatingWidget] Tool execution cancelled by user")
+        
+        self._tool_cancelled_by_user = True
+        self._cancelled_tool_call_id = getattr(self, "_current_tool_call_id", None)
         self._tool_floating_widget.finish_tool("用户中止", success=False)
 
         tool_call_id = getattr(self, "_current_tool_call_id", None)
@@ -1891,18 +1905,17 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             self._scroll_to_bottom()
 
-        if hasattr(self, "_chat_engine") and self._chat_engine:
-            worker = getattr(self._chat_engine, "_current_worker", None)
-            if worker:
-                worker.cancel()
-
-        if self.input_area:
-            self.input_area.setFocus()
-
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
         import time
+
+        if self._tool_cancelled_by_user and tool_call_id == self._cancelled_tool_call_id:
+            error_msg = str(getattr(result, "error", "") or "")
+            if "用户中止" in error_msg:
+                self._tool_floating_widget.finish_tool("用户中止", success=False)
+                return
+            return
 
         elapsed = (
             time.time() - self._current_tool_start_time
@@ -1945,6 +1958,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_stream_finished(self, response: str):
         self._is_streaming = False
+        self._tool_cancelled_by_user = False
+        self._cancelled_tool_call_id = None
         self._toggle_send_stop(False)
 
         if self._current_assistant_card:
@@ -1979,11 +1994,19 @@ class OpenAIChatToolWindow(ToolWindow):
         self._refresh_context_usage_indicator()
 
     def _on_engine_error(self, error: str):
+        self._tool_cancelled_by_user = False
+
         if self._current_assistant_card:
             self._current_assistant_card.stop_streaming_anim()
             self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
+
         self._is_streaming = False
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
         self._toggle_send_stop(False)
 
     def _on_user_message_added(self, user_text: str):
@@ -2264,9 +2287,17 @@ class OpenAIChatToolWindow(ToolWindow):
             self.input_area.toggle_send_button(True)
 
     def _on_stop_clicked(self):
+        self._tool_cancelled_by_user = False
+
         if self._chat_engine:
             self._chat_engine.stop()
+
         self._is_streaming = False
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
         self._toggle_send_stop(False)
         if self._current_assistant_card:
             self._current_assistant_card.stop_streaming_anim()

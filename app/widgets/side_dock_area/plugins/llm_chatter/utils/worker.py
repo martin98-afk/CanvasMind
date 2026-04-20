@@ -302,6 +302,7 @@ class OpenAIChatWorker(QThread):
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
         self._response_content_blocks = []
+        self._tool_execution_cancelled = False
         self._last_compaction_state = {
             "active": False,
             "source": "worker",
@@ -315,6 +316,7 @@ class OpenAIChatWorker(QThread):
 
     def cancel(self):
         self._is_cancelled = True
+        self._tool_execution_cancelled = True
         self._answer_event.set()
         if self._question_pending:
             self._question_pending = None
@@ -612,7 +614,13 @@ class OpenAIChatWorker(QThread):
             "思考等级": "reasoning_effort",
         }
 
-        skip_params = {"temperature", "top_p", "presence_penalty", "frequency_penalty", "reasoning_effort"}
+        skip_params = {
+            "temperature",
+            "top_p",
+            "presence_penalty",
+            "frequency_penalty",
+            "reasoning_effort",
+        }
         if model and (model.startswith("o1") or model.startswith("o3")):
             skip_params.update({"temperature", "top_p"})
 
@@ -621,7 +629,11 @@ class OpenAIChatWorker(QThread):
                 continue
 
             if cn_key == "是否思考":
-                status = "enabled" if (value is True or str(value).lower() == "true") else "disabled"
+                status = (
+                    "enabled"
+                    if (value is True or str(value).lower() == "true")
+                    else "disabled"
+                )
                 extra_body["enable_thinking"] = status == "enabled"
                 extra_body["include_reasoning"] = status == "enabled"
                 continue
@@ -640,7 +652,9 @@ class OpenAIChatWorker(QThread):
                 extra_body[en_key] = value
 
         if "max_tokens" in req_kwargs:
-            req_kwargs["max_tokens"] = self._cap_max_output_tokens(model, req_kwargs["max_tokens"])
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
+                model, req_kwargs["max_tokens"]
+            )
 
         if extra_body:
             req_kwargs["extra_body"] = extra_body
@@ -651,6 +665,7 @@ class OpenAIChatWorker(QThread):
         auth_type = self.llm_config.get("认证方式", "bearer")
         if auth_type == "bce":
             import base64
+
             auth_str = f"{api_key}:{api_key}"
             b64_auth = base64.b64encode(auth_str.encode()).decode()
             req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
@@ -1002,6 +1017,27 @@ class OpenAIChatWorker(QThread):
 
         results = []
         for tc in self._current_tool_calls:
+            if self._is_cancelled or self._tool_execution_cancelled:
+                cancelled_tc_id = tc["id"]
+                tool_name = tc["function"]["name"]
+                try:
+                    args = json.loads(tc["function"]["arguments"])
+                except:
+                    args = {}
+                self.tool_result_received.emit(
+                    cancelled_tc_id,
+                    tool_name,
+                    args,
+                    type(
+                        "ToolResult",
+                        (),
+                        {"success": False, "content": None, "error": "用户中止"},
+                    )(),
+                )
+                QApplication.processEvents()
+                self._is_cancelled = True
+                return None
+
             tool_name = tc["function"]["name"]
             arguments = tc["function"]["arguments"]
 
@@ -1053,12 +1089,31 @@ class OpenAIChatWorker(QThread):
                     }
                     self._permission_approved = False
                     while (
-                        self._permission_pending is not None and not self._is_cancelled
+                        self._permission_pending is not None
+                        and not self._is_cancelled
+                        and not self._tool_execution_cancelled
                     ):
                         QApplication.processEvents()
                         time.sleep(0.1)
 
-                    if self._is_cancelled:
+                    if self._is_cancelled or self._tool_execution_cancelled:
+                        cancelled_tc_id = tool_call_id
+                        self.tool_result_received.emit(
+                            cancelled_tc_id,
+                            tool_name,
+                            arguments,
+                            type(
+                                "ToolResult",
+                                (),
+                                {
+                                    "success": False,
+                                    "content": None,
+                                    "error": "用户中止",
+                                },
+                            )(),
+                        )
+                        QApplication.processEvents()
+                        self._is_cancelled = True
                         return None
 
                     if not self._permission_approved:
@@ -1096,6 +1151,23 @@ class OpenAIChatWorker(QThread):
             else:
                 result_content = str(result) if result else ""
                 success = bool(getattr(result, "success", True)) if result else False
+
+            if self._is_cancelled or self._tool_execution_cancelled:
+                cancelled_result = type(
+                    "ToolResult",
+                    (),
+                    {
+                        "success": False,
+                        "content": None,
+                        "error": "用户中止",
+                    },
+                )()
+                self.tool_result_received.emit(
+                    tool_call_id, tool_name, arguments, cancelled_result
+                )
+                QApplication.processEvents()
+                self._is_cancelled = True
+                return None
 
             self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
             QApplication.processEvents()

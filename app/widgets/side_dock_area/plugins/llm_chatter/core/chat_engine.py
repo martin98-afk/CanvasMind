@@ -553,7 +553,9 @@ class ChatEngine:
                 if not hasattr(llm_ctx, "get_canvas_tools_schema"):
                     self._current_agent = "build"
                     canvas_tools = []
-                    available_tools = self._get_agent_manager().get_agent_tools_schema("build")
+                    available_tools = self._get_agent_manager().get_agent_tools_schema(
+                        "build"
+                    )
                 else:
                     canvas_tools = llm_ctx.get_canvas_tools_schema()
         if canvas_tools:
@@ -848,10 +850,17 @@ class ChatEngine:
         self._emit("error", error)
 
     def stop(self):
-        if self._current_worker and self._current_worker.isRunning():
-            self._current_worker.cancel()
+        worker = self._current_worker
         self._current_worker = None
         self._is_streaming = False
+
+        if worker and worker.isRunning():
+            worker.cancel()
+            worker.quit()
+            if not worker.wait(2000):
+                logger.warning("[ChatEngine] Worker thread did not finish in time")
+                worker.terminate()
+                worker.wait(500)
 
     def provide_question_answer(self, answer: str):
         if self._current_worker and hasattr(self._current_worker, "provide_answer"):
