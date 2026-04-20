@@ -672,9 +672,7 @@ class CustomNodeViewer(NodeViewer):
             try:
                 node.set_property(prop_name, prop_value)
             except:
-                logger.error(
-                    f"Failed to set property {prop_name} for node {node_type}"
-                )
+                logger.error(f"Failed to set property {prop_name} for node {node_type}")
         self.home_window.nav_view.record_usage(node_path)
         QtCore.QTimer.singleShot(
             0, lambda: self.home_window.property_panel.update_properties(node)
@@ -1287,6 +1285,7 @@ class CustomNodeViewer(NodeViewer):
                         "text/plain",
                         "application/x-subgraph-template",
                         "text/uri-list",
+                        "application/x-sqlite-table",
                     ]
                 ]
             )

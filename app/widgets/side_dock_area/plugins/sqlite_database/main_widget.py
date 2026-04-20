@@ -33,7 +33,7 @@ from qfluentwidgets import (
     PushButton,
     ScrollArea,
     PrimaryPushButton,
-    TransparentToolButton,
+    TransparentToolButton, CommandBar, Action,
 )
 
 from app.utils.utils import get_icon
@@ -412,6 +412,10 @@ class SQLiteDatabaseWindow(ToolWindow):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(4)
 
+        commandBar = CommandBar()
+        add_action = Action(FluentIcon.ADD, "新增行 (Ctrl+N)", self)
+        add_action.triggered.connect(self._on_insert_data)
+        commandBar.addAction(add_action)
         self.sql_btn = ToolButton(FluentIcon.CODE, self)
         self.sql_btn.setFixedSize(28, 28)
         self.sql_btn.setToolTip("执行SQL (Ctrl+E)")
@@ -423,7 +427,7 @@ class SQLiteDatabaseWindow(ToolWindow):
         self.insert_btn.clicked.connect(self._on_insert_data)
         self.insert_btn.setEnabled(False)
 
-        self.create_insert_node_btn = ToolButton(FluentIcon.ADD_TO, self)
+        self.create_insert_node_btn = ToolButton(get_icon("创建节点"), self)
         self.create_insert_node_btn.setFixedSize(28, 28)
         self.create_insert_node_btn.setToolTip("创建插入节点")
         self.create_insert_node_btn.clicked.connect(self._on_create_insert_node)
@@ -462,7 +466,6 @@ class SQLiteDatabaseWindow(ToolWindow):
         toolbar.addWidget(self.insert_btn)
         toolbar.addWidget(self.create_insert_node_btn)
         toolbar.addWidget(self.delete_btn)
-
         toolbar.addWidget(self.refresh_data_btn)
         toolbar.addStretch()
         toolbar.addWidget(self.preview_count)
@@ -627,8 +630,8 @@ class SQLiteDatabaseWindow(ToolWindow):
         table_info = self.db_manager.get_table_info(self.current_table)
         col_count = len(table_info)
 
-        limit = self.limit_spin.value()
-        columns, rows = self.db_manager.get_table_data(self.current_table, limit=limit)
+        # limit = self.limit_spin.value()
+        columns, rows = self.db_manager.get_table_data(self.current_table, limit=500)
         total = self.db_manager.get_table_count(self.current_table)
 
         self.data_header.setText(f"表: {self.current_table}  ({col_count} 列)")
