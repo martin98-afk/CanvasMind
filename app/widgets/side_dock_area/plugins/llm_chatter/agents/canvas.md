@@ -138,19 +138,19 @@ def run(self, params, inputs=None):
 
 ### 全局变量访问
 
-在代码编辑节点中，可以通过 `self.global_variables` 访问画布全局变量：
+在代码编辑节点中，可以通过 `self.global_variable` 访问画布全局变量：
 
 ```python
 def run(self, params, inputs=None):
     # 获取自定义变量（通过 canvas_get_variables 查看所有变量名）
-    api_key = self.global_variables.get("custom.api_key")
-    model_name = self.global_variables.get("custom.model_name")
+    api_key = self.global_variable.get("custom.api_key")
+    model_name = self.global_variable.get("custom.model_name")
     
     # 获取节点输出变量（格式: 节点名__输出端口名）
-    data = self.global_variables.get("node_vars.数据处理节点__result")
+    data = self.global_variable.get("node_vars.数据处理节点__result")
     
     # 获取环境变量
-    workspace = self.global_variables.get("env.WORKSPACE")
+    workspace = self.global_variable.get("env.TZ")
     
     # 返回输出
     return {"output1": processed_result}

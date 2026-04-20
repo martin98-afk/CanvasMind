@@ -143,14 +143,13 @@ class CanvasTools:
         data_truncation: int = 2000,
     ) -> Dict[str, Any]:
         component_path = getattr(node, "FULL_PATH", "") or ""
-        properties = getattr(node, "properties", None)
+        properties = dict(getattr(node.model, "_custom_prop", {}) or {})
         snapshot = {
             "node_name": node.name(),
             "node_id": properties.pop("persistent_id", None),
             "status": properties.pop("_status", None),
-            "pos": (round(pos, 1) for pos in node.pos()),
-            "node_type": properties.pop("FULL_PATH", None),
-            "component_path": component_path or None,
+            "pos": [round(pos, 1) for pos in node.pos()],
+            "node_type": component_path,
             "properties": properties,
             "inputs": self._serialize_port_links(node, "input_ports", "upstream"),
             "outputs": self._serialize_port_links(node, "output_ports", "downstream"),
