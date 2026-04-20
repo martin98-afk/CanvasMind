@@ -43,8 +43,7 @@ class ComponentUsageTracker:
             cls._instance = super().__new__(cls)
             cls._instance._index: Dict[str, List[UsageRecord]] = defaultdict(list)
             cls._running = False
-            if HAS_WATCHFILES:
-                cls._instance._start_watcher()
+            cls._instance._start_watcher()
         return cls._instance
 
     def _start_watcher(self):
@@ -161,8 +160,7 @@ class ComponentScanner:
             except RuntimeError:
                 # 未在 asyncio loop 中运行（例如在 Qt 主线程）
                 self._main_loop = None
-            if HAS_WATCHFILES:
-                self._start_component_watcher()
+            self._start_component_watcher()
 
     @classmethod
     def register_on_change(cls, callback, qtimer=True):
