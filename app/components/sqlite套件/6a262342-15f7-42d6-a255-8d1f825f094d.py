@@ -21,7 +21,6 @@ class SQLiteExecute(BaseComponent):
     description = "执行自定义SQL语句"
     
     inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
         PortDefinition(name="sql", label="SQL语句", type=ArgumentType.TEXT),
     ]
     outputs = [
@@ -29,9 +28,17 @@ class SQLiteExecute(BaseComponent):
         PortDefinition(name="data", label="查询结果", type=ArgumentType.JSON),
     ]
 
+    properties = {
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
+    }
+
     def run(self, params, inputs=None):
         import sqlite3
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         sql = inputs.get("sql")
         
         try:

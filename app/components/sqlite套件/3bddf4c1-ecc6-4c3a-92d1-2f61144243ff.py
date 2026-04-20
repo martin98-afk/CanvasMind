@@ -21,7 +21,6 @@ class SQLiteUpdate(BaseComponent):
     description = "根据条件更新指定表中的数据"
     
     inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
         PortDefinition(name="data", label="更新数据(Dict)", type=ArgumentType.JSON), # 例如 {"name": "新名称", "age": 30}
         PortDefinition(name="where_clause", label="条件语句(WHERE)", type=ArgumentType.TEXT), # 例如 "id = ?"
         PortDefinition(name="where_params", label="条件参数(List)", type=ArgumentType.JSON), # 例如 [1]
@@ -31,6 +30,11 @@ class SQLiteUpdate(BaseComponent):
         PortDefinition(name="row_count", label="影响行数", type=ArgumentType.INT),
     ]
     properties = {
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
         "table_name": PropertyDefinition(
             type=PropertyType.TEXT,
             default="",
@@ -40,7 +44,7 @@ class SQLiteUpdate(BaseComponent):
 
     def run(self, params, inputs=None):
         import sqlite3
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         data = inputs.get("data")
         where_clause = inputs.get("where_clause")
         where_params = inputs.get("where_params") or []

@@ -21,7 +21,6 @@ class SQLiteDelete(BaseComponent):
     description = "根据条件从指定表中删除数据"
     
     inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
         PortDefinition(name="where_clause", label="条件语句(WHERE)", type=ArgumentType.TEXT), # 例如 "status = ?"
         PortDefinition(name="where_params", label="条件参数(List)", type=ArgumentType.JSON), # 例如 ["已过期"]
     ]
@@ -30,6 +29,11 @@ class SQLiteDelete(BaseComponent):
         PortDefinition(name="row_count", label="影响行数", type=ArgumentType.INT),
     ]
     properties = {
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
         "table_name": PropertyDefinition(
             type=PropertyType.TEXT,
             default="",
@@ -45,7 +49,7 @@ class SQLiteDelete(BaseComponent):
 
     def run(self, params, inputs=None):
         import sqlite3
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         where_clause = inputs.get("where_clause")
         where_params = inputs.get("where_params") or []
 
