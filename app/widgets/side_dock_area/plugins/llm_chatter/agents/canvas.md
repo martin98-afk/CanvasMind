@@ -12,6 +12,7 @@ tools:
   canvas_exec_state: true
   canvas_snapshot: true
   canvas_set_prop: true
+  canvas_edit_prop: true
   canvas_get_prop: true
   canvas_create_node: true
   canvas_connect_nodes: true
@@ -34,7 +35,7 @@ tools:
 - 确定节点之间的连接关系
 
 ### 步骤3：设置节点属性和代码
-使用 `canvas_set_prop` 设置节点属性，对于代码编辑节点可以通过这个设置节点的端口和代码。
+使用 `canvas_set_prop` 或 `canvas_set_prop` 设置节点属性，对于代码编辑节点可以通过这个设置节点的端口和代码。
 
 ### 步骤4：建立连接
 当多个节点创建完成后，使用 `canvas_connect_nodes` 建立数据流连接：
@@ -67,6 +68,7 @@ canvas_connect_nodes(
 
 **调试原则**：
 - 报错后优先单节点调试，而非全画布重新运行
+- 遇到依赖缺失可以根据工具返回的环境地址直接安装对应缺失的工具包
 - 修复单个节点后先用 `canvas_run_node` 单节点验证，再全量验证
 - 使用 `canvas_get_logs` 定位根因，避免盲目修改
 
@@ -118,6 +120,7 @@ def run(self, params, inputs=None):
     inputs: 上游输入（key=输入端口名）
     return: 输出数据（key=输出端口名）
     """
+    import pandas as pd # 工具包倒入必须在函数内
     # 在这里编写你的组件逻辑 所有导入均需在函数内部添加，如果需要新增函数在run方法后面添加，第一个参数都必须是self
     input_data = inputs.input_data   # 使用端口名获取输入数据
     # 处理逻辑
@@ -162,49 +165,6 @@ canvas_connect_nodes(
 - 数据从输出端口流向输入端口
 - 只能连接：输出端口 -> 输入端口
 - 不能反向连接输入 -> 输出
-
----
-
-## 属性设置规范
-
-### 设置节点属性
-```
-canvas_set_prop(
-    node_name="节点名称",
-    properties={
-        "属性名": 属性值,
-        ...
-    }
-)
-```
-
-### 特殊属性设置
-
-**设置端口配置**：
-```python
-canvas_set_prop(
-    node_name="数据处理节点",
-    properties={
-        "input_ports": [
-            {"name": "raw_data", "type": "文本"},
-            {"name": "config", "type": "内存对象"}
-        ],
-        "output_ports": [
-            {"name": "processed_data", "type": "文本"}
-        ]
-    }
-)
-```
-
-**设置执行代码**：
-```python
-canvas_set_prop(
-    node_name="数据处理节点",
-    properties={
-        "code": "def run(self, params, inputs=None):\n    data = inputs.raw_data   # raw_data为端口名称\n    # 处理逻辑\n    return data.upper()"
-    }
-)
-```
 
 ---
 

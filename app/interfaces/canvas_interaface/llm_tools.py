@@ -336,32 +336,24 @@ class CanvasTools:
 
     def canvas_connect_nodes(
         self,
-        from_node: str,
-        from_port: str,
-        to_node: str,
-        to_port: str,
+        connections: List[Dict],
     ) -> ToolResult:
         """
         连接两个节点的端口
 
         Args:
-            from_node: 输出节点名称
-            from_port: 输出端口名称
-            to_node: 输入节点名称
-            to_port: 输入端口名称
+            connections: 连接列表，如 [{"from_node": "A", "from_port": "out", "to_node": "B", "to_port": "in"}]
         """
+        if not isinstance(connections, list):
+            return ToolResult(False, error="connections 必须是列表格式")
+
         try:
-            self.parent.canvas_connect_nodes_requested.emit(
-                from_node, from_port, to_node, to_port
-            )
+            self.parent.canvas_connect_nodes_requested.emit(connections)
             return ToolResult(
                 True,
                 content={
-                    "message": f"已发送连接请求: {from_node}.{from_port} -> {to_node}.{to_port}",
-                    "from_node": from_node,
-                    "from_port": from_port,
-                    "to_node": to_node,
-                    "to_port": to_port,
+                    "message": f"已发送 {len(connections)} 个连接请求",
+                    "connections": connections,
                 },
             )
         except Exception as e:
@@ -390,6 +382,59 @@ class CanvasTools:
             )
         except Exception as e:
             return ToolResult(False, error=f"设置节点属性失败: {str(e)}")
+
+    def canvas_edit_prop(
+        self,
+        node_name: str,
+        edits: List[Dict],
+    ) -> ToolResult:
+        """
+        编辑节点属性中的字符串，支持多字符串替换
+
+        Args:
+            node_name: 节点名称
+            edits: 替换列表，如 [{"property": "prompt", "old_str": "x", "new_str": "y"}]
+        """
+        node = self._find_node_by_name(node_name)
+        if not node:
+            return ToolResult(False, error=f"未找到节点: {node_name}")
+
+        if not isinstance(edits, list):
+            return ToolResult(False, error="edits 必须是列表格式")
+
+        results = []
+        for edit in edits:
+            prop_name = edit.get("property")
+            old_s = edit.get("old_str")
+            new_s = edit.get("new_str")
+            if not prop_name or old_s is None or new_s is None:
+                results.append(
+                    f"跳过无效替换: {edit}，缺少 property/old_str/new_str"
+                )
+                continue
+
+            current_value = node.get_property(prop_name)
+            if current_value is None:
+                results.append(f"属性 [{prop_name}] 不存在或值为空")
+                continue
+
+            if not isinstance(current_value, str):
+                results.append(f"属性 [{prop_name}] 不是字符串类型，无法编辑")
+                continue
+
+            if old_s not in current_value:
+                results.append(f"属性 [{prop_name}] 中未找到字符串: {old_s}")
+                continue
+
+            new_value = current_value.replace(old_s, new_s)
+            node.set_property(prop_name, new_value)
+            results.append(f"属性 [{prop_name}] 替换成功")
+
+        success_count = sum(1 for r in results if "成功" in r)
+        return ToolResult(
+            True,
+            content=f"完成 {success_count}/{len(edits)} 个替换:\n" + "\n".join(results),
+        )
 
     def canvas_get_prop(
         self, node_name: str, property_names: Optional[List[str]] = None
@@ -618,28 +663,26 @@ def get_canvas_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "canvas_connect_nodes",
-                "description": "连接两个节点的端口，建立数据流",
+                "description": "连接两个节点的端口，建立数据流，支持批量连接",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "from_node": {
-                            "type": "string",
-                            "description": "输出节点名称",
-                        },
-                        "from_port": {
-                            "type": "string",
-                            "description": "输出端口名称",
-                        },
-                        "to_node": {
-                            "type": "string",
-                            "description": "输入节点名称",
-                        },
-                        "to_port": {
-                            "type": "string",
-                            "description": "输入端口名称",
+                        "connections": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "from_node": {"type": "string", "description": "输出节点名称"},
+                                    "from_port": {"type": "string", "description": "输出端口名称"},
+                                    "to_node": {"type": "string", "description": "输入节点名称"},
+                                    "to_port": {"type": "string", "description": "输入端口名称"},
+                                },
+                                "required": ["from_node", "from_port", "to_node", "to_port"],
+                            },
+                            "description": "连接列表，如 [{\"from_node\": \"A\", \"from_port\": \"out\", \"to_node\": \"B\", \"to_port\": \"in\"}]",
                         },
                     },
-                    "required": ["from_node", "from_port", "to_node", "to_port"],
+                    "required": ["connections"],
                 },
             },
         },
@@ -746,6 +789,33 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "canvas_edit_prop",
+                "description": "编辑节点属性中的字符串，支持单字符串或多字符串替换，适合修改属性里的代码片段",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "node_name": {"type": "string", "description": "节点名称"},
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "property": {"type": "string", "description": "属性名"},
+                                    "old_str": {"type": "string", "description": "要替换的旧字符串"},
+                                    "new_str": {"type": "string", "description": "替换后的新字符串"},
+                                },
+                                "required": ["property", "old_str", "new_str"],
+                            },
+                            "description": "替换列表，如 [{\"property\": \"prompt\", \"old_str\": \"x\", \"new_str\": \"y\"}]",
+                        },
+                    },
+                    "required": ["node_name", "edits"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "canvas_get_prop",
                 "description": "查询节点当前的属性参数值",
                 "parameters": {
@@ -755,7 +825,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "property_names": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": '可选，属性名列表，如 ["temperature", "model"]',
+                            "description": "可选，属性名列表，如 [\"temperature\", \"model\"]",
                         },
                     },
                     "required": ["node_name"],
