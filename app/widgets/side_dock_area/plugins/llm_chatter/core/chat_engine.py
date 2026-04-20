@@ -549,7 +549,13 @@ class ChatEngine:
                 and hasattr(context_provider.parent, "homepage")
                 and hasattr(context_provider.parent.homepage, "llm_context_provider")
             ):
-                canvas_tools = context_provider.parent.homepage.llm_context_provider.get_canvas_tools_schema()
+                llm_ctx = context_provider.parent.homepage.llm_context_provider
+                if not hasattr(llm_ctx, "get_canvas_tools_schema"):
+                    self._current_agent = "build"
+                    canvas_tools = []
+                    available_tools = self._get_agent_manager().get_agent_tools_schema("build")
+                else:
+                    canvas_tools = llm_ctx.get_canvas_tools_schema()
         if canvas_tools:
             available_tools = available_tools + canvas_tools
 
