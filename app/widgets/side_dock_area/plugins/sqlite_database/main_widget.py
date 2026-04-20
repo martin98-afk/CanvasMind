@@ -411,10 +411,6 @@ class SQLiteDatabaseWindow(ToolWindow):
 
         self.command_bar = CommandBar()
 
-        self.sql_action = Action(FluentIcon.CODE, "执行SQL", self)
-        self.sql_action.triggered.connect(self._on_execute_sql)
-        self.command_bar.addAction(self.sql_action)
-
         self.insert_action = Action(FluentIcon.ADD, "新增行", self)
         self.insert_action.triggered.connect(self._on_insert_data)
         self.insert_action.setEnabled(False)
@@ -424,6 +420,11 @@ class SQLiteDatabaseWindow(ToolWindow):
         self.create_node_action.triggered.connect(self._on_create_insert_node)
         self.create_node_action.setEnabled(False)
         self.command_bar.addAction(self.create_node_action)
+        self.command_bar.addSeparator()
+        
+        self.sql_action = Action(FluentIcon.CODE, "执行SQL", self)
+        self.sql_action.triggered.connect(self._on_execute_sql)
+        self.command_bar.addAction(self.sql_action)
 
         self.delete_action = Action(FluentIcon.DELETE, "删除行", self)
         self.delete_action.triggered.connect(self._on_delete_row)
