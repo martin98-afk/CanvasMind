@@ -143,15 +143,15 @@ class CanvasTools:
         data_truncation: int = 2000,
     ) -> Dict[str, Any]:
         component_path = getattr(node, "FULL_PATH", "") or ""
+        properties = getattr(node, "properties", None)
         snapshot = {
             "node_name": node.name(),
-            "node_id": getattr(node, "persistent_id", None),
-            "status": getattr(node, "status", None),
-            "pos": node.pos(),
-            "node_type": component_path.split("/")[0] if component_path else "未知",
+            "node_id": properties.pop("persistent_id", None),
+            "status": properties.pop("_status", None),
+            "pos": (round(pos, 1) for pos in node.pos()),
+            "node_type": properties.pop("FULL_PATH", None),
             "component_path": component_path or None,
-            "debug_enabled": bool(getattr(node, "_debug_enabled", False)),
-            "properties": dict(getattr(node.model, "_custom_prop", {}) or {}),
+            "properties": properties,
             "inputs": self._serialize_port_links(node, "input_ports", "upstream"),
             "outputs": self._serialize_port_links(node, "output_ports", "downstream"),
         }
@@ -180,7 +180,11 @@ class CanvasTools:
             if callable(get_component_code):
                 snapshot["code"] = self._tail_text(get_component_code(), 12000)
         else:
-            snapshot["properties"] = {key: value for key, value in snapshot["properties"].items() if key != "code" and key != "debug_code"}
+            snapshot["properties"] = {
+                key: value
+                for key, value in snapshot["properties"].items()
+                if key != "code" and key != "debug_code"
+            }
 
         return snapshot
 
@@ -518,16 +522,59 @@ class CanvasTools:
         except Exception as e:
             return ToolResult(False, error=f"获取执行状态失败: {str(e)}")
 
+    def canvas_get_variables(
+        self,
+        var_type: Optional[str] = None,
+        include_values: bool = True,
+    ) -> ToolResult:
+        """
+        获取画布全局变量
+
+        Args:
+            var_type: 可选，筛选类型 - "custom"(自定义变量)/"node_vars"(节点输出变量)/"env"(环境变量)，为空则返回所有
+            include_values: 是否包含变量值，False 则只返回变量名列表
+        """
+        gv = self.parent.global_variables
+        if not gv:
+            return ToolResult(False, error="全局变量不可用")
+
+        result = {}
+        types_to_fetch = []
+        if var_type is None:
+            types_to_fetch = ["custom", "node_vars", "env"]
+        elif var_type in ("custom", "node_vars", "env"):
+            types_to_fetch = [var_type]
+        else:
+            return ToolResult(
+                False, error=f"无效的变量类型: {var_type}，可选: custom/node_vars/env"
+            )
+
+        for vtype in types_to_fetch:
+            if vtype == "custom":
+                if include_values:
+                    result["custom"] = {k: v.value for k, v in gv.custom.items()}
+                else:
+                    result["custom"] = list(gv.custom.keys())
+            elif vtype == "node_vars":
+                if include_values:
+                    result["node_vars"] = {k: v.value for k, v in gv.node_vars.items()}
+                else:
+                    result["node_vars"] = list(gv.node_vars.keys())
+            elif vtype == "env":
+                result["env"] = gv.env.get_all_env_vars()
+
+        return ToolResult(True, content=result)
+
     def canvas_snapshot(
         self,
         node_names: Optional[List[str]] = None,
-        include_logs: bool = True,
+        include_logs: bool = False,
         log_type: str = "historical",
-        log_tail_chars: int = 4000,
+        log_tail_chars: int = 2000,
         include_code: bool = False,
         include_input_data: bool = False,
         include_output_data: bool = False,
-        data_truncation: int = 2000,
+        data_truncation: int = 1000,
     ) -> ToolResult:
         if node_names is None:
             nodes = list(self.graph.all_nodes())
@@ -558,6 +605,81 @@ class CanvasTools:
             )
         except Exception as e:
             return ToolResult(False, error=f"获取节点快照失败: {str(e)}")
+
+    def canvas_set_variable(
+        self,
+        var_name: str,
+        value: Any = None,
+        var_type: str = "custom",
+        from_node: Optional[str] = None,
+        from_port: Optional[str] = None,
+    ) -> ToolResult:
+        """
+        设置画布全局变量
+
+        Args:
+            var_name: 变量名（env/custom 类型时直接用作变量名，node_vars 时作为目标变量名）
+            value: 变量值（var_type 为 custom/env 时使用）
+            var_type: 变量类型 - "custom"(自定义变量)/"env"(环境变量)/"node_vars"(节点输出变量)
+            from_node: 源节点名（var_type 为 node_vars 时必填）
+            from_port: 源输出端口名（var_type 为 node_vars 时必填）
+        """
+        gv = self.parent.global_variables
+        if not gv:
+            return ToolResult(False, error="全局变量不可用")
+
+        if var_type not in ("custom", "env", "node_vars"):
+            return ToolResult(
+                False, error=f"无效的变量类型: {var_type}，可选: custom/env/node_vars"
+            )
+
+        if var_type in ("custom", "env"):
+            if value is None:
+                return ToolResult(False, error=f"设置 {var_type} 变量时 value 不能为空")
+            if var_type == "custom":
+                gv.set(var_name, value)
+            else:
+                gv.env.set_env_var(var_name, value)
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已设置 {var_type} 变量: {var_name}",
+                    "var_type": var_type,
+                    "var_name": var_name,
+                    "value": self._truncate_value(value, 500),
+                },
+            )
+
+        elif var_type == "node_vars":
+            if not from_node or not from_port:
+                return ToolResult(
+                    False, error="设置 node_vars 变量时需要指定 from_node 和 from_port"
+                )
+            node = self._find_node_by_name(from_node)
+            if not node:
+                return ToolResult(False, error=f"未找到节点: {from_node}")
+            output_values = getattr(node, "_output_values", None)
+            if output_values is None:
+                return ToolResult(
+                    False, error=f"节点 {from_node} 还没有输出数据，请先运行该节点"
+                )
+            port_value = output_values.get(from_port)
+            if port_value is None:
+                return ToolResult(
+                    False, error=f"节点 {from_node} 的输出端口 {from_port} 没有数据"
+                )
+            node_var_key = f"{from_node}__{from_port}"
+            gv.set_output(from_node, from_port, port_value)
+            return ToolResult(
+                True,
+                content={
+                    "message": f"已设置节点输出变量: {var_name} -> {node_var_key}",
+                    "var_type": var_type,
+                    "var_name": var_name,
+                    "source": {"node": from_node, "port": from_port},
+                    "value": self._truncate_value(port_value, 500),
+                },
+            )
 
 
 def get_canvas_tools_schema() -> List[Dict]:
@@ -649,14 +771,31 @@ def get_canvas_tools_schema() -> List[Dict]:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "from_node": {"type": "string", "description": "输出节点名称"},
-                                    "from_port": {"type": "string", "description": "输出端口名称"},
-                                    "to_node": {"type": "string", "description": "输入节点名称"},
-                                    "to_port": {"type": "string", "description": "输入端口名称"},
+                                    "from_node": {
+                                        "type": "string",
+                                        "description": "输出节点名称",
+                                    },
+                                    "from_port": {
+                                        "type": "string",
+                                        "description": "输出端口名称",
+                                    },
+                                    "to_node": {
+                                        "type": "string",
+                                        "description": "输入节点名称",
+                                    },
+                                    "to_port": {
+                                        "type": "string",
+                                        "description": "输入端口名称",
+                                    },
                                 },
-                                "required": ["from_node", "from_port", "to_node", "to_port"],
+                                "required": [
+                                    "from_node",
+                                    "from_port",
+                                    "to_node",
+                                    "to_port",
+                                ],
                             },
-                            "description": "连接列表，如 [{\"from_node\": \"A\", \"from_port\": \"out\", \"to_node\": \"B\", \"to_port\": \"in\"}]",
+                            "description": '连接列表，如 [{"from_node": "A", "from_port": "out", "to_node": "B", "to_port": "in"}]',
                         },
                     },
                     "required": ["connections"],
@@ -698,8 +837,63 @@ def get_canvas_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "canvas_get_variables",
+                "description": "获取画布全局变量，包括 custom(自定义变量)、node_vars(节点输出变量)、env(环境变量)。无需运行画布即可查看",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "var_type": {
+                            "type": "string",
+                            "description": "可选，筛选类型: custom/node_vars/env，为空则返回所有",
+                            "enum": ["custom", "node_vars", "env"],
+                        },
+                        "include_values": {
+                            "type": "boolean",
+                            "description": "是否包含变量值，默认 True；False 则只返回变量名",
+                        },
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "canvas_set_variable",
+                "description": "设置画布全局变量，支持 custom/env/node_vars 三种类型",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "var_name": {
+                            "type": "string",
+                            "description": "变量名（node_vars 时为存储的目标变量名）",
+                        },
+                        "value": {
+                            "type": "Any",
+                            "description": "变量值（custom/env 类型时使用）",
+                        },
+                        "var_type": {
+                            "type": "string",
+                            "description": "变量类型: custom(自定义变量)/env(环境变量)/node_vars(节点输出变量)",
+                            "enum": ["custom", "env", "node_vars"],
+                        },
+                        "from_node": {
+                            "type": "string",
+                            "description": "源节点名（node_vars 类型时必填）",
+                        },
+                        "from_port": {
+                            "type": "string",
+                            "description": "源输出端口名（node_vars 类型时必填）",
+                        },
+                    },
+                    "required": ["var_name", "var_type"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "canvas_snapshot",
-                "description": "获取节点信息快照，包含状态、属性、上下游连接、日志，可选附带当前组件代码、输入数据、输出数据。支持单节点、多节点或空（所有节点）查询",
+                "description": "获取节点信息快照，包含状态、属性、上下游连接。默认不包含日志和代码（节省 token），按需开启",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -710,7 +904,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                         },
                         "include_logs": {
                             "type": "boolean",
-                            "description": "是否返回日志",
+                            "description": "是否返回日志（默认 False，节省 token）",
                         },
                         "log_type": {
                             "type": "string",
@@ -719,7 +913,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                         },
                         "log_tail_chars": {
                             "type": "integer",
-                            "description": "日志尾部保留字符数",
+                            "description": "日志尾部保留字符数（默认 2000）",
                         },
                         "include_code": {
                             "type": "boolean",
@@ -727,15 +921,15 @@ def get_canvas_tools_schema() -> List[Dict]:
                         },
                         "include_input_data": {
                             "type": "boolean",
-                            "description": "是否附带节点的输入数据（通过上游连接节点获取）",
+                            "description": "是否附带节点的输入数据",
                         },
                         "include_output_data": {
                             "type": "boolean",
-                            "description": "是否附带节点的输出数据（从节点运行结果获取）",
+                            "description": "是否附带节点的输出数据",
                         },
                         "data_truncation": {
                             "type": "integer",
-                            "description": "输入/输出数据的最大字符数，超出部分会被截断",
+                            "description": "输入/输出数据的最大字符数（默认 1000）",
                         },
                     },
                 },
@@ -777,13 +971,22 @@ def get_canvas_tools_schema() -> List[Dict]:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "property": {"type": "string", "description": "属性名"},
-                                    "old_str": {"type": "string", "description": "要替换的旧字符串"},
-                                    "new_str": {"type": "string", "description": "替换后的新字符串"},
+                                    "property": {
+                                        "type": "string",
+                                        "description": "属性名",
+                                    },
+                                    "old_str": {
+                                        "type": "string",
+                                        "description": "要替换的旧字符串",
+                                    },
+                                    "new_str": {
+                                        "type": "string",
+                                        "description": "替换后的新字符串",
+                                    },
                                 },
                                 "required": ["property", "old_str", "new_str"],
                             },
-                            "description": "替换列表，如 [{\"property\": \"prompt\", \"old_str\": \"x\", \"new_str\": \"y\"}]",
+                            "description": '替换列表，如 [{"property": "prompt", "old_str": "x", "new_str": "y"}]',
                         },
                     },
                     "required": ["node_name", "edits"],
@@ -802,7 +1005,7 @@ def get_canvas_tools_schema() -> List[Dict]:
                         "property_names": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "可选，属性名列表，如 [\"temperature\", \"model\"]",
+                            "description": '可选，属性名列表，如 ["temperature", "model"]',
                         },
                     },
                     "required": ["node_name"],
