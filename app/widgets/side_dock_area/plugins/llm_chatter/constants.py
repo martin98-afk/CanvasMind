@@ -76,9 +76,8 @@ PROVIDER_MODELS = {
     ],
     "阿里云 (DashScope)": [
         "qwen3-max",
-        "qwen-plus",
-        "qwen-max",
-        "qwen-max-longcontext",
+        "qwen3-plus",
+        "qwen3.5-max",
     ],
 }
 
@@ -104,11 +103,11 @@ FREE_PROVIDERS = {
     "阿里云 (DashScope)": {
         "API_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "API_KEY": "",
-        "模型名称": "qwen-plus",
+        "模型名称": "qwen3.5-plus",
         "温度": 0.7,
-        "最大Token": 2200000,
+        "最大Token": 200000,
         "认证方式": "bearer",
-        "获取地址": "https://dashscope.console.aliyun.com/manage/credential",
+        "获取地址": "https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key",
     },
     "智谱AI (免费模型)": {
         "API_URL": "https://open.bigmodel.cn/api/paas/v4",
@@ -117,7 +116,7 @@ FREE_PROVIDERS = {
         "温度": 0.7,
         "最大Token": 40960,
         "认证方式": "bearer",
-        "获取地址": "https://open.bigmodel.cn/usercenter/apikeys",
+        "获取地址": "https://open.bigmodel.cn/apikey/platform",
     },
     "DeepSeek": {
         "API_URL": "https://api.deepseek.com",
@@ -126,7 +125,7 @@ FREE_PROVIDERS = {
         "温度": 0.7,
         "最大Token": 40960,
         "认证方式": "bearer",
-        "获取地址": "https://platform.deepseek.com/usage",
+        "获取地址": "https://platform.deepseek.com/api_keys",
     },
     "Groq (免费额度)": {
         "API_URL": "https://api.groq.com/openai/v1",

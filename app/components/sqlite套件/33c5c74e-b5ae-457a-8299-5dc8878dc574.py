@@ -20,13 +20,16 @@ class Component(BaseComponent):
     category = "sqlite套件"
     description = "生成SQL建表语句，支持动态字段配置"
     requirements = ""
-    inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
-    ]
+    inputs = []
     outputs = [
         PortDefinition(name="status", label="操作状态", type=ArgumentType.TEXT),
     ]
     properties = {
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
         "table_name": PropertyDefinition(
             type=PropertyType.TEXT,
             default="my_table",
@@ -70,7 +73,7 @@ class Component(BaseComponent):
         """
         import sqlite3
         # 获取输入参数
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         table_name = params.table_name
         fields = params.fields  # 从属性中获取字段配置
 

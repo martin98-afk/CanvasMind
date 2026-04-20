@@ -20,9 +20,7 @@ class SQLiteGetTableSchema(BaseComponent):
     category = "sqlite套件"
     description = "获取指定表的列信息、类型及约束"
     
-    inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
-    ]
+    inputs = []
     outputs = [
         PortDefinition(name="fields", label="字段列表", type=ArgumentType.JSON),
         PortDefinition(name="column_names", label="纯列名列表", type=ArgumentType.JSON),
@@ -30,6 +28,11 @@ class SQLiteGetTableSchema(BaseComponent):
         PortDefinition(name="status", label="状态", type=ArgumentType.TEXT),
     ]
     properties = {
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
         "table_name": PropertyDefinition(
             type=PropertyType.TEXT,
             default="",
@@ -39,7 +42,7 @@ class SQLiteGetTableSchema(BaseComponent):
 
     def run(self, params, inputs=None):
         import sqlite3
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         table_name = params.table_name
 
         if not table_name:

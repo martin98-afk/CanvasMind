@@ -21,7 +21,6 @@ class SQLiteInsert(BaseComponent):
     description = "将数据（字典或列表）写入指定表"
     
     inputs = [
-        PortDefinition(name="database_path", label="数据库路径", type=ArgumentType.TEXT),
         PortDefinition(name="data", label="待插入数据", type=ArgumentType.JSON), # 支持Dict或List[Dict]
     ]
     outputs = [
@@ -29,26 +28,37 @@ class SQLiteInsert(BaseComponent):
         PortDefinition(name="row_count", label="影响行数", type=ArgumentType.INT),
     ]
     properties = {
-        "table_name": PropertyDefinition(type=PropertyType.TEXT, label="表名"),
+        "database_path": PropertyDefinition(
+            type=PropertyType.FILE,
+            default="",
+            label="数据库文件",
+        ),
+        "table_name": PropertyDefinition(
+            type=PropertyType.TEXT,
+            default="",
+            label="表名",
+        ),
         "mode": PropertyDefinition(
-            type=PropertyType.CHOICE, 
-            choices=["INSERT", "REPLACE", "INSERT OR IGNORE"], 
-            default="INSERT", label="插入模式"
+            type=PropertyType.CHOICE,
+            default="INSERT",
+            label="插入模式",
+            choices=["INSERT", "REPLACE", "INSERT OR IGNORE"]
         ),
     }
 
     def run(self, params, inputs=None):
         import sqlite3
-        db_path = inputs.get("database_path")
+        db_path = params.get("database_path")
         data = inputs.get("data")
         if not data: return {"status": "跳过: 无数据内容"}
 
         records = [data] if isinstance(data, dict) else data
         if not records: return {"status": "跳过: 列表为空"}
 
-        columns = records[0].keys()
+        columns = list(records[0].keys())
         placeholders = ", ".join(["?"] * len(columns))
-        col_names = ", ".join(columns)
+        # 使用双引号包裹列名，支持数字列名
+        col_names = ", ".join(['"' + str(col) + '"' for col in columns])
         sql = f"{params.mode} INTO {params.table_name} ({col_names}) VALUES ({placeholders})"
         
         try:

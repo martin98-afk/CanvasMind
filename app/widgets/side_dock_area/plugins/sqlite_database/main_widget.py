@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtGui import QCursor
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtGui import QCursor, QDrag
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -13,7 +14,6 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QLabel,
-    QScrollArea,
     QPushButton,
     QListWidgetItem,
     QMenu,
@@ -30,12 +30,10 @@ from qfluentwidgets import (
     FluentIcon,
     SpinBox,
     ComboBox,
-    PrimaryPushButton,
     PushButton,
     ScrollArea,
     PrimaryPushButton,
-    MessageBox,
-    TransparentToolButton,
+    TransparentToolButton, CommandBar, Action,
 )
 
 from app.utils.utils import get_icon
@@ -51,12 +49,16 @@ class TableLabel(QLabel):
     clicked = pyqtSignal(str)
     double_clicked = pyqtSignal(str)
 
+    LONG_PRESS_TIMEOUT = 500
+
     def __init__(self, table_name, parent=None):
         super().__init__(table_name, parent)
         self._table_name = table_name
         self._selected = False
         self._dark = isDarkTheme()
         self._update_style()
+        self._long_press_timer = None
+        self._drag_started = False
 
     def setSelected(self, selected):
         self._selected = selected
@@ -87,8 +89,45 @@ class TableLabel(QLabel):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
+            self._drag_started = False
+            self._long_press_timer = QtCore.QTimer(self)
+            self._long_press_timer.setSingleShot(True)
+            self._long_press_timer.timeout.connect(lambda: self._start_drag(event))
+            self._long_press_timer.start(self.LONG_PRESS_TIMEOUT)
             self.clicked.emit(self._table_name)
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.LeftButton:
+            if self._long_press_timer and self._long_press_timer.isActive():
+                self._long_press_timer.stop()
+            if not self._drag_started:
+                self._start_drag(event)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self._long_press_timer and self._long_press_timer.isActive():
+                self._long_press_timer.stop()
+                self._drag_started = True
+        super().mouseReleaseEvent(event)
+
+    def _start_drag(self, event):
+        if self._drag_started:
+            return
+        self._drag_started = True
+
+        mime_data = QtCore.QMimeData()
+        drag_data = {
+            "table_name": self._table_name,
+        }
+        import orjson
+
+        mime_data.setData("application/x-sqlite-table", orjson.dumps(drag_data))
+
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(mime_data)
+        drag.exec_(Qt.CopyAction | Qt.MoveAction)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -133,6 +172,68 @@ class SQLiteDatabaseWindow(ToolWindow):
 
     def _show_status(self, msg):
         InfoBar.info("数据库", msg, position=InfoBarPosition.TOP, parent=self).show()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._register_drag_handler()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._unregister_drag_handler()
+
+    def _register_drag_handler(self):
+        homepage = getattr(self, "homepage", None)
+        if not homepage:
+            return
+        graph = getattr(homepage, "graph", None)
+        if not graph:
+            return
+        viewer = getattr(graph, "graph_splitter", None)
+        if not viewer:
+            return
+        active_viewer = viewer.get_active_viewer()
+        if not active_viewer:
+            return
+        if not hasattr(active_viewer, "register_drag_handler"):
+            return
+        if "application/x-sqlite-table" in active_viewer._drag_handlers:
+            return
+        active_viewer.register_drag_handler(
+            "application/x-sqlite-table", self._handle_table_drag
+        )
+
+    def _unregister_drag_handler(self):
+        homepage = getattr(self, "homepage", None)
+        if not homepage:
+            return
+        graph = getattr(homepage, "graph", None)
+        if not graph:
+            return
+        viewer = getattr(graph, "graph_splitter", None)
+        if not viewer:
+            return
+        active_viewer = viewer.get_active_viewer()
+        if not active_viewer:
+            return
+        if not hasattr(active_viewer, "unregister_drag_handler"):
+            return
+        active_viewer.unregister_drag_handler("application/x-sqlite-table")
+
+    def _handle_table_drag(self, viewer, drag_data, scene_pos):
+        table_name = drag_data.get("table_name", "")
+        if not table_name:
+            return
+        homepage = getattr(self, "homepage", None)
+        if not homepage:
+            return
+        db_path = ""
+        if self.db_manager and self.db_manager.is_connected:
+            db_path = self.db_manager.db_path or ""
+        viewer._create_node_with_properties(
+            "sqlite套件/查询数据",
+            {"database_path": db_path, "table_name": table_name},
+            scene_pos,
+        )
 
     def _setup_title_bar(self):
         title_bar = self.get_title_bar()
@@ -308,58 +409,43 @@ class SQLiteDatabaseWindow(ToolWindow):
         )
         layout.addWidget(self.data_header)
 
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(4)
+        self.command_bar = CommandBar()
 
-        self.sql_btn = ToolButton(FluentIcon.CODE, self)
-        self.sql_btn.setFixedSize(28, 28)
-        self.sql_btn.setToolTip("执行SQL (Ctrl+E)")
-        self.sql_btn.clicked.connect(self._on_execute_sql)
+        self.insert_action = Action(FluentIcon.ADD, "新增行", self)
+        self.insert_action.triggered.connect(self._on_insert_data)
+        self.insert_action.setEnabled(False)
+        self.command_bar.addAction(self.insert_action)
 
-        self.insert_btn = ToolButton(FluentIcon.ADD, self)
-        self.insert_btn.setFixedSize(28, 28)
-        self.insert_btn.setToolTip("新增行 (Ctrl+N)")
-        self.insert_btn.clicked.connect(self._on_insert_data)
-        self.insert_btn.setEnabled(False)
+        self.create_node_action = Action(get_icon("创建节点"), "创建插入节点", self)
+        self.create_node_action.triggered.connect(self._on_create_insert_node)
+        self.create_node_action.setEnabled(False)
+        self.command_bar.addAction(self.create_node_action)
+        self.command_bar.addSeparator()
+        
+        self.sql_action = Action(FluentIcon.CODE, "执行SQL", self)
+        self.sql_action.triggered.connect(self._on_execute_sql)
+        self.command_bar.addAction(self.sql_action)
 
-        self.delete_btn = ToolButton(FluentIcon.DELETE, self)
-        self.delete_btn.setFixedSize(28, 28)
-        self.delete_btn.setToolTip("删除选中行 (Delete)")
-        self.delete_btn.clicked.connect(self._on_delete_row)
-        self.delete_btn.setEnabled(False)
+        self.delete_action = Action(FluentIcon.DELETE, "删除行", self)
+        self.delete_action.triggered.connect(self._on_delete_row)
+        self.delete_action.setEnabled(False)
+        self.command_bar.addAction(self.delete_action)
 
-        self.export_btn = ToolButton(FluentIcon.SAVE, self)
-        self.export_btn.setFixedSize(28, 28)
-        self.export_btn.setToolTip("导出CSV")
-        self.export_btn.clicked.connect(self._on_export_csv)
-        self.export_btn.setEnabled(False)
+        self.export_action = Action(get_icon("导入"), "导出CSV", self)
+        self.export_action.triggered.connect(self._on_export_csv)
+        self.export_action.setEnabled(False)
+        self.command_bar.addAction(self.export_action)
 
-        self.refresh_data_btn = ToolButton(FluentIcon.SYNC, self)
-        self.refresh_data_btn.setFixedSize(28, 28)
-        self.refresh_data_btn.setToolTip("刷新数据 (F5)")
-        self.refresh_data_btn.clicked.connect(self._load_table_data)
+        self.refresh_action = Action(FluentIcon.SYNC, "刷新", self)
+        self.refresh_action.triggered.connect(self._load_table_data)
+        self.command_bar.addAction(self.refresh_action)
 
-        self.preview_count = CaptionLabel("")
-        self.preview_count.setStyleSheet(
-            f"color: {'rgba(255,255,255,0.5)' if dark else 'rgba(0,0,0,0.5)'}; font-size: 12px;"
-        )
+        self.insert_action.setVisible(False)
+        self.create_node_action.setVisible(False)
+        self.delete_action.setVisible(False)
+        self.export_action.setVisible(False)
 
-        self.limit_spin = SpinBox(self)
-        self.limit_spin.setRange(10, 1000)
-        self.limit_spin.setValue(100)
-        self.limit_spin.setFixedWidth(80)
-        self.limit_spin.setToolTip("每页行数")
-        self.limit_spin.valueChanged.connect(self._on_limit_changed)
-
-        toolbar.addWidget(self.sql_btn)
-        toolbar.addWidget(self.insert_btn)
-        toolbar.addWidget(self.delete_btn)
-        toolbar.addWidget(self.export_btn)
-        toolbar.addWidget(self.refresh_data_btn)
-        toolbar.addStretch()
-        toolbar.addWidget(self.preview_count)
-        toolbar.addWidget(self.limit_spin)
-        layout.addLayout(toolbar)
+        layout.addWidget(self.command_bar)
 
         self.data_table = QTableWidget(self)
         self.data_table.setAlternatingRowColors(True)
@@ -418,6 +504,13 @@ class SQLiteDatabaseWindow(ToolWindow):
             }}
         """)
         layout.addWidget(self.data_table, 1)
+
+        self.row_count_label = CaptionLabel("")
+        self.row_count_label.setStyleSheet(
+            f"color: {'rgba(255,255,255,0.5)' if dark else 'rgba(0,0,0,0.5)'}; font-size: 12px;"
+        )
+        self.row_count_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(self.row_count_label)
 
         return widget
 
@@ -499,8 +592,12 @@ class SQLiteDatabaseWindow(ToolWindow):
     def _on_table_selected(self, table_name):
         self.current_table = table_name
         self.drop_table_btn.setEnabled(True)
-        self.insert_btn.setEnabled(True)
-        self.export_btn.setEnabled(True)
+        self.insert_action.setVisible(True)
+        self.create_node_action.setVisible(True)
+        self.export_action.setVisible(True)
+        self.insert_action.setEnabled(True)
+        self.create_node_action.setEnabled(True)
+        self.export_action.setEnabled(True)
         self._load_table_data()
 
         for i in range(self.table_list_layout.count() - 1):
@@ -517,12 +614,12 @@ class SQLiteDatabaseWindow(ToolWindow):
         table_info = self.db_manager.get_table_info(self.current_table)
         col_count = len(table_info)
 
-        limit = self.limit_spin.value()
-        columns, rows = self.db_manager.get_table_data(self.current_table, limit=limit)
+        # limit = self.limit_spin.value()
+        columns, rows = self.db_manager.get_table_data(self.current_table, limit=500)
         total = self.db_manager.get_table_count(self.current_table)
 
         self.data_header.setText(f"表: {self.current_table}  ({col_count} 列)")
-        self.preview_count.setText(f"{len(rows)} / {total} 行")
+        self.row_count_label.setText(f"{len(rows)} / {total} 行")
 
         self.data_table.setColumnCount(len(columns))
         self.data_table.setRowCount(len(rows))
@@ -541,7 +638,8 @@ class SQLiteDatabaseWindow(ToolWindow):
                 self.data_table.setItem(r, c, item)
 
         self.data_table.resizeColumnsToContents()
-        self.delete_btn.setEnabled(len(rows) > 0)
+        self.delete_action.setEnabled(len(rows) > 0)
+        self.delete_action.setVisible(len(rows) > 0)
 
     def _on_limit_changed(self):
         if self.current_table:
@@ -621,14 +719,19 @@ class SQLiteDatabaseWindow(ToolWindow):
         self.close_btn.setEnabled(False)
         self.new_table_btn.setEnabled(False)
         self.drop_table_btn.setEnabled(False)
-        self.insert_btn.setEnabled(False)
-        self.delete_btn.setEnabled(False)
-        self.export_btn.setEnabled(False)
+        self.insert_action.setEnabled(False)
+        self.create_node_action.setEnabled(False)
+        self.delete_action.setEnabled(False)
+        self.export_action.setEnabled(False)
+        self.insert_action.setVisible(False)
+        self.create_node_action.setVisible(False)
+        self.delete_action.setVisible(False)
+        self.export_action.setVisible(False)
         self.current_table = None
         self.data_header.setText("请选择表")
         self.data_table.setRowCount(0)
         self.data_table.setColumnCount(0)
-        self.preview_count.setText("")
+        self.row_count_label.setText("")
         self.table_count_label.setText("表 (0)")
         while self.table_list_layout.count() > 1:
             item = self.table_list_layout.takeAt(0)
@@ -673,6 +776,48 @@ class SQLiteDatabaseWindow(ToolWindow):
         dialog.exec()
         if dialog.accepted:
             self._load_table_data()
+
+    def _on_create_insert_node(self):
+        if not self.current_table:
+            return
+        self._create_sqlite_node(
+            "sqlite套件/插入数据",
+            {
+                "database_path": self.db_manager.db_path,
+                "table_name": self.current_table,
+            },
+        )
+
+    def _create_sqlite_node(self, node_path, properties):
+        homepage = getattr(self, "homepage", None)
+        if not homepage:
+            return
+        graph = getattr(homepage, "graph", None)
+        if not graph:
+            return
+        viewer = getattr(graph, "graph_splitter", None)
+        if not viewer:
+            return
+        active_viewer = viewer.get_active_viewer()
+        if not active_viewer:
+            return
+        scene_pos = active_viewer.mapToScene(active_viewer.viewport().rect().center())
+        node = active_viewer._create_node_with_properties(
+            node_path, properties, scene_pos
+        )
+        if node:
+            InfoBar.success(
+                "创建成功",
+                f"已创建 {node_path.split('/')[-1]} 节点",
+                position=InfoBarPosition.TOP,
+                parent=self,
+            ).show()
+            InfoBar.success(
+                "创建成功",
+                f"已创建 {node_path.split('/')[-1]} 节点",
+                position=InfoBarPosition.TOP,
+                parent=self,
+            ).show()
 
     def _on_delete_row(self):
         if not self.current_table:
