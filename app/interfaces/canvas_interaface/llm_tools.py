@@ -179,6 +179,8 @@ class CanvasTools:
             get_component_code = getattr(node, "get_component_code", None)
             if callable(get_component_code):
                 snapshot["code"] = self._tail_text(get_component_code(), 12000)
+        else:
+            snapshot["properties"] = {key: value for key, value in snapshot["properties"].items() if key != "code" and key != "debug_code"}
 
         return snapshot
 
