@@ -17,9 +17,10 @@ class DatabaseManager:
     def connect(self, db_path: str) -> bool:
         try:
             self.close()
-            self._conn = sqlite3.connect(db_path, check_same_thread=False)
+            abs_db_path = str(Path(db_path).resolve())
+            self._conn = sqlite3.connect(abs_db_path, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
-            self._db_path = db_path
+            self._db_path = abs_db_path
             return True
         except Exception as e:
             self._conn = None

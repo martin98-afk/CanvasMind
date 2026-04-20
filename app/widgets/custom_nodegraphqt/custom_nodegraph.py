@@ -215,8 +215,12 @@ class CustomNodeScene(NodeScene):
         connecting_viewer = self._get_connecting_viewer()
         if connecting_viewer:
             self._event_viewer = connecting_viewer
-            if getattr(connecting_viewer, "graph", None) and getattr(connecting_viewer.graph, "graph_splitter", None):
-                connecting_viewer.graph.graph_splitter.set_active_viewer(connecting_viewer)
+            if getattr(connecting_viewer, "graph", None) and getattr(
+                connecting_viewer.graph, "graph_splitter", None
+            ):
+                connecting_viewer.graph.graph_splitter.set_active_viewer(
+                    connecting_viewer
+                )
             connecting_viewer.sceneMousePressEvent(event)
             self._event_viewer = None
             return
@@ -229,7 +233,9 @@ class CustomNodeScene(NodeScene):
 
         if source_v:
             self._event_viewer = source_v
-            if getattr(source_v, "graph", None) and getattr(source_v.graph, "graph_splitter", None):
+            if getattr(source_v, "graph", None) and getattr(
+                source_v.graph, "graph_splitter", None
+            ):
                 source_v.graph.graph_splitter.set_active_viewer(source_v)
             source_v.sceneMousePressEvent(event)
 
@@ -647,6 +653,35 @@ class CustomNodeViewer(NodeViewer):
         self._viewport_rect_cache = None
         self._viewport_rect_cache_time = 0
         self._viewport_transform_cache = None
+
+        self._drag_handlers = {}
+
+    def register_drag_handler(self, mime_type, handler):
+        self._drag_handlers[mime_type] = handler
+
+    def unregister_drag_handler(self, mime_type):
+        self._drag_handlers.pop(mime_type, None)
+
+    def _create_node_with_properties(self, node_path, properties, scene_pos):
+        node_type = self.home_window.node_type_map.get(node_path)
+        if not node_type:
+            return None
+        node = self.home_window.graph.create_node(node_type)
+        node.set_pos(scene_pos.x(), scene_pos.y())
+        for prop_name, prop_value in properties.items():
+            try:
+                node.set_property(prop_name, prop_value)
+            except:
+                logger.error(
+                    f"Failed to set property {prop_name} for node {node_type}"
+                )
+        self.home_window.nav_view.record_usage(node_path)
+        QtCore.QTimer.singleShot(
+            0, lambda: self.home_window.property_panel.update_properties(node)
+        )
+        if hasattr(node, "status"):
+            node.status = NodeStatus.NODE_STATUS_UNRUN
+        return node
 
     def _get_viewport_scene_rect(self):
         current_time = QtCore.QDateTime.currentMSecsSinceEpoch()
@@ -1328,6 +1363,21 @@ class CustomNodeViewer(NodeViewer):
                             self._handle_file_drop(src_path, scene_pos)
                             event.accept()
                             return
+
+            for mime_type, handler in self._drag_handlers.items():
+                if mime_data.hasFormat(mime_type):
+                    data_bytes = bytes(mime_data.data(mime_type))
+                    try:
+                        drag_data = orjson.loads(data_bytes.decode("utf-8"))
+                    except:
+                        drag_data = (
+                            data_bytes.decode("utf-8")
+                            if isinstance(data_bytes, bytes)
+                            else data_bytes
+                        )
+                    handler(self, drag_data, scene_pos)
+                    event.accept()
+                    return
 
             node_type = self.home_window.node_type_map.get(full_path)
             if node_type:
