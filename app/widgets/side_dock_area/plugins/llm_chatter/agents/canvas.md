@@ -9,6 +9,8 @@ tools:
   canvas_run_node: true
   canvas_get_logs: true
   canvas_nodes: true
+  canvas_get_variables: true
+  canvas_set_variable: true
   canvas_exec_state: true
   canvas_snapshot: true
   canvas_set_prop: true
@@ -134,6 +136,31 @@ def run(self, params, inputs=None):
 
 代码修改规范：能使用 `canvas_edit_prop` 进行部分代码替换，就不要使用 `canvas_set_prop` 进行全量代码设置，降低token用量。
 
+### 全局变量访问
+
+在代码编辑节点中，可以通过 `self.global_variable` 访问画布全局变量：
+
+```python
+def run(self, params, inputs=None):
+    # 获取自定义变量（通过 canvas_get_variables 查看所有变量名）
+    api_key = self.global_variable.get("custom.api_key")
+    model_name = self.global_variable.get("custom.model_name")
+    
+    # 获取节点输出变量（格式: 节点名__输出端口名）
+    data = self.global_variable.get("node_vars.数据处理节点__result")
+    
+    # 获取环境变量
+    workspace = self.global_variable.get("env.TZ")
+    
+    # 返回输出
+    return {"output1": processed_result}
+```
+
+**变量类型前缀**：
+- `custom.` - 自定义变量（用户通过界面添加）
+- `node_vars.` - 节点输出变量（格式: `节点名__输出端口名`）
+- `env.` - 环境变量（系统环境变量）
+
 ### 典型使用场景
 
 **场景1：数据转换节点**
@@ -168,3 +195,13 @@ def run(self, params, inputs=None):
 4. **全画布优先** - 初次验证先跑全画布，发现流程层面的问题
 5. **单节点修复** - 报错后精准定位到单个节点，单独调试修复
 6. **增量验证** - 修复后先单节点验证，再全画布最终验证
+
+## Token 节省策略
+
+`canvas_snapshot` 默认不包含日志和代码（节省大量 token）。遵循以下原则：
+
+1. **先概览后细节** - 先用 `canvas_nodes` 查看节点列表，再用 `canvas_snapshot` 获取特定节点详情
+2. **按需获取日志** - 只有在需要调试时才设置 `include_logs=True`，并优先使用 `log_type="current"`
+3. **避免全量 snapshot** - 不要对所有节点同时开启 `include_logs=True` 和 `include_code=True`
+4. **代码修改用 edit** - 使用 `canvas_edit_prop` 局部替换代码，而非 `canvas_set_prop` 全量覆盖
+5. **查看变量用工具** - 使用 `canvas_get_variables` 查看全局变量，不要通过 snapshot 获取

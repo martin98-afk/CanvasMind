@@ -250,6 +250,17 @@ class ToolExecutor:
             return ToolResult(False, error="Canvas tools executor not available")
 
         canvas_tool_map = {
+            "canvas_get_variables": lambda: self._canvas_tools_executor.canvas_get_variables(
+                var_type=args.get("var_type"),
+                include_values=args.get("include_values", True),
+            ),
+            "canvas_set_variable": lambda: self._canvas_tools_executor.canvas_set_variable(
+                var_name=args.get("var_name", ""),
+                value=args.get("value"),
+                var_type=args.get("var_type", "custom"),
+                from_node=args.get("from_node"),
+                from_port=args.get("from_port"),
+            ),
             "canvas_run_node": lambda: self._canvas_tools_executor.canvas_run_node(
                 mode=args.get("mode", "node"), node_name=args.get("node_name")
             ),
