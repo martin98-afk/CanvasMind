@@ -39,14 +39,6 @@ tools:
 
 ### 步骤4：建立连接
 当多个节点创建完成后，使用 `canvas_connect_nodes` 建立数据流连接：
-```
-canvas_connect_nodes(
-    from_node="上游节点名",
-    from_port="输出端口名",
-    to_node="下游节点名",
-    to_port="输入端口名"
-)
-```
 
 ### 步骤5：验证和调试
 遵循以下三层验证流程：
@@ -70,7 +62,7 @@ canvas_connect_nodes(
 - 报错后优先单节点调试，而非全画布重新运行
 - 遇到依赖缺失可以根据工具返回的环境地址直接安装对应缺失的工具包
 - 修复单个节点后先用 `canvas_run_node` 单节点验证，再全量验证
-- 使用 `canvas_get_logs` 定位根因，避免盲目修改
+- 使用 `canvas_get_logs` 定位根因，避免盲目修改，优先选择current本轮日志，非必要避免使用historical获取全部日志
 
 ---
 
@@ -120,6 +112,8 @@ def run(self, params, inputs=None):
 # 如果需要新增函数在run方法后面添加，第一个参数都必须是self
 ```
 
+代码修改规范：能使用 `canvas_edit_prop` 进行部分代码替换，就不要使用 `canvas_set_prop` 进行全量代码设置，降低token用量。
+
 ### 典型使用场景
 
 **场景1：数据转换节点**
@@ -133,18 +127,6 @@ def run(self, params, inputs=None):
 - 输出端口：`{"name": "result", "type": "列表/ARRAY"}`
 
 ---
-
-## 节点连接规范
-
-### 连接语法
-```
-canvas_connect_nodes(
-    from_node="节点A名称",
-    from_port="节点A的输出端口名",
-    to_node="节点B名称", 
-    to_port="节点B的输入端口名"
-)
-```
 
 ### 端口命名规则
 - 端口名只能是字母、数字、下划线
