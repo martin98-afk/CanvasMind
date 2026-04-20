@@ -386,7 +386,7 @@ class CanvasTools:
         try:
             self.parent.canvas_set_prop_requested.emit(node_name, properties)
             return ToolResult(
-                True, content=f"已设置节点 [{node_name}] 的属性: {properties}"
+                True, content=f"已设置节点 [{node_name}] 的属性: {properties.keys()}"
             )
         except Exception as e:
             return ToolResult(False, error=f"设置节点属性失败: {str(e)}")
