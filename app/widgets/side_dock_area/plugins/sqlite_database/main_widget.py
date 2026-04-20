@@ -409,69 +409,42 @@ class SQLiteDatabaseWindow(ToolWindow):
         )
         layout.addWidget(self.data_header)
 
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(4)
+        self.command_bar = CommandBar()
 
-        commandBar = CommandBar()
-        add_action = Action(FluentIcon.ADD, "新增行 (Ctrl+N)", self)
-        add_action.triggered.connect(self._on_insert_data)
-        commandBar.addAction(add_action)
-        self.sql_btn = ToolButton(FluentIcon.CODE, self)
-        self.sql_btn.setFixedSize(28, 28)
-        self.sql_btn.setToolTip("执行SQL (Ctrl+E)")
-        self.sql_btn.clicked.connect(self._on_execute_sql)
+        self.sql_action = Action(FluentIcon.CODE, "执行SQL", self)
+        self.sql_action.triggered.connect(self._on_execute_sql)
+        self.command_bar.addAction(self.sql_action)
 
-        self.insert_btn = ToolButton(FluentIcon.ADD, self)
-        self.insert_btn.setFixedSize(28, 28)
-        self.insert_btn.setToolTip("新增行 (Ctrl+N)")
-        self.insert_btn.clicked.connect(self._on_insert_data)
-        self.insert_btn.setEnabled(False)
+        self.insert_action = Action(FluentIcon.ADD, "新增行", self)
+        self.insert_action.triggered.connect(self._on_insert_data)
+        self.insert_action.setEnabled(False)
+        self.command_bar.addAction(self.insert_action)
 
-        self.create_insert_node_btn = ToolButton(get_icon("创建节点"), self)
-        self.create_insert_node_btn.setFixedSize(28, 28)
-        self.create_insert_node_btn.setToolTip("创建插入节点")
-        self.create_insert_node_btn.clicked.connect(self._on_create_insert_node)
-        self.create_insert_node_btn.setEnabled(False)
+        self.create_node_action = Action(get_icon("创建节点"), "创建插入节点", self)
+        self.create_node_action.triggered.connect(self._on_create_insert_node)
+        self.create_node_action.setEnabled(False)
+        self.command_bar.addAction(self.create_node_action)
 
-        self.delete_btn = ToolButton(FluentIcon.DELETE, self)
-        self.delete_btn.setFixedSize(28, 28)
-        self.delete_btn.setToolTip("删除选中行 (Delete)")
-        self.delete_btn.clicked.connect(self._on_delete_row)
-        self.delete_btn.setEnabled(False)
+        self.delete_action = Action(FluentIcon.DELETE, "删除行", self)
+        self.delete_action.triggered.connect(self._on_delete_row)
+        self.delete_action.setEnabled(False)
+        self.command_bar.addAction(self.delete_action)
 
-        self.export_btn = ToolButton(get_icon("导入"), self)
-        self.export_btn.setFixedSize(28, 28)
-        self.export_btn.setToolTip("导出CSV")
-        self.export_btn.clicked.connect(self._on_export_csv)
-        self.export_btn.setEnabled(False)
+        self.export_action = Action(get_icon("导入"), "导出CSV", self)
+        self.export_action.triggered.connect(self._on_export_csv)
+        self.export_action.setEnabled(False)
+        self.command_bar.addAction(self.export_action)
 
-        self.refresh_data_btn = ToolButton(FluentIcon.SYNC, self)
-        self.refresh_data_btn.setFixedSize(28, 28)
-        self.refresh_data_btn.setToolTip("刷新数据 (F5)")
-        self.refresh_data_btn.clicked.connect(self._load_table_data)
+        self.refresh_action = Action(FluentIcon.SYNC, "刷新", self)
+        self.refresh_action.triggered.connect(self._load_table_data)
+        self.command_bar.addAction(self.refresh_action)
 
-        self.preview_count = CaptionLabel("")
-        self.preview_count.setStyleSheet(
-            f"color: {'rgba(255,255,255,0.5)' if dark else 'rgba(0,0,0,0.5)'}; font-size: 12px;"
-        )
+        self.insert_action.setVisible(False)
+        self.create_node_action.setVisible(False)
+        self.delete_action.setVisible(False)
+        self.export_action.setVisible(False)
 
-        # self.limit_spin = SpinBox(self)
-        # self.limit_spin.setRange(10, 1000)
-        # self.limit_spin.setValue(100)
-        # self.limit_spin.setFixedWidth(80)
-        # self.limit_spin.setToolTip("每页行数")
-        # self.limit_spin.valueChanged.connect(self._on_limit_changed)
-
-        toolbar.addWidget(self.sql_btn)
-        toolbar.addWidget(self.insert_btn)
-        toolbar.addWidget(self.create_insert_node_btn)
-        toolbar.addWidget(self.delete_btn)
-        toolbar.addWidget(self.refresh_data_btn)
-        toolbar.addStretch()
-        toolbar.addWidget(self.preview_count)
-        toolbar.addWidget(self.export_btn)
-        # toolbar.addWidget(self.limit_spin)
-        layout.addLayout(toolbar)
+        layout.addWidget(self.command_bar)
 
         self.data_table = QTableWidget(self)
         self.data_table.setAlternatingRowColors(True)
@@ -530,6 +503,13 @@ class SQLiteDatabaseWindow(ToolWindow):
             }}
         """)
         layout.addWidget(self.data_table, 1)
+
+        self.row_count_label = CaptionLabel("")
+        self.row_count_label.setStyleSheet(
+            f"color: {'rgba(255,255,255,0.5)' if dark else 'rgba(0,0,0,0.5)'}; font-size: 12px;"
+        )
+        self.row_count_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(self.row_count_label)
 
         return widget
 
@@ -611,9 +591,12 @@ class SQLiteDatabaseWindow(ToolWindow):
     def _on_table_selected(self, table_name):
         self.current_table = table_name
         self.drop_table_btn.setEnabled(True)
-        self.insert_btn.setEnabled(True)
-        self.create_insert_node_btn.setEnabled(True)
-        self.export_btn.setEnabled(True)
+        self.insert_action.setVisible(True)
+        self.create_node_action.setVisible(True)
+        self.export_action.setVisible(True)
+        self.insert_action.setEnabled(True)
+        self.create_node_action.setEnabled(True)
+        self.export_action.setEnabled(True)
         self._load_table_data()
 
         for i in range(self.table_list_layout.count() - 1):
@@ -635,7 +618,7 @@ class SQLiteDatabaseWindow(ToolWindow):
         total = self.db_manager.get_table_count(self.current_table)
 
         self.data_header.setText(f"表: {self.current_table}  ({col_count} 列)")
-        self.preview_count.setText(f"{len(rows)} / {total} 行")
+        self.row_count_label.setText(f"{len(rows)} / {total} 行")
 
         self.data_table.setColumnCount(len(columns))
         self.data_table.setRowCount(len(rows))
@@ -654,7 +637,8 @@ class SQLiteDatabaseWindow(ToolWindow):
                 self.data_table.setItem(r, c, item)
 
         self.data_table.resizeColumnsToContents()
-        self.delete_btn.setEnabled(len(rows) > 0)
+        self.delete_action.setEnabled(len(rows) > 0)
+        self.delete_action.setVisible(len(rows) > 0)
 
     def _on_limit_changed(self):
         if self.current_table:
@@ -734,15 +718,19 @@ class SQLiteDatabaseWindow(ToolWindow):
         self.close_btn.setEnabled(False)
         self.new_table_btn.setEnabled(False)
         self.drop_table_btn.setEnabled(False)
-        self.insert_btn.setEnabled(False)
-        self.create_insert_node_btn.setEnabled(False)
-        self.delete_btn.setEnabled(False)
-        self.export_btn.setEnabled(False)
+        self.insert_action.setEnabled(False)
+        self.create_node_action.setEnabled(False)
+        self.delete_action.setEnabled(False)
+        self.export_action.setEnabled(False)
+        self.insert_action.setVisible(False)
+        self.create_node_action.setVisible(False)
+        self.delete_action.setVisible(False)
+        self.export_action.setVisible(False)
         self.current_table = None
         self.data_header.setText("请选择表")
         self.data_table.setRowCount(0)
         self.data_table.setColumnCount(0)
-        self.preview_count.setText("")
+        self.row_count_label.setText("")
         self.table_count_label.setText("表 (0)")
         while self.table_list_layout.count() > 1:
             item = self.table_list_layout.takeAt(0)
