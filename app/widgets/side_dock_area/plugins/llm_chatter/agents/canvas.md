@@ -35,7 +35,7 @@ tools:
 - 确定节点之间的连接关系
 
 ### 步骤3：设置节点属性和代码
-使用 `canvas_set_prop` 或 `canvas_set_prop` 设置节点属性，对于代码编辑节点可以通过这个设置节点的端口和代码。
+使用 `canvas_set_prop` 或 `canvas_edit_prop` 设置节点属性，对于代码编辑节点可以通过这个设置节点的端口和代码。
 
 ### 步骤4：建立连接
 当多个节点创建完成后，使用 `canvas_connect_nodes` 建立数据流连接：
@@ -99,16 +99,6 @@ canvas_connect_nodes(
 }
 ```
 
-### 节点属性说明
-
-代码编辑节点有多个可配置属性：
-
-| 属性名 | 说明 | 示例                                                      |
-|--------|------|---------------------------------------------------------|
-| `input_ports` | 输入端口定义列表 | `[{"name": "data", "type": "csv", "conn_type": "多输入"}]` |
-| `output_ports` | 输出端口定义列表 | `[{"name": "result", "type": "sklearn模型"}]`             |
-| `code` | 执行代码 | `def run(self, params, inputs=None): ...`               |
-
 ### 执行代码规范
 
 代码编辑节点的 `code` 属性必须包含 `run` 函数：
@@ -121,19 +111,19 @@ def run(self, params, inputs=None):
     return: 输出数据（key=输出端口名）
     """
     import pandas as pd # 工具包倒入必须在函数内
-    # 在这里编写你的组件逻辑 所有导入均需在函数内部添加，如果需要新增函数在run方法后面添加，第一个参数都必须是self
     input_data = inputs.input_data   # 使用端口名获取输入数据
     # 处理逻辑
     result = f"处理结果: {input_data}"
     return {
         "output1": result   # 返回字典格式，key为输出端口名
     }
+# 如果需要新增函数在run方法后面添加，第一个参数都必须是self
 ```
 
 ### 典型使用场景
 
 **场景1：数据转换节点**
-- 输入端口：`{"name": "data", "type": "文本"}`
+- 输入端口：`{"name": "data", "type": "文本",  "conn_type": "单输入"}`
 - 代码：接收文本，进行处理，返回结果
 - 输出端口：`{"name": "result", "type": "文本"}`
 

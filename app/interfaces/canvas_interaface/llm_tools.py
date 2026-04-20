@@ -402,39 +402,14 @@ class CanvasTools:
         if not isinstance(edits, list):
             return ToolResult(False, error="edits 必须是列表格式")
 
-        results = []
-        for edit in edits:
-            prop_name = edit.get("property")
-            old_s = edit.get("old_str")
-            new_s = edit.get("new_str")
-            if not prop_name or old_s is None or new_s is None:
-                results.append(
-                    f"跳过无效替换: {edit}，缺少 property/old_str/new_str"
-                )
-                continue
-
-            current_value = node.get_property(prop_name)
-            if current_value is None:
-                results.append(f"属性 [{prop_name}] 不存在或值为空")
-                continue
-
-            if not isinstance(current_value, str):
-                results.append(f"属性 [{prop_name}] 不是字符串类型，无法编辑")
-                continue
-
-            if old_s not in current_value:
-                results.append(f"属性 [{prop_name}] 中未找到字符串: {old_s}")
-                continue
-
-            new_value = current_value.replace(old_s, new_s)
-            node.set_property(prop_name, new_value)
-            results.append(f"属性 [{prop_name}] 替换成功")
-
-        success_count = sum(1 for r in results if "成功" in r)
-        return ToolResult(
-            True,
-            content=f"完成 {success_count}/{len(edits)} 个替换:\n" + "\n".join(results),
-        )
+        try:
+            self.parent.canvas_edit_prop_requested.emit(node_name, edits)
+            return ToolResult(
+                True,
+                content=f"已发送属性编辑请求到节点 [{node_name}]，共 {len(edits)} 个替换",
+            )
+        except Exception as e:
+            return ToolResult(False, error=f"编辑节点属性失败: {str(e)}")
 
     def canvas_get_prop(
         self, node_name: str, property_names: Optional[List[str]] = None
