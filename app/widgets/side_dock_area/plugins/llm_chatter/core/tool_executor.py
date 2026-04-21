@@ -294,10 +294,6 @@ class ToolExecutor:
                 properties=args.get("properties", {}),
                 target=args.get("target"),
             ),
-            "canvas_get_prop": lambda: self._canvas_tools_executor.canvas_get_prop(
-                node_name=args.get("node_name", ""),
-                property_names=args.get("property_names"),
-            ),
             "canvas_create_node": lambda: self._canvas_tools_executor.canvas_create_node(
                 node_name=args.get("node_name"),
                 position=args.get("position"),

@@ -15,7 +15,6 @@ tools:
   canvas_snapshot: true
   canvas_set_prop: true
   canvas_edit_prop: true
-  canvas_get_prop: true
   canvas_create_node: true
   canvas_connect_nodes: true
 ---
@@ -113,9 +112,9 @@ tools:
 }
 ```
 
-### 执行代码规范
+### 代码规范
 
-代码编辑节点的 `code` 属性必须包含 `run` 函数：
+代码编辑节点的 `_code` 属性必须包含 `run` 函数：
 
 ```python
 def run(self, params, inputs=None):
@@ -131,7 +130,7 @@ def run(self, params, inputs=None):
     return {
         "output1": result   # 返回字典格式，key为输出端口名
     }
-# 如果需要新增函数在run方法后面添加，第一个参数都必须是self
+# 因为本质属于类函数，如果需要新增函数在run方法后面添加，第一个参数都必须是self，类函数间引用需加self.
 ```
 
 代码修改规范：能使用 `canvas_edit_prop` 进行部分代码替换，就不要使用 `canvas_set_prop` 进行全量代码设置，降低token用量。
