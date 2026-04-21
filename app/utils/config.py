@@ -270,7 +270,7 @@ class Settings(QConfig):
     python_versions = ConfigItem(
         "Package",
         "PythonVersions",
-        ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"],
+        ["3.10", "3.11", "3.12", "3.13", "3.14"],
         ListValidator(),
     )
     miniconda_version = ConfigItem("Package", "MinicondaVersion", "23.11.0")
@@ -299,6 +299,7 @@ class Settings(QConfig):
             "ipykernel",
             "matplotlib",
             "pyecharts",
+            "mcp",
         ],
         ListValidator(),
     )
