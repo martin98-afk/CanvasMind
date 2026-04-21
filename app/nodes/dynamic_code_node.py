@@ -180,7 +180,7 @@ def create_dynamic_code_node(parent_window=None):
 
             code_widget = CodeEditorWidgetWrapper(
                 parent=self.view,
-                name="code",
+                name="_code",
                 label="执行代码",
                 default=GLUE_CODE_TEMPLATES.get("空白模板"),
                 window=parent_window,
@@ -373,7 +373,7 @@ def create_dynamic_code_node(parent_window=None):
 
         def format_code(self, add_import=True):
             self.object_io = False
-            user_code = self.get_property("code") or ""
+            user_code = self.get_property("_code") or ""
             requirements = self.get_property("requirements") or ""
             type_dict = {item.value: item.name for item in ArgumentType}
 

@@ -401,7 +401,7 @@ class CanvasPage(QWidget):
             new_s = edit.get("new_str")
             if not prop_name or old_s is None or new_s is None:
                 continue
-            current_value = node.get_property(prop_name)
+            current_value = dict(getattr(node.model, "_custom_prop", {}) or {}).get(prop_name)
             if current_value is None or not isinstance(current_value, str):
                 continue
             if old_s not in current_value:

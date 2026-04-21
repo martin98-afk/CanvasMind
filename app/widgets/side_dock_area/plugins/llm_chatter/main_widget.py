@@ -102,6 +102,8 @@ from app.widgets.side_dock_area.tool_window import (
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
+    get_user_round_ranges,
+    group_messages_for_display,
 )
 
 
@@ -137,6 +139,8 @@ class OpenAIChatToolWindow(ToolWindow):
     _tool_call_depth: int = 0
     _pending_tool_calls: int = 0
     _first_tool_result: bool = True
+    _tool_cancelled_by_user: bool = False
+    _cancelled_tool_call_id: Optional[str] = None
     _todo_floating_widget = None
     _question_floating_widget = None
     _question_tool_call_id = None
@@ -320,35 +324,28 @@ class OpenAIChatToolWindow(ToolWindow):
         return list(session.messages or [])
 
     def showEvent(self, event):
-        logger.info(f"[DEBUG] showEvent called: _first_show={self._first_show}")
-        if not self._first_show:
-            self._first_show = True
-            QTimer.singleShot(0, self._restore_latest_or_create_session)
-        else:
-            is_canvas = self._is_on_canvas()
-            logger.info(
-                f"[DEBUG] showEvent: is_on_canvas={is_canvas}, switching to canvas agent if needed"
-            )
-            if is_canvas and self._current_agent != "canvas":
-                QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
+        if getattr(self, "_session_initialized", False):
+            super().showEvent(event)
+            return
+        self._session_initialized = True
+
+        workflow_name = getattr(self.homepage, "workflow_name", None)
+        is_canvas = workflow_name is not None
+        if is_canvas and self._current_agent != "canvas":
+            self._on_agent_changed("canvas")
+        QTimer.singleShot(0, self._load_agent_list)
+        QTimer.singleShot(0, self._restore_latest_or_create_session)
         QTimer.singleShot(100, self._load_model_configs)
         super().showEvent(event)
 
     def _is_on_canvas(self):
         """检查当前是否在画布界面"""
         if not hasattr(self.homepage, "ui_manager") or not self.homepage.ui_manager:
-            logger.info(
-                f"[DEBUG] _is_on_canvas: no ui_manager on homepage {type(self.homepage)}"
-            )
             return False
         side_dock = getattr(self.homepage.ui_manager, "side_dock_area", None)
         if not side_dock:
-            logger.info(f"[DEBUG] _is_on_canvas: no side_dock_area")
             return False
         is_canvas = side_dock.context_id == DockCategory.CANVAS
-        logger.info(
-            f"[DEBUG] _is_on_canvas: context_id={side_dock.context_id}, DockCategory.CANVAS={DockCategory.CANVAS}, is_canvas={is_canvas}"
-        )
         return is_canvas
 
     def _restore_latest_or_create_session(self):
@@ -388,7 +385,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
 
-        if self._is_on_canvas():
+        is_canvas = getattr(self.homepage, "workflow_name", None) is not None
+        if is_canvas and self._current_agent != "canvas":
             self._on_agent_changed("canvas")
 
         QTimer.singleShot(0, self._show_initial_welcome)
@@ -567,8 +565,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.agentChanged.connect(self._on_agent_changed)
         layout.addWidget(self.input_area)
 
-        self._load_agent_list()
-
     def _on_model_changed(self, model_name: str):
         if model_name:
             setting = Settings.get_instance()
@@ -594,6 +590,7 @@ class OpenAIChatToolWindow(ToolWindow):
             snapshot.get("percent", 0),
             snapshot.get("used_tokens", 0),
             snapshot.get("budget_tokens", 0),
+            snapshot.get("compaction", {}),
         )
 
     def _open_settings_popup(self):
@@ -857,10 +854,19 @@ class OpenAIChatToolWindow(ToolWindow):
         self._latest_task_state = task_state
 
     def _create_new_session(self):
-        if self._is_streaming and self._chat_engine:
+        if self._chat_engine:
             self._chat_engine.stop()
-            self._is_streaming = False
-            self._toggle_send_stop(False)
+
+        self._is_streaming = False
+        self._tool_cancelled_by_user = False
+        self._toggle_send_stop(False)
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
+        if self._sub_agent_floating_widget:
+            self._sub_agent_floating_widget.setVisible(False)
 
         try:
             self._auto_save_current_session()
@@ -912,7 +918,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._clear_chat_area()
-        self._message_batch = consolidate_messages(session.messages)
+        self._message_batch = group_messages_for_display(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
@@ -944,19 +950,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             self._displayed_session_id = session.session_id
 
-        batches = []
-        single_round = []
-        for msg in self._message_batch:
-            if msg.get("role") in ["system", "user"]:
-                if single_round:
-                    batches.append(single_round)
-                batches.append([msg])
-                single_round = []
-            else:
-                single_round.append(msg)
-        if single_round:
-            batches.append(single_round)
-        self._render_message_to_card(batches)
+        self._render_message_to_card(self._message_batch)
 
         QTimer.singleShot(10, self._scroll_to_bottom)
         self._update_node_preview()
@@ -987,6 +981,8 @@ class OpenAIChatToolWindow(ToolWindow):
                 "name": latest.get("title") or latest.get("name") or "最近会话",
                 "messages": messages,
                 "topic_summary": latest.get("title", ""),
+                "compaction_state": latest.get("compaction_state", {}),
+                "compaction_cache": latest.get("compaction_cache", {}),
             }
         )
         self.session_manager.set_current_session(restored)
@@ -994,9 +990,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = 0
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
-        is_canvas = self._is_on_canvas()
+        is_canvas = getattr(self.homepage, "workflow_name", None) is not None
         logger.info(f"[DEBUG] _restore_latest_session: is_on_canvas={is_canvas}")
-        if is_canvas:
+        if is_canvas and self._current_agent != "canvas":
             self._on_agent_changed("canvas")
         self._display_current_session()
         self._refresh_context_usage_indicator()
@@ -1289,26 +1285,28 @@ class OpenAIChatToolWindow(ToolWindow):
             cards.append(widget)
         return cards
 
-    def _get_rendered_message_index_map(self) -> List[int]:
+    def _find_user_round_index_for_card(self, card: MessageCard) -> Optional[int]:
+        round_index = 0
+        for rendered_card in self._get_rendered_message_cards():
+            if rendered_card.role != "user":
+                continue
+            if rendered_card is card:
+                return round_index
+            round_index += 1
+        return None
+
+    def _invalidate_current_session_card_cache(self):
         session = self.session_manager.get_current_session()
         if not session:
-            return []
-
-        canonical_messages = consolidate_messages(session.messages)
-        index_map: List[int] = []
-        for idx, msg in enumerate(canonical_messages):
-            if msg.get("role") not in ("user", "assistant"):
-                continue
-            index_map.append(idx)
-        return index_map
+            return
+        self._session_card_cache.pop(session.session_id, None)
 
     def _persist_session_after_mutation(self):
         session = self.session_manager.get_current_session()
         if not session:
             return
 
-        session.messages = consolidate_messages(session.messages)
-        session._update_timestamp()
+        session.set_messages(session.messages, preserve_compaction=False)
 
         if not session.messages:
             if self._current_history_index is not None and self.history_manager:
@@ -1319,38 +1317,25 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.history_manager:
             if self._current_history_index is not None:
                 self.history_manager.update_session(
-                    self._current_history_index, session.messages
+                    self._current_history_index,
+                    session.messages,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
             else:
                 self.history_manager.save_session(
-                    session.messages, session_id=session.session_id
+                    session.messages,
+                    session_id=session.session_id,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
                 self._current_history_index = 0
 
-    def _build_api_safe_messages_from_history(
-        self, messages: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        safe_messages = []
-        for msg in consolidate_messages(messages or []):
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant"):
-                continue
-
-            safe_msg = {"role": role, "content": msg.get("content", "")}
-            if msg.get("timestamp"):
-                safe_msg["timestamp"] = msg.get("timestamp")
-            if role == "user" and msg.get("params") is not None:
-                safe_msg["params"] = msg.get("params", {})
-            if role == "assistant":
-                if msg.get("tool_calls"):
-                    safe_msg["tool_calls"] = msg.get("tool_calls", [])
-                if msg.get("tool_results"):
-                    safe_msg["tool_results"] = msg.get("tool_results", [])
-                if msg.get("round_id"):
-                    safe_msg["round_id"] = msg.get("round_id")
-            safe_messages.append(safe_msg)
-
-        return safe_messages
+    def _refresh_session_view_after_mutation(self):
+        self._invalidate_current_session_card_cache()
+        self._history_preview_messages = None
+        self._display_current_session()
+        self._refresh_context_usage_indicator()
 
     def _on_clear_shortcut(self):
         session = self.session_manager.get_current_session()
@@ -1436,6 +1421,12 @@ class OpenAIChatToolWindow(ToolWindow):
                 "name": title or "历史对话",
                 "messages": messages,
                 "topic_summary": title or "",
+                "compaction_state": self.history_manager.get_history_list()[index].get(
+                    "compaction_state", {}
+                ),
+                "compaction_cache": self.history_manager.get_history_list()[index].get(
+                    "compaction_cache", {}
+                ),
             }
         )
         self.session_manager.set_current_session(restored)
@@ -1565,101 +1556,55 @@ class OpenAIChatToolWindow(ToolWindow):
             self._last_visible_user_pair_index = first_visible_pair
             self.node_preview.set_visible_node(first_visible_pair)
 
-    def _truncate_session_from_rendered_index(self, rendered_index: int) -> bool:
+    def _truncate_session_from_user_round(self, round_index: int) -> bool:
         session = self.session_manager.get_current_session()
         if not session:
             return False
 
         canonical_messages = consolidate_messages(session.messages)
-        index_map = self._get_rendered_message_index_map()
-        if rendered_index >= len(index_map):
+        round_ranges = get_user_round_ranges(canonical_messages)
+        if round_index < 0 or round_index >= len(round_ranges):
             return False
 
-        cutoff_index = index_map[rendered_index]
-        session.messages = canonical_messages[:cutoff_index]
+        cutoff_index = round_ranges[round_index][0]
+        session.set_messages(
+            canonical_messages[:cutoff_index], preserve_compaction=False
+        )
         self._persist_session_after_mutation()
-        self._remove_rendered_cards_from_index(rendered_index)
-        if not session.messages:
-            self._show_initial_welcome()
-        else:
-            self._update_node_preview()
-        self._refresh_context_usage_indicator()
+        self._refresh_session_view_after_mutation()
         return True
 
     def _delete_message(self, card: MessageCard):
-        cards = self._get_rendered_message_cards()
-        if card not in cards:
+        if card.role != "user":
             return
-        rendered_index = cards.index(card)
-        self._delete_messages_by_rendered_index(rendered_index, card.role)
+        round_index = self._find_user_round_index_for_card(card)
+        if round_index is None:
+            return
+        self._delete_user_round(round_index)
 
-    def _delete_messages_by_rendered_index(self, rendered_index: int, role: str):
+    def _delete_user_round(self, round_index: int):
         session = self.session_manager.get_current_session()
         if not session:
             return
 
         canonical_messages = consolidate_messages(session.messages)
-        index_map = self._get_rendered_message_index_map()
-        if rendered_index >= len(index_map):
+        round_ranges = get_user_round_ranges(canonical_messages)
+        if round_index < 0 or round_index >= len(round_ranges):
             return
-        card_index = index_map[rendered_index]
 
-        to_remove_indices = [card_index]
-        if (
-            role == "user"
-            and card_index + 1 < len(canonical_messages)
-            and canonical_messages[card_index + 1].get("role") == "assistant"
-        ):
-            to_remove_indices.append(card_index + 1)
-        elif (
-            role == "assistant"
-            and card_index - 1 >= 0
-            and canonical_messages[card_index - 1].get("role") == "user"
-        ):
-            to_remove_indices.append(card_index - 1)
-
-        for idx in sorted(to_remove_indices, reverse=True):
-            canonical_messages.pop(idx)
-
-        session.messages = canonical_messages
+        start_idx, end_idx = round_ranges[round_index]
+        session.set_messages(
+            canonical_messages[:start_idx] + canonical_messages[end_idx:],
+            preserve_compaction=False,
+        )
         self._persist_session_after_mutation()
-        self._remove_rendered_card_pair(rendered_index, role)
-        if not session.messages:
-            self._show_initial_welcome()
-        else:
-            self._update_node_preview()
-        self._refresh_context_usage_indicator()
-
-    def _remove_rendered_cards_from_index(self, rendered_index: int):
-        cards = self._get_rendered_message_cards()
-        for card in cards[rendered_index:]:
-            self.chat_layout.removeWidget(card)
-            card.hide()
-
-    def _remove_rendered_card_pair(self, rendered_index: int, role: str):
-        cards = self._get_rendered_message_cards()
-        if rendered_index >= len(cards):
-            return
-
-        indices = {rendered_index}
-        if role == "user" and rendered_index + 1 < len(cards):
-            if cards[rendered_index + 1].role == "assistant":
-                indices.add(rendered_index + 1)
-        elif role == "assistant" and rendered_index - 1 >= 0:
-            if cards[rendered_index - 1].role == "user":
-                indices.add(rendered_index - 1)
-
-        for idx in sorted(indices, reverse=True):
-            card = cards[idx]
-            self.chat_layout.removeWidget(card)
-            card.hide()
+        self._refresh_session_view_after_mutation()
 
     def _undo_from_message(self, card: MessageCard):
-        cards = self._get_rendered_message_cards()
-        if card not in cards:
-            return
-        rendered_index = cards.index(card)
         if card.role != "user":
+            return
+        round_index = self._find_user_round_index_for_card(card)
+        if round_index is None:
             return
 
         if self._is_streaming:
@@ -1667,7 +1612,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         user_input = card.get_plain_text()
         context_tags = card.context_tags.copy()
-        if not self._truncate_session_from_rendered_index(rendered_index):
+        if not self._truncate_session_from_user_round(round_index):
             return
 
         self.context_selector.restore_context_from_tags(context_tags)
@@ -1875,6 +1820,9 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
         logger.info("[ToolFloatingWidget] Tool execution cancelled by user")
+
+        self._tool_cancelled_by_user = True
+        self._cancelled_tool_call_id = getattr(self, "_current_tool_call_id", None)
         self._tool_floating_widget.finish_tool("用户中止", success=False)
 
         tool_call_id = getattr(self, "_current_tool_call_id", None)
@@ -1891,18 +1839,20 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             self._scroll_to_bottom()
 
-        if hasattr(self, "_chat_engine") and self._chat_engine:
-            worker = getattr(self._chat_engine, "_current_worker", None)
-            if worker:
-                worker.cancel()
-
-        if self.input_area:
-            self.input_area.setFocus()
-
     def _on_tool_result_received(
         self, tool_call_id: str, tool_name: str, arguments: dict, result: Any
     ):
         import time
+
+        if (
+            self._tool_cancelled_by_user
+            and tool_call_id == self._cancelled_tool_call_id
+        ):
+            error_msg = str(getattr(result, "error", "") or "")
+            if "用户中止" in error_msg:
+                self._tool_floating_widget.finish_tool("用户中止", success=False)
+                return
+            return
 
         elapsed = (
             time.time() - self._current_tool_start_time
@@ -1945,6 +1895,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_stream_finished(self, response: str):
         self._is_streaming = False
+        self._tool_cancelled_by_user = False
+        self._cancelled_tool_call_id = None
         self._toggle_send_stop(False)
 
         if self._current_assistant_card:
@@ -1961,10 +1913,18 @@ class OpenAIChatToolWindow(ToolWindow):
         if saved_messages:
             if self._current_history_index is not None:
                 self.history_manager.update_session(
-                    self._current_history_index, saved_messages
+                    self._current_history_index,
+                    saved_messages,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
             else:
-                self.history_manager.save_session(saved_messages)
+                self.history_manager.save_session(
+                    saved_messages,
+                    session_id=session.session_id if session else None,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
+                )
                 self._current_history_index = 0
         self._update_node_preview()
 
@@ -1974,16 +1934,23 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = list(messages or [])
-        session._update_timestamp()
+        session.set_messages(messages or [], preserve_compaction=True)
         self._refresh_context_usage_indicator()
 
     def _on_engine_error(self, error: str):
+        self._tool_cancelled_by_user = False
+
         if self._current_assistant_card:
             self._current_assistant_card.stop_streaming_anim()
             self._current_assistant_card.set_error_state(True)
             self._current_assistant_card.update_content(error)
+
         self._is_streaming = False
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
         self._toggle_send_stop(False)
 
     def _on_user_message_added(self, user_text: str):
@@ -2158,10 +2125,14 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         clean_summary = summary.strip()
+        session = self.session_manager.get_current_session()
 
-        if self._current_history_index is None:
+        if self._current_history_index is None and session and session.messages:
             self.history_manager.save_session(
-                self.session_manager.get_current_session().messages
+                session.messages if session else [],
+                session_id=session.session_id if session else None,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
             )
             self._current_history_index = 0
 
@@ -2169,7 +2140,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_history_index, clean_summary
         )
 
-        session = self.session_manager.get_current_session()
         if session:
             session.set_topic_summary(clean_summary)
 
@@ -2238,10 +2208,18 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_history_index is not None:
             self.history_manager.update_session(
-                self._current_history_index, session.messages
+                self._current_history_index,
+                session.messages,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
             )
         else:
-            self.history_manager.save_session(session.messages)
+            self.history_manager.save_session(
+                session.messages,
+                session_id=session.session_id,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
+            )
             self._current_history_index = 0
 
         return self.history_manager.get_current_title(self._current_history_index)
@@ -2264,12 +2242,27 @@ class OpenAIChatToolWindow(ToolWindow):
             self.input_area.toggle_send_button(True)
 
     def _on_stop_clicked(self):
+        self._tool_cancelled_by_user = False
+        interrupted_messages: List[Dict[str, Any]] = []
+
         if self._chat_engine:
-            self._chat_engine.stop()
+            interrupted_messages = self._chat_engine.stop() or []
+
         self._is_streaming = False
+
+        if self._tool_floating_widget:
+            self._tool_floating_widget.clear()
+            self._tool_floating_widget.setVisible(False)
+
         self._toggle_send_stop(False)
         if self._current_assistant_card:
             self._current_assistant_card.stop_streaming_anim()
+            self._current_assistant_card.finish_streaming()
+
+        if interrupted_messages:
+            self._on_messages_updated(interrupted_messages)
+            if self.history_manager:
+                self._save_current_session_to_history()
         InfoBar.warning(
             title="已中止",
             content="问答请求已被手动中止。",

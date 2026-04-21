@@ -79,9 +79,6 @@ class SubAgentExecutor(QThread):
 
             try:
                 result = self._execute_agent_loop(messages, tools)
-                logger.info(
-                    f"[SubAgentExecutor] _execute_agent_loop returned: {str(result)[:100]}..."
-                )
             except Exception as e:
                 logger.error(f"[SubAgentExecutor] _execute_agent_loop error: {e}")
                 result = f"执行出错: {str(e)}"
@@ -91,9 +88,6 @@ class SubAgentExecutor(QThread):
 
             try:
                 summary = self._summarize_result(result)
-                logger.info(
-                    f"[SubAgentExecutor] _summarize_result returned: {str(summary)[:100]}..."
-                )
                 self._last_result = summary
             except Exception as e:
                 logger.error(f"[SubAgentExecutor] _summarize_result error: {e}")
@@ -122,7 +116,7 @@ class SubAgentExecutor(QThread):
                 return ""
 
             if not tool_calls:
-                return response_content
+                return self._filter_thinking_content(response_content)
             current_messages.append(
                 {
                     "role": "assistant",
@@ -154,7 +148,14 @@ class SubAgentExecutor(QThread):
             QCoreApplication.processEvents()
             time.sleep(0.2)
 
-        return response_content
+        return self._filter_thinking_content(response_content)
+
+    def _filter_thinking_content(self, content: str) -> str:
+        """过滤掉思考内容，只保留纯回复"""
+        if not content:
+            return content
+        pattern = r"<think>[\s\S]*?</think>"
+        return re.sub(pattern, "", content)
 
     def _make_api_call(self, messages: List[Dict], tools: List[Dict] = None) -> tuple:
         """调用 LLM API"""
@@ -229,8 +230,8 @@ class SubAgentExecutor(QThread):
 
             delta = chunk.choices[0].delta
             content = getattr(delta, "content", None)
-
             if content:
+                content = self._filter_thinking_content(content)
                 full_response += content
 
             tool_calls = getattr(delta, "tool_calls", None)

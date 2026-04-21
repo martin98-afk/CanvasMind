@@ -202,8 +202,8 @@ class WorkflowCanvasGalleryPage(QWidget):
         self.scroll_widget = QWidget()
         self.scroll_widget.setStyleSheet("background-color: transparent;")
 
-        self.flow_layout = FlowLayout(self.scroll_widget, needAni=True)
-        self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
+        self.flow_layout = FlowLayout(self.scroll_widget, needAni=False)
+        # self.flow_layout.setAnimation(250, QEasingCurve.OutQuad)
         self.flow_layout.setContentsMargins(30, 30, 30, 30)
         self.flow_layout.setVerticalSpacing(20)
         self.flow_layout.setHorizontalSpacing(30)

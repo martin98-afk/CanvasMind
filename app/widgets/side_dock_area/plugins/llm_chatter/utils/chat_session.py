@@ -22,6 +22,7 @@ class ChatSession:
         self.message_count: int = len(self.messages)
         self.task_state = TaskSessionState()
         self.compaction_state: Dict = self._default_compaction_state()
+        self.compaction_cache: Dict = self._default_compaction_cache()
 
     @staticmethod
     def _default_compaction_state() -> Dict:
@@ -36,8 +37,29 @@ class ChatSession:
             "note": "",
         }
 
+    @staticmethod
+    def _default_compaction_cache() -> Dict:
+        return {
+            "active": False,
+            "kind": "",
+            "cutoff_index": 0,
+            "source_message_count": 0,
+            "summarized_count": 0,
+            "tail_count": 0,
+            "budget_tokens": 0,
+            "summary_message": None,
+            "generated_at": "",
+        }
+
     def get_context_messages(self) -> List[Dict[str, str]]:
         return consolidate_messages(self.messages)
+
+    def set_messages(self, messages: List[Dict], preserve_compaction: bool = False):
+        self.messages = consolidate_messages(messages or [])
+        if not preserve_compaction:
+            self.reset_compaction_cache()
+            self.reset_compaction_state()
+        self._update_timestamp()
 
     def add_system_message(self, content: str):
         self.messages.append(
@@ -70,6 +92,7 @@ class ChatSession:
                 "params": params or {},
             }
         )
+        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def _update_timestamp(self):
@@ -88,13 +111,26 @@ class ChatSession:
     def reset_compaction_state(self):
         self.compaction_state = self._default_compaction_state()
 
+    def set_compaction_cache(self, cache: Optional[Dict] = None):
+        merged = self._default_compaction_cache()
+        if cache:
+            merged.update(cache)
+        self.compaction_cache = merged
+
+    def reset_compaction_cache(self):
+        self.compaction_cache = self._default_compaction_cache()
+
+    def invalidate_compaction(self):
+        self.reset_compaction_cache()
+        self.reset_compaction_state()
+
     def get_recent_messages(self, count: int = 10) -> List[Dict]:
         return self.messages[-count:] if self.messages else []
 
     def clear(self):
         self.messages.clear()
         self.topic_summary = ""
-        self.reset_compaction_state()
+        self.invalidate_compaction()
         self._update_timestamp()
 
     def to_dict(self) -> Dict:
@@ -107,6 +143,7 @@ class ChatSession:
             "last_updated": self.last_updated,
             "message_count": self.message_count,
             "compaction_state": self.compaction_state,
+            "compaction_cache": self.compaction_cache,
             "task_state": {
                 "current_agent": self.task_state.current_agent,
                 "current_goal": self.task_state.current_goal,
@@ -134,6 +171,7 @@ class ChatSession:
         session.last_updated = data.get("last_updated", session.created_at)
         session.message_count = len(session.messages)
         session.set_compaction_state(data.get("compaction_state"))
+        session.set_compaction_cache(data.get("compaction_cache"))
         task_state_data = data.get("task_state", {})
         for field_name, value in task_state_data.items():
             if hasattr(session.task_state, field_name):

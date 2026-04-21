@@ -109,8 +109,6 @@ class TaskTools:
                 time.sleep(0.1)
 
             result = executor._last_result if hasattr(executor, "_last_result") else ""
-            logger.info(f"[Task] Task completed, result: {str(result)[:200]}...")
-
             if hasattr(executor, "_execution_error") and executor._execution_error:
                 return ToolResult(False, error=executor._execution_error)
 

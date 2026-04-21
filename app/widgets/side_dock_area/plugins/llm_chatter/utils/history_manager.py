@@ -72,18 +72,33 @@ class HistoryManager:
                             item["message_count"] = len(item.get("messages", []))
                         if "session_id" not in item:
                             item["session_id"] = uuid.uuid4().hex[:8]
+                        item["compaction_state"] = dict(item.get("compaction_state") or {})
+                        item["compaction_cache"] = dict(item.get("compaction_cache") or {})
                         normalized.append(item)
                     return normalized
             except Exception:
                 pass
         return []
 
-    def save_session(self, messages: List[Dict], title: str = None, session_id: str = None):
+    def save_session(
+        self,
+        messages: List[Dict],
+        title: str = None,
+        session_id: str = None,
+        compaction_state: Dict = None,
+        compaction_cache: Dict = None,
+    ):
         if not messages:
             return
 
         merged_messages = merge_session_messages(messages)
-        session_record = self._build_session_record(merged_messages, title, session_id)
+        session_record = self._build_session_record(
+            merged_messages,
+            title,
+            session_id,
+            compaction_state=compaction_state,
+            compaction_cache=compaction_cache,
+        )
         new_session_id = session_record["session_id"]
 
         existing_index = None
@@ -101,7 +116,12 @@ class HistoryManager:
         self._save_to_disk()
 
     def _build_session_record(
-        self, merged_messages: List[Dict], title: str = None, session_id: str = None
+        self,
+        merged_messages: List[Dict],
+        title: str = None,
+        session_id: str = None,
+        compaction_state: Dict = None,
+        compaction_cache: Dict = None,
     ) -> Dict:
         now = datetime.now()
         saved_at = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -127,6 +147,8 @@ class HistoryManager:
             "last_time": last_msg_time,
             "messages": merged_messages,
             "message_count": self._count_conversation_pairs(merged_messages),
+            "compaction_state": dict(compaction_state or {}),
+            "compaction_cache": dict(compaction_cache or {}),
         }
 
     def get_current_title(self, index: int) -> str:
@@ -228,7 +250,13 @@ class HistoryManager:
             return self._history_sessions[index].get("session_id")
         return None
 
-    def update_session(self, index: int, messages: List[Dict]):
+    def update_session(
+        self,
+        index: int,
+        messages: List[Dict],
+        compaction_state: Dict = None,
+        compaction_cache: Dict = None,
+    ):
         if 0 <= index < len(self._history_sessions):
             merged_messages = merge_session_messages(messages)
             existing = self._history_sessions[index]
@@ -236,6 +264,16 @@ class HistoryManager:
                 merged_messages,
                 title=existing.get("title"),
                 session_id=existing.get("session_id"),
+                compaction_state=(
+                    compaction_state
+                    if compaction_state is not None
+                    else existing.get("compaction_state", {})
+                ),
+                compaction_cache=(
+                    compaction_cache
+                    if compaction_cache is not None
+                    else existing.get("compaction_cache", {})
+                ),
             )
             self._history_sessions[index] = updated
             self._schedule_save()

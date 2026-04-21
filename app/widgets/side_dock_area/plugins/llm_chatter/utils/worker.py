@@ -22,7 +22,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
+    consolidate_messages,
     content_to_text,
+    messages_to_api,
     normalize_tool_arguments,
 )
 
@@ -267,6 +269,7 @@ class OpenAIChatWorker(QThread):
     def __init__(
         self,
         messages: List[Dict],
+        session_messages: List[Dict],
         llm_config: Dict,
         tools: List[Dict] = None,
         stream: bool = True,
@@ -280,6 +283,7 @@ class OpenAIChatWorker(QThread):
     ):
         super().__init__()
         self.messages = messages
+        self.session_messages = consolidate_messages(session_messages or [])
         self.llm_config = llm_config
         self.tools = tools or []
         self.stream = stream
@@ -302,6 +306,7 @@ class OpenAIChatWorker(QThread):
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
         self._response_content_blocks = []
+        self._tool_execution_cancelled = False
         self._last_compaction_state = {
             "active": False,
             "source": "worker",
@@ -312,14 +317,29 @@ class OpenAIChatWorker(QThread):
             "summary_count": 0,
             "note": "",
         }
+        self._current_session_messages = list(self.session_messages)
 
     def cancel(self):
         self._is_cancelled = True
+        self._tool_execution_cancelled = True
         self._answer_event.set()
         if self._question_pending:
             self._question_pending = None
         if self._permission_pending:
             self._permission_pending = None
+
+    def get_interrupted_messages(self) -> List[Dict]:
+        snapshot = list(self._current_session_messages or self.session_messages or [])
+        partial_sequence = self._build_response_message_sequence()
+        if partial_sequence:
+            snapshot = snapshot + partial_sequence
+        return consolidate_messages(snapshot)
+
+    def _clear_pending_response_state(self):
+        self._current_tool_calls = []
+        self._tool_calls_buffer = {}
+        self._response_content_blocks = []
+        self._previewed_tool_call_ids = set()
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
@@ -347,14 +367,14 @@ class OpenAIChatWorker(QThread):
     def run(self):
         try:
             current_messages = self.messages.copy()
+            current_session_messages = list(self.session_messages)
+            self._current_session_messages = list(current_session_messages)
             self._emit_compaction_status(self._last_compaction_state)
             compacted_messages, compaction_state = self._maybe_compact_messages(
                 current_messages
             )
             self._emit_compaction_status(compaction_state)
             current_messages = compacted_messages
-            if compacted_messages != self.messages:
-                self.finished_with_messages.emit(current_messages)
 
             self.full_response = ""
 
@@ -367,8 +387,12 @@ class OpenAIChatWorker(QThread):
                     return
 
                 if not tool_calls_found:
-                    current_messages.extend(self._build_response_message_sequence())
-                    self.finished_with_messages.emit(current_messages)
+                    response_sequence = self._build_response_message_sequence()
+                    current_messages.extend(response_sequence)
+                    current_session_messages.extend(response_sequence)
+                    self._current_session_messages = list(current_session_messages)
+                    self.finished_with_messages.emit(current_session_messages)
+                    self._clear_pending_response_state()
                     self.finished_with_content.emit(self.full_response)
                     return
 
@@ -384,24 +408,32 @@ class OpenAIChatWorker(QThread):
                         return
 
                     q = self._question_pending
-                    current_messages.extend(self._build_response_message_sequence())
-                    current_messages.append(
+                    response_sequence = self._build_response_message_sequence()
+                    current_messages.extend(response_sequence)
+                    current_session_messages.extend(response_sequence)
+                    question_result = (
                         {
                             "role": "tool",
                             "tool_call_id": q["tool_call_id"],
                             "content": self._pending_answer,
                         }
                     )
-                    self.finished_with_messages.emit(current_messages)
+                    current_messages.append(question_result)
+                    current_session_messages.append(question_result)
+                    self._current_session_messages = list(current_session_messages)
+                    self.finished_with_messages.emit(current_session_messages)
+                    self._clear_pending_response_state()
                     self._question_pending = None
                     self._pending_answer = None
                     self._answer_event.clear()
                     continue
 
-                current_messages.extend(
-                    self._build_response_message_sequence(tool_results)
-                )
-                self.finished_with_messages.emit(current_messages)
+                response_sequence = self._build_response_message_sequence(tool_results)
+                current_messages.extend(response_sequence)
+                current_session_messages.extend(response_sequence)
+                self._current_session_messages = list(current_session_messages)
+                self.finished_with_messages.emit(current_session_messages)
+                self._clear_pending_response_state()
 
                 self._check_and_notify_stage_change()
 
@@ -521,81 +553,12 @@ class OpenAIChatWorker(QThread):
         self._last_compaction_state = normalized
         self.compaction_status_changed.emit(dict(normalized))
 
-    def _sanitize_messages_for_api(self, messages: List[Dict]) -> List[Dict]:
-        sanitized: List[Dict[str, Any]] = []
-
-        for msg in messages or []:
-            if not isinstance(msg, dict):
-                continue
-
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant", "tool"):
-                continue
-
-            api_msg: Dict[str, Any] = {"role": role}
-
-            if role == "assistant":
-                tool_calls = msg.get("tool_calls", [])
-                if tool_calls:
-                    api_msg["tool_calls"] = [
-                        {
-                            "id": str(tc.get("id", "")),
-                            "type": "function",
-                            "function": {
-                                "name": tc.get("function", {}).get("name", ""),
-                                "arguments": tc.get("function", {}).get(
-                                    "arguments", "{}"
-                                ),
-                            },
-                        }
-                        for tc in tool_calls
-                        if isinstance(tc, dict) and tc.get("id") and tc.get("function")
-                    ]
-
-                text_content = content_to_text(msg.get("content", ""))
-                if text_content:
-                    api_msg["content"] = text_content
-
-                if msg.get("tool_call_id"):
-                    api_msg["tool_call_id"] = str(msg["tool_call_id"])
-
-            elif role == "tool":
-                tool_call_id = msg.get("tool_call_id")
-                if not tool_call_id:
-                    continue
-                api_msg["tool_call_id"] = str(tool_call_id)
-                content = content_to_text(msg.get("content", ""))
-                if content:
-                    api_msg["content"] = content
-                if msg.get("name"):
-                    api_msg["name"] = msg["name"]
-            else:
-                content = content_to_text(msg.get("content", ""))
-                if role == "user" and msg.get("params"):
-                    context_parts = [
-                        str(msg["params"][p][1])
-                        for p in msg["params"]
-                        if p in msg["params"]
-                    ]
-                    combined = "\n\n".join(context_parts)
-                    if combined:
-                        content = combined + "\n\n" + content if content else combined
-
-                if content:
-                    api_msg["content"] = content
-                elif role == "user":
-                    continue
-
-            sanitized.append(api_msg)
-
-        return sanitized
-
     def _make_api_call(self, messages: List[Dict]) -> bool:
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
 
-        sanitized = self._sanitize_messages_for_api(messages)
+        sanitized = messages_to_api(messages)
 
         req_kwargs: Dict[str, Any] = {
             "model": model,
@@ -612,7 +575,13 @@ class OpenAIChatWorker(QThread):
             "思考等级": "reasoning_effort",
         }
 
-        skip_params = {"temperature", "top_p", "presence_penalty", "frequency_penalty", "reasoning_effort"}
+        skip_params = {
+            "temperature",
+            "top_p",
+            "presence_penalty",
+            "frequency_penalty",
+            "reasoning_effort",
+        }
         if model and (model.startswith("o1") or model.startswith("o3")):
             skip_params.update({"temperature", "top_p"})
 
@@ -621,7 +590,11 @@ class OpenAIChatWorker(QThread):
                 continue
 
             if cn_key == "是否思考":
-                status = "enabled" if (value is True or str(value).lower() == "true") else "disabled"
+                status = (
+                    "enabled"
+                    if (value is True or str(value).lower() == "true")
+                    else "disabled"
+                )
                 extra_body["enable_thinking"] = status == "enabled"
                 extra_body["include_reasoning"] = status == "enabled"
                 continue
@@ -640,7 +613,9 @@ class OpenAIChatWorker(QThread):
                 extra_body[en_key] = value
 
         if "max_tokens" in req_kwargs:
-            req_kwargs["max_tokens"] = self._cap_max_output_tokens(model, req_kwargs["max_tokens"])
+            req_kwargs["max_tokens"] = self._cap_max_output_tokens(
+                model, req_kwargs["max_tokens"]
+            )
 
         if extra_body:
             req_kwargs["extra_body"] = extra_body
@@ -651,6 +626,7 @@ class OpenAIChatWorker(QThread):
         auth_type = self.llm_config.get("认证方式", "bearer")
         if auth_type == "bce":
             import base64
+
             auth_str = f"{api_key}:{api_key}"
             b64_auth = base64.b64encode(auth_str.encode()).decode()
             req_kwargs["extra_headers"] = {"Authorization": f"Basic {b64_auth}"}
@@ -831,69 +807,7 @@ class OpenAIChatWorker(QThread):
             "summary_count": 0,
             "note": "",
         }
-        if len(messages) < 10:
-            return messages, inactive_state
-
-        model = str(self.llm_config.get("模型名称", "gpt-4o"))
-        limit = self._infer_context_limit(model)
-        threshold = int(limit * 0.7)
-        if self._estimate_message_tokens(messages) <= threshold:
-            return messages, inactive_state
-
-        system_message = (
-            messages[0] if messages and messages[0].get("role") == "system" else None
-        )
-        start_idx = 1 if system_message else 0
-        body = messages[start_idx:]
-        if len(body) < 8:
-            return messages, inactive_state
-
-        split_idx = max(2, int(len(body) * 0.65))
-        old_messages = body[:split_idx]
-        recent_messages = body[split_idx:]
-        if len(recent_messages) < 4:
-            recent_messages = body[-4:]
-            old_messages = body[:-4]
-        if not old_messages:
-            return messages, inactive_state
-
-        try:
-            summary = self._summarize_old_messages(old_messages, recent_messages)
-        except Exception as exc:
-            logger.warning(f"[Compaction] AI compaction failed, falling back: {exc}")
-            summary = ""
-
-        if not summary:
-            clipped_old = []
-            for msg in old_messages[-6:]:
-                content = str(msg.get("content", ""))[:300]
-                clipped_old.append(f"- [{msg.get('role', 'unknown')}] {content}")
-            summary = "## Earlier Conversation Summary\n" + "\n".join(clipped_old)
-
-        summary_message = {
-            "role": "assistant",
-            "content": "## Earlier Conversation Summary\n" + summary
-            if not summary.startswith("## Earlier Conversation Summary")
-            else summary,
-        }
-
-        compacted = ([system_message] if system_message else []) + [
-            summary_message,
-            *recent_messages,
-        ]
-        logger.info(
-            f"[Compaction] Compacted {len(old_messages)} messages into summary, kept {len(recent_messages)} recent messages"
-        )
-        return compacted, {
-            "active": True,
-            "source": "worker",
-            "kind": "runtime",
-            "original_count": len(messages or []),
-            "summarized_count": len(old_messages),
-            "kept_count": len(recent_messages),
-            "summary_count": 1,
-            "note": f"运行中压缩了 {len(old_messages)} 条较早消息",
-        }
+        return messages, inactive_state
 
     def _process_response(self, response):
         self._response_content_blocks = []
@@ -1002,6 +916,27 @@ class OpenAIChatWorker(QThread):
 
         results = []
         for tc in self._current_tool_calls:
+            if self._is_cancelled or self._tool_execution_cancelled:
+                cancelled_tc_id = tc["id"]
+                tool_name = tc["function"]["name"]
+                try:
+                    args = json.loads(tc["function"]["arguments"])
+                except:
+                    args = {}
+                self.tool_result_received.emit(
+                    cancelled_tc_id,
+                    tool_name,
+                    args,
+                    type(
+                        "ToolResult",
+                        (),
+                        {"success": False, "content": None, "error": "用户中止"},
+                    )(),
+                )
+                QApplication.processEvents()
+                self._is_cancelled = True
+                return None
+
             tool_name = tc["function"]["name"]
             arguments = tc["function"]["arguments"]
 
@@ -1053,12 +988,31 @@ class OpenAIChatWorker(QThread):
                     }
                     self._permission_approved = False
                     while (
-                        self._permission_pending is not None and not self._is_cancelled
+                        self._permission_pending is not None
+                        and not self._is_cancelled
+                        and not self._tool_execution_cancelled
                     ):
                         QApplication.processEvents()
                         time.sleep(0.1)
 
-                    if self._is_cancelled:
+                    if self._is_cancelled or self._tool_execution_cancelled:
+                        cancelled_tc_id = tool_call_id
+                        self.tool_result_received.emit(
+                            cancelled_tc_id,
+                            tool_name,
+                            arguments,
+                            type(
+                                "ToolResult",
+                                (),
+                                {
+                                    "success": False,
+                                    "content": None,
+                                    "error": "用户中止",
+                                },
+                            )(),
+                        )
+                        QApplication.processEvents()
+                        self._is_cancelled = True
                         return None
 
                     if not self._permission_approved:
@@ -1096,6 +1050,23 @@ class OpenAIChatWorker(QThread):
             else:
                 result_content = str(result) if result else ""
                 success = bool(getattr(result, "success", True)) if result else False
+
+            if self._is_cancelled or self._tool_execution_cancelled:
+                cancelled_result = type(
+                    "ToolResult",
+                    (),
+                    {
+                        "success": False,
+                        "content": None,
+                        "error": "用户中止",
+                    },
+                )()
+                self.tool_result_received.emit(
+                    tool_call_id, tool_name, arguments, cancelled_result
+                )
+                QApplication.processEvents()
+                self._is_cancelled = True
+                return None
 
             self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
             QApplication.processEvents()

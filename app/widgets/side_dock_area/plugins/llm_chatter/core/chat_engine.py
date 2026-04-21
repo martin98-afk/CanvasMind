@@ -4,8 +4,10 @@
 """
 
 import re
+from datetime import datetime
 from loguru import logger
 from typing import Dict, List, Optional, Any, Callable
+from openai import OpenAI
 
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
@@ -26,11 +28,13 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
-    ensure_content_blocks,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.token_estimator import (
     estimate_tokens,
     count_messages_tokens,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.retry_helper import (
+    create_api_call_with_retry,
 )
 
 
@@ -100,6 +104,37 @@ class ChatEngine:
             "summary_count": int(summary_count or 0),
             "note": note or "",
         }
+
+    def _make_compaction_cache(
+        self,
+        active: bool = False,
+        kind: str = "",
+        cutoff_index: int = 0,
+        source_message_count: int = 0,
+        summarized_count: int = 0,
+        tail_count: int = 0,
+        budget_tokens: int = 0,
+        summary_message: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "active": bool(active),
+            "kind": kind or "",
+            "cutoff_index": int(cutoff_index or 0),
+            "source_message_count": int(source_message_count or 0),
+            "summarized_count": int(summarized_count or 0),
+            "tail_count": int(tail_count or 0),
+            "budget_tokens": int(budget_tokens or 0),
+            "summary_message": dict(summary_message) if isinstance(summary_message, dict) else None,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if active
+            else "",
+        }
+
+    def _get_compaction_soft_limit(self, history_budget: int) -> int:
+        return max(1, int(history_budget * 0.75))
+
+    def _get_compaction_target_limit(self, history_budget: int) -> int:
+        return max(1, int(history_budget * 0.65))
 
     def _get_agent_manager(self):
         return self._agent_manager
@@ -206,9 +241,19 @@ class ChatEngine:
                     break
         return selected
 
-    def _summarize_compacted_messages(self, messages: List[Dict[str, str]]) -> str:
+    def _summarize_compacted_messages(
+        self,
+        messages: List[Dict[str, str]],
+        allow_llm_summary: bool = False,
+    ) -> str:
         if not messages:
             return ""
+
+        llm_summary = ""
+        if allow_llm_summary:
+            llm_summary = self._summarize_compacted_messages_with_agent(messages)
+        if llm_summary:
+            return llm_summary
 
         summary_lines = [
             "## Earlier Conversation Summary",
@@ -224,6 +269,8 @@ class ChatEngine:
             if not content:
                 continue
             single_line = " ".join(content.split())
+            if len(single_line) > 1000:
+                    single_line = f"{single_line[:500]}...{single_line[-500:]}"
             if role == "user":
                 user_points.append(single_line)
             elif role == "assistant":
@@ -252,41 +299,95 @@ class ChatEngine:
         )
         return "\n".join(summary_lines)
 
-    def _normalize_history_messages(
-        self, history_messages: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        normalized: List[Dict[str, Any]] = []
-        for msg in history_messages:
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant", "tool"):
+    def _build_compaction_agent_messages(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[Dict[str, str]]:
+        transcript_lines = []
+        for msg in messages or []:
+            role = msg.get("role", "unknown")
+            content = _normalize_message_content(msg.get("content", ""))
+            if not content:
                 continue
-
-            normalized_msg: Dict[str, Any] = {"role": role}
-            content = msg.get("content", "")
-            if role == "assistant":
-                text = content_to_text(content)
-                if text:
-                    normalized_msg["content"] = text
-                tool_calls = msg.get("tool_calls", [])
-                if tool_calls:
-                    normalized_msg["tool_calls"] = tool_calls
-                if not text and not tool_calls:
-                    continue
-            elif role == "tool":
-                tool_call_id = msg.get("tool_call_id")
-                if not tool_call_id:
-                    continue
-                normalized.append(msg)
+            single_line = " ".join(content.split())
+            if role == "tool":
+                tool_name = msg.get("name") or msg.get("tool_call_id") or "tool"
+                transcript_lines.append(f"[tool:{tool_name}] {single_line[:1200]}")
             else:
-                normalized_msg["content"] = content_to_text(content)
-                if role == "user" and msg.get("params"):
-                    normalized_msg["params"] = msg.get("params")
+                transcript_lines.append(f"[{role}] {single_line[:1200]}")
 
-            if msg.get("timestamp"):
-                normalized_msg["timestamp"] = msg.get("timestamp")
-            normalized.append(normalized_msg)
+        prompt = (
+            "请压缩下面的较早对话，使后续模型可以继续当前编码任务。\n\n"
+            "输出要求：\n"
+            "1. 使用 Markdown。\n"
+            "2. 优先保留：任务目标、已完成工作、关键文件/模块、关键工具结果、当前剩余问题。\n"
+            "3. 不要只重复用户原始提问。\n"
+            "4. 删除寒暄、重复探索、低价值调试细节。\n"
+            "5. 如果信息不足，不要编造。\n\n"
+            "【待压缩对话】\n"
+            + "\n".join(transcript_lines)
+        )
 
-        return normalized
+        system_prompt = ""
+        if self._agent_manager and self._agent_manager.get_agent("compaction"):
+            system_prompt = self._agent_manager.get_agent_system_prompt("compaction")
+        if not system_prompt:
+            system_prompt = "你是一个上下文压缩专家，负责提炼后续继续执行编码任务所需的摘要。"
+
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ]
+
+    def _summarize_compacted_messages_with_agent(
+        self, messages: List[Dict[str, Any]]
+    ) -> str:
+        if not messages:
+            return ""
+
+        llm_config = self._get_model_config() or {}
+        api_key = str(llm_config.get("API_KEY", "") or "").strip()
+        base_url = llm_config.get("API_URL") or None
+        auth_type = llm_config.get("认证方式", "bearer")
+        if not api_key and auth_type != "none":
+            return ""
+
+        compaction_config = {}
+        if self._agent_manager and self._agent_manager.get_agent("compaction"):
+            compaction_config = self._agent_manager.get_agent_config("compaction")
+
+        model = str(
+            compaction_config.get("model")
+            or llm_config.get("模型名称", "gpt-4o")
+        )
+        client = OpenAI(
+            api_key=api_key if api_key and auth_type != "none" else "dummy",
+            base_url=base_url,
+            timeout=60.0,
+        )
+
+        req_kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": self._build_compaction_agent_messages(messages),
+            "stream": False,
+            "max_tokens": 1200,
+        }
+        temperature = compaction_config.get("temperature")
+        if temperature is not None:
+            req_kwargs["temperature"] = temperature
+        top_p = compaction_config.get("top_p")
+        if top_p is not None:
+            req_kwargs["top_p"] = top_p
+
+        try:
+            def create_task():
+                return client.chat.completions.create(**req_kwargs)
+
+            resp = create_api_call_with_retry(client, create_task)
+            content = (resp.choices[0].message.content or "").strip()
+            return content
+        except Exception as exc:
+            logger.warning(f"[Compaction] Agent summarization failed, fallback to heuristic: {exc}")
+            return ""
 
     def _has_structured_tool_history(
         self, history_messages: List[Dict[str, Any]]
@@ -302,14 +403,22 @@ class ChatEngine:
         self,
         history_messages: List[Dict[str, Any]],
         history_budget: int,
-    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        allow_llm_summary: bool = False,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
         if not history_messages or history_budget <= 0:
-            return [], self._make_compaction_state()
+            return [], self._make_compaction_state(), self._make_compaction_cache()
 
-        if estimate_tokens_from_messages(history_messages) <= history_budget:
-            return history_messages, self._make_compaction_state(
-                original_count=len(history_messages),
-                kept_count=len(history_messages),
+        soft_limit = self._get_compaction_soft_limit(history_budget)
+        target_limit = self._get_compaction_target_limit(history_budget)
+
+        if estimate_tokens_from_messages(history_messages) <= soft_limit:
+            return (
+                history_messages,
+                self._make_compaction_state(
+                    original_count=len(history_messages),
+                    kept_count=len(history_messages),
+                ),
+                self._make_compaction_cache(),
             )
 
         recent_messages: List[Dict[str, Any]] = []
@@ -324,7 +433,7 @@ class ChatEngine:
 
             if (
                 recent_messages
-                and recent_tokens + msg_tokens > history_budget
+                and recent_tokens + msg_tokens > target_limit
                 and not force_include
             ):
                 break
@@ -338,17 +447,27 @@ class ChatEngine:
                 include_open_tool_exchange = False
 
         if len(recent_messages) == len(history_messages):
-            return recent_messages, self._make_compaction_state(
-                original_count=len(history_messages),
-                kept_count=len(recent_messages),
+            return (
+                recent_messages,
+                self._make_compaction_state(
+                    original_count=len(history_messages),
+                    kept_count=len(recent_messages),
+                ),
+                self._make_compaction_cache(),
             )
 
         compacted = history_messages[: len(history_messages) - len(recent_messages)]
-        compact_summary = self._summarize_compacted_messages(compacted)
+        compact_summary = self._summarize_compacted_messages(
+            compacted, allow_llm_summary=allow_llm_summary
+        )
         if not compact_summary:
-            return recent_messages, self._make_compaction_state(
-                original_count=len(history_messages),
-                kept_count=len(recent_messages),
+            return (
+                recent_messages,
+                self._make_compaction_state(
+                    original_count=len(history_messages),
+                    kept_count=len(recent_messages),
+                ),
+                self._make_compaction_cache(),
             )
 
         summary_message = {"role": "assistant", "content": compact_summary}
@@ -356,7 +475,7 @@ class ChatEngine:
 
         while (
             len(result_messages) > 1
-            and estimate_tokens_from_messages(result_messages) > history_budget
+            and estimate_tokens_from_messages(result_messages) > target_limit
         ):
             if len(recent_messages) > 1:
                 recent_messages.pop(0)
@@ -366,45 +485,102 @@ class ChatEngine:
             result_messages = [summary_message]
             break
 
-        return result_messages, self._make_compaction_state(
-            active=True,
-            source="history",
-            kind="structured",
-            original_count=len(history_messages),
-            summarized_count=len(compacted),
-            kept_count=len(recent_messages),
-            summary_count=1,
-            note=f"已压缩 {len(compacted)} 条含工具历史消息",
+        return (
+            result_messages,
+            self._make_compaction_state(
+                active=True,
+                source="history",
+                kind="structured",
+                original_count=len(history_messages),
+                summarized_count=len(compacted),
+                kept_count=len(recent_messages),
+                summary_count=1,
+                note=f"已压缩 {len(compacted)} 条含工具历史消息",
+            ),
+            self._make_compaction_cache(
+                active=True,
+                kind="structured",
+                cutoff_index=len(compacted),
+                source_message_count=len(history_messages),
+                summarized_count=len(compacted),
+                tail_count=len(recent_messages),
+                budget_tokens=history_budget,
+                summary_message=summary_message,
+            ),
         )
 
     def _compact_history_messages(
         self,
         history_messages: List[Dict[str, Any]],
         history_budget: int,
-    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        existing_cache: Optional[Dict[str, Any]] = None,
+        allow_llm_summary: bool = False,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
         if not history_messages or history_budget <= 0:
-            return [], self._make_compaction_state()
+            return [], self._make_compaction_state(), self._make_compaction_cache()
 
-        normalized = self._normalize_history_messages(history_messages)
+        normalized = consolidate_messages(history_messages)
+        soft_limit = self._get_compaction_soft_limit(history_budget)
+        target_limit = self._get_compaction_target_limit(history_budget)
 
         if not normalized:
-            return [], self._make_compaction_state()
+            return [], self._make_compaction_state(), self._make_compaction_cache()
+
+        if estimate_tokens_from_messages(normalized) <= soft_limit:
+            return (
+                normalized,
+                self._make_compaction_state(
+                    original_count=len(normalized),
+                    kept_count=len(normalized),
+                ),
+                self._make_compaction_cache(),
+            )
+
+        cached = existing_cache or {}
+        if cached.get("active") and cached.get("summary_message"):
+            cutoff_index = int(cached.get("cutoff_index", 0) or 0)
+            if 0 < cutoff_index <= len(normalized):
+                cached_messages = [cached.get("summary_message"), *normalized[cutoff_index:]]
+                if estimate_tokens_from_messages(cached_messages) <= soft_limit:
+                    summarized_count = int(cached.get("summarized_count", cutoff_index) or cutoff_index)
+                    tail_count = len(normalized) - cutoff_index
+                    return (
+                        cached_messages,
+                        self._make_compaction_state(
+                            active=True,
+                            source="history",
+                            kind=str(cached.get("kind", "plain") or "plain"),
+                            original_count=len(normalized),
+                            summarized_count=summarized_count,
+                            kept_count=tail_count,
+                            summary_count=1,
+                            note=f"复用已压缩摘要，覆盖 {summarized_count} 条较早消息",
+                        ),
+                        self._make_compaction_cache(
+                            active=True,
+                            kind=str(cached.get("kind", "plain") or "plain"),
+                            cutoff_index=cutoff_index,
+                            source_message_count=len(normalized),
+                            summarized_count=summarized_count,
+                            tail_count=tail_count,
+                            budget_tokens=history_budget,
+                            summary_message=cached.get("summary_message"),
+                        ),
+                    )
 
         if self._has_structured_tool_history(normalized):
-            return self._compact_structured_history_messages(normalized, history_budget)
-
-        if estimate_tokens_from_messages(normalized) <= history_budget:
-            return normalized, self._make_compaction_state(
-                original_count=len(normalized),
-                kept_count=len(normalized),
+            return self._compact_structured_history_messages(
+                normalized,
+                history_budget,
+                allow_llm_summary=allow_llm_summary,
             )
 
         recent_messages: List[Dict[str, str]] = []
         recent_tokens = 0
-        min_recent_tokens = int(history_budget * 0.55)
+        min_recent_tokens = int(target_limit * 0.85)
         for msg in reversed(normalized):
             msg_tokens = estimate_tokens_from_messages([msg])
-            if recent_messages and recent_tokens + msg_tokens > history_budget:
+            if recent_messages and recent_tokens + msg_tokens > target_limit:
                 break
             recent_messages.insert(0, msg)
             recent_tokens += msg_tokens
@@ -415,17 +591,27 @@ class ChatEngine:
                 break
 
         if len(recent_messages) == len(normalized):
-            return recent_messages, self._make_compaction_state(
-                original_count=len(normalized),
-                kept_count=len(recent_messages),
+            return (
+                recent_messages,
+                self._make_compaction_state(
+                    original_count=len(normalized),
+                    kept_count=len(recent_messages),
+                ),
+                self._make_compaction_cache(),
             )
 
         compacted = normalized[: len(normalized) - len(recent_messages)]
-        compact_summary = self._summarize_compacted_messages(compacted)
+        compact_summary = self._summarize_compacted_messages(
+            compacted, allow_llm_summary=allow_llm_summary
+        )
         if not compact_summary:
-            return recent_messages, self._make_compaction_state(
-                original_count=len(normalized),
-                kept_count=len(recent_messages),
+            return (
+                recent_messages,
+                self._make_compaction_state(
+                    original_count=len(normalized),
+                    kept_count=len(recent_messages),
+                ),
+                self._make_compaction_cache(),
             )
 
         summary_message = {
@@ -436,7 +622,7 @@ class ChatEngine:
 
         while (
             len(result_messages) > 1
-            and estimate_tokens_from_messages(result_messages) > history_budget
+            and estimate_tokens_from_messages(result_messages) > target_limit
         ):
             if len(recent_messages) > 1:
                 recent_messages.pop(0)
@@ -446,15 +632,28 @@ class ChatEngine:
             result_messages = [summary_message]
             break
 
-        return result_messages, self._make_compaction_state(
-            active=True,
-            source="history",
-            kind="plain",
-            original_count=len(normalized),
-            summarized_count=len(compacted),
-            kept_count=len(recent_messages),
-            summary_count=1,
-            note=f"已压缩 {len(compacted)} 条较早消息",
+        return (
+            result_messages,
+            self._make_compaction_state(
+                active=True,
+                source="history",
+                kind="plain",
+                original_count=len(normalized),
+                summarized_count=len(compacted),
+                kept_count=len(recent_messages),
+                summary_count=1,
+                note=f"已压缩 {len(compacted)} 条较早消息",
+            ),
+            self._make_compaction_cache(
+                active=True,
+                kind="plain",
+                cutoff_index=len(compacted),
+                source_message_count=len(normalized),
+                summarized_count=len(compacted),
+                tail_count=len(recent_messages),
+                budget_tokens=history_budget,
+                summary_message=summary_message,
+            ),
         )
 
     def set_callback(self, event: str, callback: Callable):
@@ -553,7 +752,9 @@ class ChatEngine:
                 if not hasattr(llm_ctx, "get_canvas_tools_schema"):
                     self._current_agent = "build"
                     canvas_tools = []
-                    available_tools = self._get_agent_manager().get_agent_tools_schema("build")
+                    available_tools = self._get_agent_manager().get_agent_tools_schema(
+                        "build"
+                    )
                 else:
                     canvas_tools = llm_ctx.get_canvas_tools_schema()
         if canvas_tools:
@@ -562,7 +763,12 @@ class ChatEngine:
         self._start_worker(messages, llm_config, available_tools)
         return True
 
-    def _build_messages(self, session: ChatSession, llm_config: Dict) -> List[Dict]:
+    def _build_messages(
+        self,
+        session: ChatSession,
+        llm_config: Dict,
+        allow_llm_summary: bool = False,
+    ) -> List[Dict]:
         messages: List[Dict[str, Any]] = []
         task_state = session.task_state
 
@@ -595,9 +801,7 @@ class ChatEngine:
             )
 
         max_context_tokens = self._get_context_budget(llm_config)
-        normalized_session_messages = self._normalize_history_messages(
-            session.get_context_messages()
-        )
+        normalized_session_messages = consolidate_messages(session.get_context_messages())
         latest_user_message = ""
         latest_user_timestamp = ""
         params = {}
@@ -626,10 +830,14 @@ class ChatEngine:
         available_history_budget = (
             max_context_tokens - estimate_tokens(latest_user_message) - 200
         )
-        history_for_api, compaction_state = self._compact_history_messages(
-            history_messages, available_history_budget
+        history_for_api, compaction_state, compaction_cache = self._compact_history_messages(
+            history_messages,
+            available_history_budget,
+            existing_cache=getattr(session, "compaction_cache", None),
+            allow_llm_summary=allow_llm_summary,
         )
         session.set_compaction_state(compaction_state)
+        session.set_compaction_cache(compaction_cache)
 
         filtered_history = [m for m in history_for_api if m.get("role") != "system"]
         messages.extend(filtered_history)
@@ -750,9 +958,11 @@ class ChatEngine:
                 "compaction"
             )
             compaction_config = self._agent_manager.get_agent_config("compaction")
+        session = self._session_manager.get_current_session()
 
         self._current_worker = OpenAIChatWorker(
             messages=messages,
+            session_messages=session.get_context_messages() if session else [],
             llm_config=llm_config,
             tools=tools,
             tool_executor=self._tool_executor,
@@ -771,9 +981,6 @@ class ChatEngine:
         self._current_worker.finished_with_content.connect(self._on_worker_finished)
         self._current_worker.finished_with_messages.connect(
             self._on_worker_messages_updated
-        )
-        self._current_worker.compaction_status_changed.connect(
-            self._on_worker_compaction_status_changed
         )
         self._current_worker.question_asked.connect(self._on_question_asked)
         self._current_worker.permission_approval_requested.connect(
@@ -834,10 +1041,7 @@ class ChatEngine:
         self._emit("messages_updated", consolidate_messages(messages or []))
 
     def _on_worker_compaction_status_changed(self, state: Dict[str, Any]):
-        session = self._session_manager.get_current_session()
-        if session:
-            session.set_compaction_state(state)
-        self._emit("compaction_status_changed", state)
+        return
 
     def _on_error(self, error: str):
         self._is_streaming = False
@@ -847,11 +1051,22 @@ class ChatEngine:
             self._emit("task_state_changed", session.task_state)
         self._emit("error", error)
 
-    def stop(self):
-        if self._current_worker and self._current_worker.isRunning():
-            self._current_worker.cancel()
+    def stop(self) -> List[Dict]:
+        worker = self._current_worker
         self._current_worker = None
         self._is_streaming = False
+        interrupted_messages: List[Dict] = []
+
+        if worker:
+            try:
+                interrupted_messages = worker.get_interrupted_messages()
+            except Exception as exc:
+                logger.warning(f"[ChatEngine] Failed to snapshot interrupted messages: {exc}")
+            worker.cancel()
+            if worker.isRunning():
+                worker.quit()
+
+        return interrupted_messages
 
     def provide_question_answer(self, answer: str):
         if self._current_worker and hasattr(self._current_worker, "provide_answer"):

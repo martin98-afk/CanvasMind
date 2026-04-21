@@ -212,11 +212,11 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def _enable_debug_mode(self):
             self.current_code = self.get_current_code()
-            if "debug_code" in self.model._custom_prop:
-                self.model._custom_prop.pop("debug_code")
+            if "_code" in self.model._custom_prop:
+                self.model._custom_prop.pop("_code")
             self._debug_widget = CodeEditorWidgetWrapper(
                 parent=self.view,
-                name="debug_code",
+                name="_code",
                 label="调试代码编辑器",
                 default=self.current_code,
                 window=parent_window,
@@ -230,7 +230,7 @@ def create_node_class(full_path, file_path, parent_window=None):
 
         def _disable_debug_mode(self):
             if self._debug_widget is not None:
-                current_editor_code = self._debug_widget.get_value()
+                current_editor_code = self.get_property("_code")
                 original_code = self.get_current_code()
                 if current_editor_code != original_code:
                     w = MessageBox(
@@ -251,7 +251,7 @@ def create_node_class(full_path, file_path, parent_window=None):
                     self._debug_widget.valueChanged.disconnect(self._save_debug_code)
                 except TypeError:
                     pass
-                self.remove_property("debug_code")
+                self.remove_property("_code")
                 self.view.remove_widget(self._debug_widget)
                 self.view.draw_node()
                 self._debug_widget = None

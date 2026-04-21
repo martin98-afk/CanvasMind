@@ -144,6 +144,7 @@ class CanvasTools:
     ) -> Dict[str, Any]:
         component_path = getattr(node, "FULL_PATH", "") or ""
         properties = dict(getattr(node.model, "_custom_prop", {}) or {})
+        code = properties.pop("_code", "")
         snapshot = {
             "node_name": node.name(),
             "node_id": properties.pop("persistent_id", None),
@@ -175,15 +176,7 @@ class CanvasTools:
             snapshot["log_type"] = log_type
 
         if include_code:
-            get_component_code = getattr(node, "get_component_code", None)
-            if callable(get_component_code):
-                snapshot["code"] = self._tail_text(get_component_code(), 12000)
-        else:
-            snapshot["properties"] = {
-                key: value
-                for key, value in snapshot["properties"].items()
-                if key != "code" and key != "debug_code"
-            }
+            snapshot["_code"] = code
 
         return snapshot
 
@@ -269,33 +262,6 @@ class CanvasTools:
             return f"日志卡片无文本内容"
 
         return log_text_edit.toPlainText() or f"run_id={run_id} 日志为空"
-
-    def canvas_edit_run(self, node_name: str, code: str) -> ToolResult:
-        """
-        修改节点代码并运行
-
-        Args:
-            node_name: 节点名称
-            code: 新的代码内容
-        """
-        node = self._find_node_by_name(node_name)
-        if not node:
-            return ToolResult(False, error=f"未找到节点: {node_name}")
-
-        try:
-            node.current_code = code
-            node._debug_enabled = True
-            task_id = self.parent.run_node(node)
-            return ToolResult(
-                True,
-                content={
-                    "message": f"已更新代码并运行节点 [{node_name}]",
-                    "task_id": task_id,
-                    "node_name": node_name,
-                },
-            )
-        except Exception as e:
-            return ToolResult(False, error=f"修改代码并运行失败: {str(e)}")
 
     def canvas_nodes(self) -> ToolResult:
         """列出画布所有节点"""
@@ -415,41 +381,7 @@ class CanvasTools:
             )
         except Exception as e:
             return ToolResult(False, error=f"编辑节点属性失败: {str(e)}")
-
-    def canvas_get_prop(
-        self, node_name: str, property_names: Optional[List[str]] = None
-    ) -> ToolResult:
-        """
-        查询节点当前参数
-
-        Args:
-            node_name: 节点名称
-            property_names: 可选，属性名列表，如 ["temperature", "model"]
-                          如果为空，则返回节点所有可读属性
-        """
-        node = self._find_node_by_name(node_name)
-        if not node:
-            return ToolResult(False, error=f"未找到节点: {node_name}")
-
-        try:
-            if property_names is None or len(property_names) == 0:
-                all_props = {}
-                if hasattr(node, "get_properties"):
-                    all_props = node.get_properties()
-                elif hasattr(node, "properties"):
-                    all_props = node.properties() or {}
-                return ToolResult(
-                    True, content=f"节点 [{node_name}] 所有属性:\n{all_props}"
-                )
-
-            result = {}
-            for prop_name in property_names:
-                value = node.get_property(prop_name)
-                result[prop_name] = value
-            return ToolResult(True, content=f"节点 [{node_name}] 属性:\n{result}")
-        except Exception as e:
-            return ToolResult(False, error=f"查询节点属性失败: {str(e)}")
-
+        
     def canvas_exec_state(
         self,
         task_id: Optional[str] = None,
@@ -991,24 +923,5 @@ def get_canvas_tools_schema() -> List[Dict]:
                     "required": ["node_name", "edits"],
                 },
             },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "canvas_get_prop",
-                "description": "查询节点当前的属性参数值",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "node_name": {"type": "string", "description": "节点名称"},
-                        "property_names": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": '可选，属性名列表，如 ["temperature", "model"]',
-                        },
-                    },
-                    "required": ["node_name"],
-                },
-            },
-        },
+        }
     ]
