@@ -114,7 +114,7 @@ class OpenAIChatToolWindow(ToolWindow):
     default_position = DockPosition.BOTTOM
     CATEGORIES = [DockCategory.CANVAS, DockCategory.COMPONENT, DockCategory.PROJECT]
     display_order = 30
-    session_manager = SessionManager()
+    session_manager = None
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None
     _agent_manager: Optional[AgentManager] = None
@@ -179,6 +179,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 问题修复：初始化未定义的属性
         self._pending_permission_tool_call_id: Optional[str] = None
         self._question_tool_call_id: Optional[str] = None
+        self.session_manager = SessionManager()
         self.session_manager.create_new_session()
         app = QApplication.instance()
         if app is not None:
@@ -1367,6 +1368,7 @@ class OpenAIChatToolWindow(ToolWindow):
         archived_current = self._current_history_index == index
         self.history_manager.archive_history(index)
         if archived_current:
+            self.session_manager = SessionManager()
             self.session_manager.create_new_session()
             self._current_history_index = None
             self._clear_chat_area()

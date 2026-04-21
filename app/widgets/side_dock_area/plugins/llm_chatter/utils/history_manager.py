@@ -20,7 +20,7 @@ def merge_session_messages(messages: List[Dict]) -> List[Dict]:
 
 def sanitize_filename(name: str) -> str:
     """移除文件名中不合法的字符"""
-    return re.sub(r'[<>:"/\\|?*]', '_', name)
+    return re.sub(r'[<>:"/\\|?*]', "_", name)
 
 
 class HistoryManager:
@@ -72,8 +72,12 @@ class HistoryManager:
                             item["message_count"] = len(item.get("messages", []))
                         if "session_id" not in item:
                             item["session_id"] = uuid.uuid4().hex[:8]
-                        item["compaction_state"] = dict(item.get("compaction_state") or {})
-                        item["compaction_cache"] = dict(item.get("compaction_cache") or {})
+                        item["compaction_state"] = dict(
+                            item.get("compaction_state") or {}
+                        )
+                        item["compaction_cache"] = dict(
+                            item.get("compaction_cache") or {}
+                        )
                         normalized.append(item)
                     return normalized
             except Exception:
@@ -203,7 +207,7 @@ class HistoryManager:
         return self._history_sessions
 
     def archive_history(self, index: int) -> bool:
-        """将历史记录归档到单独的文件中"""
+        """将历史记录归档到单独的文件中（统一归档到default下）"""
         if 0 <= index < len(self._history_sessions):
             session = self._history_sessions[index]
             title = session.get("title", "未命名")
@@ -211,10 +215,16 @@ class HistoryManager:
             session_id = session.get("session_id", "unknown")
 
             safe_title = sanitize_filename(title[:50])
-            date_str = last_time[:10] if last_time else datetime.now().strftime("%Y-%m-%d")
+            date_str = (
+                last_time[:10] if last_time else datetime.now().strftime("%Y-%m-%d")
+            )
             filename = f"{safe_title}_{date_str}_{session_id}.json"
 
-            archive_file = self.archive_dir / filename
+            default_archive_dir = (
+                Path("canvas_files") / "workflows" / "default" / "archived"
+            )
+            default_archive_dir.mkdir(parents=True, exist_ok=True)
+            archive_file = default_archive_dir / filename
             try:
                 with open(archive_file, "w", encoding="utf-8") as f:
                     json.dump(
@@ -317,7 +327,9 @@ class HistoryManager:
                     content = msg.get("content", "")
                     if isinstance(content, list):
                         content = content_to_text(content)
-                    return content[:max_len].strip() + ("..." if len(content) > max_len else "")
+                    return content[:max_len].strip() + (
+                        "..." if len(content) > max_len else ""
+                    )
         return ""
 
     def get_total_storage_size(self) -> int:

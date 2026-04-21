@@ -882,8 +882,7 @@ class EnvManagerUI(QWidget):
             self.remoteDetailLabel.setText(
                 f"{self.tr('地址')}: {data['host']}:{data.get('port', 22)} | User: {data['user']}"
             )
-
-        self.load_packages(data)
+        QTimer.singleShot(1000, lambda: self.load_packages(data))
 
     def load_packages(self, env_data):
         if not env_data:
