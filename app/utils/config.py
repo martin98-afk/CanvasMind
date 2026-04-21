@@ -299,7 +299,6 @@ class Settings(QConfig):
             "ipykernel",
             "matplotlib",
             "pyecharts",
-            "mcp",
         ],
         ListValidator(),
     )
