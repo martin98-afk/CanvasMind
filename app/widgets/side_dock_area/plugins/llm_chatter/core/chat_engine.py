@@ -26,7 +26,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.provider_profile import
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
-    ensure_content_blocks,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.token_estimator import (
     estimate_tokens,
@@ -252,42 +251,6 @@ class ChatEngine:
         )
         return "\n".join(summary_lines)
 
-    def _normalize_history_messages(
-        self, history_messages: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        normalized: List[Dict[str, Any]] = []
-        for msg in history_messages:
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant", "tool"):
-                continue
-
-            normalized_msg: Dict[str, Any] = {"role": role}
-            content = msg.get("content", "")
-            if role == "assistant":
-                text = content_to_text(content)
-                if text:
-                    normalized_msg["content"] = text
-                tool_calls = msg.get("tool_calls", [])
-                if tool_calls:
-                    normalized_msg["tool_calls"] = tool_calls
-                if not text and not tool_calls:
-                    continue
-            elif role == "tool":
-                tool_call_id = msg.get("tool_call_id")
-                if not tool_call_id:
-                    continue
-                normalized.append(msg)
-            else:
-                normalized_msg["content"] = content_to_text(content)
-                if role == "user" and msg.get("params"):
-                    normalized_msg["params"] = msg.get("params")
-
-            if msg.get("timestamp"):
-                normalized_msg["timestamp"] = msg.get("timestamp")
-            normalized.append(normalized_msg)
-
-        return normalized
-
     def _has_structured_tool_history(
         self, history_messages: List[Dict[str, Any]]
     ) -> bool:
@@ -385,7 +348,7 @@ class ChatEngine:
         if not history_messages or history_budget <= 0:
             return [], self._make_compaction_state()
 
-        normalized = self._normalize_history_messages(history_messages)
+        normalized = consolidate_messages(history_messages)
 
         if not normalized:
             return [], self._make_compaction_state()
@@ -597,9 +560,7 @@ class ChatEngine:
             )
 
         max_context_tokens = self._get_context_budget(llm_config)
-        normalized_session_messages = self._normalize_history_messages(
-            session.get_context_messages()
-        )
+        normalized_session_messages = consolidate_messages(session.get_context_messages())
         latest_user_message = ""
         latest_user_timestamp = ""
         params = {}

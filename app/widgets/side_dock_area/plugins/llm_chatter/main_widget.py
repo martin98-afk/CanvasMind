@@ -102,6 +102,8 @@ from app.widgets.side_dock_area.tool_window import (
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
+    get_user_round_ranges,
+    group_messages_for_display,
 )
 
 
@@ -923,7 +925,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._clear_chat_area()
-        self._message_batch = consolidate_messages(session.messages)
+        self._message_batch = group_messages_for_display(session.messages)
         self._message_batch_index = 0
         self._batch_size = 4
 
@@ -955,19 +957,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             self._displayed_session_id = session.session_id
 
-        batches = []
-        single_round = []
-        for msg in self._message_batch:
-            if msg.get("role") in ["system", "user"]:
-                if single_round:
-                    batches.append(single_round)
-                batches.append([msg])
-                single_round = []
-            else:
-                single_round.append(msg)
-        if single_round:
-            batches.append(single_round)
-        self._render_message_to_card(batches)
+        self._render_message_to_card(self._message_batch)
 
         QTimer.singleShot(10, self._scroll_to_bottom)
         self._update_node_preview()
@@ -1300,18 +1290,21 @@ class OpenAIChatToolWindow(ToolWindow):
             cards.append(widget)
         return cards
 
-    def _get_rendered_message_index_map(self) -> List[int]:
+    def _find_user_round_index_for_card(self, card: MessageCard) -> Optional[int]:
+        round_index = 0
+        for rendered_card in self._get_rendered_message_cards():
+            if rendered_card.role != "user":
+                continue
+            if rendered_card is card:
+                return round_index
+            round_index += 1
+        return None
+
+    def _invalidate_current_session_card_cache(self):
         session = self.session_manager.get_current_session()
         if not session:
-            return []
-
-        canonical_messages = consolidate_messages(session.messages)
-        index_map: List[int] = []
-        for idx, msg in enumerate(canonical_messages):
-            if msg.get("role") not in ("user", "assistant"):
-                continue
-            index_map.append(idx)
-        return index_map
+            return
+        self._session_card_cache.pop(session.session_id, None)
 
     def _persist_session_after_mutation(self):
         session = self.session_manager.get_current_session()
@@ -1338,30 +1331,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 )
                 self._current_history_index = 0
 
-    def _build_api_safe_messages_from_history(
-        self, messages: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        safe_messages = []
-        for msg in consolidate_messages(messages or []):
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant"):
-                continue
-
-            safe_msg = {"role": role, "content": msg.get("content", "")}
-            if msg.get("timestamp"):
-                safe_msg["timestamp"] = msg.get("timestamp")
-            if role == "user" and msg.get("params") is not None:
-                safe_msg["params"] = msg.get("params", {})
-            if role == "assistant":
-                if msg.get("tool_calls"):
-                    safe_msg["tool_calls"] = msg.get("tool_calls", [])
-                if msg.get("tool_results"):
-                    safe_msg["tool_results"] = msg.get("tool_results", [])
-                if msg.get("round_id"):
-                    safe_msg["round_id"] = msg.get("round_id")
-            safe_messages.append(safe_msg)
-
-        return safe_messages
+    def _refresh_session_view_after_mutation(self):
+        self._invalidate_current_session_card_cache()
+        self._history_preview_messages = None
+        self._display_current_session()
+        self._refresh_context_usage_indicator()
 
     def _on_clear_shortcut(self):
         session = self.session_manager.get_current_session()
@@ -1576,101 +1550,50 @@ class OpenAIChatToolWindow(ToolWindow):
             self._last_visible_user_pair_index = first_visible_pair
             self.node_preview.set_visible_node(first_visible_pair)
 
-    def _truncate_session_from_rendered_index(self, rendered_index: int) -> bool:
+    def _truncate_session_from_user_round(self, round_index: int) -> bool:
         session = self.session_manager.get_current_session()
         if not session:
             return False
 
         canonical_messages = consolidate_messages(session.messages)
-        index_map = self._get_rendered_message_index_map()
-        if rendered_index >= len(index_map):
+        round_ranges = get_user_round_ranges(canonical_messages)
+        if round_index < 0 or round_index >= len(round_ranges):
             return False
 
-        cutoff_index = index_map[rendered_index]
+        cutoff_index = round_ranges[round_index][0]
         session.messages = canonical_messages[:cutoff_index]
         self._persist_session_after_mutation()
-        self._remove_rendered_cards_from_index(rendered_index)
-        if not session.messages:
-            self._show_initial_welcome()
-        else:
-            self._update_node_preview()
-        self._refresh_context_usage_indicator()
+        self._refresh_session_view_after_mutation()
         return True
 
     def _delete_message(self, card: MessageCard):
-        cards = self._get_rendered_message_cards()
-        if card not in cards:
+        if card.role != "user":
             return
-        rendered_index = cards.index(card)
-        self._delete_messages_by_rendered_index(rendered_index, card.role)
+        round_index = self._find_user_round_index_for_card(card)
+        if round_index is None:
+            return
+        self._delete_user_round(round_index)
 
-    def _delete_messages_by_rendered_index(self, rendered_index: int, role: str):
+    def _delete_user_round(self, round_index: int):
         session = self.session_manager.get_current_session()
         if not session:
             return
 
         canonical_messages = consolidate_messages(session.messages)
-        index_map = self._get_rendered_message_index_map()
-        if rendered_index >= len(index_map):
+        round_ranges = get_user_round_ranges(canonical_messages)
+        if round_index < 0 or round_index >= len(round_ranges):
             return
-        card_index = index_map[rendered_index]
 
-        to_remove_indices = [card_index]
-        if (
-            role == "user"
-            and card_index + 1 < len(canonical_messages)
-            and canonical_messages[card_index + 1].get("role") == "assistant"
-        ):
-            to_remove_indices.append(card_index + 1)
-        elif (
-            role == "assistant"
-            and card_index - 1 >= 0
-            and canonical_messages[card_index - 1].get("role") == "user"
-        ):
-            to_remove_indices.append(card_index - 1)
-
-        for idx in sorted(to_remove_indices, reverse=True):
-            canonical_messages.pop(idx)
-
-        session.messages = canonical_messages
+        start_idx, end_idx = round_ranges[round_index]
+        session.messages = canonical_messages[:start_idx] + canonical_messages[end_idx:]
         self._persist_session_after_mutation()
-        self._remove_rendered_card_pair(rendered_index, role)
-        if not session.messages:
-            self._show_initial_welcome()
-        else:
-            self._update_node_preview()
-        self._refresh_context_usage_indicator()
-
-    def _remove_rendered_cards_from_index(self, rendered_index: int):
-        cards = self._get_rendered_message_cards()
-        for card in cards[rendered_index:]:
-            self.chat_layout.removeWidget(card)
-            card.hide()
-
-    def _remove_rendered_card_pair(self, rendered_index: int, role: str):
-        cards = self._get_rendered_message_cards()
-        if rendered_index >= len(cards):
-            return
-
-        indices = {rendered_index}
-        if role == "user" and rendered_index + 1 < len(cards):
-            if cards[rendered_index + 1].role == "assistant":
-                indices.add(rendered_index + 1)
-        elif role == "assistant" and rendered_index - 1 >= 0:
-            if cards[rendered_index - 1].role == "user":
-                indices.add(rendered_index - 1)
-
-        for idx in sorted(indices, reverse=True):
-            card = cards[idx]
-            self.chat_layout.removeWidget(card)
-            card.hide()
+        self._refresh_session_view_after_mutation()
 
     def _undo_from_message(self, card: MessageCard):
-        cards = self._get_rendered_message_cards()
-        if card not in cards:
-            return
-        rendered_index = cards.index(card)
         if card.role != "user":
+            return
+        round_index = self._find_user_round_index_for_card(card)
+        if round_index is None:
             return
 
         if self._is_streaming:
@@ -1678,7 +1601,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         user_input = card.get_plain_text()
         context_tags = card.context_tags.copy()
-        if not self._truncate_session_from_rendered_index(rendered_index):
+        if not self._truncate_session_from_user_round(round_index):
             return
 
         self.context_selector.restore_context_from_tags(context_tags)
@@ -1989,7 +1912,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = list(messages or [])
+        session.messages = consolidate_messages(messages or [])
         session._update_timestamp()
         self._refresh_context_usage_indicator()
 

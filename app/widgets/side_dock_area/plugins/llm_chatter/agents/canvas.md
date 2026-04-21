@@ -117,6 +117,7 @@ tools:
 代码编辑节点的 `_code` 属性必须包含 `run` 函数：
 
 ```python
+# 不能在开头导入任何内容，所有工具包导入必须在类函数内
 def run(self, params, inputs=None):
     """
     params: 节点属性（来自UI）
@@ -125,22 +126,7 @@ def run(self, params, inputs=None):
     """
     import pandas as pd # 工具包倒入必须在函数内
     input_data = inputs.input_data   # 使用端口名获取输入数据
-    # 处理逻辑
-    result = f"处理结果: {input_data}"
-    return {
-        "output1": result   # 返回字典格式，key为输出端口名
-    }
-# 因为本质属于类函数，如果需要新增函数在run方法后面添加，第一个参数都必须是self，类函数间引用需加self.
-```
-
-代码修改规范：能使用 `canvas_edit_prop` 进行部分代码替换，就不要使用 `canvas_set_prop` 进行全量代码设置，降低token用量。
-
-### 全局变量访问
-
-在代码编辑节点中，可以通过 `self.global_variable` 访问画布全局变量：
-
-```python
-def run(self, params, inputs=None):
+    # 在代码编辑节点中，可以通过 `self.global_variable` 访问画布全局变量
     # 获取自定义变量（通过 canvas_get_variables 查看所有变量名）
     api_key = self.global_variable.get("custom.api_key")
     model_name = self.global_variable.get("custom.model_name")
@@ -150,15 +136,15 @@ def run(self, params, inputs=None):
     
     # 获取环境变量
     workspace = self.global_variable.get("env.TZ")
-    
-    # 返回输出
-    return {"output1": processed_result}
+    # 处理逻辑
+    result = f"处理结果: {input_data}"
+    return {
+        "output1": result   # 返回字典格式，key为输出端口名
+    }
+# 因为本质属于类函数，如果需要新增函数在run方法后面添加，第一个参数都必须是self，类函数间引用需加self.
 ```
 
-**变量类型前缀**：
-- `custom.` - 自定义变量（用户通过界面添加）
-- `node_vars.` - 节点输出变量（格式: `节点名__输出端口名`）
-- `env.` - 环境变量（系统环境变量）
+代码修改规范：能使用 `canvas_edit_prop` 进行部分代码替换，就不要使用 `canvas_set_prop` 进行全量代码设置，降低token用量。
 
 ### 典型使用场景
 

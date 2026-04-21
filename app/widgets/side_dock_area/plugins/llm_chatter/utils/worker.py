@@ -23,6 +23,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
     content_to_text,
+    messages_to_api,
     normalize_tool_arguments,
 )
 
@@ -523,81 +524,12 @@ class OpenAIChatWorker(QThread):
         self._last_compaction_state = normalized
         self.compaction_status_changed.emit(dict(normalized))
 
-    def _sanitize_messages_for_api(self, messages: List[Dict]) -> List[Dict]:
-        sanitized: List[Dict[str, Any]] = []
-
-        for msg in messages or []:
-            if not isinstance(msg, dict):
-                continue
-
-            role = msg.get("role")
-            if role not in ("system", "user", "assistant", "tool"):
-                continue
-
-            api_msg: Dict[str, Any] = {"role": role}
-
-            if role == "assistant":
-                tool_calls = msg.get("tool_calls", [])
-                if tool_calls:
-                    api_msg["tool_calls"] = [
-                        {
-                            "id": str(tc.get("id", "")),
-                            "type": "function",
-                            "function": {
-                                "name": tc.get("function", {}).get("name", ""),
-                                "arguments": tc.get("function", {}).get(
-                                    "arguments", "{}"
-                                ),
-                            },
-                        }
-                        for tc in tool_calls
-                        if isinstance(tc, dict) and tc.get("id") and tc.get("function")
-                    ]
-
-                text_content = content_to_text(msg.get("content", ""))
-                if text_content:
-                    api_msg["content"] = text_content
-
-                if msg.get("tool_call_id"):
-                    api_msg["tool_call_id"] = str(msg["tool_call_id"])
-
-            elif role == "tool":
-                tool_call_id = msg.get("tool_call_id")
-                if not tool_call_id:
-                    continue
-                api_msg["tool_call_id"] = str(tool_call_id)
-                content = content_to_text(msg.get("content", ""))
-                if content:
-                    api_msg["content"] = content
-                if msg.get("name"):
-                    api_msg["name"] = msg["name"]
-            else:
-                content = content_to_text(msg.get("content", ""))
-                if role == "user" and msg.get("params"):
-                    context_parts = [
-                        str(msg["params"][p][1])
-                        for p in msg["params"]
-                        if p in msg["params"]
-                    ]
-                    combined = "\n\n".join(context_parts)
-                    if combined:
-                        content = combined + "\n\n" + content if content else combined
-
-                if content:
-                    api_msg["content"] = content
-                elif role == "user":
-                    continue
-
-            sanitized.append(api_msg)
-
-        return sanitized
-
     def _make_api_call(self, messages: List[Dict]) -> bool:
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
         model = str(self.llm_config.get("模型名称", "gpt-4o"))
 
-        sanitized = self._sanitize_messages_for_api(messages)
+        sanitized = messages_to_api(messages)
 
         req_kwargs: Dict[str, Any] = {
             "model": model,

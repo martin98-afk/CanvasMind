@@ -70,6 +70,7 @@ class ChatSession:
                 "params": params or {},
             }
         )
+        self.messages = consolidate_messages(self.messages)
         self._update_timestamp()
 
     def _update_timestamp(self):
