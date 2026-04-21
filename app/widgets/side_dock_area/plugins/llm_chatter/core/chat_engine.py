@@ -713,9 +713,11 @@ class ChatEngine:
                 "compaction"
             )
             compaction_config = self._agent_manager.get_agent_config("compaction")
+        session = self._session_manager.get_current_session()
 
         self._current_worker = OpenAIChatWorker(
             messages=messages,
+            session_messages=session.get_context_messages() if session else [],
             llm_config=llm_config,
             tools=tools,
             tool_executor=self._tool_executor,
@@ -810,18 +812,22 @@ class ChatEngine:
             self._emit("task_state_changed", session.task_state)
         self._emit("error", error)
 
-    def stop(self):
+    def stop(self) -> List[Dict]:
         worker = self._current_worker
         self._current_worker = None
         self._is_streaming = False
+        interrupted_messages: List[Dict] = []
 
-        if worker and worker.isRunning():
+        if worker:
+            try:
+                interrupted_messages = worker.get_interrupted_messages()
+            except Exception as exc:
+                logger.warning(f"[ChatEngine] Failed to snapshot interrupted messages: {exc}")
             worker.cancel()
-            worker.quit()
-            if not worker.wait(2000):
-                logger.warning("[ChatEngine] Worker thread did not finish in time")
-                worker.terminate()
-                worker.wait(500)
+            if worker.isRunning():
+                worker.quit()
+
+        return interrupted_messages
 
     def provide_question_answer(self, answer: str):
         if self._current_worker and hasattr(self._current_worker, "provide_answer"):

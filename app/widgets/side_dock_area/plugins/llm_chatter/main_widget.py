@@ -2211,9 +2211,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_stop_clicked(self):
         self._tool_cancelled_by_user = False
+        interrupted_messages: List[Dict[str, Any]] = []
 
         if self._chat_engine:
-            self._chat_engine.stop()
+            interrupted_messages = self._chat_engine.stop() or []
 
         self._is_streaming = False
 
@@ -2224,6 +2225,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._toggle_send_stop(False)
         if self._current_assistant_card:
             self._current_assistant_card.stop_streaming_anim()
+            self._current_assistant_card.finish_streaming()
+
+        if interrupted_messages:
+            self._on_messages_updated(interrupted_messages)
+            if self.history_manager:
+                self._save_current_session_to_history()
         InfoBar.warning(
             title="已中止",
             content="问答请求已被手动中止。",

@@ -22,6 +22,7 @@ from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import (
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     append_text_block,
+    consolidate_messages,
     content_to_text,
     messages_to_api,
     normalize_tool_arguments,
@@ -268,6 +269,7 @@ class OpenAIChatWorker(QThread):
     def __init__(
         self,
         messages: List[Dict],
+        session_messages: List[Dict],
         llm_config: Dict,
         tools: List[Dict] = None,
         stream: bool = True,
@@ -281,6 +283,7 @@ class OpenAIChatWorker(QThread):
     ):
         super().__init__()
         self.messages = messages
+        self.session_messages = consolidate_messages(session_messages or [])
         self.llm_config = llm_config
         self.tools = tools or []
         self.stream = stream
@@ -314,6 +317,7 @@ class OpenAIChatWorker(QThread):
             "summary_count": 0,
             "note": "",
         }
+        self._current_session_messages = list(self.session_messages)
 
     def cancel(self):
         self._is_cancelled = True
@@ -323,6 +327,19 @@ class OpenAIChatWorker(QThread):
             self._question_pending = None
         if self._permission_pending:
             self._permission_pending = None
+
+    def get_interrupted_messages(self) -> List[Dict]:
+        snapshot = list(self._current_session_messages or self.session_messages or [])
+        partial_sequence = self._build_response_message_sequence()
+        if partial_sequence:
+            snapshot = snapshot + partial_sequence
+        return consolidate_messages(snapshot)
+
+    def _clear_pending_response_state(self):
+        self._current_tool_calls = []
+        self._tool_calls_buffer = {}
+        self._response_content_blocks = []
+        self._previewed_tool_call_ids = set()
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
@@ -350,14 +367,14 @@ class OpenAIChatWorker(QThread):
     def run(self):
         try:
             current_messages = self.messages.copy()
+            current_session_messages = list(self.session_messages)
+            self._current_session_messages = list(current_session_messages)
             self._emit_compaction_status(self._last_compaction_state)
             compacted_messages, compaction_state = self._maybe_compact_messages(
                 current_messages
             )
             self._emit_compaction_status(compaction_state)
             current_messages = compacted_messages
-            if compacted_messages != self.messages:
-                self.finished_with_messages.emit(current_messages)
 
             self.full_response = ""
 
@@ -370,8 +387,12 @@ class OpenAIChatWorker(QThread):
                     return
 
                 if not tool_calls_found:
-                    current_messages.extend(self._build_response_message_sequence())
-                    self.finished_with_messages.emit(current_messages)
+                    response_sequence = self._build_response_message_sequence()
+                    current_messages.extend(response_sequence)
+                    current_session_messages.extend(response_sequence)
+                    self._current_session_messages = list(current_session_messages)
+                    self.finished_with_messages.emit(current_session_messages)
+                    self._clear_pending_response_state()
                     self.finished_with_content.emit(self.full_response)
                     return
 
@@ -387,24 +408,32 @@ class OpenAIChatWorker(QThread):
                         return
 
                     q = self._question_pending
-                    current_messages.extend(self._build_response_message_sequence())
-                    current_messages.append(
+                    response_sequence = self._build_response_message_sequence()
+                    current_messages.extend(response_sequence)
+                    current_session_messages.extend(response_sequence)
+                    question_result = (
                         {
                             "role": "tool",
                             "tool_call_id": q["tool_call_id"],
                             "content": self._pending_answer,
                         }
                     )
-                    self.finished_with_messages.emit(current_messages)
+                    current_messages.append(question_result)
+                    current_session_messages.append(question_result)
+                    self._current_session_messages = list(current_session_messages)
+                    self.finished_with_messages.emit(current_session_messages)
+                    self._clear_pending_response_state()
                     self._question_pending = None
                     self._pending_answer = None
                     self._answer_event.clear()
                     continue
 
-                current_messages.extend(
-                    self._build_response_message_sequence(tool_results)
-                )
-                self.finished_with_messages.emit(current_messages)
+                response_sequence = self._build_response_message_sequence(tool_results)
+                current_messages.extend(response_sequence)
+                current_session_messages.extend(response_sequence)
+                self._current_session_messages = list(current_session_messages)
+                self.finished_with_messages.emit(current_session_messages)
+                self._clear_pending_response_state()
 
                 self._check_and_notify_stage_change()
 
