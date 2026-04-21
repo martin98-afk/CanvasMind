@@ -13,7 +13,13 @@ class ContextUsageRing(QWidget):
         self.setFixedSize(18, 18)
         self.setToolTip("上下文占用：0%")
 
-    def set_usage(self, percent: int, used_tokens: int, budget_tokens: int):
+    def set_usage(
+        self,
+        percent: int,
+        used_tokens: int,
+        budget_tokens: int,
+        compaction: dict = None,
+    ):
         self._percent = max(0, min(100, int(percent)))
         if self._percent >= 90:
             self._ring_color = QColor("#ff6b6b")
@@ -22,9 +28,28 @@ class ContextUsageRing(QWidget):
         else:
             self._ring_color = QColor("#5aa9ff")
 
-        self.setToolTip(
-            f"当前上下文占用\n已用: {used_tokens} tokens\n预算: {budget_tokens} tokens\n占比: {self._percent}%"
-        )
+        tooltip_lines = [
+            "当前上下文占用",
+            f"已用: {used_tokens} tokens",
+            f"预算: {budget_tokens} tokens",
+            f"占比: {self._percent}%",
+        ]
+        compaction = compaction or {}
+        if compaction.get("active"):
+            tooltip_lines.extend(
+                [
+                    "",
+                    "已启用上下文压缩",
+                    f"类型: {compaction.get('kind', '') or 'plain'}",
+                    f"压缩条数: {compaction.get('summarized_count', 0)}",
+                    f"保留条数: {compaction.get('kept_count', 0)}",
+                ]
+            )
+            note = str(compaction.get("note", "") or "").strip()
+            if note:
+                tooltip_lines.append(note)
+
+        self.setToolTip("\n".join(tooltip_lines))
         self.update()
 
     def paintEvent(self, event):

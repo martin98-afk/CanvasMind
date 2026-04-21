@@ -565,6 +565,7 @@ class OpenAIChatWorker(QThread):
             "messages": sanitized,
             "stream": self.stream,
         }
+        print(messages[:3])
         extra_body = {}
         mapping = {
             "温度": "temperature",
@@ -807,69 +808,7 @@ class OpenAIChatWorker(QThread):
             "summary_count": 0,
             "note": "",
         }
-        if len(messages) < 10:
-            return messages, inactive_state
-
-        model = str(self.llm_config.get("模型名称", "gpt-4o"))
-        limit = self._infer_context_limit(model)
-        threshold = int(limit * 0.7)
-        if self._estimate_message_tokens(messages) <= threshold:
-            return messages, inactive_state
-
-        system_message = (
-            messages[0] if messages and messages[0].get("role") == "system" else None
-        )
-        start_idx = 1 if system_message else 0
-        body = messages[start_idx:]
-        if len(body) < 8:
-            return messages, inactive_state
-
-        split_idx = max(2, int(len(body) * 0.65))
-        old_messages = body[:split_idx]
-        recent_messages = body[split_idx:]
-        if len(recent_messages) < 4:
-            recent_messages = body[-4:]
-            old_messages = body[:-4]
-        if not old_messages:
-            return messages, inactive_state
-
-        try:
-            summary = self._summarize_old_messages(old_messages, recent_messages)
-        except Exception as exc:
-            logger.warning(f"[Compaction] AI compaction failed, falling back: {exc}")
-            summary = ""
-
-        if not summary:
-            clipped_old = []
-            for msg in old_messages[-6:]:
-                content = str(msg.get("content", ""))[:300]
-                clipped_old.append(f"- [{msg.get('role', 'unknown')}] {content}")
-            summary = "## Earlier Conversation Summary\n" + "\n".join(clipped_old)
-
-        summary_message = {
-            "role": "assistant",
-            "content": "## Earlier Conversation Summary\n" + summary
-            if not summary.startswith("## Earlier Conversation Summary")
-            else summary,
-        }
-
-        compacted = ([system_message] if system_message else []) + [
-            summary_message,
-            *recent_messages,
-        ]
-        logger.info(
-            f"[Compaction] Compacted {len(old_messages)} messages into summary, kept {len(recent_messages)} recent messages"
-        )
-        return compacted, {
-            "active": True,
-            "source": "worker",
-            "kind": "runtime",
-            "original_count": len(messages or []),
-            "summarized_count": len(old_messages),
-            "kept_count": len(recent_messages),
-            "summary_count": 1,
-            "note": f"运行中压缩了 {len(old_messages)} 条较早消息",
-        }
+        return messages, inactive_state
 
     def _process_response(self, response):
         self._response_content_blocks = []

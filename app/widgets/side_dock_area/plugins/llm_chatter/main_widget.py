@@ -324,35 +324,20 @@ class OpenAIChatToolWindow(ToolWindow):
         return list(session.messages or [])
 
     def showEvent(self, event):
-        logger.info(f"[DEBUG] showEvent called: _first_show={self._first_show}")
-        if not self._first_show:
-            self._first_show = True
-            QTimer.singleShot(0, self._restore_latest_or_create_session)
-        else:
-            is_canvas = self._is_on_canvas()
-            logger.info(
-                f"[DEBUG] showEvent: is_on_canvas={is_canvas}, switching to canvas agent if needed"
-            )
-            if is_canvas and self._current_agent != "canvas":
-                QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
+        is_canvas = self._is_on_canvas()
+        if is_canvas and self._current_agent != "canvas":
+            QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
         QTimer.singleShot(100, self._load_model_configs)
         super().showEvent(event)
 
     def _is_on_canvas(self):
         """检查当前是否在画布界面"""
         if not hasattr(self.homepage, "ui_manager") or not self.homepage.ui_manager:
-            logger.info(
-                f"[DEBUG] _is_on_canvas: no ui_manager on homepage {type(self.homepage)}"
-            )
             return False
         side_dock = getattr(self.homepage.ui_manager, "side_dock_area", None)
         if not side_dock:
-            logger.info(f"[DEBUG] _is_on_canvas: no side_dock_area")
             return False
         is_canvas = side_dock.context_id == DockCategory.CANVAS
-        logger.info(
-            f"[DEBUG] _is_on_canvas: context_id={side_dock.context_id}, DockCategory.CANVAS={DockCategory.CANVAS}, is_canvas={is_canvas}"
-        )
         return is_canvas
 
     def _restore_latest_or_create_session(self):
@@ -598,6 +583,7 @@ class OpenAIChatToolWindow(ToolWindow):
             snapshot.get("percent", 0),
             snapshot.get("used_tokens", 0),
             snapshot.get("budget_tokens", 0),
+            snapshot.get("compaction", {}),
         )
 
     def _open_settings_popup(self):
@@ -988,6 +974,8 @@ class OpenAIChatToolWindow(ToolWindow):
                 "name": latest.get("title") or latest.get("name") or "最近会话",
                 "messages": messages,
                 "topic_summary": latest.get("title", ""),
+                "compaction_state": latest.get("compaction_state", {}),
+                "compaction_cache": latest.get("compaction_cache", {}),
             }
         )
         self.session_manager.set_current_session(restored)
@@ -1311,8 +1299,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
-        session.messages = consolidate_messages(session.messages)
-        session._update_timestamp()
+        session.set_messages(session.messages, preserve_compaction=False)
 
         if not session.messages:
             if self._current_history_index is not None and self.history_manager:
@@ -1323,11 +1310,17 @@ class OpenAIChatToolWindow(ToolWindow):
         if self.history_manager:
             if self._current_history_index is not None:
                 self.history_manager.update_session(
-                    self._current_history_index, session.messages
+                    self._current_history_index,
+                    session.messages,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
             else:
                 self.history_manager.save_session(
-                    session.messages, session_id=session.session_id
+                    session.messages,
+                    session_id=session.session_id,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
                 self._current_history_index = 0
 
@@ -1421,6 +1414,12 @@ class OpenAIChatToolWindow(ToolWindow):
                 "name": title or "历史对话",
                 "messages": messages,
                 "topic_summary": title or "",
+                "compaction_state": self.history_manager.get_history_list()[index].get(
+                    "compaction_state", {}
+                ),
+                "compaction_cache": self.history_manager.get_history_list()[index].get(
+                    "compaction_cache", {}
+                ),
             }
         )
         self.session_manager.set_current_session(restored)
@@ -1561,7 +1560,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return False
 
         cutoff_index = round_ranges[round_index][0]
-        session.messages = canonical_messages[:cutoff_index]
+        session.set_messages(canonical_messages[:cutoff_index], preserve_compaction=False)
         self._persist_session_after_mutation()
         self._refresh_session_view_after_mutation()
         return True
@@ -1585,7 +1584,10 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         start_idx, end_idx = round_ranges[round_index]
-        session.messages = canonical_messages[:start_idx] + canonical_messages[end_idx:]
+        session.set_messages(
+            canonical_messages[:start_idx] + canonical_messages[end_idx:],
+            preserve_compaction=False,
+        )
         self._persist_session_after_mutation()
         self._refresh_session_view_after_mutation()
 
@@ -1899,10 +1901,18 @@ class OpenAIChatToolWindow(ToolWindow):
         if saved_messages:
             if self._current_history_index is not None:
                 self.history_manager.update_session(
-                    self._current_history_index, saved_messages
+                    self._current_history_index,
+                    saved_messages,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
                 )
             else:
-                self.history_manager.save_session(saved_messages)
+                self.history_manager.save_session(
+                    saved_messages,
+                    session_id=session.session_id if session else None,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
+                )
                 self._current_history_index = 0
         self._update_node_preview()
 
@@ -1912,8 +1922,7 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         self._history_preview_messages = None
-        session.messages = consolidate_messages(messages or [])
-        session._update_timestamp()
+        session.set_messages(messages or [], preserve_compaction=True)
         self._refresh_context_usage_indicator()
 
     def _on_engine_error(self, error: str):
@@ -2104,10 +2113,14 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         clean_summary = summary.strip()
+        session = self.session_manager.get_current_session()
 
-        if self._current_history_index is None:
+        if self._current_history_index is None and session and session.messages:
             self.history_manager.save_session(
-                self.session_manager.get_current_session().messages
+                session.messages if session else [],
+                session_id=session.session_id if session else None,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
             )
             self._current_history_index = 0
 
@@ -2115,7 +2128,6 @@ class OpenAIChatToolWindow(ToolWindow):
             self._current_history_index, clean_summary
         )
 
-        session = self.session_manager.get_current_session()
         if session:
             session.set_topic_summary(clean_summary)
 
@@ -2184,10 +2196,18 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self._current_history_index is not None:
             self.history_manager.update_session(
-                self._current_history_index, session.messages
+                self._current_history_index,
+                session.messages,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
             )
         else:
-            self.history_manager.save_session(session.messages)
+            self.history_manager.save_session(
+                session.messages,
+                session_id=session.session_id,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
+            )
             self._current_history_index = 0
 
         return self.history_manager.get_current_title(self._current_history_index)
