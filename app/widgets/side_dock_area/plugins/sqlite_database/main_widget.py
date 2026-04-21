@@ -812,12 +812,6 @@ class SQLiteDatabaseWindow(ToolWindow):
                 position=InfoBarPosition.TOP,
                 parent=self,
             ).show()
-            InfoBar.success(
-                "创建成功",
-                f"已创建 {node_path.split('/')[-1]} 节点",
-                position=InfoBarPosition.TOP,
-                parent=self,
-            ).show()
 
     def _on_delete_row(self):
         if not self.current_table:
