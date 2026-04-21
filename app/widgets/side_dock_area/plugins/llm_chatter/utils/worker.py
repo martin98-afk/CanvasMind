@@ -565,7 +565,6 @@ class OpenAIChatWorker(QThread):
             "messages": sanitized,
             "stream": self.stream,
         }
-        print(messages[:3])
         extra_body = {}
         mapping = {
             "温度": "temperature",

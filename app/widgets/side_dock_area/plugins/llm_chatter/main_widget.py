@@ -324,9 +324,17 @@ class OpenAIChatToolWindow(ToolWindow):
         return list(session.messages or [])
 
     def showEvent(self, event):
-        is_canvas = self._is_on_canvas()
+        if getattr(self, "_session_initialized", False):
+            super().showEvent(event)
+            return
+        self._session_initialized = True
+
+        workflow_name = getattr(self.homepage, "workflow_name", None)
+        is_canvas = workflow_name is not None
         if is_canvas and self._current_agent != "canvas":
-            QTimer.singleShot(0, lambda: self._on_agent_changed("canvas"))
+            self._on_agent_changed("canvas")
+        QTimer.singleShot(0, self._load_agent_list)
+        QTimer.singleShot(0, self._restore_latest_or_create_session)
         QTimer.singleShot(100, self._load_model_configs)
         super().showEvent(event)
 
@@ -377,7 +385,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
 
-        if self._is_on_canvas():
+        is_canvas = getattr(self.homepage, "workflow_name", None) is not None
+        if is_canvas and self._current_agent != "canvas":
             self._on_agent_changed("canvas")
 
         QTimer.singleShot(0, self._show_initial_welcome)
@@ -555,8 +564,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.newSessionRequested.connect(self._create_new_session)
         self.input_area.agentChanged.connect(self._on_agent_changed)
         layout.addWidget(self.input_area)
-
-        self._load_agent_list()
 
     def _on_model_changed(self, model_name: str):
         if model_name:
@@ -983,9 +990,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_history_index = 0
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
-        is_canvas = self._is_on_canvas()
+        is_canvas = getattr(self.homepage, "workflow_name", None) is not None
         logger.info(f"[DEBUG] _restore_latest_session: is_on_canvas={is_canvas}")
-        if is_canvas:
+        if is_canvas and self._current_agent != "canvas":
             self._on_agent_changed("canvas")
         self._display_current_session()
         self._refresh_context_usage_indicator()
@@ -1560,7 +1567,9 @@ class OpenAIChatToolWindow(ToolWindow):
             return False
 
         cutoff_index = round_ranges[round_index][0]
-        session.set_messages(canonical_messages[:cutoff_index], preserve_compaction=False)
+        session.set_messages(
+            canonical_messages[:cutoff_index], preserve_compaction=False
+        )
         self._persist_session_after_mutation()
         self._refresh_session_view_after_mutation()
         return True
@@ -1811,7 +1820,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_tool_cancelled(self):
         """工具执行被用户中止"""
         logger.info("[ToolFloatingWidget] Tool execution cancelled by user")
-        
+
         self._tool_cancelled_by_user = True
         self._cancelled_tool_call_id = getattr(self, "_current_tool_call_id", None)
         self._tool_floating_widget.finish_tool("用户中止", success=False)
@@ -1835,7 +1844,10 @@ class OpenAIChatToolWindow(ToolWindow):
     ):
         import time
 
-        if self._tool_cancelled_by_user and tool_call_id == self._cancelled_tool_call_id:
+        if (
+            self._tool_cancelled_by_user
+            and tool_call_id == self._cancelled_tool_call_id
+        ):
             error_msg = str(getattr(result, "error", "") or "")
             if "用户中止" in error_msg:
                 self._tool_floating_widget.finish_tool("用户中止", success=False)
