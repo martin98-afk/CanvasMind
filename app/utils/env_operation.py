@@ -61,7 +61,7 @@ class EnvironmentManager(QObject):
         if not self.META_FILE.exists():
             self._save_meta({})
 
-        self.miniconda_path = self.ENV_DIR / "miniconda"
+        self.miniconda_path = self._find_system_miniconda()
         logger.info(f"检查Miniconda安装状态: {self.miniconda_path}")
         self.meta = self._load_meta()
         self._scan_envs()
