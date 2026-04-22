@@ -138,8 +138,35 @@ class EnvironmentManager(QObject):
         self.meta = new_meta
         self._save_meta(self.meta)
 
+    def _find_system_miniconda(self):
+        """搜索系统中已安装的 Miniconda"""
+        search_paths = [
+            Path.home() / "miniconda3",
+            Path.home() / "AppData" / "Local" / "miniconda3",
+            Path("C:/miniconda3"),
+            Path("C:/ProgramData/miniconda3"),
+        ]
+
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            search_paths.append(Path(f"{letter}:/miniconda3"))
+            search_paths.append(Path(f"{letter}:/ProgramData/miniconda3"))
+
+        for path in search_paths:
+            if path.exists():
+                conda_exe = path / "Scripts" / "conda.exe" if self._is_windows else path / "bin" / "conda"
+                if conda_exe.exists():
+                    logger.info(f"发现系统Miniconda: {path}")
+                    return path
+        return None
+
     def _is_miniconda_installed(self):
-        return self._get_conda_exe_path().exists()
+        if self._get_conda_exe_path().exists():
+            return True
+        system_miniconda = self._find_system_miniconda()
+        if system_miniconda:
+            self.miniconda_path = system_miniconda
+            return True
+        return False
 
     # ==========================
     # 下载与安装 Miniconda 核心逻辑
@@ -245,7 +272,7 @@ class EnvironmentManager(QObject):
             logger.error(f"Write error: {e}")
             self._try_next_download_source()
 
-    def _start_miniconda_install(self, silent=True):
+    def _start_miniconda_install(self, silent=False):
         """安装 Miniconda
         
         Args:
@@ -315,6 +342,18 @@ class EnvironmentManager(QObject):
                 version, env_name, log_cb = self._pending_env_creation
                 self._pending_env_creation = None
                 QTimer.singleShot(1000, lambda: self._create_env_with_qprocess(version, env_name, log_cb))
+        elif exit_code == 0:
+            system_miniconda = self._find_system_miniconda()
+            if system_miniconda:
+                self.miniconda_path = system_miniconda
+                if self._current_log_callback: self._current_log_callback(f"检测到系统Miniconda: {system_miniconda}")
+                self._scan_envs()
+                self.miniconda_install_finished.emit("success")
+                if self._pending_env_creation:
+                    version, env_name, log_cb = self._pending_env_creation
+                    self._pending_env_creation = None
+                    QTimer.singleShot(1000, lambda: self._create_env_with_qprocess(version, env_name, log_cb))
+                return
         else:
             silent_failed = getattr(self, '_silent_install', True)
             
