@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import shutil
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -24,8 +25,18 @@ class EnvironmentManager(QObject):
     miniconda_install_finished = pyqtSignal(object)
     remove_finished = pyqtSignal(object)
 
-    ENV_DIR = Path(__file__).parent.parent.parent / "envs"
-    META_FILE = ENV_DIR / "environments.json"
+    @property
+    def ENV_DIR(self):
+        """获取 envs 目录路径，确保在用户可写的位置"""
+        if hasattr(sys, 'frozen'):
+            base = Path(sys._MEIPASS).parent
+        else:
+            base = Path(__file__).parent.parent.parent
+        return base / "envs"
+
+    @property
+    def META_FILE(self):
+        return self.ENV_DIR / "environments.json"
 
     # --- 1. 定义 Miniconda 下载源 (优先清华/北外，解决下载慢/失败) ---
     # 模板会在运行时按平台生成
@@ -234,22 +245,25 @@ class EnvironmentManager(QObject):
             logger.error(f"Write error: {e}")
             self._try_next_download_source()
 
-    def _start_miniconda_install(self):
-        """修复 Exit Code 2：强制清理残留目录，使用正确参数"""
+    def _start_miniconda_install(self, silent=True):
+        """安装 Miniconda
+        
+        Args:
+            silent: True 静默安装，False 非静默安装（交互式）
+        """
         if self.miniconda_path.exists():
             if self._current_log_callback: self._current_log_callback("清理旧的Miniconda残留...")
             try:
-                # 重命名后删除，防止文件锁
                 temp_trash = self.ENV_DIR / f"trash_{int(time.time())}"
                 self.miniconda_path.rename(temp_trash)
                 shutil.rmtree(temp_trash, ignore_errors=True)
             except Exception as e:
-                # 尝试强制删除
                 shutil.rmtree(self.miniconda_path, ignore_errors=True)
 
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.MergedChannels)
         self._process.setWorkingDirectory(str(self.ENV_DIR))
+        self._silent_install = silent
 
         if self._is_windows:
             self._process.setProcessEnvironment(self._get_process_environment())
@@ -258,19 +272,28 @@ class EnvironmentManager(QObject):
         self._process.finished.connect(self._on_miniconda_install_finished)
 
         if self._is_windows:
-            # 注意路径分隔符
             install_path_str = str(self.miniconda_path).replace("/", "\\")
-            args = [
-                "/S",
-                "/InstallationType=JustMe",
-                "/AddToPath=0",
-                "/RegisterPython=0",
-                f"/D={install_path_str}"
-            ]
+            if silent:
+                args = [
+                    "/S",
+                    "/InstallationType=JustMe",
+                    "/AddToPath=0",
+                    "/RegisterPython=0",
+                    f"/D={install_path_str}"
+                ]
+            else:
+                args = [
+                    "/InstallationType=JustMe",
+                    "/AddToPath=0",
+                    "/RegisterPython=0",
+                    f"/D={install_path_str}"
+                ]
             self._process.start(str(self._installer_path), args)
         else:
-            # macOS/Linux 使用 shell 安装
-            args = [str(self._installer_path), "-b", "-p", str(self.miniconda_path)]
+            if silent:
+                args = [str(self._installer_path), "-b", "-p", str(self.miniconda_path)]
+            else:
+                args = [str(self._installer_path), "-p", str(self.miniconda_path)]
             self._process.start("/bin/bash", args)
 
     def _on_miniconda_install_finished(self, exit_code, exit_status):
@@ -283,7 +306,6 @@ class EnvironmentManager(QObject):
                 except:
                     pass
 
-            # 安装成功后，初始化 .condarc 以确保全局使用镜像源 (双重保险)
             self._init_condarc()
 
             self._scan_envs()
@@ -294,9 +316,16 @@ class EnvironmentManager(QObject):
                 self._pending_env_creation = None
                 QTimer.singleShot(1000, lambda: self._create_env_with_qprocess(version, env_name, log_cb))
         else:
+            silent_failed = getattr(self, '_silent_install', True)
+            
+            if silent_failed and self._installer_path and self._installer_path.exists():
+                err = f"Miniconda静默安装失败 (Code: {exit_code})，正在尝试交互式安装..."
+                if self._current_log_callback: self._current_log_callback(err)
+                QTimer.singleShot(500, lambda: self._start_miniconda_install(silent=False))
+                return
+            
             err = f"Miniconda安装失败 (Code: {exit_code})。请检查杀毒软件或目录权限。"
             if exit_code == 2:
-                # Exit Code 2 通常意味着文件损坏，自动清理以便重试
                 if self._installer_path.exists():
                     self._installer_path.unlink()
                 err += " (已自动清理损坏的安装包，请重试)"

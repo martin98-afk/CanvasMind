@@ -1410,6 +1410,8 @@ class OpenAIChatToolWindow(ToolWindow):
                 "Failed to auto-save current session before loading history"
             )
 
+        self._tool_executor.reset_session_state()
+
         messages = self.history_manager.get_session_by_index(index)
         if not messages:
             return

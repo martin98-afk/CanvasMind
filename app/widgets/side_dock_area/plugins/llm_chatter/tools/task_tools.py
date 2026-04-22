@@ -292,3 +292,9 @@ class TaskTools:
         except (ValueError, OSError, RuntimeError) as e:
             logger.warning(f"[TaskTools] Failed to resolve path {path}: {e}")
             return self.workdir
+
+    def reset_session_state(self):
+        """Reset session-scoped state when switching sessions"""
+        self._todo_list = []
+        self._loaded_skills = {}
+        self._skill_workspaces = {}
