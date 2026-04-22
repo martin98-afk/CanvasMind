@@ -203,6 +203,22 @@ class HistoryManager:
             return None
         return latest
 
+    def load_most_recently_updated_session(self) -> Optional[Dict]:
+        """Load the session that was most recently updated (by last_updated time)."""
+        if not self._history_sessions:
+            return None
+        most_recent = None
+        most_recent_time = None
+        for session in self._history_sessions:
+            messages = session.get("messages", [])
+            if not messages:
+                continue
+            last_updated = session.get("last_updated") or session.get("last_time") or ""
+            if not most_recent_time or last_updated > most_recent_time:
+                most_recent_time = last_updated
+                most_recent = session
+        return most_recent
+
     def get_history_list(self) -> List[Dict]:
         return self._history_sessions
 
@@ -258,6 +274,24 @@ class HistoryManager:
     def get_session_id_by_index(self, index: int) -> Optional[str]:
         if 0 <= index < len(self._history_sessions):
             return self._history_sessions[index].get("session_id")
+        return None
+
+    def find_index_by_session_id(self, session_id: str) -> Optional[int]:
+        """Find the index of a session by its session_id."""
+        if not session_id:
+            return None
+        for i, session in enumerate(self._history_sessions):
+            if session.get("session_id") == session_id:
+                return i
+        return None
+
+    def get_session_by_session_id(self, session_id: str) -> Optional[Dict]:
+        """Get a session record by its session_id."""
+        if not session_id:
+            return None
+        for session in self._history_sessions:
+            if session.get("session_id") == session_id:
+                return session
         return None
 
     def update_session(

@@ -139,6 +139,10 @@ class ChatEngine:
     def _get_agent_manager(self):
         return self._agent_manager
 
+    def set_session_manager(self, session_manager):
+        """Update the session manager reference (used when session is archived)."""
+        self._session_manager = session_manager
+
     def _get_canvas_tools(self):
         context_provider = self._get_context_provider()
         if context_provider and hasattr(context_provider, "get_canvas_tools_schema"):

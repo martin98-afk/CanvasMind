@@ -120,7 +120,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _agent_manager: Optional[AgentManager] = None
     _current_agent: str = "plan"
     _in_history_mode = False
-    _current_history_index: Optional[int] = None
+    _current_session_id: Optional[str] = None
     _settings_popup = None
     _is_welcome = False
     _first_show = False
@@ -369,7 +369,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._cache_current_session_cards()
         session = self.session_manager.create_new_session()
-        self._current_history_index = None
+        self._current_session_id = session.session_id
         self._history_preview_messages = None
         self._history_preview_session_data = None
         self._history_preview_opening = False
@@ -641,7 +641,10 @@ class OpenAIChatToolWindow(ToolWindow):
         history_list = (
             self.history_manager.get_history_list() if self.history_manager else []
         )
-        self._history_popup.set_history(history_list, self._current_history_index)
+        current_idx = self.history_manager.find_index_by_session_id(
+            self._current_session_id
+        ) if self._current_session_id else None
+        self._history_popup.set_history(history_list, current_idx)
         self._history_popup.show_at(self.history_btn)
 
     def resizeEvent(self, event):
@@ -878,7 +881,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._cache_current_session_cards()
         session = self.session_manager.create_new_session()
-        self._current_history_index = None
+        self._current_session_id = session.session_id
         self._history_preview_messages = None
         self._history_preview_session_data = None
         self._history_preview_opening = False
@@ -966,9 +969,9 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.info("[DEBUG] _restore_latest_session: no history_manager")
             return False
 
-        latest = self.history_manager.load_latest_session()
+        latest = self.history_manager.load_most_recently_updated_session()
         if not latest:
-            logger.info("[DEBUG] _restore_latest_session: no latest session")
+            logger.info("[DEBUG] _restore_latest_session: no most recently updated session")
             return False
 
         messages = latest.get("messages", [])
@@ -976,19 +979,22 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.info("[DEBUG] _restore_latest_session: no messages")
             return False
 
+        session_id = latest.get("session_id", "")
         restored = ChatSession.from_dict(
             {
-                "session_id": latest.get("session_id"),
+                "session_id": session_id,
                 "name": latest.get("title") or latest.get("name") or "最近会话",
                 "messages": messages,
                 "topic_summary": latest.get("title", ""),
                 "compaction_state": latest.get("compaction_state", {}),
                 "compaction_cache": latest.get("compaction_cache", {}),
+                "created_at": latest.get("created_at"),
+                "last_updated": latest.get("last_updated"),
             }
         )
         self.session_manager.set_current_session(restored)
         self._history_preview_messages = None
-        self._current_history_index = 0
+        self._current_session_id = session_id
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
         is_canvas = getattr(self.homepage, "workflow_name", None) is not None
@@ -1002,9 +1008,7 @@ class OpenAIChatToolWindow(ToolWindow):
     def _toggle_history_mode(self, enabled: bool):
         if enabled:
             self._cache_current_session_cards()
-            # 【进入历史模式】
-            # 如果当前是一个还没保存过的新对话，先备份它，防止切回来时丢了
-            if self._current_history_index is None:
+            if self._current_session_id is None:
                 curr_session = self.session_manager.get_current_session()
                 if curr_session and curr_session.messages:
                     self._history_preview_session_data = curr_session.to_dict()
@@ -1015,20 +1019,14 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.setAlignment(Qt.AlignTop)
             self._display_history_sessions()
         else:
-            # 【退出历史模式】
             self._in_history_mode = False
             self.chat_layout.setAlignment(Qt.AlignBottom)
 
-            # 情况 A：如果是从 _load_history_session 点进来的，session 已经更新好了
             if self._history_preview_opening:
                 self._history_preview_opening = False
                 self._history_preview_messages = None
-                # 直接去渲染 Session 里的消息
                 self._display_current_session()
-
-            # 情况 B：如果是直接按返回键/取消键
             else:
-                # 如果有备份（即刚才那个没存的新对话），还原它
                 if self._history_preview_session_data:
                     from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
                         ChatSession,
@@ -1036,10 +1034,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
                     restored = ChatSession.from_dict(self._history_preview_session_data)
                     self.session_manager.set_current_session(restored)
+                    self._current_session_id = restored.session_id
                     self._history_preview_session_data = None
-                    self._current_history_index = None
-                self._history_preview_messages = None
 
+                self._history_preview_messages = None
                 self._display_current_session()
 
     def _toggle_shell_mode(self, enabled: bool):
@@ -1080,6 +1078,10 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.addWidget(placeholder)
             return
 
+        current_idx = self.history_manager.find_index_by_session_id(
+            self._current_session_id
+        ) if self._current_session_id else None
+
         reversed_history = list(enumerate(history_list[::-1]))
         for display_idx, session in reversed_history:
             title = session["title"]
@@ -1087,8 +1089,8 @@ class OpenAIChatToolWindow(ToolWindow):
             original_index = len(history_list) - 1 - display_idx
 
             is_current = (
-                self._current_history_index is not None
-                and self._current_history_index == original_index
+                current_idx is not None
+                and current_idx == original_index
             )
 
             card = self._create_history_card(
@@ -1296,6 +1298,104 @@ class OpenAIChatToolWindow(ToolWindow):
             round_index += 1
         return None
 
+    def _remove_cards_for_round(self, round_index: int) -> bool:
+        session = self.session_manager.get_current_session()
+        if not session:
+            return False
+        canonical_messages = consolidate_messages(session.messages)
+        round_ranges = get_user_round_ranges(canonical_messages)
+        if round_index < 0 or round_index >= len(round_ranges):
+            return False
+
+        start_idx, end_idx = round_ranges[round_index]
+        cards_to_remove = end_idx - start_idx
+
+        rendered_cards = self._get_rendered_message_cards()
+        user_card_count = sum(1 for c in rendered_cards if c.role == "user")
+        if round_index >= user_card_count:
+            return False
+
+        user_card_idx = 0
+        removed = 0
+        removing = False
+        widgets_to_remove = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if getattr(widget, "_is_welcome", False):
+                continue
+            if widget.role not in ("user", "assistant"):
+                continue
+
+            if widget.role == "user":
+                if user_card_idx == round_index:
+                    widgets_to_remove.append(widget)
+                    removed += 1
+                    removing = True
+                else:
+                    removing = False
+                user_card_idx += 1
+            elif widget.role == "assistant" and removing:
+                widgets_to_remove.append(widget)
+                removed += 1
+
+            if removed >= cards_to_remove:
+                break
+
+        for widget in widgets_to_remove:
+            for i in range(self.chat_layout.count()):
+                item = self.chat_layout.itemAt(i)
+                if item and item.widget() is widget:
+                    self.chat_layout.removeItem(item)
+                    break
+            widget.deleteLater()
+
+        return True
+
+    def _remove_cards_from_round(self, round_index: int) -> bool:
+        rendered_cards = self._get_rendered_message_cards()
+        user_card_count = sum(1 for c in rendered_cards if c.role == "user")
+        if round_index >= user_card_count:
+            return False
+
+        user_card_idx = 0
+        removing = False
+        widgets_to_remove = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if getattr(widget, "_is_welcome", False):
+                continue
+            if widget.role not in ("user", "assistant"):
+                continue
+
+            if widget.role == "user":
+                if user_card_idx >= round_index:
+                    widgets_to_remove.append(widget)
+                    removing = True
+                else:
+                    user_card_idx += 1
+            elif widget.role == "assistant" and removing:
+                widgets_to_remove.append(widget)
+
+        for widget in widgets_to_remove:
+            for i in range(self.chat_layout.count()):
+                item = self.chat_layout.itemAt(i)
+                if item and item.widget() is widget:
+                    self.chat_layout.removeItem(item)
+                    break
+            widget.deleteLater()
+
+        return True
+
     def _invalidate_current_session_card_cache(self):
         session = self.session_manager.get_current_session()
         if not session:
@@ -1310,19 +1410,35 @@ class OpenAIChatToolWindow(ToolWindow):
         session.set_messages(session.messages, preserve_compaction=False)
 
         if not session.messages:
-            if self._current_history_index is not None and self.history_manager:
-                self.history_manager.archive_history(self._current_history_index)
-                self._current_history_index = None
+            if self._current_session_id is not None and self.history_manager:
+                idx = self.history_manager.find_index_by_session_id(
+                    self._current_session_id
+                )
+                if idx is not None:
+                    self.history_manager.archive_history(idx)
+                self._current_session_id = None
             return
 
         if self.history_manager:
-            if self._current_history_index is not None:
-                self.history_manager.update_session(
-                    self._current_history_index,
-                    session.messages,
-                    compaction_state=getattr(session, "compaction_state", {}),
-                    compaction_cache=getattr(session, "compaction_cache", {}),
+            if self._current_session_id is not None:
+                idx = self.history_manager.find_index_by_session_id(
+                    self._current_session_id
                 )
+                if idx is not None:
+                    self.history_manager.update_session(
+                        idx,
+                        session.messages,
+                        compaction_state=getattr(session, "compaction_state", {}),
+                        compaction_cache=getattr(session, "compaction_cache", {}),
+                    )
+                else:
+                    self.history_manager.save_session(
+                        session.messages,
+                        session_id=session.session_id,
+                        compaction_state=getattr(session, "compaction_state", {}),
+                        compaction_cache=getattr(session, "compaction_cache", {}),
+                    )
+                    self._current_session_id = session.session_id
             else:
                 self.history_manager.save_session(
                     session.messages,
@@ -1330,7 +1446,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     compaction_state=getattr(session, "compaction_state", {}),
                     compaction_cache=getattr(session, "compaction_cache", {}),
                 )
-                self._current_history_index = 0
+                self._current_session_id = session.session_id
 
     def _refresh_session_view_after_mutation(self):
         self._invalidate_current_session_card_cache()
@@ -1365,25 +1481,41 @@ class OpenAIChatToolWindow(ToolWindow):
             self.chat_layout.addWidget(widget)
 
     def _archive_history_session(self, index: int):
-        archived_current = self._current_history_index == index
-        self.history_manager.archive_history(index)
-        if archived_current:
+        history_list = self.history_manager.get_history_list()
+        if index < 0 or index >= len(history_list):
+            return
+
+        target_session_id = history_list[index].get("session_id")
+        archived_current = (
+            self._current_session_id is not None
+            and target_session_id == self._current_session_id
+        )
+
+        old_session_manager = self.session_manager
+        old_chat_engine = self._chat_engine
+
+        archived = self.history_manager.archive_history(index)
+
+        if archived_current and archived:
             self.session_manager = SessionManager()
             self.session_manager.create_new_session()
-            self._current_history_index = None
+            new_session = self.session_manager.get_current_session()
+            self._current_session_id = new_session.session_id
+
+            if old_chat_engine and hasattr(old_chat_engine, 'set_session_manager'):
+                old_chat_engine.set_session_manager(self.session_manager)
+
             self._clear_chat_area()
             self._show_initial_welcome()
             self.title_edit.setText("新对话")
-        elif (
-            self._current_history_index is not None
-            and index < self._current_history_index
-        ):
-            self._current_history_index -= 1
 
         if self._history_popup and self._history_popup.isVisible():
+            current_idx = self.history_manager.find_index_by_session_id(
+                self._current_session_id
+            ) if self._current_session_id else None
             self._history_popup.set_history(
                 self.history_manager.get_history_list(),
-                self._current_history_index,
+                current_idx,
             )
 
     def _rename_history_session(self, index: int, new_title: str):
@@ -1391,9 +1523,12 @@ class OpenAIChatToolWindow(ToolWindow):
             return
         self.history_manager.update_session_title(index, new_title)
         if self._history_popup and self._history_popup.isVisible():
+            current_idx = self.history_manager.find_index_by_session_id(
+                self._current_session_id
+            ) if self._current_session_id else None
             self._history_popup.set_history(
                 self.history_manager.get_history_list(),
-                self._current_history_index,
+                current_idx,
             )
 
     def _load_history_session(self, index: int):
@@ -1412,6 +1547,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._tool_executor.reset_session_state()
 
+        history_list = self.history_manager.get_history_list()
+        if index < 0 or index >= len(history_list):
+            return
+
+        session_record = history_list[index]
+        session_id = session_record.get("session_id")
         messages = self.history_manager.get_session_by_index(index)
         if not messages:
             return
@@ -1419,23 +1560,17 @@ class OpenAIChatToolWindow(ToolWindow):
         title = self.history_manager.get_current_title(index)
         restored = ChatSession.from_dict(
             {
-                "session_id": self.history_manager.get_history_list()[index].get(
-                    "session_id"
-                ),
+                "session_id": session_id,
                 "name": title or "历史对话",
                 "messages": messages,
                 "topic_summary": title or "",
-                "compaction_state": self.history_manager.get_history_list()[index].get(
-                    "compaction_state", {}
-                ),
-                "compaction_cache": self.history_manager.get_history_list()[index].get(
-                    "compaction_cache", {}
-                ),
+                "compaction_state": session_record.get("compaction_state", {}),
+                "compaction_cache": session_record.get("compaction_cache", {}),
             }
         )
         self.session_manager.set_current_session(restored)
         self._history_preview_messages = None
-        self._current_history_index = index
+        self._current_session_id = session_id
         self.title_edit.setText(title or "历史对话")
         if self._history_popup:
             self._history_popup.close()
@@ -1575,7 +1710,9 @@ class OpenAIChatToolWindow(ToolWindow):
             canonical_messages[:cutoff_index], preserve_compaction=False
         )
         self._persist_session_after_mutation()
-        self._refresh_session_view_after_mutation()
+        self._remove_cards_from_round(round_index)
+        self._update_node_preview()
+        self._refresh_context_usage_indicator()
         return True
 
     def _delete_message(self, card: MessageCard):
@@ -1602,7 +1739,9 @@ class OpenAIChatToolWindow(ToolWindow):
             preserve_compaction=False,
         )
         self._persist_session_after_mutation()
-        self._refresh_session_view_after_mutation()
+        self._remove_cards_for_round(round_index)
+        self._update_node_preview()
+        self._refresh_context_usage_indicator()
 
     def _undo_from_message(self, card: MessageCard):
         if card.role != "user":
@@ -1914,10 +2053,14 @@ class OpenAIChatToolWindow(ToolWindow):
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
         saved_messages = list(session.messages or []) if session else []
-        if saved_messages:
-            if self._current_history_index is not None:
+        if not saved_messages:
+            return
+
+        if self._current_session_id is not None:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
                 self.history_manager.update_session(
-                    self._current_history_index,
+                    idx,
                     saved_messages,
                     compaction_state=getattr(session, "compaction_state", {}),
                     compaction_cache=getattr(session, "compaction_cache", {}),
@@ -1929,7 +2072,16 @@ class OpenAIChatToolWindow(ToolWindow):
                     compaction_state=getattr(session, "compaction_state", {}),
                     compaction_cache=getattr(session, "compaction_cache", {}),
                 )
-                self._current_history_index = 0
+                self._current_session_id = session.session_id if session else None
+        else:
+            self.history_manager.save_session(
+                saved_messages,
+                session_id=session.session_id if session else None,
+                compaction_state=getattr(session, "compaction_state", {}),
+                compaction_cache=getattr(session, "compaction_cache", {}),
+            )
+            self._current_session_id = session.session_id if session else None
+
         self._update_node_preview()
 
     def _on_messages_updated(self, messages: List[Dict[str, Any]]):
@@ -2082,10 +2234,10 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.warning("[Topic Summary] No user messages found, skipping")
             return
         previous_summary = ""
-        if self._current_history_index is not None:
-            previous_summary = self.history_manager.get_topic_summary(
-                self._current_history_index
-            )
+        if self._current_session_id is not None:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
+                previous_summary = self.history_manager.get_topic_summary(idx)
 
         long_term_memory = (
             self._memory_manager.get_context_string() if self._memory_manager else ""
@@ -2131,18 +2283,19 @@ class OpenAIChatToolWindow(ToolWindow):
         clean_summary = summary.strip()
         session = self.session_manager.get_current_session()
 
-        if self._current_history_index is None and session and session.messages:
+        if self._current_session_id is None and session and session.messages:
             self.history_manager.save_session(
                 session.messages if session else [],
                 session_id=session.session_id if session else None,
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),
             )
-            self._current_history_index = 0
+            self._current_session_id = session.session_id if session else None
 
-        self.history_manager.update_topic_summary(
-            self._current_history_index, clean_summary
-        )
+        if self._current_session_id is not None:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
+                self.history_manager.update_topic_summary(idx, clean_summary)
 
         if session:
             session.set_topic_summary(clean_summary)
@@ -2200,23 +2353,33 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _update_title(self, new_title: str):
         self.title_edit.setText(new_title)
-        if self._current_history_index is not None:
-            self.history_manager.update_session_title(
-                self._current_history_index, new_title
-            )
+        if self._current_session_id is not None:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
+                self.history_manager.update_session_title(idx, new_title)
 
     def _auto_save_current_session(self):
         session = self.session_manager.get_current_session()
         if not session or not session.messages:
             return
 
-        if self._current_history_index is not None:
-            self.history_manager.update_session(
-                self._current_history_index,
-                session.messages,
-                compaction_state=getattr(session, "compaction_state", {}),
-                compaction_cache=getattr(session, "compaction_cache", {}),
-            )
+        if self._current_session_id is not None:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
+                self.history_manager.update_session(
+                    idx,
+                    session.messages,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
+                )
+            else:
+                self.history_manager.save_session(
+                    session.messages,
+                    session_id=session.session_id,
+                    compaction_state=getattr(session, "compaction_state", {}),
+                    compaction_cache=getattr(session, "compaction_cache", {}),
+                )
+                self._current_session_id = session.session_id
         else:
             self.history_manager.save_session(
                 session.messages,
@@ -2224,9 +2387,13 @@ class OpenAIChatToolWindow(ToolWindow):
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),
             )
-            self._current_history_index = 0
+            self._current_session_id = session.session_id
 
-        return self.history_manager.get_current_title(self._current_history_index)
+        if self._current_session_id:
+            idx = self.history_manager.find_index_by_session_id(self._current_session_id)
+            if idx is not None:
+                return self.history_manager.get_current_title(idx)
+        return None
 
     def closeEvent(self, event):
         try:
