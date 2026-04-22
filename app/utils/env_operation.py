@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import shutil
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -24,8 +25,14 @@ class EnvironmentManager(QObject):
     miniconda_install_finished = pyqtSignal(object)
     remove_finished = pyqtSignal(object)
 
-    ENV_DIR = Path(__file__).parent.parent.parent / "envs"
-    META_FILE = ENV_DIR / "environments.json"
+    @property
+    def ENV_DIR(self):
+        """获取 envs 目录路径，确保在用户可写的位置"""
+        return Path(__file__).parent.parent.parent / "envs"
+
+    @property
+    def META_FILE(self):
+        return self.ENV_DIR / "environments.json"
 
     # --- 1. 定义 Miniconda 下载源 (优先清华/北外，解决下载慢/失败) ---
     # 模板会在运行时按平台生成
@@ -37,7 +44,7 @@ class EnvironmentManager(QObject):
         "https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free",
         "https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r",
         "https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2",
-        "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch"
+        "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch",
     ]
 
     def __init__(self):
@@ -54,7 +61,7 @@ class EnvironmentManager(QObject):
         if not self.META_FILE.exists():
             self._save_meta({})
 
-        self.miniconda_path = self.ENV_DIR / "miniconda"
+        self.miniconda_path = self.ENV_DIR / "miniconda" if (self.ENV_DIR / "miniconda").exists() else self._find_system_miniconda()
         logger.info(f"检查Miniconda安装状态: {self.miniconda_path}")
         self.meta = self._load_meta()
         self._scan_envs()
@@ -93,7 +100,11 @@ class EnvironmentManager(QObject):
         if self._is_windows:
             suffix = "Windows-x86_64.exe"
         elif self._is_macos:
-            arch = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "x86_64"
+            arch = (
+                "arm64"
+                if platform.machine().lower() in ("arm64", "aarch64")
+                else "x86_64"
+            )
             suffix = f"MacOSX-{arch}.sh"
         else:
             suffix = "Linux-x86_64.sh"
@@ -115,20 +126,61 @@ class EnvironmentManager(QObject):
             return {}
 
     def _save_meta(self, data):
-        self.META_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        self.META_FILE.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def _scan_envs(self):
         new_meta = {}
+        if self.miniconda_path is None:
+            return
         miniconda_envs_dir = self.miniconda_path / "envs"
         if miniconda_envs_dir.exists():
             for d in miniconda_envs_dir.iterdir():
                 if d.is_dir() and self._env_python_from_env_dir(d).exists():
                     new_meta[d.name] = str(d)
+        # 合并已有 meta（新扫到的 + 之前保存但当前未检测到的）
+        for name, path in self.meta.items():
+            if name not in new_meta:
+                p = Path(path)
+                if p.exists() and self._env_python_from_env_dir(p).exists():
+                    new_meta[name] = path
         self.meta = new_meta
         self._save_meta(self.meta)
 
+    def _find_system_miniconda(self):
+        """搜索系统中已安装的 Miniconda"""
+        search_paths = [
+            Path.home() / "miniconda3",
+            Path.home() / "AppData" / "Local" / "miniconda3",
+            Path("C:/miniconda3"),
+            Path("C:/ProgramData/miniconda3"),
+        ]
+
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            search_paths.append(Path(f"{letter}:/miniconda3"))
+            search_paths.append(Path(f"{letter}:/ProgramData/miniconda3"))
+
+        for path in search_paths:
+            if path.exists():
+                conda_exe = (
+                    path / "Scripts" / "conda.exe"
+                    if self._is_windows
+                    else path / "bin" / "conda"
+                )
+                if conda_exe.exists():
+                    logger.info(f"发现系统Miniconda: {path}")
+                    return path
+        return None
+
     def _is_miniconda_installed(self):
-        return self._get_conda_exe_path().exists()
+        if self._get_conda_exe_path().exists():
+            return True
+        system_miniconda = self._find_system_miniconda()
+        if system_miniconda:
+            self.miniconda_path = system_miniconda
+            return True
+        return False
 
     # ==========================
     # 下载与安装 Miniconda 核心逻辑
@@ -136,7 +188,8 @@ class EnvironmentManager(QObject):
     def install_miniconda(self, log_callback=None):
         """安装Miniconda（自动切换源 + 校验文件）"""
         if self._is_miniconda_installed():
-            if log_callback: log_callback("Miniconda已安装")
+            if log_callback:
+                log_callback("Miniconda已安装")
             self.miniconda_install_finished.emit("success")
             return
 
@@ -149,7 +202,9 @@ class EnvironmentManager(QObject):
         templates = self._get_mirror_templates()
         for template in templates:
             for build in ["-2", "-1", "-0"]:
-                url = template.format(py_ver=py_version_short, ver=self.miniconda_version, build=build)
+                url = template.format(
+                    py_ver=py_version_short, ver=self.miniconda_version, build=build
+                )
                 self._download_queue.append(url)
 
         filename = self._download_queue[0].split("/")[-1]
@@ -158,11 +213,13 @@ class EnvironmentManager(QObject):
         # 检查本地是否有有效安装包
         if self._installer_path.exists():
             if self._validate_installer(self._installer_path):
-                if log_callback: log_callback("检测到本地安装包有效，跳过下载")
+                if log_callback:
+                    log_callback("检测到本地安装包有效，跳过下载")
                 self._start_miniconda_install()
                 return
             else:
-                if log_callback: log_callback("本地安装包损坏，准备重新下载...")
+                if log_callback:
+                    log_callback("本地安装包损坏，准备重新下载...")
                 try:
                     self._installer_path.unlink()
                 except:
@@ -173,7 +230,8 @@ class EnvironmentManager(QObject):
     def _try_next_download_source(self):
         if not self._download_queue:
             error_msg = "Miniconda下载失败：所有镜像源均不可用。"
-            if self._current_log_callback: self._current_log_callback(error_msg)
+            if self._current_log_callback:
+                self._current_log_callback(error_msg)
             self.miniconda_install_finished.emit(RuntimeError(error_msg))
             return
 
@@ -222,7 +280,8 @@ class EnvironmentManager(QObject):
             reply.deleteLater()
 
             if self._validate_installer(self._installer_path):
-                if self._current_log_callback: self._current_log_callback("下载校验通过，开始安装...")
+                if self._current_log_callback:
+                    self._current_log_callback("下载校验通过，开始安装...")
                 self._start_miniconda_install()
             else:
                 try:
@@ -234,22 +293,26 @@ class EnvironmentManager(QObject):
             logger.error(f"Write error: {e}")
             self._try_next_download_source()
 
-    def _start_miniconda_install(self):
-        """修复 Exit Code 2：强制清理残留目录，使用正确参数"""
+    def _start_miniconda_install(self, silent=True):
+        """安装 Miniconda
+
+        Args:
+            silent: True 静默安装，False 非静默安装（交互式）
+        """
         if self.miniconda_path.exists():
-            if self._current_log_callback: self._current_log_callback("清理旧的Miniconda残留...")
+            if self._current_log_callback:
+                self._current_log_callback("清理旧的Miniconda残留...")
             try:
-                # 重命名后删除，防止文件锁
                 temp_trash = self.ENV_DIR / f"trash_{int(time.time())}"
                 self.miniconda_path.rename(temp_trash)
                 shutil.rmtree(temp_trash, ignore_errors=True)
             except Exception as e:
-                # 尝试强制删除
                 shutil.rmtree(self.miniconda_path, ignore_errors=True)
 
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.MergedChannels)
         self._process.setWorkingDirectory(str(self.ENV_DIR))
+        self._silent_install = silent
 
         if self._is_windows:
             self._process.setProcessEnvironment(self._get_process_environment())
@@ -258,32 +321,41 @@ class EnvironmentManager(QObject):
         self._process.finished.connect(self._on_miniconda_install_finished)
 
         if self._is_windows:
-            # 注意路径分隔符
             install_path_str = str(self.miniconda_path).replace("/", "\\")
-            args = [
-                "/S",
-                "/InstallationType=JustMe",
-                "/AddToPath=0",
-                "/RegisterPython=0",
-                f"/D={install_path_str}"
-            ]
+            if silent:
+                args = [
+                    "/S",
+                    "/InstallationType=JustMe",
+                    "/AddToPath=0",
+                    "/RegisterPython=0",
+                    f"/D={install_path_str}",
+                ]
+            else:
+                args = [
+                    "/InstallationType=JustMe",
+                    "/AddToPath=0",
+                    "/RegisterPython=0",
+                    f"/D={install_path_str}",
+                ]
             self._process.start(str(self._installer_path), args)
         else:
-            # macOS/Linux 使用 shell 安装
-            args = [str(self._installer_path), "-b", "-p", str(self.miniconda_path)]
+            if silent:
+                args = [str(self._installer_path), "-b", "-p", str(self.miniconda_path)]
+            else:
+                args = [str(self._installer_path), "-p", str(self.miniconda_path)]
             self._process.start("/bin/bash", args)
 
     def _on_miniconda_install_finished(self, exit_code, exit_status):
         conda_exe = self._get_conda_exe_path()
         if exit_code == 0 and conda_exe.exists():
-            if self._current_log_callback: self._current_log_callback("Miniconda安装成功！")
+            if self._current_log_callback:
+                self._current_log_callback("Miniconda安装成功！")
             if self._installer_path and self._installer_path.exists():
                 try:
                     self._installer_path.unlink()
                 except:
                     pass
 
-            # 安装成功后，初始化 .condarc 以确保全局使用镜像源 (双重保险)
             self._init_condarc()
 
             self._scan_envs()
@@ -292,16 +364,52 @@ class EnvironmentManager(QObject):
             if self._pending_env_creation:
                 version, env_name, log_cb = self._pending_env_creation
                 self._pending_env_creation = None
-                QTimer.singleShot(1000, lambda: self._create_env_with_qprocess(version, env_name, log_cb))
+                QTimer.singleShot(
+                    1000,
+                    lambda: self._create_env_with_qprocess(version, env_name, log_cb),
+                )
+        elif exit_code == 0:
+            system_miniconda = self._find_system_miniconda()
+            if system_miniconda:
+                self.miniconda_path = system_miniconda
+                if self._current_log_callback:
+                    self._current_log_callback(
+                        f"检测到系统Miniconda: {system_miniconda}"
+                    )
+                self._scan_envs()
+                self.miniconda_install_finished.emit("success")
+                if self._pending_env_creation:
+                    version, env_name, log_cb = self._pending_env_creation
+                    self._pending_env_creation = None
+                    QTimer.singleShot(
+                        1000,
+                        lambda: self._create_env_with_qprocess(
+                            version, env_name, log_cb
+                        ),
+                    )
+                return
         else:
+            silent_failed = getattr(self, "_silent_install", True)
+
+            if silent_failed and self._installer_path and self._installer_path.exists():
+                err = (
+                    f"Miniconda静默安装失败 (Code: {exit_code})，正在尝试交互式安装..."
+                )
+                if self._current_log_callback:
+                    self._current_log_callback(err)
+                QTimer.singleShot(
+                    500, lambda: self._start_miniconda_install(silent=False)
+                )
+                return
+
             err = f"Miniconda安装失败 (Code: {exit_code})。请检查杀毒软件或目录权限。"
             if exit_code == 2:
-                # Exit Code 2 通常意味着文件损坏，自动清理以便重试
                 if self._installer_path.exists():
                     self._installer_path.unlink()
                 err += " (已自动清理损坏的安装包，请重试)"
 
-            if self._current_log_callback: self._current_log_callback(err)
+            if self._current_log_callback:
+                self._current_log_callback(err)
             self.miniconda_install_finished.emit(RuntimeError(err))
 
     def _init_condarc(self):
@@ -329,7 +437,8 @@ class EnvironmentManager(QObject):
     # ==========================
     def download_and_install(self, version, env_name=None, log_callback=None):
         if not self._is_miniconda_installed():
-            if log_callback: log_callback("Miniconda缺失，正在初始化...")
+            if log_callback:
+                log_callback("Miniconda缺失，正在初始化...")
             self._pending_env_creation = (version, env_name, log_callback)
             self.install_miniconda(log_callback)
             return
@@ -337,14 +446,17 @@ class EnvironmentManager(QObject):
 
     def _create_env_with_qprocess(self, version, env_name=None, log_callback=None):
         """创建环境 - 显式指定镜像源以绕过 ToS"""
-        if env_name is None: env_name = version
+        if env_name is None:
+            env_name = version
         if env_name in self.list_envs():
-            if log_callback: log_callback(f"环境 {env_name} 已存在")
+            if log_callback:
+                log_callback(f"环境 {env_name} 已存在")
             env_path = self.miniconda_path / "envs" / env_name
             self.install_finished.emit(str(env_path))
             return
 
-        if log_callback: log_callback(f"正在创建环境 {env_name} (Py{version})...")
+        if log_callback:
+            log_callback(f"正在创建环境 {env_name} (Py{version})...")
         self._current_log_callback = log_callback
 
         conda_exe = self._get_conda_exe_path()
@@ -359,7 +471,11 @@ class EnvironmentManager(QObject):
         # 强制覆盖频道配置（必须！否则 conda 仍会尝试连接 defaults）
         args.append("--override-channels")
 
-        self._start_conda_process(conda_exe, args, lambda ec, es: self._on_create_env_finished(ec, es, env_name))
+        self._start_conda_process(
+            conda_exe,
+            args,
+            lambda ec, es: self._on_create_env_finished(ec, es, env_name),
+        )
 
     def _start_conda_process(self, exe, args, finished_slot):
         self._process = QProcess(self)
@@ -379,7 +495,8 @@ class EnvironmentManager(QObject):
         if exit_code != 0:
             error_msg = f"环境创建失败 (Code {exit_code})。请检查网络或配置。"
             # 如果是 ToS 错误，提示信息会包含在输出中
-            if self._current_log_callback: self._current_log_callback(error_msg)
+            if self._current_log_callback:
+                self._current_log_callback(error_msg)
             self.install_finished.emit(error_msg)
             return
 
@@ -388,7 +505,8 @@ class EnvironmentManager(QObject):
         if not is_healthy:
             self.remove_env(env_name)
             error_msg = f"环境自检失败 ({msg})，已回滚。"
-            if self._current_log_callback: self._current_log_callback(error_msg)
+            if self._current_log_callback:
+                self._current_log_callback(error_msg)
             self.install_finished.emit(error_msg)
             return
 
@@ -398,14 +516,16 @@ class EnvironmentManager(QObject):
         self._save_meta(self.meta)
         self._scan_envs()
 
-        if self._current_log_callback: self._current_log_callback(f"环境 {env_name} 创建成功 ✅")
+        if self._current_log_callback:
+            self._current_log_callback(f"环境 {env_name} 创建成功 ✅")
         self.install_finished.emit("success")
         # QTimer.singleShot(1000, lambda: self._install_default_packages(env_name, python_exe))
 
     def _validate_env_health(self, env_name):
         """简单验证 Python 是否能运行"""
         python_exe = self.get_python_exe(env_name)
-        if not python_exe.exists(): return False, "Executable missing"
+        if not python_exe.exists():
+            return False, "Executable missing"
 
         proc = QProcess()
         env = self._get_process_environment()
@@ -420,8 +540,10 @@ class EnvironmentManager(QObject):
     # 其他辅助方法 (克隆、删除、包管理)
     # ==========================
     def clone_env(self, source_env, target_env, log_callback=None):
-        if target_env in self.list_envs(): return
-        if log_callback: log_callback(f"正在克隆 {source_env} -> {target_env}...")
+        if target_env in self.list_envs():
+            return
+        if log_callback:
+            log_callback(f"正在克隆 {source_env} -> {target_env}...")
         self._current_log_callback = log_callback
 
         conda_exe = self._get_conda_exe_path()
@@ -432,24 +554,31 @@ class EnvironmentManager(QObject):
             args.extend(["-c", channel])
         args.append("--override-channels")
 
-        self._start_conda_process(conda_exe, args, lambda ec, es: self._on_clone_finished(ec, es, target_env))
+        self._start_conda_process(
+            conda_exe, args, lambda ec, es: self._on_clone_finished(ec, es, target_env)
+        )
 
     def _on_clone_finished(self, ec, es, env_name):
         if ec == 0:
             self.meta[env_name] = str(self.miniconda_path / "envs" / env_name)
             self._save_meta(self.meta)
             self._scan_envs()
-            if self._current_log_callback: self._current_log_callback(f"克隆完成 ✅")
+            if self._current_log_callback:
+                self._current_log_callback(f"克隆完成 ✅")
             self.install_finished.emit("success")
         else:
             self.install_finished.emit(f"克隆失败 Code {ec}")
 
     def remove_env(self, env_name, log_callback=None):
-        if log_callback: self._current_log_callback = log_callback
+        if log_callback:
+            self._current_log_callback = log_callback
         conda_exe = self._get_conda_exe_path()
         # 删除不需要联网，所以不需要镜像源参数
-        self._start_conda_process(conda_exe, ["env", "remove", "--name", env_name, "-y"],
-                                  lambda ec, es: self._on_remove_finished_wrapper(env_name))
+        self._start_conda_process(
+            conda_exe,
+            ["env", "remove", "--name", env_name, "-y"],
+            lambda ec, es: self._on_remove_finished_wrapper(env_name),
+        )
 
     def _on_remove_finished_wrapper(self, env_name):
         env_path = self.miniconda_path / "envs" / env_name
@@ -459,17 +588,23 @@ class EnvironmentManager(QObject):
             except:
                 pass
 
-        if env_name in self.meta: del self.meta[env_name]
+        if env_name in self.meta:
+            del self.meta[env_name]
         self._save_meta(self.meta)
         self._scan_envs()
-        if self._current_log_callback: self._current_log_callback(f"环境已删除")
+        if self._current_log_callback:
+            self._current_log_callback(f"环境已删除")
         self.remove_finished.emit("success")
 
     def _on_process_output(self):
         if self._process:
             data = self._process.readAllStandardOutput()
             try:
-                text = data.data().decode("gbk") if self._is_windows else data.data().decode("utf-8")
+                text = (
+                    data.data().decode("gbk")
+                    if self._is_windows
+                    else data.data().decode("utf-8")
+                )
             except:
                 text = data.data().decode("utf-8", errors="ignore")
             if text.strip() and self._current_log_callback:
@@ -480,26 +615,32 @@ class EnvironmentManager(QObject):
 
     def _install_next_package(self, python_exe, remaining):
         if not remaining:
-            if self._current_log_callback: self._current_log_callback("默认包安装完成 ✅")
+            if self._current_log_callback:
+                self._current_log_callback("默认包安装完成 ✅")
             self.install_finished.emit("success")
             return
 
         pkg = remaining[0]
-        if self._current_log_callback: self._current_log_callback(f"安装包: {pkg}...")
+        if self._current_log_callback:
+            self._current_log_callback(f"安装包: {pkg}...")
 
         # PIP 安装同样需要使用镜像
         cmd = ["-m", "pip", "install", pkg]
         mirrors = self.config.mirrors.value
         if mirrors:
             for m in mirrors:
-                cmd.extend(["--extra-index-url", m, "--trusted-host", urlparse(m).hostname])
+                cmd.extend(
+                    ["--extra-index-url", m, "--trusted-host", urlparse(m).hostname]
+                )
 
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.MergedChannels)
         self._process.readyReadStandardOutput.connect(self._on_process_output)
         if self._is_windows:
             self._process.setProcessEnvironment(self._get_process_environment())
-        self._process.finished.connect(lambda ec, es: self._install_next_package(python_exe, remaining[1:]))
+        self._process.finished.connect(
+            lambda ec, es: self._install_next_package(python_exe, remaining[1:])
+        )
         self._process.start(str(python_exe), cmd)
 
     def ensure_pip(self, python_exe: str, log_callback=None) -> bool:
@@ -546,10 +687,11 @@ class EnvironmentManager(QObject):
         return Path("non_existent")
 
     def _clean_ansi_codes(self, text):
-        return re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])').sub('', text)
+        return re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])").sub("", text)
 
     def _get_process_environment(self):
         from PyQt5.QtCore import QProcessEnvironment
+
         env = QProcessEnvironment.systemEnvironment()
         env.insert("CONDA_ALWAYS_YES", "true")  # 确保非交互
         if self._is_windows and not env.contains("SystemRoot"):

@@ -55,8 +55,11 @@ class EnvironmentCardView(SimpleCardWidget):
         )
         llm_card.clicked.connect(self.llmProviderSignal.emit)
 
-        # 新建卡片
-        if self.package_manager.envCombo.count() == 0:
+        # 新建卡片 - 检查 envCombo 是否已初始化
+        env_combo_count = getattr(self.package_manager, 'envCombo', None)
+        env_combo_count = env_combo_count.count() if env_combo_count else 0
+
+        if env_combo_count == 0:
             add_card = StylishCard(
                 get_icon("惊叹号"),
                 self.tr("新建环境"),

@@ -177,6 +177,11 @@ class BuiltinTools(QObject):
         self._task_tools.todo_clear()
         self._todo_list = []
 
+    def reset_session_state(self):
+        """Reset session-scoped state when switching sessions"""
+        self._todo_list = []
+        self._task_tools.reset_session_state()
+
     def todo_read(self):
         return self._task_tools.todo_read()
 

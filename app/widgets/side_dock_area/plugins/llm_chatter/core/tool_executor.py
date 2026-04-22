@@ -80,6 +80,11 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools.todo_clear()
 
+    def reset_session_state(self):
+        """Reset session-scoped state when switching sessions"""
+        if self._builtin_tools:
+            self._builtin_tools.reset_session_state()
+
     def register_custom_tool(self, name: str, handler: Callable):
         """注册自定义工具"""
         self._custom_tools[name] = handler
