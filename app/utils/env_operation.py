@@ -28,11 +28,7 @@ class EnvironmentManager(QObject):
     @property
     def ENV_DIR(self):
         """获取 envs 目录路径，确保在用户可写的位置"""
-        if hasattr(sys, 'frozen'):
-            base = Path(sys._MEIPASS).parent
-        else:
-            base = Path(__file__).parent.parent.parent
-        return base / "envs"
+        return Path(__file__).parent.parent.parent / "envs"
 
     @property
     def META_FILE(self):
@@ -272,7 +268,7 @@ class EnvironmentManager(QObject):
             logger.error(f"Write error: {e}")
             self._try_next_download_source()
 
-    def _start_miniconda_install(self, silent=False):
+    def _start_miniconda_install(self, silent=True):
         """安装 Miniconda
         
         Args:
