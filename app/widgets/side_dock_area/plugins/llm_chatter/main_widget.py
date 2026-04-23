@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import re
 import sip
+import ctypes
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -1654,6 +1656,58 @@ class OpenAIChatToolWindow(ToolWindow):
             node_data.append((current_user_msg, ""))
 
         self.node_preview.update_nodes(node_data)
+        self._sync_node_preview_to_scroll()
+
+    def _sync_node_preview_to_scroll(self):
+        if not hasattr(self, "chat_scroll_area") or not hasattr(self, "node_preview"):
+            return
+
+        user_widgets = []
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if isinstance(widget, MessageCard) and widget.role == "user":
+                user_widgets.append(widget)
+
+        if not user_widgets:
+            self._last_visible_user_pair_index = -1
+            self.node_preview.set_visible_node(-1)
+            self.node_preview.set_progress_position(-1)
+            return
+
+        scroll_bar = self.chat_scroll_area.verticalScrollBar()
+        viewport_height = self.chat_scroll_area.viewport().height()
+        visible_top = scroll_bar.value()
+        anchor_y = visible_top + max(viewport_height / 2, 1)
+        user_tops = [widget.y() for widget in user_widgets]
+
+        if len(user_tops) == 1:
+            progress = 0.0
+        elif anchor_y <= user_tops[0]:
+            progress = 0.0
+        elif anchor_y >= user_tops[-1]:
+            progress = float(len(user_tops) - 1)
+        else:
+            progress = 0.0
+            for idx in range(len(user_tops) - 1):
+                start_top = user_tops[idx]
+                end_top = user_tops[idx + 1]
+                if start_top <= anchor_y <= end_top:
+                    span = max(end_top - start_top, 1)
+                    ratio = (anchor_y - start_top) / span
+                    progress = idx + ratio
+                    break
+
+        visible_index = min(
+            max(int(round(progress)), 0),
+            len(user_tops) - 1,
+        )
+        self.node_preview.set_progress_position(progress)
+        if visible_index != self._last_visible_user_pair_index:
+            self._last_visible_user_pair_index = visible_index
+            self.node_preview.set_visible_node(visible_index)
 
     def _on_node_preview_clicked(self, index: int):
         pair_index = 0
@@ -1668,42 +1722,15 @@ class OpenAIChatToolWindow(ToolWindow):
             if widget.role == "user":
                 if pair_index == index:
                     target_widget = widget
-                    continue
+                    break
                 pair_index += 1
-            elif target_widget and widget.role == "assistant":
-                target_widget = widget
-                break
 
         if target_widget:
+            self.node_preview.set_progress_position(index)
             self.chat_scroll_area.verticalScrollBar().setValue(target_widget.y())
 
     def _on_scroll_changed(self, value):
-        scroll_bar = self.chat_scroll_area.verticalScrollBar()
-        viewport_height = self.chat_scroll_area.viewport().height()
-        visible_top = scroll_bar.value()
-        visible_bottom = visible_top + viewport_height
-
-        first_visible_pair = -1
-        pair_index = 0
-        for i in range(self.chat_layout.count()):
-            item = self.chat_layout.itemAt(i)
-            if not item or not item.widget():
-                continue
-            widget = item.widget()
-            if not isinstance(widget, MessageCard):
-                continue
-            if widget.role != "user":
-                continue
-            widget_top = widget.y()
-            widget_bottom = widget_top + widget.height()
-            if widget_bottom > visible_top and widget_top < visible_bottom:
-                first_visible_pair = pair_index
-                break
-            pair_index += 1
-
-        if first_visible_pair != self._last_visible_user_pair_index:
-            self._last_visible_user_pair_index = first_visible_pair
-            self.node_preview.set_visible_node(first_visible_pair)
+        self._sync_node_preview_to_scroll()
 
     def _truncate_session_from_user_round(self, round_index: int) -> bool:
         session = self.session_manager.get_current_session()
@@ -1720,9 +1747,7 @@ class OpenAIChatToolWindow(ToolWindow):
             canonical_messages[:cutoff_index], preserve_compaction=False
         )
         self._persist_session_after_mutation()
-        self._remove_cards_from_round(round_index)
-        self._update_node_preview()
-        self._refresh_context_usage_indicator()
+        self._refresh_session_view_after_mutation()
         return True
 
     def _delete_message(self, card: MessageCard):
@@ -1749,9 +1774,7 @@ class OpenAIChatToolWindow(ToolWindow):
             preserve_compaction=False,
         )
         self._persist_session_after_mutation()
-        self._remove_cards_for_round(round_index)
-        self._update_node_preview()
-        self._refresh_context_usage_indicator()
+        self._refresh_session_view_after_mutation()
 
     def _undo_from_message(self, card: MessageCard):
         if card.role != "user":
@@ -1800,12 +1823,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._pending_scroll_to_bottom = False
         scroll_bar = self.chat_scroll_area.verticalScrollBar()
         scroll_bar.setValue(scroll_bar.maximum())
-        session = self.session_manager.get_current_session()
-        if session:
-            user_count = sum(1 for msg in session.messages if msg.get("role") == "user")
-            visible_index = user_count - 1 if user_count > 0 else -1
-            self._last_visible_user_pair_index = visible_index
-            self.node_preview.set_visible_node(visible_index)
+        self._sync_node_preview_to_scroll()
 
     def handle_recommended_question(self, content: str, action: str):
         if action == "ask":
@@ -2079,6 +2097,10 @@ class OpenAIChatToolWindow(ToolWindow):
         if not window.isVisible() or window.isMinimized():
             return True
 
+        native_result = self._is_window_in_foreground_native(window)
+        if native_result is not None:
+            return not native_result
+
         app = QApplication.instance()
         active_window = app.activeWindow() if app is not None else None
 
@@ -2090,6 +2112,23 @@ class OpenAIChatToolWindow(ToolWindow):
             return False
 
         return not window.isActiveWindow()
+
+    def _is_window_in_foreground_native(self, window) -> Optional[bool]:
+        """Use the OS foreground window when available to avoid Qt focus misreads."""
+        if os.name != "nt":
+            return None
+
+        try:
+            user32 = ctypes.windll.user32
+            foreground_hwnd = user32.GetForegroundWindow()
+            if not foreground_hwnd:
+                return None
+
+            foreground_pid = ctypes.c_ulong()
+            user32.GetWindowThreadProcessId(foreground_hwnd, ctypes.byref(foreground_pid))
+            return foreground_pid.value == os.getpid()
+        except Exception:
+            return None
 
     def _on_notification_clicked(self):
         window = self.window()
