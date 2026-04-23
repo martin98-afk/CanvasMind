@@ -331,6 +331,7 @@ class SkillListSettingCard(ExpandSettingCard):
             / "llm_chatter"
             / "skills",
             Path.home() / ".agents" / "skills",
+            Path("canvas_files") / "skills",
         ]
 
         self.all_skills = []
@@ -373,6 +374,11 @@ class SkillListSettingCard(ExpandSettingCard):
         self.viewLayout.setAlignment(Qt.AlignTop)
         self.viewLayout.setContentsMargins(8, 0, 8, 0)
 
+        self.refreshButton = PushButton("重新检测", self, FluentIcon.SYNC)
+        self.refreshButton.setCursor(Qt.PointingHandCursor)
+        self.refreshButton.clicked.connect(self._refresh_skills)
+        self.addWidget(self.refreshButton)
+
         header_widget = QWidget(self.view)
         header_widget.setStyleSheet("background-color: transparent;")
         header_layout = QHBoxLayout(header_widget)
@@ -403,6 +409,16 @@ class SkillListSettingCard(ExpandSettingCard):
         for skill in self.all_skills:
             self._add_skill_item(skill["name"], skill["description"])
 
+        self._adjustViewSize()
+
+    def _refresh_skills(self):
+        self._discover_skills()
+        while self.viewLayout.count() > 2:
+            item = self.viewLayout.takeAt(2)
+            if item.widget():
+                item.widget().deleteLater()
+        for skill in self.all_skills:
+            self._add_skill_item(skill["name"], skill["description"])
         self._adjustViewSize()
 
     def _add_skill_item(self, name: str, description: str):
