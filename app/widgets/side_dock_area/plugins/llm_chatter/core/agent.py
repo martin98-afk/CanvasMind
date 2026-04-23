@@ -322,7 +322,7 @@ class AgentManager:
 ## Global Coding Contract
 - 这是一个代码工作台，不是普通闲聊窗口。
 - 优先围绕"相关文件、实施动作、验证方式、剩余风险"组织输出。
-- 如果信息不够，不要猜，使用 `question`。
+- 需要向用户确认的信息，优先使用 `question` 工具。
 - 如果已经有 todo，优先沿用现有执行上下文。
 - 回答要像工程师交付，不要像客服聊天。
 """.strip()
@@ -347,6 +347,55 @@ Use the tools available to you based on your permissions.
 你是一个智能编程助手，基于大语言模型。
 使用工具来帮助用户完成编程任务。
 """.strip()
+
+    def get_enabled_skills_content(self, enabled_skills: List[str]) -> str:
+        if not enabled_skills:
+            return ""
+
+        skills_dir = Path(__file__).parent.parent / "skills"
+        opencode_skills_dir = Path(__file__).parent.parent / ".opencode" / "skills"
+
+        result_parts = [
+            "\n\n## 偏好技能\n以下是部分用户偏好的智能体技能，如果以下技能不能满足用户需求，可以使用 `list_skills` 技能加载完整技能列表：\n"
+        ]
+
+        for skills_base in [skills_dir, opencode_skills_dir]:
+            if not skills_base.exists():
+                continue
+
+            for skill_dir in skills_base.iterdir():
+                if not skill_dir.is_dir():
+                    continue
+                if skill_dir.name not in enabled_skills:
+                    continue
+                if skill_dir.name.startswith("_") or skill_dir.name.startswith("."):
+                    continue
+
+                skill_file = skill_dir / "SKILL.md"
+                if not skill_file.exists():
+                    skill_file = skill_dir / "skill.md"
+                if not skill_file.exists():
+                    continue
+
+                try:
+                    content = skill_file.read_text(encoding="utf-8")
+                    name = skill_dir.name
+                    description = ""
+
+                    if content.startswith("---"):
+                        try:
+                            frontmatter = content.split("---", 2)[1]
+                            meta = yaml.safe_load(frontmatter)
+                            if meta:
+                                name = meta.get("name", skill_dir.name)
+                                description = meta.get("description", "")
+                        except Exception:
+                            pass
+                    result_parts.append(f"\n### {name}\n{description}\n")
+                except Exception:
+                    continue
+
+        return "\n".join(result_parts) if len(result_parts) > 1 else ""
 
     def get_agent_config(self, agent_name: str) -> Dict[str, Any]:
         agent = self.get_agent(agent_name)

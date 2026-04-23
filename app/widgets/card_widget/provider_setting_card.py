@@ -364,7 +364,10 @@ class ProviderEditDialog(QDialog):
             name_row = QHBoxLayout()
             name_row.addWidget(QLabel("服务商:"))
             self.nameCombo = SearchableEditableComboBox()
-            self.nameCombo.addItems(list(FREE_PROVIDERS.keys()))
+            for provider_name in FREE_PROVIDERS.keys():
+                icon_name = PROVIDER_ICONS.get(provider_name, "大模型")
+                icon = get_icon(icon_name)
+                self.nameCombo.addItem(provider_name, icon=icon)
             self.nameCombo.setDisabled(False)
             self.nameCombo.setCurrentIndex(0)
             self.nameCombo.currentTextChanged.connect(self._on_provider_changed)
@@ -657,6 +660,7 @@ class ProviderListSettingCard(ExpandSettingCard):
         self.viewLayout.setSpacing(0)
         self.viewLayout.setAlignment(Qt.AlignTop)
         self.viewLayout.setContentsMargins(8, 0, 8, 0)
+        self.view.setStyleSheet("background-color: transparent;")
         self._refresh_items()
         self.addProviderButton.clicked.connect(self._show_add_dialog)
 

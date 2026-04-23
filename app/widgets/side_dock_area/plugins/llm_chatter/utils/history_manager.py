@@ -91,6 +91,7 @@ class HistoryManager:
         session_id: str = None,
         compaction_state: Dict = None,
         compaction_cache: Dict = None,
+        system_prompt: str = None,
     ):
         if not messages:
             return
@@ -102,6 +103,7 @@ class HistoryManager:
             session_id,
             compaction_state=compaction_state,
             compaction_cache=compaction_cache,
+            system_prompt=system_prompt,
         )
         new_session_id = session_record["session_id"]
 
@@ -126,6 +128,7 @@ class HistoryManager:
         session_id: str = None,
         compaction_state: Dict = None,
         compaction_cache: Dict = None,
+        system_prompt: str = None,
     ) -> Dict:
         now = datetime.now()
         saved_at = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -153,6 +156,7 @@ class HistoryManager:
             "message_count": self._count_conversation_pairs(merged_messages),
             "compaction_state": dict(compaction_state or {}),
             "compaction_cache": dict(compaction_cache or {}),
+            "system_prompt": system_prompt or "",
         }
 
     def get_current_title(self, index: int) -> str:
@@ -300,6 +304,7 @@ class HistoryManager:
         messages: List[Dict],
         compaction_state: Dict = None,
         compaction_cache: Dict = None,
+        system_prompt: str = None,
     ):
         if 0 <= index < len(self._history_sessions):
             merged_messages = merge_session_messages(messages)
@@ -317,6 +322,11 @@ class HistoryManager:
                     compaction_cache
                     if compaction_cache is not None
                     else existing.get("compaction_cache", {})
+                ),
+                system_prompt=(
+                    system_prompt
+                    if system_prompt is not None
+                    else existing.get("system_prompt", "")
                 ),
             )
             self._history_sessions[index] = updated

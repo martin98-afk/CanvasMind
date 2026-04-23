@@ -22,9 +22,9 @@ class SearchableEditableComboBox(EditableComboBox):
         # 内部维护一个纯文本列表用于同步
         self._item_texts = []
 
-    def addItem(self, text: str, userData=None):
+    def addItem(self, text: str, icon = None, userData=None):
         """重写单条添加"""
-        super().addItem(text, userData)
+        super().addItem(text, icon, userData)
         # 去重处理（可选）
         if text not in self._item_texts:
             self._item_texts.append(text)

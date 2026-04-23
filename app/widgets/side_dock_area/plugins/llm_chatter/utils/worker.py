@@ -411,13 +411,11 @@ class OpenAIChatWorker(QThread):
                     response_sequence = self._build_response_message_sequence()
                     current_messages.extend(response_sequence)
                     current_session_messages.extend(response_sequence)
-                    question_result = (
-                        {
-                            "role": "tool",
-                            "tool_call_id": q["tool_call_id"],
-                            "content": self._pending_answer,
-                        }
-                    )
+                    question_result = {
+                        "role": "tool",
+                        "tool_call_id": q["tool_call_id"],
+                        "content": self._pending_answer,
+                    }
                     current_messages.append(question_result)
                     current_session_messages.append(question_result)
                     self._current_session_messages = list(current_session_messages)
@@ -586,17 +584,7 @@ class OpenAIChatWorker(QThread):
             skip_params.update({"temperature", "top_p"})
 
         for cn_key, value in self.llm_config.items():
-            if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
-                continue
-
-            if cn_key == "是否思考":
-                status = (
-                    "enabled"
-                    if (value is True or str(value).lower() == "true")
-                    else "disabled"
-                )
-                extra_body["enable_thinking"] = status == "enabled"
-                extra_body["include_reasoning"] = status == "enabled"
+            if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示", "启用技能"]:
                 continue
 
             en_key = mapping.get(cn_key)

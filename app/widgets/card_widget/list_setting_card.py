@@ -254,10 +254,189 @@ class PackageItem(QWidget):
         self.hBoxLayout.addWidget(self.removeButton, 0, Qt.AlignRight)
         self.hBoxLayout.setAlignment(Qt.AlignVCenter)
 
-        # Set object name to apply theme-aware color style
         self.packageLabel.setObjectName("titleLabel")
 
         self.removeButton.clicked.connect(lambda: self.removed.emit(self))
+
+
+class SkillItem(QWidget):
+    """Skill item with enable switch"""
+
+    enabled_changed = pyqtSignal(str, bool)
+
+    def __init__(self, name: str, description: str, is_enabled: bool, parent=None):
+        super().__init__(parent=parent)
+        self.setStyleSheet("background-color: transparent;")
+        self.name = name
+        self.hBoxLayout = QHBoxLayout(self)
+        self.nameLabel = QLabel(name, self)
+        self.descLabel = QLabel(description, self)
+        from qfluentwidgets import SwitchButton
+
+        self.switch = SwitchButton(self)
+
+        self.nameLabel.setFixedWidth(140)
+        self.nameLabel.setObjectName("titleLabel")
+        self.descLabel.setStyleSheet("color: #888888; font-size: 12px;")
+        self.descLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.switch.setOnText("")
+        self.switch.setOffText("")
+        self.switch.setChecked(is_enabled)
+
+        self.setFixedHeight(53)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.hBoxLayout.setContentsMargins(16, 0, 16, 0)
+        self.hBoxLayout.addWidget(self.nameLabel, 0, Qt.AlignLeft)
+        self.hBoxLayout.addWidget(self.descLabel, 1, Qt.AlignLeft)
+        self.hBoxLayout.addWidget(self.switch, 0, Qt.AlignRight)
+        self.hBoxLayout.setAlignment(Qt.AlignVCenter)
+
+        self.switch.checkedChanged.connect(
+            lambda checked: self.enabled_changed.emit(self.name, checked)
+        )
+
+
+class SkillListSettingCard(ExpandSettingCard):
+    """Skill list setting card with enable/disable switches"""
+
+    skillsChanged = pyqtSignal(list)
+
+    def __init__(
+        self,
+        icon: QIcon,
+        configItem: ConfigItem,
+        title: str,
+        content: str = None,
+        parent=None,
+        home=None,
+    ):
+        self.home = home
+        super().__init__(icon, title, content, parent)
+        self.title = title
+        self.configItem = configItem
+        self.enabled_skills = (
+            qconfig.get(configItem).copy() if qconfig.get(configItem) else []
+        )
+        self._discover_skills()
+        self.__initWidget()
+
+    def _discover_skills(self):
+        from pathlib import Path
+        import yaml
+
+        skills_dirs = [
+            Path(__file__).parent.parent
+            / "side_dock_area"
+            / "plugins"
+            / "llm_chatter"
+            / "skills",
+            Path.home() / ".agents" / "skills",
+            Path("canvas_files") / "skills",
+        ]
+
+        self.all_skills = []
+        for skills_dir in skills_dirs:
+            if not skills_dir.exists():
+                continue
+            for skill_dir in skills_dir.iterdir():
+                if not skill_dir.is_dir():
+                    continue
+                if skill_dir.name.startswith("_") or skill_dir.name.startswith("."):
+                    continue
+
+                skill_file = skill_dir / "SKILL.md"
+                if not skill_file.exists():
+                    skill_file = skill_dir / "skill.md"
+                if not skill_file.exists():
+                    continue
+
+                try:
+                    content = skill_file.read_text(encoding="utf-8")
+                    name = skill_dir.name
+                    description = ""
+
+                    if content.startswith("---"):
+                        try:
+                            frontmatter = content.split("---", 2)[1]
+                            meta = yaml.safe_load(frontmatter)
+                            if meta:
+                                name = meta.get("name", skill_dir.name)
+                                description = meta.get("description", "")
+                        except Exception:
+                            pass
+
+                    self.all_skills.append({"name": name, "description": description})
+                except Exception:
+                    continue
+
+    def __initWidget(self):
+        self.viewLayout.setSpacing(0)
+        self.viewLayout.setAlignment(Qt.AlignTop)
+        self.viewLayout.setContentsMargins(8, 0, 8, 0)
+
+        self.refreshButton = PushButton("重新检测", self, FluentIcon.SYNC)
+        self.refreshButton.setCursor(Qt.PointingHandCursor)
+        self.refreshButton.clicked.connect(self._refresh_skills)
+        self.addWidget(self.refreshButton)
+
+        header_widget = QWidget(self.view)
+        header_widget.setStyleSheet("background-color: transparent;")
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(16, 8, 16, 8)
+
+        header_title = QLabel("技能名称", header_widget)
+        header_title.setFixedWidth(140)
+        header_title.setStyleSheet(
+            "color: #888888; font-size: 12px; font-weight: bold;"
+        )
+
+        header_desc = QLabel("描述", header_widget)
+        header_desc.setStyleSheet("color: #888888; font-size: 12px; font-weight: bold;")
+
+        header_state = QLabel("启用", header_widget)
+        header_state.setFixedWidth(80)
+        header_state.setStyleSheet(
+            "color: #888888; font-size: 12px; font-weight: bold;"
+        )
+        header_state.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        header_layout.addWidget(header_title)
+        header_layout.addWidget(header_desc, 1)
+        header_layout.addWidget(header_state)
+
+        self.viewLayout.addWidget(header_widget)
+
+        for skill in self.all_skills:
+            self._add_skill_item(skill["name"], skill["description"])
+
+        self._adjustViewSize()
+
+    def _refresh_skills(self):
+        self._discover_skills()
+        while self.viewLayout.count() > 2:
+            item = self.viewLayout.takeAt(2)
+            if item.widget():
+                item.widget().deleteLater()
+        for skill in self.all_skills:
+            self._add_skill_item(skill["name"], skill["description"])
+        self._adjustViewSize()
+
+    def _add_skill_item(self, name: str, description: str):
+        is_enabled = name in self.enabled_skills
+        item = SkillItem(name, description, is_enabled, self.view)
+        item.enabled_changed.connect(self._on_skill_enabled_changed)
+        self.viewLayout.addWidget(item)
+        item.show()
+        self._adjustViewSize()
+
+    def _on_skill_enabled_changed(self, name: str, enabled: bool):
+        if enabled and name not in self.enabled_skills:
+            self.enabled_skills.append(name)
+        elif not enabled and name in self.enabled_skills:
+            self.enabled_skills.remove(name)
+
+        qconfig.set(self.configItem, self.enabled_skills)
+        self.skillsChanged.emit(self.enabled_skills)
 
 
 class PackageListSettingCard(ExpandSettingCard):

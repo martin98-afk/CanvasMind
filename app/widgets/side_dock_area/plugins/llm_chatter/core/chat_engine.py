@@ -9,6 +9,7 @@ from loguru import logger
 from typing import Dict, List, Optional, Any, Callable
 from openai import OpenAI
 
+from app.utils.config import Settings
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
     CODING_STAGES,
@@ -124,7 +125,9 @@ class ChatEngine:
             "summarized_count": int(summarized_count or 0),
             "tail_count": int(tail_count or 0),
             "budget_tokens": int(budget_tokens or 0),
-            "summary_message": dict(summary_message) if isinstance(summary_message, dict) else None,
+            "summary_message": dict(summary_message)
+            if isinstance(summary_message, dict)
+            else None,
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             if active
             else "",
@@ -274,7 +277,7 @@ class ChatEngine:
                 continue
             single_line = " ".join(content.split())
             if len(single_line) > 1000:
-                    single_line = f"{single_line[:500]}...{single_line[-500:]}"
+                single_line = f"{single_line[:500]}...{single_line[-500:]}"
             if role == "user":
                 user_points.append(single_line)
             elif role == "assistant":
@@ -327,15 +330,16 @@ class ChatEngine:
             "3. 不要只重复用户原始提问。\n"
             "4. 删除寒暄、重复探索、低价值调试细节。\n"
             "5. 如果信息不足，不要编造。\n\n"
-            "【待压缩对话】\n"
-            + "\n".join(transcript_lines)
+            "【待压缩对话】\n" + "\n".join(transcript_lines)
         )
 
         system_prompt = ""
         if self._agent_manager and self._agent_manager.get_agent("compaction"):
             system_prompt = self._agent_manager.get_agent_system_prompt("compaction")
         if not system_prompt:
-            system_prompt = "你是一个上下文压缩专家，负责提炼后续继续执行编码任务所需的摘要。"
+            system_prompt = (
+                "你是一个上下文压缩专家，负责提炼后续继续执行编码任务所需的摘要。"
+            )
 
         return [
             {"role": "system", "content": system_prompt},
@@ -360,8 +364,7 @@ class ChatEngine:
             compaction_config = self._agent_manager.get_agent_config("compaction")
 
         model = str(
-            compaction_config.get("model")
-            or llm_config.get("模型名称", "gpt-4o")
+            compaction_config.get("model") or llm_config.get("模型名称", "gpt-4o")
         )
         client = OpenAI(
             api_key=api_key if api_key and auth_type != "none" else "dummy",
@@ -383,6 +386,7 @@ class ChatEngine:
             req_kwargs["top_p"] = top_p
 
         try:
+
             def create_task():
                 return client.chat.completions.create(**req_kwargs)
 
@@ -390,7 +394,9 @@ class ChatEngine:
             content = (resp.choices[0].message.content or "").strip()
             return content
         except Exception as exc:
-            logger.warning(f"[Compaction] Agent summarization failed, fallback to heuristic: {exc}")
+            logger.warning(
+                f"[Compaction] Agent summarization failed, fallback to heuristic: {exc}"
+            )
             return ""
 
     def _has_structured_tool_history(
@@ -544,9 +550,14 @@ class ChatEngine:
         if cached.get("active") and cached.get("summary_message"):
             cutoff_index = int(cached.get("cutoff_index", 0) or 0)
             if 0 < cutoff_index <= len(normalized):
-                cached_messages = [cached.get("summary_message"), *normalized[cutoff_index:]]
+                cached_messages = [
+                    cached.get("summary_message"),
+                    *normalized[cutoff_index:],
+                ]
                 if estimate_tokens_from_messages(cached_messages) <= soft_limit:
-                    summarized_count = int(cached.get("summarized_count", cutoff_index) or cutoff_index)
+                    summarized_count = int(
+                        cached.get("summarized_count", cutoff_index) or cutoff_index
+                    )
                     tail_count = len(normalized) - cutoff_index
                     return (
                         cached_messages,
@@ -785,27 +796,40 @@ class ChatEngine:
 
         prompt_parts = [
             full_system_prompt,
-            task_state.build_context_block(),
+            # task_state.build_context_block(),
             task_state.build_event_digest(),
         ]
 
+        enabled_skills = Settings.get_instance().llm_enabled_skills.value
+        if enabled_skills and self._agent_manager:
+            skills_content = self._agent_manager.get_enabled_skills_content(
+                enabled_skills
+            )
+            if skills_content:
+                prompt_parts.append(skills_content)
         custom_prompt = llm_config.get("系统提示", "").strip()
         context_provider = self._get_context_provider()
         if custom_prompt:
             prompt_parts.append(custom_prompt)
 
+        full_system_content = "\n\n".join(part for part in prompt_parts if part)
+
         if messages and messages[0].get("role") == "system":
-            messages[0]["content"] = "\n\n".join(part for part in prompt_parts if part)
+            messages[0]["content"] = full_system_content
         else:
             messages.append(
                 {
                     "role": "system",
-                    "content": "\n\n".join(part for part in prompt_parts if part),
+                    "content": full_system_content,
                 }
             )
 
+        session.system_prompt = full_system_content
+
         max_context_tokens = self._get_context_budget(llm_config)
-        normalized_session_messages = consolidate_messages(session.get_context_messages())
+        normalized_session_messages = consolidate_messages(
+            session.get_context_messages()
+        )
         latest_user_message = ""
         latest_user_timestamp = ""
         params = {}
@@ -834,11 +858,13 @@ class ChatEngine:
         available_history_budget = (
             max_context_tokens - estimate_tokens(latest_user_message) - 200
         )
-        history_for_api, compaction_state, compaction_cache = self._compact_history_messages(
-            history_messages,
-            available_history_budget,
-            existing_cache=getattr(session, "compaction_cache", None),
-            allow_llm_summary=allow_llm_summary,
+        history_for_api, compaction_state, compaction_cache = (
+            self._compact_history_messages(
+                history_messages,
+                available_history_budget,
+                existing_cache=getattr(session, "compaction_cache", None),
+                allow_llm_summary=allow_llm_summary,
+            )
         )
         session.set_compaction_state(compaction_state)
         session.set_compaction_cache(compaction_cache)
@@ -1065,7 +1091,9 @@ class ChatEngine:
             try:
                 interrupted_messages = worker.get_interrupted_messages()
             except Exception as exc:
-                logger.warning(f"[ChatEngine] Failed to snapshot interrupted messages: {exc}")
+                logger.warning(
+                    f"[ChatEngine] Failed to snapshot interrupted messages: {exc}"
+                )
             worker.cancel()
             if worker.isRunning():
                 worker.quit()

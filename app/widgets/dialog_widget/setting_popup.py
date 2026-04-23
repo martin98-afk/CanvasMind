@@ -437,13 +437,16 @@ class SettingDialog(QDialog):
         from app.widgets.card_widget.provider_setting_card import (
             ProviderListSettingCard,
         )
+        from app.widgets.card_widget.list_setting_card import (
+            SkillListSettingCard,
+        )
 
         self.llmGroup = QWidget()
         self.llmGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         llmGroupLayout = QVBoxLayout(self.llmGroup)
         llmGroupLayout.setSpacing(10)
 
-        group_label = StrongBodyLabel(self.tr("大模型服务商"))
+        group_label = StrongBodyLabel(self.tr("大模型配置"))
         group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         llmGroupLayout.addWidget(group_label)
 
@@ -460,17 +463,20 @@ class SettingDialog(QDialog):
         self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
         self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
 
-        self.llmThinkingCard = SwitchSettingCard(
-            get_icon("智能体"),
-            self.tr("启用思考过程"),
-            self.tr("是否让大模型输出思考过程"),
-            configItem=self.cfg.llm_enable_thinking,
+        self.llmSkillsCard = SkillListSettingCard(
+            icon=get_icon("智能体"),
+            configItem=self.cfg.llm_enabled_skills,
+            title=self.tr("启用技能"),
+            content=self.tr(
+                "选择要在系统提示词中注入的技能，提高大模型使用这些技能的频率"
+            ),
             parent=self.llmGroup,
+            home=self,
         )
-        self.cfg.llm_enable_thinking.valueChanged.connect(self.onConfigChanged)
+        self.llmSkillsCard.skillsChanged.connect(self.onConfigChanged)
 
         llmGroupLayout.addWidget(self.llmProviderCard)
-        llmGroupLayout.addWidget(self.llmThinkingCard)
+        llmGroupLayout.addWidget(self.llmSkillsCard)
         layout.addWidget(self.llmGroup)
 
     def _setup_path_management_settings(self, layout):
@@ -1118,7 +1124,7 @@ class SettingDialog(QDialog):
         self._parent_widget = parent_widget
         self._follow_window = False
 
-        self.resize(850, 600)
+        self.resize(950, 700)
         self.move(
             (QApplication.desktop().screenGeometry().width() - self.width()) // 2,
             (QApplication.desktop().screenGeometry().height() - self.height()) // 2,

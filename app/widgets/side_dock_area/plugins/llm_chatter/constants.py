@@ -1,7 +1,6 @@
 PARAM_UI_MAP = {
     "API_KEY": "password",
     "温度": "slider",
-    "是否思考": "checkbox",
     "temp": "slider",
     "最大Token": "slider",
     "max_new_tokens": "spinbox",
@@ -9,6 +8,7 @@ PARAM_UI_MAP = {
     "frequency_penalty": "slider",
     "presence_penalty": "slider",
     "选择模型": "model_selector",
+    "启用技能": "checkbox",
 }
 
 
