@@ -2046,26 +2046,50 @@ class OpenAIChatToolWindow(ToolWindow):
                     return widget
         return None
 
-def _notify_if_inactive(self, title: str, message: str):
+    def _notify_if_inactive(self, title: str, message: str):
         setting = Settings.get_instance()
         if not setting.llm_notify_enabled.value:
             return
 
-        if self.homepage:
-            visible = self.homepage.isVisible()
-            minimized = self.homepage.isMinimized()
-            active = self.homepage.isActiveWindow()
-            if visible and not minimized and active:
-                return
+        if not self._should_show_inactive_notification():
+            return
 
         sound_type = setting.llm_notify_sound.value
         if sound_type != "none":
             QApplication.beep()
 
-        window = self.window()
-        if window and hasattr(window, "tray_icon") and window.tray_icon:
-            tray = window.tray_icon
-            tray.showMessage(title, message, tray.MessageIcon(1), 4000)
+        if self.homepage and self.homepage.window():
+            win = self.homepage.window()
+            if hasattr(win, "tray_icon") and win.tray_icon:
+                win.tray_icon.showMessage(
+                    title, message, win.tray_icon.MessageIcon(1), 4000
+                )
+
+    def _should_show_inactive_notification(self) -> bool:
+        """Only notify when the app window is not effectively visible to the user."""
+        window = None
+        if self.homepage and self.homepage.window():
+            window = self.homepage.window()
+        else:
+            window = self.window()
+
+        if window is None:
+            return True
+
+        if not window.isVisible() or window.isMinimized():
+            return True
+
+        app = QApplication.instance()
+        active_window = app.activeWindow() if app is not None else None
+
+        # When the current app is not foreground, the chat reply should notify.
+        if active_window is None:
+            return True
+
+        if active_window is window:
+            return False
+
+        return not window.isActiveWindow()
 
     def _on_notification_clicked(self):
         window = self.window()
