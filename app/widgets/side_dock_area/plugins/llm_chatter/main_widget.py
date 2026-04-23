@@ -147,6 +147,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _history_preview_session_data: Optional[dict] = None
     _history_preview_history_index: Optional[int] = None
     _history_preview_opening: bool = False
+    _window_active: bool = True
     _history_preview_messages: Optional[List[dict]] = None
     _history_preview_title: str = ""
     insertResponse = pyqtSignal(str)
@@ -176,6 +177,8 @@ class OpenAIChatToolWindow(ToolWindow):
         )
         self.homepage = homepage
         self._is_streaming = False
+        homepage.installEventFilter(self)
+        self._window_active = homepage.isActiveWindow()
         # 问题修复：初始化未定义的属性
         self._pending_permission_tool_call_id: Optional[str] = None
         self._question_tool_call_id: Optional[str] = None
@@ -2043,6 +2046,35 @@ class OpenAIChatToolWindow(ToolWindow):
                     return widget
         return None
 
+def _notify_if_inactive(self, title: str, message: str):
+        setting = Settings.get_instance()
+        if not setting.llm_notify_enabled.value:
+            return
+
+        if self.homepage:
+            visible = self.homepage.isVisible()
+            minimized = self.homepage.isMinimized()
+            active = self.homepage.isActiveWindow()
+            if visible and not minimized and active:
+                return
+
+        sound_type = setting.llm_notify_sound.value
+        if sound_type != "none":
+            QApplication.beep()
+
+        window = self.window()
+        if window and hasattr(window, "tray_icon") and window.tray_icon:
+            tray = window.tray_icon
+            tray.showMessage(title, message, tray.MessageIcon(1), 4000)
+
+    def _on_notification_clicked(self):
+        window = self.window()
+        if window:
+            window.show()
+            if window.isMinimized():
+                window.showNormal()
+            window.activateWindow()
+
     def _on_stream_finished(self, response: str):
         self._is_streaming = False
         self._tool_cancelled_by_user = False
@@ -2056,6 +2088,20 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if self.input_area:
             self.input_area.setFocus()
+
+        session = self.session_manager.get_current_session()
+        if session and session.messages:
+            last_msg = session.messages[-1] if session.messages else None
+            if last_msg and last_msg.get("role") == "assistant":
+                content = last_msg.get("content", "")
+                if isinstance(content, list):
+                    from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
+                        content_to_text,
+                    )
+
+                    content = content_to_text(content)
+                preview = content[:50] + "..." if len(content) > 50 else content
+                self._notify_if_inactive("大模型回复", preview)
 
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
@@ -2165,6 +2211,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if not isinstance(options, list):
             options = []
         self._question_floating_widget.show_question(question, options, multiple)
+        self._notify_if_inactive("需要回答问题", question[:100])
 
     def _on_question_answered(self, answer: str):
         if self._pending_permission_tool_call_id:

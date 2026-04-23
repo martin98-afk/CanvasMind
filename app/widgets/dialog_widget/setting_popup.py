@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QDialog,
     QStackedWidget,
     QPushButton,
+    QComboBox,
 )
 from qfluentwidgets import (
     StrongBodyLabel,
@@ -475,8 +476,29 @@ class SettingDialog(QDialog):
         )
         self.llmSkillsCard.skillsChanged.connect(self.onConfigChanged)
 
+        self.llmNotifyCard = SwitchSettingCard(
+            get_icon("提示"),
+            self.tr("智能体完成通知"),
+            self.tr("大模型回复或需要回答问题时，如果窗口不在前台则发送通知"),
+            configItem=self.cfg.llm_notify_enabled,
+            parent=self.llmGroup,
+        )
+        self.cfg.llm_notify_enabled.valueChanged.connect(self.onConfigChanged)
+
+        self.llmSoundCard = OptionsSettingCard(
+            self.cfg.llm_notify_sound,
+            get_icon("提示"),
+            self.tr("通知提示音"),
+            self.tr("选择收到通知时的提示音"),
+            texts=[self.tr("默认提示音"), self.tr("短提示音"), self.tr("无提示音")],
+            parent=self.llmGroup,
+        )
+        self.llmSoundCard.optionChanged.connect(self.onConfigChanged)
+
         llmGroupLayout.addWidget(self.llmProviderCard)
         llmGroupLayout.addWidget(self.llmSkillsCard)
+        llmGroupLayout.addWidget(self.llmNotifyCard)
+        llmGroupLayout.addWidget(self.llmSoundCard)
         layout.addWidget(self.llmGroup)
 
     def _setup_path_management_settings(self, layout):
@@ -1108,6 +1130,13 @@ class SettingDialog(QDialog):
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
             if not self.geometry().contains(event.globalPos()):
+                target = QApplication.widgetAt(event.globalPos())
+                if target:
+                    parent = target.parent()
+                    while parent:
+                        if parent == self or isinstance(target, QComboBox):
+                            return super().eventFilter(obj, event)
+                        parent = parent.parent()
                 self.hidePopup()
                 return False
         return super().eventFilter(obj, event)
