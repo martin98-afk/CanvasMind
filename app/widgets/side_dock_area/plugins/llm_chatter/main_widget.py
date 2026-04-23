@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import re
 import sip
+import ctypes
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -2079,6 +2081,10 @@ class OpenAIChatToolWindow(ToolWindow):
         if not window.isVisible() or window.isMinimized():
             return True
 
+        native_result = self._is_window_in_foreground_native(window)
+        if native_result is not None:
+            return not native_result
+
         app = QApplication.instance()
         active_window = app.activeWindow() if app is not None else None
 
@@ -2090,6 +2096,23 @@ class OpenAIChatToolWindow(ToolWindow):
             return False
 
         return not window.isActiveWindow()
+
+    def _is_window_in_foreground_native(self, window) -> Optional[bool]:
+        """Use the OS foreground window when available to avoid Qt focus misreads."""
+        if os.name != "nt":
+            return None
+
+        try:
+            user32 = ctypes.windll.user32
+            foreground_hwnd = user32.GetForegroundWindow()
+            if not foreground_hwnd:
+                return None
+
+            foreground_pid = ctypes.c_ulong()
+            user32.GetWindowThreadProcessId(foreground_hwnd, ctypes.byref(foreground_pid))
+            return foreground_pid.value == os.getpid()
+        except Exception:
+            return None
 
     def _on_notification_clicked(self):
         window = self.window()
