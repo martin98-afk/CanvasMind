@@ -1462,6 +1462,38 @@ class OpenAIChatToolWindow(ToolWindow):
         self._display_current_session()
         self._refresh_context_usage_indicator()
 
+    def _sync_current_assistant_card_ref(self):
+        self._current_assistant_card = None
+        for i in range(self.chat_layout.count() - 1, -1, -1):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if getattr(widget, "_is_welcome", False):
+                continue
+            if widget.role == "assistant":
+                self._current_assistant_card = widget
+                return
+
+    def _finalize_local_session_mutation(self):
+        self._invalidate_current_session_card_cache()
+        self._history_preview_messages = None
+        session = self.session_manager.get_current_session()
+        if not session or not session.messages:
+            self._clear_chat_area()
+            self.node_preview.clear_nodes()
+            self._current_assistant_card = None
+            self._show_initial_welcome()
+            self._refresh_context_usage_indicator()
+            return
+
+        self._sync_current_assistant_card_ref()
+        self._update_node_preview()
+        self._refresh_context_usage_indicator()
+        self._sync_node_preview_to_scroll()
+
     def _on_clear_shortcut(self):
         session = self.session_manager.get_current_session()
         if session:
@@ -1747,7 +1779,8 @@ class OpenAIChatToolWindow(ToolWindow):
             canonical_messages[:cutoff_index], preserve_compaction=False
         )
         self._persist_session_after_mutation()
-        self._refresh_session_view_after_mutation()
+        self._remove_cards_from_round(round_index)
+        self._finalize_local_session_mutation()
         return True
 
     def _delete_message(self, card: MessageCard):
@@ -1774,7 +1807,8 @@ class OpenAIChatToolWindow(ToolWindow):
             preserve_compaction=False,
         )
         self._persist_session_after_mutation()
-        self._refresh_session_view_after_mutation()
+        self._remove_cards_for_round(round_index)
+        self._finalize_local_session_mutation()
 
     def _undo_from_message(self, card: MessageCard):
         if card.role != "user":
