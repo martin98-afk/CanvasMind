@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QWidget, QToolTip
 
@@ -12,6 +12,7 @@ class ConversationNodePreview(QWidget):
         self._selected_index = -1
         self._hovered_index = -1
         self._visible_index = -1
+        self._progress_position = -1.0
         self._node_radius = 3
         self._spacing = 16
         self.setFixedHeight(8)
@@ -28,15 +29,32 @@ class ConversationNodePreview(QWidget):
         center_y = self.height() // 2
         total_width = (len(self._nodes) - 1) * self._spacing
         start_x = self.width() - total_width - 8
+        end_x = start_x + total_width
 
-        # 绘制连接线
         if len(self._nodes) > 1:
-            pen = QPen(QColor("#3A3A3A"))
-            pen.setWidth(1)
-            painter.setPen(pen)
-            painter.drawLine(start_x, center_y, start_x + total_width, center_y)
+            base_pen = QPen(QColor("#3A3A3A"))
+            base_pen.setWidth(1)
+            painter.setPen(base_pen)
+            painter.drawLine(start_x, center_y, end_x, center_y)
 
-        # 绘制节点
+            if self._progress_position >= 0:
+                clamped_progress = min(
+                    max(float(self._progress_position), 0.0), len(self._nodes) - 1
+                )
+                progress_x = start_x + clamped_progress * self._spacing
+
+                active_pen = QPen(QColor("#00FF7F"))
+                active_pen.setWidth(2)
+                painter.setPen(active_pen)
+                painter.drawLine(start_x, center_y, int(progress_x), center_y)
+
+                glow_pen = QPen(QColor("#63D8FF"))
+                glow_pen.setWidth(3)
+                painter.setPen(glow_pen)
+                segment_start = max(start_x, int(progress_x) - 6)
+                segment_end = min(end_x, int(progress_x) + 6)
+                painter.drawLine(segment_start, center_y, segment_end, center_y)
+
         for i in range(len(self._nodes)):
             x = start_x + i * self._spacing
 
@@ -76,7 +94,6 @@ class ConversationNodePreview(QWidget):
                 preview = self._nodes[new_hovered] or ""
                 if len(preview) > 50:
                     preview = preview[:50] + "..."
-                # 立即显示tooltip
                 QToolTip.showText(event.globalPos(), preview, self)
             else:
                 QToolTip.hideText()
@@ -99,6 +116,8 @@ class ConversationNodePreview(QWidget):
         self._nodes.clear()
         self._selected_index = -1
         self._hovered_index = -1
+        self._visible_index = -1
+        self._progress_position = -1.0
         self.update()
 
     def add_node(self, index: int, preview_text: str, timestamp: str = None):
@@ -113,11 +132,22 @@ class ConversationNodePreview(QWidget):
     def select_node(self, index: int):
         if 0 <= index < len(self._nodes):
             self._selected_index = index
-            self.update()
+        else:
+            self._selected_index = -1
+        self.update()
 
     def set_visible_node(self, index: int):
         if 0 <= index < len(self._nodes):
             self._visible_index = index
         else:
             self._visible_index = -1
+        self.update()
+
+    def set_progress_position(self, position: float):
+        if not self._nodes:
+            self._progress_position = -1.0
+        else:
+            self._progress_position = min(
+                max(float(position), 0.0), len(self._nodes) - 1
+            )
         self.update()
