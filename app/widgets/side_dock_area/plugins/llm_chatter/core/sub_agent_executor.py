@@ -177,17 +177,8 @@ class SubAgentExecutor(QThread):
         }
 
         for cn_key, value in self.llm_config.items():
-            if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示"]:
+            if cn_key in ["API_KEY", "API_URL", "模型名称", "系统提示", "启用技能"]:
                 continue
-
-            if cn_key == "是否思考":
-                status = (
-                    "enabled"
-                    if (value is True or str(value).lower() == "true")
-                    else "disabled"
-                )
-                extra_body["enable_thinking"] = status == "enabled"
-                extra_body["include_reasoning"] = status == "enabled"
 
             en_key = mapping.get(cn_key)
             if not en_key and re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", cn_key):

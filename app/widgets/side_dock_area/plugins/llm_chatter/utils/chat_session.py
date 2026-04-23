@@ -23,6 +23,7 @@ class ChatSession:
         self.task_state = TaskSessionState()
         self.compaction_state: Dict = self._default_compaction_state()
         self.compaction_cache: Dict = self._default_compaction_cache()
+        self.system_prompt: str = ""
 
     @staticmethod
     def _default_compaction_state() -> Dict:
@@ -172,6 +173,7 @@ class ChatSession:
         session.message_count = len(session.messages)
         session.set_compaction_state(data.get("compaction_state"))
         session.set_compaction_cache(data.get("compaction_cache"))
+        session.system_prompt = data.get("system_prompt", "") or ""
         task_state_data = data.get("task_state", {})
         for field_name, value in task_state_data.items():
             if hasattr(session.task_state, field_name):

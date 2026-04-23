@@ -437,6 +437,9 @@ class SettingDialog(QDialog):
         from app.widgets.card_widget.provider_setting_card import (
             ProviderListSettingCard,
         )
+        from app.widgets.card_widget.list_setting_card import (
+            SkillListSettingCard,
+        )
 
         self.llmGroup = QWidget()
         self.llmGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -460,17 +463,26 @@ class SettingDialog(QDialog):
         self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
         self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
 
-        self.llmThinkingCard = SwitchSettingCard(
-            get_icon("智能体"),
-            self.tr("启用思考过程"),
-            self.tr("是否让大模型输出思考过程"),
-            configItem=self.cfg.llm_enable_thinking,
-            parent=self.llmGroup,
+        skills_label = StrongBodyLabel(self.tr("技能启用"))
+        skills_label.setStyleSheet(
+            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
         )
-        self.cfg.llm_enable_thinking.valueChanged.connect(self.onConfigChanged)
+        llmGroupLayout.addWidget(skills_label)
+
+        self.llmSkillsCard = SkillListSettingCard(
+            icon=get_icon("智能体"),
+            configItem=self.cfg.llm_enabled_skills,
+            title=self.tr("启用技能"),
+            content=self.tr(
+                "选择要在系统提示词中注入的技能，提高大模型使用这些技能的频率"
+            ),
+            parent=self.llmGroup,
+            home=self,
+        )
+        self.llmSkillsCard.skillsChanged.connect(self.onConfigChanged)
 
         llmGroupLayout.addWidget(self.llmProviderCard)
-        llmGroupLayout.addWidget(self.llmThinkingCard)
+        llmGroupLayout.addWidget(self.llmSkillsCard)
         layout.addWidget(self.llmGroup)
 
     def _setup_path_management_settings(self, layout):

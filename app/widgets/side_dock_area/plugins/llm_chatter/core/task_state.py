@@ -246,7 +246,7 @@ class TaskSessionState:
         if not self.recent_events:
             return ""
         lines = [
-            "## Current Execution Time",
+            "## 当前时间",
             f"- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             "## Recent Execution Digest",
         ]
