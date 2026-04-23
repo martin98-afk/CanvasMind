@@ -266,6 +266,7 @@ class SkillItem(QWidget):
 
     def __init__(self, name: str, description: str, is_enabled: bool, parent=None):
         super().__init__(parent=parent)
+        self.setStyleSheet("background-color: transparent;")
         self.name = name
         self.hBoxLayout = QHBoxLayout(self)
         self.nameLabel = QLabel(name, self)
@@ -373,7 +374,7 @@ class SkillListSettingCard(ExpandSettingCard):
         self.viewLayout.setContentsMargins(8, 0, 8, 0)
 
         header_widget = QWidget(self.view)
-        header_widget.setStyleSheet("background-color: #2a2a2a;")
+        header_widget.setStyleSheet("background-color: transparent;")
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(16, 8, 16, 8)
 

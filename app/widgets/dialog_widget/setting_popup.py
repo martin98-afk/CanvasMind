@@ -446,7 +446,7 @@ class SettingDialog(QDialog):
         llmGroupLayout = QVBoxLayout(self.llmGroup)
         llmGroupLayout.setSpacing(10)
 
-        group_label = StrongBodyLabel(self.tr("大模型服务商"))
+        group_label = StrongBodyLabel(self.tr("大模型配置"))
         group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
         llmGroupLayout.addWidget(group_label)
 
@@ -462,12 +462,6 @@ class SettingDialog(QDialog):
         self.llmProviderCard.providerChanged.connect(self._on_llm_providers_changed)
         self.cfg.llm_saved_providers.valueChanged.connect(self.onConfigChanged)
         self.cfg.llm_selected_model.valueChanged.connect(self.onConfigChanged)
-
-        skills_label = StrongBodyLabel(self.tr("技能启用"))
-        skills_label.setStyleSheet(
-            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
-        )
-        llmGroupLayout.addWidget(skills_label)
 
         self.llmSkillsCard = SkillListSettingCard(
             icon=get_icon("智能体"),
@@ -1130,7 +1124,7 @@ class SettingDialog(QDialog):
         self._parent_widget = parent_widget
         self._follow_window = False
 
-        self.resize(850, 600)
+        self.resize(950, 700)
         self.move(
             (QApplication.desktop().screenGeometry().width() - self.width()) // 2,
             (QApplication.desktop().screenGeometry().height() - self.height()) // 2,
