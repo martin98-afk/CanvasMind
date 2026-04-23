@@ -290,6 +290,7 @@ class ProviderEditDialog(QDialog):
         self.setMinimumSize(480, 480)
         self.setMaximumSize(520, 800)
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint | Qt.WindowTitleHint)
+        self.setModal(True)
         self._original_info = provider_info.copy() if provider_info else {}
         self._fetch_thread = None
         self._setup_ui()

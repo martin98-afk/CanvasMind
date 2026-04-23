@@ -318,8 +318,13 @@ class LowCodeWindow(FluentWindow):
 
         # 点击托盘图标的事件（左键点击恢复窗口）
         self.tray_icon.activated.connect(self.on_tray_icon_activated)
+        self.tray_icon.messageClicked.connect(self._on_tray_message_clicked)
 
         self.tray_icon.show()
+
+    def _on_tray_message_clicked(self):
+        """点击托盘消息时触发"""
+        self.show_window()
 
     def on_tray_icon_activated(self, reason):
         """点击托盘图标时的响应"""
