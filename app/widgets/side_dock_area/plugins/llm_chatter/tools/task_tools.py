@@ -144,7 +144,7 @@ class TaskTools:
 
             with open(found_path, "r", encoding="utf-8") as f:
                 content = f.read()
-                content = content.split("---")[-1].strip()
+                content = content.split("---", 2)[-1].strip()
 
             self._loaded_skills[name] = content
             self._skill_workspaces[name] = str(found_path.parent.resolve())

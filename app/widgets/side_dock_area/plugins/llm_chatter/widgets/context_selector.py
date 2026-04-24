@@ -463,12 +463,12 @@ class ContextSelector(QWidget):
         """获取画布工具 schema（如果画布上下文已激活）"""
         if not self.has_canvas_context():
             return []
-        if hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_schema"):
+        if hasattr(self.parent.homepage, "llm_context_provider") and hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_schema"):
             return self.parent.homepage.llm_context_provider.get_canvas_tools_schema()
         return []
 
     def get_canvas_tools_executor(self):
         """获取画布工具执行器"""
-        if hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_executor"):
+        if hasattr(self.parent.homepage, "llm_context_provider") and hasattr(self.parent.homepage.llm_context_provider, "get_canvas_tools_executor"):
             return self.parent.homepage.llm_context_provider.get_canvas_tools_executor()
         return None

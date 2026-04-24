@@ -1,17 +1,126 @@
 import fnmatch
 import re
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Callable
 from pathlib import Path
 import os
 
+from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool, QRunnable
 from loguru import logger
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
+
+
+class GrepTask(QRunnable):
+    """异步 Grep 任务，在子线程中执行"""
+    
+    class Signals(QObject):
+        finished = pyqtSignal(object)  # ToolResult
+    
+    def __init__(self, pattern: str, path: str, include: str, workdir: Path, cancelled_ref: list):
+        super().__init__()
+        self.signals = self.Signals()
+        self.pattern = pattern
+        self.path = path
+        self.include = include
+        self.workdir = workdir
+        self.cancelled_ref = cancelled_ref  # [bool] 引用，可被外部修改
+    
+    def run(self):
+        """在子线程中执行 grep"""
+        try:
+            result = self._do_grep()
+            self.signals.finished.emit(result)
+        except Exception as e:
+            self.signals.finished.emit(ToolResult(False, error=f"Grep error: {str(e)}"))
+    
+    def _do_grep(self) -> ToolResult:
+        """实际的 grep 实现"""
+        try:
+            if not self.path:
+                search_root = self.workdir
+            else:
+                search_root = self._resolve_path(self.path)
+            
+            regex = re.compile(self.pattern, re.IGNORECASE)
+            results = []
+            
+            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 
+                           'dist', 'build', '.idea', '.vscode'}
+            
+            for root, dirs, files in os.walk(search_root):
+                # 定期检查取消标志
+                if self.cancelled_ref and self.cancelled_ref[0]:
+                    return ToolResult(False, error="搜索已取消")
+                
+                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+                
+                for filename in files:
+                    if self.cancelled_ref and self.cancelled_ref[0]:
+                        return ToolResult(False, error="搜索已取消")
+                    
+                    if self.include and not fnmatch.fnmatch(filename, self.include):
+                        continue
+                    
+                    file_path = Path(root) / filename
+                    try:
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            for i, line in enumerate(f, 1):
+                                if self.cancelled_ref and self.cancelled_ref[0]:
+                                    return ToolResult(False, error="搜索已取消")
+                                if regex.search(line):
+                                    try:
+                                        rel_path = file_path.relative_to(self.workdir)
+                                    except ValueError:
+                                        rel_path = file_path
+                                    results.append(f"{rel_path}:{i}: {line.strip()}")
+                                    if len(results) >= 100:
+                                        return ToolResult(True, content="\n".join(
+                                            results) + "\n\n... (Too many matches, please refine your search pattern)")
+                    except:
+                        continue
+            
+            return ToolResult(True, content="\n".join(results) if results else "No matches found.")
+        except Exception as e:
+            return ToolResult(False, error=f"Grep error: {str(e)}")
+    
+    def _resolve_path(self, path: str) -> Path:
+        if not path:
+            return self.workdir
+        try:
+            expanded = os.path.expandvars(path)
+            if expanded != path:
+                path = expanded
+            p = Path(path)
+            if p.is_absolute():
+                return p.resolve()
+            else:
+                return (self.workdir / p).resolve()
+        except (ValueError, OSError, RuntimeError) as e:
+            logger.warning(f"[GrepTask] Failed to resolve path {path}: {e}")
+            return self.workdir
 
 
 class FileTools:
     def __init__(self, workdir: Path):
         self.workdir = workdir
-
+        self._thread_pool: Optional[QThreadPool] = None
+        self._current_grep_task: Optional[GrepTask] = None
+        self._grep_cancelled = [False]  # 使用列表引用，可以在子线程中被检查
+    
+    def _get_thread_pool(self) -> QThreadPool:
+        """获取或创建线程池"""
+        if self._thread_pool is None:
+            self._thread_pool = QThreadPool.globalInstance()
+        return self._thread_pool
+    
+    def cancel(self):
+        """取消当前正在执行的操作"""
+        self._grep_cancelled[0] = True
+    
+    def reset_cancelled(self):
+        """重置取消标志"""
+        self._grep_cancelled[0] = False
+    
     def _resolve_path(self, path: str) -> Path:
         if not path:
             return self.workdir
@@ -40,7 +149,6 @@ class FileTools:
             if full_path.is_dir():
                 return self.list_directory(path)
 
-            # 使用 errors='replace' 防止因编码问题直接崩溃
             with open(full_path, "r", encoding="utf-8", errors="replace") as f:
                 all_lines = f.readlines()
 
@@ -49,7 +157,6 @@ class FileTools:
             end_idx = min(total_lines, start_idx + limit)
 
             content_slice = all_lines[start_idx:end_idx]
-            # 格式化输出：行号 | 内容
             formatted_content = "".join(
                 f"{i + start_idx + 1:6d} | {line}" for i, line in enumerate(content_slice)
             )
@@ -101,22 +208,51 @@ class FileTools:
         except Exception as e:
             return ToolResult(False, error=f"Edit error: {str(e)}")
 
-    def grep_files(self, pattern: str, path: str = ".", include: str = None) -> ToolResult:
+    def grep_files(self, pattern: str, path: str = ".", include: str = None, 
+                   callback: Optional[Callable[[ToolResult], None]] = None) -> Optional[ToolResult]:
         """
         高效搜索，排除干扰目录，限制返回行数
+        
+        如果提供 callback，则异步执行并返回 None
+        否则同步执行并返回 ToolResult
+        
+        Args:
+            pattern: 正则表达式模式
+            path: 搜索路径，默认当前目录
+            include: 文件名过滤模式
+            callback: 异步完成后的回调函数
+        
+        Returns:
+            同步执行时返回 ToolResult，异步执行时返回 None
         """
+        # 每次调用前重置取消标志
+        self._grep_cancelled[0] = False
+        
+        if callback is not None:
+            # 异步执行
+            self._run_grep_async(pattern, path, include, callback)
+            return None
+        else:
+            # 同步执行（保持向后兼容）
+            return self._run_grep_sync(pattern, path, include)
+    
+    def _run_grep_sync(self, pattern: str, path: str, include: str) -> ToolResult:
+        """同步执行 grep"""
         try:
             search_root = self._resolve_path(path)
             regex = re.compile(pattern, re.IGNORECASE)
             results = []
 
-            # 常见的排除目录，提升性能并减少 Token 浪费
-            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 'dist', 'build', '.idea', '.vscode'}
+            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 
+                           'dist', 'build', '.idea', '.vscode'}
 
             for root, dirs, files in os.walk(search_root):
                 dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
                 for filename in files:
+                    if self._grep_cancelled[0]:
+                        return ToolResult(False, error="搜索已取消")
+                    
                     if include and not fnmatch.fnmatch(filename, include):
                         continue
 
@@ -124,8 +260,13 @@ class FileTools:
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             for i, line in enumerate(f, 1):
+                                if self._grep_cancelled[0]:
+                                    return ToolResult(False, error="搜索已取消")
                                 if regex.search(line):
-                                    rel_path = file_path.relative_to(self.workdir)
+                                    try:
+                                        rel_path = file_path.relative_to(self.workdir)
+                                    except ValueError:
+                                        rel_path = file_path
                                     results.append(f"{rel_path}:{i}: {line.strip()}")
                                     if len(results) >= 100:
                                         return ToolResult(True, content="\n".join(
@@ -136,6 +277,20 @@ class FileTools:
             return ToolResult(True, content="\n".join(results) if results else "No matches found.")
         except Exception as e:
             return ToolResult(False, error=f"Grep error: {str(e)}")
+    
+    def _run_grep_async(self, pattern: str, path: str, include: str, 
+                        callback: Callable[[ToolResult], None]):
+        """异步执行 grep"""
+        task = GrepTask(pattern, path, include, self.workdir, self._grep_cancelled)
+        self._current_grep_task = task
+        
+        def on_finished(result: ToolResult):
+            self._current_grep_task = None
+            callback(result)
+        
+        task.signals.finished.connect(on_finished)
+        self._get_thread_pool().start(task)
+        logger.info(f"[FileTools] Started async grep task, pattern={pattern}")
 
     def list_directory(self, path: str = ".") -> ToolResult:
         """
@@ -188,15 +343,13 @@ class FileTools:
         """
         try:
             search_path = self._resolve_path(path)
-            # rglob 进行递归查找
             matches = list(search_path.rglob(pattern))
 
             if not matches:
                 return ToolResult(True, content="No files matched the pattern.")
 
-            # 仅返回文件，并转化为相对工作目录的路径
             results = []
-            for m in matches[:100]:  # 限制返回数量
+            for m in matches[:100]:
                 if m.is_file():
                     try:
                         results.append(str(m.relative_to(self.workdir)))

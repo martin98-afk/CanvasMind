@@ -902,6 +902,9 @@ class OpenAIChatWorker(QThread):
         if not self._current_tool_calls or not self.tool_executor:
             return []
 
+        # 重置工具执行取消标志，开始新的执行周期
+        self._tool_execution_cancelled = False
+        
         results = []
         for tc in self._current_tool_calls:
             if self._is_cancelled or self._tool_execution_cancelled:
@@ -1029,7 +1032,11 @@ class OpenAIChatWorker(QThread):
                         continue
 
             try:
-                result = self.tool_executor.execute(tool_name, arguments)
+                # 传递取消标志引用，以便异步工具可以检测取消
+                cancelled_ref = [self._is_cancelled or self._tool_execution_cancelled]
+                result = self.tool_executor.execute(tool_name, arguments, cancelled_ref)
+                # 更新取消标志引用
+                cancelled_ref[0] = self._is_cancelled or self._tool_execution_cancelled
             except Exception as e:
                 logger.error(f"[Tool] Tool '{tool_name}' execution failed: {e}")
                 result = None
