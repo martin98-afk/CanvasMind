@@ -17,6 +17,10 @@ class PropertyToolWindow(ToolWindow):
     CATEGORIES = [DockCategory.CANVAS]
     display_order = 10
 
+    @property
+    def _allowed_update(self):
+        return self.property_panel._allowed_update
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

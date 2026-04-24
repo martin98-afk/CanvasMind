@@ -553,12 +553,15 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "patch",
-                "description": "对文件应用补丁",
+                "description": "通过 unified diff 格式对文件进行精确修改。支持追加行、删除行、替换行、在指定位置插入行等多处修改。适用于需要同时修改文件多个位置的场景。输入标准的 unified diff 格式（包含 @@ -start +start @@ 行号标记）。**推荐优先使用 patch**，比 write/edit 更安全可靠。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "path": {"type": "string", "description": "文件路径"},
-                        "patch_content": {"type": "string", "description": "补丁内容"},
+                        "patch_content": {
+                            "type": "string",
+                            "description": "Unified diff 格式补丁内容。格式：\n--- filename\n+++ filename\n@@ -起始行,行数 +起始行,行数 @@\n[空格]上下文行（不变）\n[-]要删除的行\n[+]要添加的新行"
+                        },
                     },
                     "required": ["path", "patch_content"],
                 },

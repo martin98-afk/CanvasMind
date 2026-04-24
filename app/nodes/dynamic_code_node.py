@@ -275,8 +275,10 @@ def create_dynamic_code_node(parent_window=None):
                                 )
                         except Exception:
                             continue
-            if self.selected():
-                self._property_update_timer.start(500)
+            # 加载期间禁止触发属性面板更新
+            if self.selected() and self.parent_window and hasattr(self.parent_window, 'property_panel'):
+                if self.parent_window.property_panel._allowed_update:
+                    self._property_update_timer.start(500)
 
         def _sync_outputs_ports(self):
             output_configs = self.get_property("output_ports") or []
@@ -327,8 +329,10 @@ def create_dynamic_code_node(parent_window=None):
                         except Exception:
                             continue
 
-            if self.selected():
-                self._property_update_timer.start(500)
+            # 加载期间禁止触发属性面板更新
+            if self.selected() and self.parent_window and hasattr(self.parent_window, 'property_panel'):
+                if self.parent_window.property_panel._allowed_update:
+                    self._property_update_timer.start(500)
 
         def _sync_names_to_form(self, ports, name_mapping, type="input"):
             updated_ports = []

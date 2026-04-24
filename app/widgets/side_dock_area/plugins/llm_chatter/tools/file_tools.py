@@ -106,6 +106,8 @@ class FileTools:
         self._thread_pool: Optional[QThreadPool] = None
         self._current_grep_task: Optional[GrepTask] = None
         self._grep_cancelled = [False]  # 使用列表引用，可以在子线程中被检查
+        # 文件修改时间追踪：{绝对路径: 修改时间戳}
+        self._file_mtimes: Dict[str, float] = {}
     
     def _get_thread_pool(self) -> QThreadPool:
         """获取或创建线程池"""
@@ -137,9 +139,37 @@ class FileTools:
             logger.warning(f"[FileTools] Failed to resolve path {path}: {e}")
             return self.workdir
 
+    def _check_file_modified(self, full_path: Path) -> Optional[ToolResult]:
+        """
+        检查文件是否被外部修改
+        如果文件之前被读取过，且当前修改时间与记录不一致，返回警告
+        """
+        path_key = str(full_path)
+        if path_key not in self._file_mtimes:
+            # 文件没有被读取过，不检查
+            return None
+
+        try:
+            current_mtime = full_path.stat().st_mtime
+            recorded_mtime = self._file_mtimes[path_key]
+
+            if current_mtime != recorded_mtime:
+                return ToolResult(
+                    False,
+                    error=f"⚠️ 文件已被外部修改: {full_path.name}\n\n"
+                          f"该文件在你读取后被其他人/进程修改过。\n"
+                          f"你的编辑可能会覆盖他人的更改。\n\n"
+                          f"建议: 请先重新读取文件(Read)确认最新内容后再进行编辑。"
+                )
+        except OSError:
+            pass
+
+        return None
+
     def read_file(self, path: str, offset: int = 1, limit: int = 500) -> ToolResult:
         """
         读取文件，返回带行号的内容，方便 AI 定位
+        读取时记录文件的修改时间，用于后续编辑时检测文件是否被外部修改
         """
         try:
             full_path = self._resolve_path(path)
@@ -148,6 +178,9 @@ class FileTools:
 
             if full_path.is_dir():
                 return self.list_directory(path)
+
+            # 记录文件修改时间
+            self._file_mtimes[str(full_path)] = full_path.stat().st_mtime
 
             with open(full_path, "r", encoding="utf-8", errors="replace") as f:
                 all_lines = f.readlines()
@@ -169,13 +202,23 @@ class FileTools:
     def write_file(self, path: str, content: str) -> ToolResult:
         """
         写入文件，自动创建中间目录
+        写入前检查文件是否被外部修改
         """
         try:
             full_path = self._resolve_path(path)
+            
+            # 检查文件是否被外部修改
+            check_result = self._check_file_modified(full_path)
+            if check_result:
+                return check_result
+            
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(content if content is not None else "")
+
+            # 更新修改时间记录
+            self._file_mtimes[str(full_path)] = full_path.stat().st_mtime
 
             return ToolResult(True, content=f"Successfully written to {path}")
         except Exception as e:
@@ -184,11 +227,17 @@ class FileTools:
     def edit_file(self, path: str, oldString: str, newString: str, replaceAll: bool = False) -> ToolResult:
         """
         精确文本替换。包含唯一性校验，防止 AI 误改多处代码。
+        写入前检查文件是否被外部修改
         """
         try:
             full_path = self._resolve_path(path)
             if not full_path.exists():
                 return ToolResult(False, error=f"File not found: {path}")
+
+            # 检查文件是否被外部修改
+            check_result = self._check_file_modified(full_path)
+            if check_result:
+                return check_result
 
             content = full_path.read_text(encoding="utf-8", errors="replace")
 
@@ -203,6 +252,9 @@ class FileTools:
 
             new_content = content.replace(oldString, newString, -1 if replaceAll else 1)
             full_path.write_text(new_content, encoding="utf-8")
+
+            # 更新修改时间记录
+            self._file_mtimes[str(full_path)] = full_path.stat().st_mtime
 
             return ToolResult(True, content=f"Successfully edited {path}.")
         except Exception as e:
@@ -362,40 +414,133 @@ class FileTools:
 
     def apply_patch(self, path: str, patch_content: str) -> ToolResult:
         try:
-            path = self._resolve_path(path)
-            if not path.exists():
+            full_path = self._resolve_path(path)
+            if not full_path.exists():
                 return ToolResult(False, error=f"File not found: {path}")
 
-            with open(path, "r", encoding="utf-8") as f:
-                original = f.read()
+            # 检查文件是否被外部修改
+            check_result = self._check_file_modified(full_path)
+            if check_result:
+                return check_result
 
-            patched = original
+            with open(full_path, "r", encoding="utf-8") as f:
+                original_lines = f.read().splitlines()
+
             patch_lines = patch_content.strip().split("\n")
-            in_hunk = False
-            hunk_lines = []
+            hunks = self._parse_unified_diff(patch_lines)
 
-            for line in patch_lines:
-                if line.startswith("@@"):
-                    in_hunk = True
-                    continue
-                if in_hunk and line.startswith(("+", "-", " ")):
-                    hunk_lines.append(line)
+            if not hunks:
+                return ToolResult(False, error="No valid hunk found in patch")
 
-            if hunk_lines:
-                for hunk_line in hunk_lines:
-                    if hunk_line.startswith("+") and not hunk_line.startswith("+++"):
-                        patched += hunk_line[1:] + "\n"
-                    elif hunk_line.startswith("-") and not hunk_line.startswith("---"):
-                        old_line = hunk_line[1:]
-                        if old_line in patched:
-                            patched = patched.replace(old_line, "", 1)
+            result = list(original_lines)
+            for hunk in hunks:
+                content = hunk['content']
+                old_start = hunk['old_start']
 
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(patched)
+                # 定位 hunk 在 result 中的起始位置
+                hunk_start_pos = old_start - 1
+
+                # 验证位置
+                first_ctx_idx = -1
+                for i, (typ, text) in enumerate(content):
+                    if typ == ' ':
+                        first_ctx_idx = i
+                        break
+
+                if first_ctx_idx >= 0 and hunk_start_pos + first_ctx_idx < len(result):
+                    expected_text = content[first_ctx_idx][1]
+                    if result[hunk_start_pos + first_ctx_idx] != expected_text:
+                        for i in range(len(result)):
+                            if result[i] == expected_text:
+                                hunk_start_pos = i - first_ctx_idx
+                                break
+
+                # 收集删除和添加
+                removes = []
+                adds = []
+
+                for i, (typ, text) in enumerate(content):
+                    if typ == '-':
+                        result_pos = hunk_start_pos + i
+                        if 0 <= result_pos < len(result) and result[result_pos] == text:
+                            removes.append(result_pos)
+                    elif typ == '+':
+                        adds.append((i, text))
+
+                # 删除（从后往前）
+                for pos in sorted(set(removes), reverse=True):
+                    del result[pos]
+
+                # 计算插入位置
+                if removes:
+                    insert_pos = min(removes)
+                elif adds:
+                    first_add_idx = adds[0][0]
+                    insert_pos = hunk_start_pos + first_add_idx
+                    insert_pos -= len(removes)
+                else:
+                    insert_pos = hunk_start_pos
+
+                # 插入（从后往前）
+                for idx, text in sorted(adds, key=lambda x: -x[0]):
+                    result.insert(insert_pos, text)
+
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(result) + "\n")
+
+            # 更新修改时间记录
+            self._file_mtimes[str(full_path)] = full_path.stat().st_mtime
 
             return ToolResult(True, content=f"Patch applied: {path}")
         except Exception as e:
             return ToolResult(False, error=f"Patch error: {str(e)}")
+
+    def _parse_unified_diff(self, patch_lines: list) -> list:
+        """解析 unified diff 格式，返回 hunks 列表"""
+        hunks = []
+        i = 0
+
+        # 跳过头部
+        while i < len(patch_lines) and not patch_lines[i].startswith("@@"):
+            i += 1
+
+        while i < len(patch_lines):
+            line = patch_lines[i]
+            if not line.startswith("@@"):
+                i += 1
+                continue
+
+            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+            if not m:
+                i += 1
+                continue
+
+            old_start = int(m.group(1))
+            hunk_content = []
+
+            i += 1
+            while i < len(patch_lines):
+                pl = patch_lines[i]
+                if pl.startswith("@@") or (not pl and not pl.startswith((' ', '+', '-'))):
+                    break
+
+                if pl.startswith("+") and not pl.startswith("+++"):
+                    hunk_content.append(('+', pl[1:]))
+                elif pl.startswith("-") and not pl.startswith("---"):
+                    hunk_content.append(('-', pl[1:]))
+                elif pl.startswith(" "):
+                    hunk_content.append((' ', pl[1:]))
+                elif pl:
+                    break
+                i += 1
+
+            if hunk_content:
+                hunks.append({
+                    'old_start': old_start,
+                    'content': hunk_content
+                })
+
+        return hunks
 
     def diff_files(
         self, file1: str, file2: str = None, use_git: bool = False
