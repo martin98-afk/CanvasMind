@@ -1136,7 +1136,10 @@ class SettingDialog(QDialog):
                     while parent:
                         if parent == self or isinstance(target, QComboBox):
                             return super().eventFilter(obj, event)
-                        parent = parent.parent()
+                        try:
+                            parent = parent.parent()
+                        except Exception:
+                            pass
                 self.hidePopup()
                 return False
         return super().eventFilter(obj, event)

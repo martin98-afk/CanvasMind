@@ -351,15 +351,16 @@ Use the tools available to you based on your permissions.
     def get_enabled_skills_content(self, enabled_skills: List[str]) -> str:
         if not enabled_skills:
             return ""
-
-        skills_dir = Path(__file__).parent.parent / "skills"
-        opencode_skills_dir = Path(__file__).parent.parent / ".opencode" / "skills"
-
+        skills_dirs = [
+            Path(__file__).parent.parent / "skills",
+            Path.home() / ".agents" / "skills",
+            Path("canvas_files") / "skills",
+        ]
         result_parts = [
             "\n\n## 偏好技能\n以下是部分用户偏好的智能体技能，如果以下技能不能满足用户需求，可以使用 `list_skills` 技能加载完整技能列表：\n"
         ]
 
-        for skills_base in [skills_dir, opencode_skills_dir]:
+        for skills_base in skills_dirs:
             if not skills_base.exists():
                 continue
 
