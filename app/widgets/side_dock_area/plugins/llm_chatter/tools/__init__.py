@@ -11,7 +11,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.tools.diagnostics_tools impo
     DiagnosticsTools,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.file_tools import FileTools
-from app.widgets.side_dock_area.plugins.llm_chatter.tools.git_tools import GitTools
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.task_tools import TaskTools
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import (
@@ -40,7 +39,6 @@ class BuiltinTools(QObject):
                 self.workdir = Path.cwd()
 
         self._file_tools = FileTools(self.workdir)
-        self._git_tools = GitTools(self.workdir)
         self._web_tools = WebTools(self.workdir)
         self._terminal_tools = TerminalTools(self.workdir)
         self._task_tools = TaskTools(self.workdir)
@@ -61,10 +59,6 @@ class BuiltinTools(QObject):
     @property
     def file_tools(self):
         return self._file_tools
-
-    @property
-    def git_tools(self):
-        return self._git_tools
 
     @property
     def web_tools(self):
@@ -153,15 +147,6 @@ class BuiltinTools(QObject):
 
     def run_verify(self, command: str = "", timeout: int = 120):
         return self._terminal_tools.run_verify(command, timeout)
-
-    def git_status(self, path: str = None):
-        return self._git_tools.git_status(path)
-
-    def git_log(self, path: str = None, max_count: int = 10):
-        return self._git_tools.git_log(path, max_count)
-
-    def git_diff(self, ref1: str = None, ref2: str = None, path: str = None):
-        return self._git_tools.git_diff(ref1, ref2, path)
 
     def fetch_web(self, url: str, format: str = "markdown", max_chars: int = 26000, callback=None, cancelled_ref: list = None):
         return self._web_tools.fetch_web(url, format, max_chars, callback, cancelled_ref)

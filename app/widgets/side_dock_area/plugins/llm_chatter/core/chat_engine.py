@@ -10,13 +10,11 @@ from typing import Dict, List, Optional, Any, Callable
 from openai import OpenAI
 
 from app.utils.config import Settings
+from app.widgets.side_dock_area.plugins.llm_chatter.tools import get_builtin_tools_schema
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.worker import OpenAIChatWorker
 from app.widgets.side_dock_area.plugins.llm_chatter.core.task_state import (
     CODING_STAGES,
     get_stage_prompt as resolve_stage_prompt,
-)
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-    get_builtin_tools_schema,
 )
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.chat_session import (
     ChatSession,
@@ -1082,6 +1080,8 @@ class ChatEngine:
         self._emit("error", error)
 
     def stop(self) -> List[Dict]:
+        from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import BashProcessManager
+        
         worker = self._current_worker
         self._current_worker = None
         self._is_streaming = False
@@ -1097,6 +1097,9 @@ class ChatEngine:
             worker.cancel()
             if worker.isRunning():
                 worker.quit()
+        
+        # 强制终止所有正在运行的 bash 进程
+        BashProcessManager.get_instance().terminate_all(force=True)
 
         return interrupted_messages
 

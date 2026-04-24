@@ -2,16 +2,10 @@
 """
 工具执行器模块 - 统一处理各种工具调用
 """
-
-import json
-from typing import Any, Dict, Optional, Callable
 from loguru import logger
+from typing import Dict, Optional, Callable
 
-from PyQt5.QtCore import QEventLoop, QTimer
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-    BuiltinTools,
-    ToolResult,
-)
+from app.widgets.side_dock_area.plugins.llm_chatter.tools import BuiltinTools, ToolResult
 
 
 class ToolExecutor:
@@ -92,8 +86,17 @@ class ToolExecutor:
         Args:
             tool_name: 要取消的工具名称，None 表示取消所有
         """
-        if self._builtin_tools and self._builtin_tools._file_tools:
-            self._builtin_tools._file_tools.cancel()
+        from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import BashProcessManager
+        
+        if self._builtin_tools:
+            # 取消文件工具（如 grep）
+            if self._builtin_tools._file_tools:
+                self._builtin_tools._file_tools.cancel()
+            
+            # 取消 bash 进程
+            if tool_name is None or tool_name == "bash":
+                BashProcessManager.get_instance().terminate_all(force=True)
+        
         logger.info(f"[ToolExecutor] Tool cancelled: {tool_name or 'all'}")
 
     def register_custom_tool(self, name: str, handler: Callable):
