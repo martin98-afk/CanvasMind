@@ -426,7 +426,15 @@ class FileTools:
             with open(full_path, "r", encoding="utf-8") as f:
                 original_lines = f.read().splitlines()
 
-            patch_lines = patch_content.strip().split("\n")
+            # 处理转义字符：如果 \\n 多于真正的换行符，说明 LLM 生成的内容被双重转义
+            processed_content = patch_content.strip()
+            real_newlines = processed_content.count('\n')
+            escaped_newlines = processed_content.count('\\n')
+            if escaped_newlines > real_newlines:
+                # 大部分换行符是转义的，需要转换
+                processed_content = processed_content.replace('\\n', '\n')
+
+            patch_lines = processed_content.split('\n')
             hunks = self._parse_unified_diff(patch_lines)
 
             if not hunks:

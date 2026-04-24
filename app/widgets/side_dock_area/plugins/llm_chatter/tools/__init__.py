@@ -147,8 +147,9 @@ class BuiltinTools(QObject):
             self.fileModified.emit(str(resolved_path))
         return result
 
-    def execute_bash(self, command: str, timeout: int = 120):
-        return self._terminal_tools.execute_bash(command, timeout)
+    def execute_bash(self, command: str, timeout: int = 120,
+                    callback=None, cancelled_ref: list = None):
+        return self._terminal_tools.execute_bash(command, timeout, callback, cancelled_ref)
 
     def run_verify(self, command: str = "", timeout: int = 120):
         return self._terminal_tools.run_verify(command, timeout)
@@ -162,11 +163,11 @@ class BuiltinTools(QObject):
     def git_diff(self, ref1: str = None, ref2: str = None, path: str = None):
         return self._git_tools.git_diff(ref1, ref2, path)
 
-    def fetch_web(self, url: str, format: str = "markdown"):
-        return self._web_tools.fetch_web(url, format)
+    def fetch_web(self, url: str, format: str = "markdown", max_chars: int = 26000, callback=None, cancelled_ref: list = None):
+        return self._web_tools.fetch_web(url, format, max_chars, callback, cancelled_ref)
 
-    def search_web(self, query: str, num_results: int = 10):
-        return self._web_tools.search_web(query, num_results)
+    def search_web(self, query: str, num_results: int = 10, callback=None, cancelled_ref: list = None):
+        return self._web_tools.search_web(query, num_results, callback, cancelled_ref)
 
     def todo_write(self, todos: List[Dict]):
         result = self._task_tools.todo_write(todos)

@@ -76,16 +76,6 @@ class TopicSummaryTask(QRunnable):
                 return
             for msg in user_only_msgs:
                 content = msg.get("content", "")
-                if isinstance(content, list):
-                    texts = [
-                        item.get("text", "")
-                        for item in content
-                        if item.get("type") == "text"
-                    ]
-                    content = "\n".join(texts)
-
-                content = self._extract_content_without_think(content)
-
                 summary_text += f"用户：{content[:500]}\n"
 
             existing_memories_text = ""
@@ -113,19 +103,19 @@ class TopicSummaryTask(QRunnable):
             if self.previous_summary:
                 prompt = (
                     "你是一个对话标题和长期记忆辅助助手。\n"
-                    "请为用户对话生成一个简短标题。\n\n"
+                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
                     "【标题要求】\n"
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程\n"
-                    "- 不超过20字\n\n"
+                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
+                    "- 不超过15字\n\n"
                     "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
-                    f"最新对话内容：\n{summary_text}\n\n"
+                    f"最新用户对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
+                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false, \n'
                     '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
                     f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
@@ -136,18 +126,18 @@ class TopicSummaryTask(QRunnable):
             else:
                 prompt = (
                     "你是一个对话标题生成助手。\n"
-                    "请为用户对话生成一个简短标题。\n\n"
+                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
                     "【标题要求】\n"
                     '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程\n"
-                    "- 不超过20字\n\n"
+                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
+                    "- 不超过15字\n\n"
                     "【已有的长期记忆】：\n"
                     f"{existing_memories_text}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
                     "请严格按以下JSON格式输出，不要有其他内容：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的标题（如：生成一个关于xxx的ppt）",\n'
+                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
                     '  "should_update_memory": true/false, \n'
                     '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
                     f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'

@@ -55,5 +55,12 @@ def compile():
         print(result.stderr)
 
 
+def get_translator():
+    """获取翻译器实例"""
+    from PyQt5.QtCore import QTranslator, QLocale
+    translator = QTranslator()
+    return translator
+
+
 if __name__ == "__main__":
     compile()
