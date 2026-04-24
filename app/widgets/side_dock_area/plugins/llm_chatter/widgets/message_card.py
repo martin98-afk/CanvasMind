@@ -109,6 +109,17 @@ def _unwrap_code_blocks_with_context_links(md_text: str) -> str:
     return pattern.sub(replacer, md_text)
 
 
+def _strip_code_blocks(text: str) -> str:
+    """移除 markdown 代码块标记，仅保留纯文本内容"""
+    # 处理 ```lang\ncode\n``` 格式
+    text = re.sub(r"```[\w]*\n", "", text)
+    # 处理 ```code\n``` 格式
+    text = re.sub(r"```\n", "", text)
+    # 处理 ``` 结尾
+    text = re.sub(r"```", "", text)
+    return text
+
+
 # ======== 核心逻辑：保留你的原始代码块样式 ========
 def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
     def replacer(match):
@@ -233,6 +244,9 @@ def _render_think_block(content: str, completed: bool = True) -> str:
     block_key = "think-" + hashlib.sha1(block_seed.encode("utf-8")).hexdigest()[:12]
     expanded_attr = "true" if expanded else "false"
     body_style = ' style="height:auto; opacity:1;"' if expanded else ""
+
+    # 思考内容不需要渲染代码编辑框，移除代码块标记
+    content = _strip_code_blocks(content)
     content = escape(content)
 
     return f"""<div class="cm-collapsible think-block" data-block-key="{block_key}" data-expanded="{expanded_attr}">

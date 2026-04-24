@@ -335,6 +335,7 @@ class SkillListSettingCard(ExpandSettingCard):
         ]
 
         self.all_skills = []
+        seen_names = set()  # 按路径优先级去重，保留首次出现的同名技能
         for skills_dir in skills_dirs:
             if not skills_dir.exists():
                 continue
@@ -364,6 +365,11 @@ class SkillListSettingCard(ExpandSettingCard):
                                 description = meta.get("description", "")
                         except Exception:
                             pass
+
+                    # 按优先级去重，保留 index 最小的同名技能
+                    if name in seen_names:
+                        continue
+                    seen_names.add(name)
 
                     self.all_skills.append({"name": name, "description": description})
                 except Exception:
@@ -413,10 +419,13 @@ class SkillListSettingCard(ExpandSettingCard):
 
     def _refresh_skills(self):
         self._discover_skills()
-        while self.viewLayout.count() > 2:
-            item = self.viewLayout.takeAt(2)
-            if item.widget():
-                item.widget().deleteLater()
+        # 从后往前遍历，只移除 SkillItem 类型的 widgets
+        for i in reversed(range(self.viewLayout.count())):
+            item = self.viewLayout.itemAt(i)
+            widget = item.widget()
+            if isinstance(widget, SkillItem):
+                self.viewLayout.removeItem(item)
+                widget.deleteLater()
         for skill in self.all_skills:
             self._add_skill_item(skill["name"], skill["description"])
         self._adjustViewSize()
