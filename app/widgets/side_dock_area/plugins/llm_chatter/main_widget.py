@@ -1315,6 +1315,7 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if not session:
             return False
+
         canonical_messages = consolidate_messages(session.messages)
         round_ranges = get_user_round_ranges(canonical_messages)
         if round_index < 0 or round_index >= len(round_ranges):
@@ -1323,15 +1324,12 @@ class OpenAIChatToolWindow(ToolWindow):
         start_idx, end_idx = round_ranges[round_index]
         cards_to_remove = end_idx - start_idx
 
-        rendered_cards = self._get_rendered_message_cards()
-        user_card_count = sum(1 for c in rendered_cards if c.role == "user")
-        if round_index >= user_card_count:
-            return False
-
         user_card_idx = 0
         removed = 0
         removing = False
         widgets_to_remove = []
+
+        # 遍历 chat_layout，直接统计可见的 user card 数量来确定 round_index 对应的位置
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
             if not item or not item.widget():
@@ -1359,15 +1357,33 @@ class OpenAIChatToolWindow(ToolWindow):
             if removed >= cards_to_remove:
                 break
 
-        for widget in widgets_to_remove:
-            for i in range(self.chat_layout.count()):
-                item = self.chat_layout.itemAt(i)
-                if item and item.widget() is widget:
-                    self.chat_layout.removeItem(item)
-                    break
-            widget.deleteLater()
+        logger.info(f"[DELETE] Cards to remove: {len(widgets_to_remove)}, cards_to_remove: {cards_to_remove}")
 
-        return True
+        # 实际执行删除
+        for widget in widgets_to_remove:
+            try:
+                if not self._is_widget_alive(widget):
+                    logger.warning(f"[DELETE] Widget already deleted: {widget}")
+                    continue
+
+                # 先从 layout 移除
+                layout_removed = False
+                for i in range(self.chat_layout.count()):
+                    item = self.chat_layout.itemAt(i)
+                    if item and item.widget() is widget:
+                        self.chat_layout.removeItem(item)
+                        layout_removed = True
+                        break
+
+                if layout_removed:
+                    widget.deleteLater()
+                    logger.info(f"[DELETE] Widget deleted: role={widget.role}")
+                else:
+                    logger.warning(f"[DELETE] Widget not found in layout: role={widget.role}")
+            except Exception as e:
+                logger.error(f"[DELETE] Error deleting widget: {e}")
+
+        return removed > 0
 
     def _remove_cards_from_round(self, round_index: int) -> bool:
         rendered_cards = self._get_rendered_message_cards()
@@ -1801,18 +1817,33 @@ class OpenAIChatToolWindow(ToolWindow):
         if not session:
             return
 
+        logger.info(f"[DELETE] Starting deletion: round_index={round_index}")
+
+        # Step 1: 先删除UI卡片，确保用户立即看到效果
+        ui_deleted = self._remove_cards_for_round(round_index)
+        logger.info(f"[DELETE] UI cards deleted: {ui_deleted}")
+
+        # Step 2: 更新 session 数据
         canonical_messages = consolidate_messages(session.messages)
         round_ranges = get_user_round_ranges(canonical_messages)
         if round_index < 0 or round_index >= len(round_ranges):
+            logger.warning(f"[DELETE] Invalid round_index: {round_index}")
             return
 
         start_idx, end_idx = round_ranges[round_index]
-        session.set_messages(
-            canonical_messages[:start_idx] + canonical_messages[end_idx:],
-            preserve_compaction=False,
-        )
-        self._persist_session_after_mutation()
-        self._remove_cards_for_round(round_index)
+        new_messages = canonical_messages[:start_idx] + canonical_messages[end_idx:]
+        session.set_messages(new_messages, preserve_compaction=False)
+
+        logger.info(f"[DELETE] Session messages updated: {len(canonical_messages)} -> {len(new_messages)}")
+
+        # Step 3: 保存session数据
+        try:
+            self._persist_session_after_mutation()
+            logger.info("[DELETE] Session persisted successfully")
+        except Exception as e:
+            logger.error(f"[DELETE] Failed to persist session: {e}")
+
+        # Step 4: 收尾处理
         self._finalize_local_session_mutation()
 
     def _undo_from_message(self, card: MessageCard):
