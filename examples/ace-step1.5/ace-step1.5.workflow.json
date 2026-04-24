@@ -8,7 +8,7 @@
       "pipe_style": 2
     },
     "nodes": {
-      "0x307b31e00": {
+      "0x19511a24830": {
         "type_": "dynamic.StatusDynamicNode_c040b41a-e992-4002-840c-47ef8e91c9e2",
         "icon": ":/icons/同心圆.svg",
         "name": "空音频潜空间",
@@ -65,7 +65,7 @@
         ],
         "output_values": {}
       },
-      "0x307b30180": {
+      "0x194ec5e8b90": {
         "type_": "dynamic.StatusDynamicNode_b4e3a0b6-7a51-4f9c-b731-a11ef72debfe",
         "icon": ":/icons/同心圆.svg",
         "name": "ComfyUI全局配置",
@@ -107,9 +107,19 @@
           "_version": "latest",
           "comfy_extension": "D:/work/ComfyUI-master",
           "vram_mode": "normal",
+          "_vram_mode_choices": [
+            "low",
+            "normal",
+            "high"
+          ],
           "use_fp8": false,
           "vae_tiling": false,
           "preview_method": "latent2rgb",
+          "_preview_method_choices": [
+            "none",
+            "latent2rgb",
+            "taesd"
+          ],
           "_column_select": {},
           "version": "latest",
           "_zmq_ports": "60776/60777",
@@ -119,7 +129,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x307b32190": {
+      "0x194ec5e8e10": {
         "type_": "dynamic.StatusDynamicNode_fc910304-663e-42ca-954c-cd173489b424",
         "icon": ":/icons/同心圆.svg",
         "name": "Checkpoint加载器 1",
@@ -184,7 +194,7 @@
         ],
         "output_values": {}
       },
-      "0x307b32520": {
+      "0x194ec567230": {
         "type_": "dynamic.StatusDynamicNode_9cd7adc6-761c-4531-bdfd-79bf09efd6cf",
         "icon": ":/icons/同心圆.svg",
         "name": "AceStep音频文本编码",
@@ -247,7 +257,7 @@
         ],
         "output_values": {}
       },
-      "0x307b32fd0": {
+      "0x194ec5675c0": {
         "type_": "dynamic.StatusDynamicNode_52b8b645-c29b-46f8-9f34-053b10baa3e0",
         "icon": ":/icons/同心圆.svg",
         "name": "采样算法(SD3)",
@@ -308,7 +318,7 @@
         ],
         "output_values": {}
       },
-      "0x307b302b0": {
+      "0x194ec567490": {
         "type_": "dynamic.StatusDynamicNode_40fb1a67-1330-4089-a32b-fe40d73e3efe",
         "icon": ":/icons/同心圆.svg",
         "name": "条件零化",
@@ -368,7 +378,7 @@
         ],
         "output_values": {}
       },
-      "0x307b308a0": {
+      "0x194ec5668b0": {
         "type_": "dynamic.StatusDynamicNode_0aef64b4-0e57-4756-8d8a-10fcbf49724d",
         "icon": ":/icons/同心圆.svg",
         "name": "K采样器",
@@ -412,7 +422,21 @@
           "steps": 50,
           "cfg": 5.0,
           "sampler_name": "euler",
+          "_sampler_name_choices": [
+            "uni_pc",
+            "euler",
+            "euler_ancestral",
+            "dpmpp_2m",
+            "dpmpp_sde",
+            "lms"
+          ],
           "scheduler": "simple",
+          "_scheduler_choices": [
+            "simple",
+            "normal",
+            "exponential",
+            "karras"
+          ],
           "denoise": 1.0,
           "_column_select": {},
           "version": "latest",
@@ -449,7 +473,7 @@
         ],
         "output_values": {}
       },
-      "0x307b322c0": {
+      "0x194ec567ce0": {
         "type_": "dynamic.StatusDynamicNode_83c17a8b-f1e5-4320-ae25-a2f3a3057e7e",
         "icon": ":/icons/同心圆.svg",
         "name": "VAE音频解码",
@@ -514,7 +538,7 @@
         ],
         "output_values": {}
       },
-      "0x307b32060": {
+      "0x194ec567e10": {
         "type_": "dynamic.StatusDynamicNode_2cc9f95b-0bf7-426f-a77b-7d8b5ce964ea",
         "icon": ":/icons/同心圆.svg",
         "name": "音频保存",
@@ -542,7 +566,7 @@
         "width": 0.0,
         "height": 0.0,
         "pos": [
-          2040.2271599595572,
+          2081.598042456797,
           -576.5952098612233
         ],
         "layout_direction": 0,
@@ -555,7 +579,21 @@
           "_data_select": {},
           "_version": "latest",
           "format": "wav",
+          "_format_choices": [
+            "wav",
+            "flac",
+            "mp3",
+            "opus"
+          ],
           "quality": "128k",
+          "_quality_choices": [
+            "64k",
+            "96k",
+            "128k",
+            "192k",
+            "320k",
+            "V0"
+          ],
           "_column_select": {},
           "version": "latest",
           "FULL_PATH": "comfyui节点/音频基础节点/音频保存"
@@ -576,7 +614,7 @@
         ],
         "output_values": {}
       },
-      "0x307b32650": {
+      "0x194ec567bb0": {
         "type_": "dynamic.StatusDynamicNode_9ddd9beb-298f-4f4f-bd17-3324b3fbcb6f",
         "icon": ":/icons/同心圆.svg",
         "name": "JSON筛选",
@@ -637,7 +675,7 @@
         ],
         "output_values": {}
       },
-      "0x307b310f0": {
+      "0x194ec5676f0": {
         "type_": "visualize.MediaNode",
         "icon": ":/icons/多媒体.svg",
         "name": "多媒体展示节点",
@@ -676,7 +714,7 @@
           "_collapsed": false,
           "_exec_mode": "subprocess",
           "_data_select": {},
-          "media_display": "",
+          "media_display": null,
           "_column_select": {},
           "FULL_PATH": "可视化/多媒体展示节点"
         },
@@ -690,7 +728,7 @@
         "output_ports": [],
         "output_values": {}
       },
-      "0x307b30b00": {
+      "0x194ec567820": {
         "type_": "dynamic.StatusDynamicNode_f8ea88eb-05cf-4edb-80fa-a9c6b4c2dad3",
         "icon": ":/icons/同心圆.svg",
         "name": "音频裁剪",
@@ -752,7 +790,7 @@
         ],
         "output_values": {}
       },
-      "0x307b30640": {
+      "0x194ec564640": {
         "type_": "dynamic.StatusDynamicNode_1c95a5f8-8c90-4990-ad5b-159cee3dfac8",
         "icon": ":/icons/同心圆.svg",
         "name": "模型潜空间操作-CFG增强",
@@ -817,7 +855,7 @@
         ],
         "output_values": {}
       },
-      "0x307b31220": {
+      "0x19511a70050": {
         "type_": "dynamic.StatusDynamicNode_f693f1c3-d0e4-4439-bd0a-0f4f0b8a8ec5",
         "icon": ":/icons/同心圆.svg",
         "name": "潜空间色调映射Reinhard",
@@ -858,6 +896,10 @@
           "_data_select": {},
           "_version": "latest",
           "multiplier": 1.0,
+          "_multiplier_min_max": [
+            0.0,
+            100.0
+          ],
           "_column_select": {},
           "version": "latest",
           "FULL_PATH": "comfyui节点/潜空间处理/潜空间色调映射Reinhard"
@@ -872,14 +914,14 @@
         ],
         "output_values": {}
       },
-      "0x307b33100": {
-        "type_": "dynamic.StatusDynamicNode_2cc9f95b-0bf7-426f-a77b-7d8b5ce964ea",
-        "icon": ":/icons/同心圆.svg",
-        "name": "音频保存 1",
+      "0x19511a70180": {
+        "type_": "general.StickyNote",
+        "icon": null,
+        "name": "模型下载路径",
         "color": [
-          13,
-          18,
-          23,
+          45,
+          45,
+          45,
           255
         ],
         "border_color": [
@@ -897,190 +939,169 @@
         "disabled": false,
         "selected": false,
         "visible": true,
-        "width": 0.0,
-        "height": 0.0,
+        "width": 918.1747744932676,
+        "height": 409.31525016760224,
         "pos": [
-          1728.3150413013989,
-          -1279.1396404635782
+          -512.2563316041609,
+          -119.59520986122332
         ],
         "layout_direction": 0,
         "port_deletion_allowed": false,
         "subgraph_session": {},
         "custom": {
-          "persistent_id": "607013bd-341d-4170-9bde-dc18e6ba87a6",
-          "_collapsed": false,
-          "_exec_mode": "subprocess",
-          "_data_select": {},
-          "_version": "latest",
-          "format": "wav",
-          "quality": "128k",
-          "FULL_PATH": "comfyui节点/音频基础节点/音频保存"
-        },
-        "input_ports": [
-          {
-            "name": "audio",
-            "multi_connection": false,
-            "display_name": true
-          }
-        ],
-        "output_ports": [
-          {
-            "name": "file_paths",
-            "multi_connection": true,
-            "display_name": true
-          }
-        ],
-        "output_values": {}
+          "backdrop_text": "",
+          "notes_json": "[{\"text\": \"[ace-step-v1.3](https://huggingface.co/Comfy-Org/ACE-Step_ComfyUI_repackaged/resolve/main/all_in_one/ace_step_v1_3.5b.safetensors?download=true)\", \"x\": 61.168329609145076, \"y\": 117.32404689728588, \"w\": 366.7928186759108, \"size\": 20, \"anchor\": {\"pos\": [539.389741563718, 195.23870247769287], \"target_pid\": \"e978158a-8568-475c-9ebd-db68943e9d06\", \"offset\": [-5.0, 80.23870247769288]}}]"
+        }
       }
     },
     "connections": [
       {
         "out": [
-          "0x307b31e00",
+          "0x19511a24830",
           "latent"
         ],
         "in": [
-          "0x307b308a0",
+          "0x194ec5668b0",
           "latent_image"
         ]
       },
       {
         "out": [
-          "0x307b32190",
+          "0x194ec5e8e10",
           "model"
         ],
         "in": [
-          "0x307b32fd0",
+          "0x194ec5675c0",
           "model"
         ]
       },
       {
         "out": [
-          "0x307b32190",
+          "0x194ec5e8e10",
           "clip"
         ],
         "in": [
-          "0x307b32520",
+          "0x194ec567230",
           "clip"
         ]
       },
       {
         "out": [
-          "0x307b32190",
+          "0x194ec5e8e10",
           "vae"
         ],
         "in": [
-          "0x307b322c0",
+          "0x194ec567ce0",
           "vae"
         ]
       },
       {
         "out": [
-          "0x307b32520",
+          "0x194ec567230",
           "conditioning"
         ],
         "in": [
-          "0x307b302b0",
+          "0x194ec567490",
           "conditioning"
         ]
       },
       {
         "out": [
-          "0x307b32520",
+          "0x194ec567230",
           "conditioning"
         ],
         "in": [
-          "0x307b308a0",
+          "0x194ec5668b0",
           "positive"
         ]
       },
       {
         "out": [
-          "0x307b32fd0",
+          "0x194ec5675c0",
           "model"
         ],
         "in": [
-          "0x307b30640",
+          "0x194ec564640",
           "model"
         ]
       },
       {
         "out": [
-          "0x307b302b0",
+          "0x194ec567490",
           "conditioning"
         ],
         "in": [
-          "0x307b308a0",
+          "0x194ec5668b0",
           "negative"
         ]
       },
       {
         "in": [
-          "0x307b308a0",
+          "0x194ec5668b0",
           "model"
         ],
         "out": [
-          "0x307b30640",
+          "0x194ec564640",
           "model"
         ]
       },
       {
         "out": [
-          "0x307b308a0",
+          "0x194ec5668b0",
           "latent"
         ],
         "in": [
-          "0x307b322c0",
+          "0x194ec567ce0",
           "latent"
         ]
       },
       {
         "out": [
-          "0x307b322c0",
+          "0x194ec567ce0",
           "audio"
         ],
         "in": [
-          "0x307b32060",
+          "0x194ec567e10",
           "audio"
         ]
       },
       {
         "out": [
-          "0x307b322c0",
+          "0x194ec567ce0",
           "audio"
         ],
         "in": [
-          "0x307b30b00",
+          "0x194ec567820",
           "audio"
         ]
       },
       {
         "out": [
-          "0x307b32060",
+          "0x194ec567e10",
           "file_paths"
         ],
         "in": [
-          "0x307b32650",
+          "0x194ec567bb0",
           "input1"
         ]
       },
       {
         "out": [
-          "0x307b32650",
+          "0x194ec567bb0",
           "output1"
         ],
         "in": [
-          "0x307b310f0",
+          "0x194ec5676f0",
           "data"
         ]
       },
       {
         "in": [
-          "0x307b30640",
+          "0x194ec564640",
           "latent_operation"
         ],
         "out": [
-          "0x307b31220",
+          "0x19511a70050",
           "latent_operation"
         ]
       }
@@ -1119,6 +1140,10 @@
     }
   },
   "runtime": {
-    "environment": null
+    "environment": {
+      "name": "3.13",
+      "type": "local",
+      "path": "D:\\work\\WorkFlowGUI\\envs\\miniconda\\envs\\3.13\\python.exe"
+    }
   }
 }

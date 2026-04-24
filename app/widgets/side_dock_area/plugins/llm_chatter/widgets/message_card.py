@@ -9,6 +9,7 @@ from datetime import datetime
 from html import escape
 from typing import List, Dict, Any
 
+from app.utils.utils import get_icon
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.render_helpers import (
     render_tool_block,
 )
@@ -1277,7 +1278,7 @@ class MessageCard(SimpleCardWidget):
         if self.role == "assistant":
             specs = [
                 (
-                    FluentIcon.COPY,
+                    get_icon("复制"),
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
@@ -1285,18 +1286,18 @@ class MessageCard(SimpleCardWidget):
         elif self.role == "user":
             specs = [
                 (
-                    FluentIcon.COPY,
+                    get_icon("复制"),
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
                 ),
-                (FluentIcon.RETURN, "撤销到这里", self.undoRequested.emit),
+                (get_icon("撤销"), "撤销到这里", self.undoRequested.emit),
                 (FluentIcon.DELETE, "删除", self.deleteRequested.emit),
             ]
         for ic, tp, cb in specs:
             b = TransparentToolButton(ic, self)
             b.setToolTip(tp)
             b.clicked.connect(cb)
-            b.setFixedSize(24, 24)
+            b.setFixedSize(28, 28)
             b.installEventFilter(ToolTipFilter(b))
             b.setStyleSheet(
                 """
