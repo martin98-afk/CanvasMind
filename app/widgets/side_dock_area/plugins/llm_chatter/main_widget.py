@@ -1191,6 +1191,37 @@ class OpenAIChatToolWindow(ToolWindow):
         if message_cards:
             self._session_card_cache[session.session_id] = message_cards
 
+        self._cleanup_session_card_cache()
+
+    def _cleanup_session_card_cache(self):
+        from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+            MAX_SESSION_CARD_CACHE_SIZE,
+        )
+
+        if len(self._session_card_cache) <= MAX_SESSION_CARD_CACHE_SIZE:
+            all_session_ids = {
+                s.session_id for s in self.session_manager.get_all_sessions()
+            }
+            stale_ids = set(self._session_card_cache.keys()) - all_session_ids
+            for sid in stale_ids:
+                self._session_card_cache.pop(sid, None)
+            return
+
+        all_session_ids = {
+            s.session_id for s in self.session_manager.get_all_sessions()
+        }
+        stale_ids = set(self._session_card_cache.keys()) - all_session_ids
+        for sid in stale_ids:
+            self._session_card_cache.pop(sid, None)
+
+        if len(self._session_card_cache) > MAX_SESSION_CARD_CACHE_SIZE:
+            current_ids = all_session_ids & set(self._session_card_cache.keys())
+            for sid in list(self._session_card_cache.keys()):
+                if sid not in current_ids:
+                    self._session_card_cache.pop(sid, None)
+                    if len(self._session_card_cache) <= MAX_SESSION_CARD_CACHE_SIZE:
+                        break
+
     def _is_widget_alive(self, widget: Optional[QWidget]) -> bool:
         if widget is None:
             return False
@@ -1357,7 +1388,9 @@ class OpenAIChatToolWindow(ToolWindow):
             if removed >= cards_to_remove:
                 break
 
-        logger.info(f"[DELETE] Cards to remove: {len(widgets_to_remove)}, cards_to_remove: {cards_to_remove}")
+        logger.info(
+            f"[DELETE] Cards to remove: {len(widgets_to_remove)}, cards_to_remove: {cards_to_remove}"
+        )
 
         # 实际执行删除
         for widget in widgets_to_remove:
@@ -1379,7 +1412,9 @@ class OpenAIChatToolWindow(ToolWindow):
                     widget.deleteLater()
                     logger.info(f"[DELETE] Widget deleted: role={widget.role}")
                 else:
-                    logger.warning(f"[DELETE] Widget not found in layout: role={widget.role}")
+                    logger.warning(
+                        f"[DELETE] Widget not found in layout: role={widget.role}"
+                    )
             except Exception as e:
                 logger.error(f"[DELETE] Error deleting widget: {e}")
 
@@ -1834,7 +1869,9 @@ class OpenAIChatToolWindow(ToolWindow):
         new_messages = canonical_messages[:start_idx] + canonical_messages[end_idx:]
         session.set_messages(new_messages, preserve_compaction=False)
 
-        logger.info(f"[DELETE] Session messages updated: {len(canonical_messages)} -> {len(new_messages)}")
+        logger.info(
+            f"[DELETE] Session messages updated: {len(canonical_messages)} -> {len(new_messages)}"
+        )
 
         # Step 3: 保存session数据
         try:
@@ -2198,7 +2235,9 @@ class OpenAIChatToolWindow(ToolWindow):
                 return None
 
             foreground_pid = ctypes.c_ulong()
-            user32.GetWindowThreadProcessId(foreground_hwnd, ctypes.byref(foreground_pid))
+            user32.GetWindowThreadProcessId(
+                foreground_hwnd, ctypes.byref(foreground_pid)
+            )
             return foreground_pid.value == os.getpid()
         except Exception:
             return None

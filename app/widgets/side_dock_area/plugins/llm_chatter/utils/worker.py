@@ -884,7 +884,18 @@ class OpenAIChatWorker(QThread):
                         }
                     )
                 except json.JSONDecodeError:
-                    pass
+                    self._current_tool_calls.append(
+                        {
+                            "id": buffer["id"],
+                            "type": buffer["type"],
+                            "function": {
+                                "name": buffer["function"]["name"],
+                                "arguments": buffer["function"]["arguments"],
+                            },
+                        }
+                    )
+                finally:
+                    del self._tool_calls_buffer[tc_id]
 
         return tool_calls_found
 
@@ -894,7 +905,7 @@ class OpenAIChatWorker(QThread):
 
         # 重置工具执行取消标志，开始新的执行周期
         self._tool_execution_cancelled = False
-        
+
         results = []
         for tc in self._current_tool_calls:
             if self._is_cancelled or self._tool_execution_cancelled:

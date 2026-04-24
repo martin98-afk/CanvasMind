@@ -1080,7 +1080,6 @@ class ChatEngine:
         self._emit("error", error)
 
     def stop(self) -> List[Dict]:
-        from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import BashProcessManager
         
         worker = self._current_worker
         self._current_worker = None
@@ -1097,9 +1096,6 @@ class ChatEngine:
             worker.cancel()
             if worker.isRunning():
                 worker.quit()
-        
-        # 强制终止所有正在运行的 bash 进程
-        BashProcessManager.get_instance().terminate_all(force=True)
 
         return interrupted_messages
 

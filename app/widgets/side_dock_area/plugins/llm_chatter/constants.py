@@ -1,3 +1,5 @@
+MAX_SESSION_CARD_CACHE_SIZE = 10
+
 PARAM_UI_MAP = {
     "API_KEY": "password",
     "温度": "slider",
