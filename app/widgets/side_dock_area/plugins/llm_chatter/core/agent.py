@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Any, Union
 import yaml
 from loguru import logger
 
+from app.widgets.side_dock_area.plugins.llm_chatter.tools import get_builtin_tools_schema
+
 
 @dataclass
 class Agent:
@@ -293,10 +295,6 @@ class AgentManager:
         agent = self.get_agent(agent_name)
         if not agent:
             return []
-
-        from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-            get_builtin_tools_schema,
-        )
 
         all_tools = get_builtin_tools_schema()
 

@@ -2,16 +2,10 @@
 """
 工具执行器模块 - 统一处理各种工具调用
 """
-
-import json
-from typing import Any, Dict, Optional, Callable
 from loguru import logger
+from typing import Dict, Optional, Callable
 
-from PyQt5.QtCore import QEventLoop, QTimer
-from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
-    BuiltinTools,
-    ToolResult,
-)
+from app.widgets.side_dock_area.plugins.llm_chatter.tools import BuiltinTools, ToolResult
 
 
 class ToolExecutor:
@@ -92,8 +86,17 @@ class ToolExecutor:
         Args:
             tool_name: 要取消的工具名称，None 表示取消所有
         """
-        if self._builtin_tools and self._builtin_tools._file_tools:
-            self._builtin_tools._file_tools.cancel()
+        from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import BashProcessManager
+        
+        if self._builtin_tools:
+            # 取消文件工具（如 grep）
+            if self._builtin_tools._file_tools:
+                self._builtin_tools._file_tools.cancel()
+            
+            # 取消 bash 进程
+            if tool_name is None or tool_name == "bash":
+                BashProcessManager.get_instance().terminate_all(force=True)
+        
         logger.info(f"[ToolExecutor] Tool cancelled: {tool_name or 'all'}")
 
     def register_custom_tool(self, name: str, handler: Callable):
@@ -180,8 +183,6 @@ class ToolExecutor:
         # 对于耗时工具（如 grep, bash, webfetch, websearch），使用异步执行
         if tool_name == "grep":
             return self._execute_grep_async(args, cancelled_ref)
-        elif tool_name == "bash":
-            return self._execute_bash_async(args, cancelled_ref)
         elif tool_name == "webfetch":
             return self._execute_webfetch_async(args, cancelled_ref)
         elif tool_name == "websearch":
@@ -376,69 +377,6 @@ class ToolExecutor:
             time.sleep(0.05)
         
         return result_holder[0] if result_holder[0] else ToolResult(False, error="Grep failed")
-
-    def _execute_bash_async(self, args: dict, cancelled_ref: list = None) -> ToolResult:
-        """
-        异步执行 bash，使用子线程，完成后返回结果
-        
-        Args:
-            args: 工具参数
-            cancelled_ref: 取消标志引用 [bool]
-        
-        Returns:
-            ToolResult: 执行结果
-        """
-        if not self._builtin_tools or not self._builtin_tools._terminal_tools:
-            return ToolResult(False, error="TerminalTools not available")
-        
-        command = args.get("command", "")
-        timeout = args.get("timeout", 120)
-        
-        # 使用 TerminalTools 的异步接口
-        result_holder = [None]
-        finished = [False]
-        
-        def on_bash_done(result):
-            result_holder[0] = result
-            finished[0] = True
-        
-        # 启动异步 bash
-        self._builtin_tools._terminal_tools.execute_bash(
-            command=command,
-            timeout=timeout,
-            callback=on_bash_done,
-            cancelled_ref=cancelled_ref
-        )
-        
-        # 使用定时器循环处理主线程事件，这样取消信号可以被处理
-        def wait_for_result():
-            from PyQt5.QtWidgets import QApplication
-            QApplication.processEvents()
-            
-            if finished[0]:
-                return
-            
-            # 检查取消标志
-            if cancelled_ref is not None and cancelled_ref[0]:
-                self._builtin_tools._terminal_tools.cancel_bash()
-                result_holder[0] = ToolResult(False, error="用户中止")
-                finished[0] = True
-                return
-            
-            # 继续等待
-            from PyQt5.QtCore import QTimer
-            QTimer.singleShot(50, wait_for_result)
-        
-        wait_for_result()
-        
-        # 等待完成
-        while not finished[0]:
-            from PyQt5.QtWidgets import QApplication
-            QApplication.processEvents()
-            import time
-            time.sleep(0.05)
-        
-        return result_holder[0] if result_holder[0] else ToolResult(False, error="Bash failed")
 
     def _execute_webfetch_async(self, args: dict, cancelled_ref: list = None) -> ToolResult:
         """异步执行网页抓取"""

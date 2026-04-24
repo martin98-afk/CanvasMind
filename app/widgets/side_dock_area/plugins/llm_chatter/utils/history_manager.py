@@ -238,7 +238,7 @@ class HistoryManager:
             date_str = (
                 last_time[:10] if last_time else datetime.now().strftime("%Y-%m-%d")
             )
-            filename = f"{safe_title}_{date_str}_{session_id}.json"
+            filename = f"{date_str}_{safe_title}_{session_id}.json"
 
             default_archive_dir = (
                 Path("canvas_files") / "workflows" / "default" / "archived"
