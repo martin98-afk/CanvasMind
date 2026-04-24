@@ -925,7 +925,9 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._restore_cached_session_cards(session):
             self._update_node_preview()
             self._refresh_context_usage_indicator()
-            QTimer.singleShot(10, self._scroll_to_bottom)
+            # 恢复缓存卡片后，多次滚动确保在底部
+            QTimer.singleShot(50, self._scroll_to_bottom)
+            QTimer.singleShot(150, self._scroll_to_bottom)
             return
 
         self._clear_chat_area()
@@ -963,7 +965,10 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._render_message_to_card(self._message_batch)
 
-        QTimer.singleShot(10, self._scroll_to_bottom)
+        # 延迟滚动，确保卡片渲染完成后再滚动到底部
+        # 使用多次滚动确保卡片高度变化后仍能保持在底部
+        QTimer.singleShot(50, self._scroll_to_bottom)
+        QTimer.singleShot(150, self._scroll_to_bottom)
         self._update_node_preview()
         self._refresh_context_usage_indicator()
 
@@ -1854,9 +1859,12 @@ class OpenAIChatToolWindow(ToolWindow):
     def _do_scroll_to_bottom(self):
         if not self._pending_scroll_to_bottom:
             return
-        self._pending_scroll_to_bottom = False
         scroll_bar = self.chat_scroll_area.verticalScrollBar()
-        scroll_bar.setValue(scroll_bar.maximum())
+        max_val = scroll_bar.maximum()
+        scroll_bar.setValue(max_val)
+        # 再次设置确保卡片高度变化后仍在底部
+        scroll_bar.setValue(max_val)
+        self._pending_scroll_to_bottom = False
         self._sync_node_preview_to_scroll()
 
     def handle_recommended_question(self, content: str, action: str):
