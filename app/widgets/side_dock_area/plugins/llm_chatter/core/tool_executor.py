@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict, Optional, Callable
 from loguru import logger
 
+from PyQt5.QtCore import QEventLoop, QTimer
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.builtin_tools import (
     BuiltinTools,
     ToolResult,
@@ -85,6 +86,16 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools.reset_session_state()
 
+    def cancel_tool(self, tool_name: str = None):
+        """取消正在执行的工具
+        
+        Args:
+            tool_name: 要取消的工具名称，None 表示取消所有
+        """
+        if self._builtin_tools and self._builtin_tools._file_tools:
+            self._builtin_tools._file_tools.cancel()
+        logger.info(f"[ToolExecutor] Tool cancelled: {tool_name or 'all'}")
+
     def register_custom_tool(self, name: str, handler: Callable):
         """注册自定义工具"""
         self._custom_tools[name] = handler
@@ -111,18 +122,23 @@ class ToolExecutor:
                 "[ToolExecutor] Session messages getter attached to BuiltinTools"
             )
 
-    def execute(self, tool_name: str, args: dict) -> ToolResult:
+    def execute(self, tool_name: str, args: dict, cancelled_ref: list = None) -> ToolResult:
         """
         执行工具调用
 
         Args:
             tool_name: 工具名称
             args: 工具参数
+            cancelled_ref: 取消标志引用 [bool]
 
         Returns:
             ToolResult: 执行结果
         """
         logger.info(f"[ToolExecutor] Executing tool: {tool_name}, args: {args}")
+
+        # 对于耗时工具（如 grep），使用异步执行
+        if tool_name == "grep":
+            return self._execute_grep_async(args, cancelled_ref)
 
         if tool_name in self._custom_tools:
             try:
@@ -249,6 +265,70 @@ class ToolExecutor:
             return self._execute_canvas_tool(tool_name, args)
 
         return ToolResult(False, error=f"Unknown tool: {tool_name}")
+
+    def _execute_grep_async(self, args: dict, cancelled_ref: list = None) -> ToolResult:
+        """
+        异步执行 grep，使用子线程，完成后返回结果
+        
+        Args:
+            args: 工具参数
+            cancelled_ref: 取消标志引用 [bool]
+        
+        Returns:
+            ToolResult: 执行结果
+        """
+        if not self._builtin_tools or not self._builtin_tools._file_tools:
+            return ToolResult(False, error="FileTools not available")
+        
+        pattern = args.get("pattern", "")
+        path = args.get("path", ".")
+        include = args.get("include")
+        
+        # 使用 FileTools 的异步接口
+        result_holder = [None]
+        finished = [False]
+        
+        def on_grep_done(result):
+            result_holder[0] = result
+            finished[0] = True
+        
+        # 启动异步 grep
+        self._builtin_tools._file_tools.grep_files(
+            pattern=pattern,
+            path=path,
+            include=include,
+            callback=on_grep_done
+        )
+        
+        # 使用定时器循环处理主线程事件，这样取消信号可以被处理
+        def wait_for_result():
+            from PyQt5.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+            if finished[0]:
+                return
+            
+            # 检查取消标志
+            if cancelled_ref is not None and cancelled_ref[0]:
+                self._builtin_tools._file_tools.cancel()
+                result_holder[0] = ToolResult(False, error="用户中止")
+                finished[0] = True
+                return
+            
+            # 继续等待
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(50, wait_for_result)
+        
+        wait_for_result()
+        
+        # 等待完成
+        while not finished[0]:
+            from PyQt5.QtWidgets import QApplication
+            QApplication.processEvents()
+            import time
+            time.sleep(0.05)
+        
+        return result_holder[0] if result_holder[0] else ToolResult(False, error="Grep failed")
 
     def _execute_canvas_tool(self, tool_name: str, args: dict):
         if not self._canvas_tools_executor:
