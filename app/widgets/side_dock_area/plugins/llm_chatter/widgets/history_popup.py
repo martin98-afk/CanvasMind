@@ -85,21 +85,39 @@ class _HistoryItemCard(CardWidget):
     ):
         super().__init__(parent)
         self._index = index
+        self._is_current = is_current
         self._is_editing = False
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(
-            """
-            CardWidget {
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 10px;
-            }
-            CardWidget:hover {
-                background-color: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(102, 198, 255, 0.45);
-            }
-            """
-        )
+        
+        # 当前会话使用特殊样式
+        if is_current:
+            self.setStyleSheet(
+                """
+                CardWidget {
+                    background-color: rgba(102, 198, 255, 0.12);
+                    border: 2px solid rgba(102, 198, 255, 0.6);
+                    border-radius: 10px;
+                }
+                CardWidget:hover {
+                    background-color: rgba(102, 198, 255, 0.18);
+                    border: 2px solid rgba(102, 198, 255, 0.8);
+                }
+                """
+            )
+        else:
+            self.setStyleSheet(
+                """
+                CardWidget {
+                    background-color: rgba(255, 255, 255, 0.04);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 10px;
+                }
+                CardWidget:hover {
+                    background-color: rgba(255, 255, 255, 0.08);
+                    border: 1px solid rgba(102, 198, 255, 0.45);
+                }
+                """
+            )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 8, 8)
@@ -133,9 +151,10 @@ class _HistoryItemCard(CardWidget):
         self.title_edit.editingFinished.connect(self._finish_edit)
         top_row.addWidget(self.title_edit, 1, Qt.AlignLeft)
 
-        self.current_indicator = CaptionLabel("当前", self)
+        # 当前会话使用"活跃中"标签，更醒目
+        self.current_indicator = CaptionLabel("🔥 活跃中", self)
         self.current_indicator.setStyleSheet(
-            "color: #66c6ff; font-weight: bold; background-color: rgba(102, 198, 255, 0.15); border-radius: 4px; padding: 2px 6px;"
+            "color: #fff; font-weight: bold; background-color: rgba(102, 198, 255, 0.35); border-radius: 4px; padding: 2px 8px;"
         )
         self.current_indicator.setVisible(is_current)
         top_row.addWidget(self.current_indicator, 0, Qt.AlignTop)
@@ -357,7 +376,27 @@ class HistoryPopup(QWidget):
             empty_label.setStyleSheet("color: rgba(255, 255, 255, 0.6); padding: 16px;")
             self.content_layout.addWidget(empty_label)
         else:
-            grouped = self._group_by_date(self._all_history)
+            # 先显示当前会话（如果存在且在历史中）
+            current_session_widget = None
+            if self._current_index is not None and 0 <= self._current_index < len(self._all_history):
+                current_session = self._all_history[self._current_index]
+                current_preview = get_message_preview(current_session.get("messages", []))
+                current_session_widget = _HistoryItemCard(
+                    index=self._current_index,
+                    title=current_session.get("title", "当前对话"),
+                    last_time=current_session.get("last_time", "未知"),
+                    message_count=current_session.get("message_count", 0),
+                    is_current=True,
+                    preview=current_preview,
+                    parent=self.content_widget,
+                )
+                current_session_widget.sessionClicked.connect(self._on_card_clicked)
+                current_session_widget.deleteRequested.connect(self._on_card_deleted)
+                current_session_widget.renameRequested.connect(self._on_card_renamed)
+
+            # 分离当前会话和其他会话
+            other_sessions = [s for i, s in enumerate(self._all_history) if i != self._current_index]
+            grouped = self._group_by_date(other_sessions)
 
             order = ["今天", "昨天", "本周", "上周", "本月"]
             current_year = datetime.datetime.now().year
@@ -396,6 +435,19 @@ class HistoryPopup(QWidget):
                 final_order.append((year, year_groups[year]))
 
             has_items = False
+
+            # 渲染当前会话（如果有）
+            if current_session_widget:
+                has_items = True
+                current_header = _SectionHeader("当前会话", 0, self.content_widget)
+                self.content_layout.addWidget(current_header)
+                self.content_layout.addWidget(current_session_widget)
+                
+                spacer = QWidget(self.content_widget)
+                spacer.setFixedHeight(12)
+                self.content_layout.addWidget(spacer)
+
+            # 渲染其他历史会话
             for section, sessions in final_order:
                 if not sessions:
                     continue
@@ -413,7 +465,7 @@ class HistoryPopup(QWidget):
                         title=session.get("title", "新对话"),
                         last_time=session.get("last_time", "未知"),
                         message_count=session.get("message_count", 0),
-                        is_current=self._current_index == original_index,
+                        is_current=False,
                         preview=preview,
                         parent=self.content_widget,
                     )
