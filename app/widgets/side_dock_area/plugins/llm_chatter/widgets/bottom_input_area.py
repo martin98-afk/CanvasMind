@@ -234,7 +234,7 @@ class SendableTextEdit(QTextEdit):
             component_path = lines[0] if lines else ""
             extension_path = lines[1] if len(lines) > 1 else ""
 
-            insert_text = f"组件路径: {component_path}"
+            insert_text = f"路径: {component_path}"
             if extension_path:
                 insert_text += f"\n扩展资源路径: {extension_path}"
 
