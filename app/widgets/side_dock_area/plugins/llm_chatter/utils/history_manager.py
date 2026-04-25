@@ -1,16 +1,32 @@
+# -*- coding: utf-8 -*-
+"""
+会话历史管理器 - 解决 issue #374
+
+从 JSON 存储迁移到 SQLite 存储，提供：
+- 原子性写入
+- 并发支持
+- 损坏隔离
+- 增量更新
+"""
+
 import json
 import uuid
 import re
+import os
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
 
+from loguru import logger
 from PyQt5.QtCore import QTimer
 
 from app.utils.utils import serialize_for_json, deserialize_from_json
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import (
     consolidate_messages,
     content_to_text,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.session_store import (
+    SessionStore,
 )
 
 
@@ -24,65 +40,146 @@ def sanitize_filename(name: str) -> str:
 
 
 class HistoryManager:
+    """
+    会话历史管理器
+
+    使用 SQLite 进行持久化存储，同时维护内存缓存以提高读取性能。
+    """
+
     def __init__(self, canvas_name: str):
         self.canvas_name = canvas_name
         self.history_dir = Path("canvas_files") / "workflows" / canvas_name
-        self.history_file = self.history_dir / f"llm_history.json"
+        self.history_file = self.history_dir / "llm_history.json"
         self.archive_dir = self.history_dir / "archived"
         self.history_dir.mkdir(parents=True, exist_ok=True)
         self.archive_dir.mkdir(parents=True, exist_ok=True)
-        self._history_sessions: List[Dict] = self._load_history()
+
         self._history_limit = 100
         self._save_timer: Optional[QTimer] = None
         self._save_delay_ms = 1000
 
-    def _load_history(self) -> List[Dict]:
+        # SQLite 存储层
+        self._session_store: Optional[SessionStore] = None
+        self._use_sqlite = False
+
+        # 内存缓存
+        self._history_sessions: List[Dict] = []
+
+        # 初始化存储
+        self._init_storage()
+
+    def _init_storage(self):
+        """初始化存储层"""
+        use_sqlite = os.environ.get("LLM_SESSION_SQLITE", "1") == "1"
+
+        if use_sqlite:
+            try:
+                self._session_store = SessionStore(db_dir="canvas_files")
+                if self._session_store.is_initialized:
+                    self._use_sqlite = True
+                    logger.info(f"[HistoryManager] SQLite 存储已启用: {self.canvas_name}")
+
+                    # 从 SQLite 加载
+                    self._history_sessions = self._session_store.load_sessions(
+                        self.canvas_name, self._history_limit
+                    )
+
+                    # 检查是否需要迁移旧 JSON 数据
+                    self._migrate_if_needed()
+
+                    return
+                else:
+                    logger.warning("[HistoryManager] SQLite 初始化失败，回退 JSON")
+            except Exception as e:
+                logger.warning(f"[HistoryManager] SQLite 初始化异常: {e}")
+
+        # 回退到 JSON 模式
+        self._use_sqlite = False
+        self._session_store = None
+        self._history_sessions = self._load_history_from_json()
+        logger.info(f"[HistoryManager] JSON 存储模式: {self.canvas_name}")
+
+    def _migrate_if_needed(self):
+        """迁移旧 JSON 数据到 SQLite（如果 SQLite 为空），迁移后删除 JSON"""
+        if not self._session_store:
+            return
+
+        # 检查 SQLite 是否已有数据
+        if self._session_store.get_session_count(self.canvas_name) > 0:
+            return
+
+        # 检查 JSON 文件是否存在
+        if not self.history_file.exists():
+            return
+
+        # 迁移数据
+        try:
+            migrated = self._session_store.migrate_from_json(str(self.history_file))
+            if migrated > 0:
+                logger.info(f"[HistoryManager] 已迁移 {migrated} 条会话到 SQLite")
+
+                # 删除 JSON 文件（迁移后不再使用）
+                try:
+                    self.history_file.unlink()
+                    logger.info(f"[HistoryManager] 已删除 JSON 文件: {self.history_file}")
+                except Exception as e:
+                    logger.warning(f"[HistoryManager] 删除 JSON 文件失败: {e}")
+
+                # 重新加载
+                self._history_sessions = self._session_store.load_sessions(
+                    self.canvas_name, self._history_limit
+                )
+        except Exception as e:
+            logger.error(f"[HistoryManager] 迁移失败: {e}")
+
+    def _load_history_from_json(self) -> List[Dict]:
+        """从 JSON 文件加载（回退模式）"""
         if self.history_file.exists():
             try:
                 with open(self.history_file, "r", encoding="utf-8") as f:
                     data = deserialize_from_json(json.load(f))
                     if not isinstance(data, list):
                         return []
-                    normalized = []
-                    seen_ids = set()
-                    for item in data:
-                        if not isinstance(item, dict):
-                            continue
-                        sid = item.get("session_id")
-                        if sid and sid in seen_ids:
-                            continue
-                        if sid:
-                            seen_ids.add(sid)
-                        fallback_ts = (
-                            item.get("last_time")
-                            or item.get("saved_at")
-                            or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        )
-                        item["messages"] = self._ensure_message_timestamps(
-                            merge_session_messages(item.get("messages", [])),
-                            fallback_ts,
-                        )
-                        if "title" not in item:
-                            item["title"] = item.get("topic_summary", "新对话")
-                        if "last_time" not in item:
-                            item["last_time"] = self._extract_last_message_time(
-                                item.get("messages", [])
-                            )
-                        if "message_count" not in item:
-                            item["message_count"] = len(item.get("messages", []))
-                        if "session_id" not in item:
-                            item["session_id"] = uuid.uuid4().hex[:8]
-                        item["compaction_state"] = dict(
-                            item.get("compaction_state") or {}
-                        )
-                        item["compaction_cache"] = dict(
-                            item.get("compaction_cache") or {}
-                        )
-                        normalized.append(item)
-                    return normalized
-            except Exception:
-                pass
+                    return self._normalize_sessions(data)
+            except Exception as e:
+                logger.error(f"[HistoryManager] JSON 加载失败: {e}")
         return []
+
+    def _normalize_sessions(self, data: List) -> List[Dict]:
+        """规范化会话数据"""
+        normalized = []
+        seen_ids = set()
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            sid = item.get("session_id")
+            if sid and sid in seen_ids:
+                continue
+            if sid:
+                seen_ids.add(sid)
+            fallback_ts = (
+                item.get("last_time")
+                or item.get("saved_at")
+                or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            item["messages"] = self._ensure_message_timestamps(
+                merge_session_messages(item.get("messages", [])),
+                fallback_ts,
+            )
+            if "title" not in item:
+                item["title"] = item.get("topic_summary", "新对话")
+            if "last_time" not in item:
+                item["last_time"] = self._extract_last_message_time(
+                    item.get("messages", [])
+                )
+            if "message_count" not in item:
+                item["message_count"] = len(item.get("messages", []))
+            if "session_id" not in item:
+                item["session_id"] = uuid.uuid4().hex[:8]
+            item["compaction_state"] = dict(item.get("compaction_state") or {})
+            item["compaction_cache"] = dict(item.get("compaction_cache") or {})
+            normalized.append(item)
+        return normalized
 
     def save_session(
         self,
@@ -93,6 +190,7 @@ class HistoryManager:
         compaction_cache: Dict = None,
         system_prompt: str = None,
     ):
+        """保存会话"""
         if not messages:
             return
 
@@ -107,6 +205,7 @@ class HistoryManager:
         )
         new_session_id = session_record["session_id"]
 
+        # 更新内存缓存
         existing_index = None
         for i, s in enumerate(self._history_sessions):
             if s.get("session_id") == new_session_id:
@@ -119,7 +218,24 @@ class HistoryManager:
             self._history_sessions.insert(0, session_record)
 
         self._history_sessions = self._history_sessions[: self._history_limit]
-        self._save_to_disk()
+
+        # 持久化
+        self._persist_session(session_record)
+
+    def _persist_session(self, session_record: Dict):
+        """持久化单个会话"""
+        # 添加 canvas_id
+        session_record["canvas_id"] = self.canvas_name
+
+        if self._use_sqlite and self._session_store:
+            # SQLite 模式：原子性保存
+            success = self._session_store.save_session(session_record)
+            if not success:
+                logger.warning(f"[HistoryManager] SQLite 保存失败，回退 JSON")
+                self._save_to_disk_json()
+        else:
+            # JSON 模式
+            self._save_to_disk_json()
 
     def _build_session_record(
         self,
@@ -167,7 +283,9 @@ class HistoryManager:
     def update_session_title(self, index: int, new_title: str):
         if 0 <= index < len(self._history_sessions):
             self._history_sessions[index]["title"] = new_title
-            self._save_to_disk()
+            session = self._history_sessions[index]
+            session["canvas_id"] = self.canvas_name
+            self._persist_session(session)
 
     def update_topic_summary(self, index: int, summary: str):
         self.update_session_title(index, summary)
@@ -190,7 +308,8 @@ class HistoryManager:
                 count += 1
         return count
 
-    def _save_to_disk(self):
+    def _save_to_disk_json(self):
+        """保存到 JSON 文件（回退模式）"""
         with open(self.history_file, "w", encoding="utf-8") as f:
             json.dump(
                 serialize_for_json(self._history_sessions),
@@ -208,7 +327,7 @@ class HistoryManager:
         return latest
 
     def load_most_recently_updated_session(self) -> Optional[Dict]:
-        """Load the session that was most recently updated (by last_updated time)."""
+        """加载最近更新的会话"""
         if not self._history_sessions:
             return None
         most_recent = None
@@ -227,7 +346,7 @@ class HistoryManager:
         return self._history_sessions
 
     def archive_history(self, index: int) -> bool:
-        """将历史记录归档到单独的文件中（统一归档到default下）"""
+        """归档历史记录"""
         if 0 <= index < len(self._history_sessions):
             session = self._history_sessions[index]
             title = session.get("title", "未命名")
@@ -245,6 +364,7 @@ class HistoryManager:
             )
             default_archive_dir.mkdir(parents=True, exist_ok=True)
             archive_file = default_archive_dir / filename
+
             try:
                 with open(archive_file, "w", encoding="utf-8") as f:
                     json.dump(
@@ -256,8 +376,13 @@ class HistoryManager:
             except Exception:
                 return False
 
+            # 从内存缓存移除
             self._history_sessions.pop(index)
-            self._save_to_disk()
+
+            # 从 SQLite 删除
+            if self._use_sqlite and self._session_store:
+                self._session_store.delete_session(session_id)
+
             return True
         return False
 
@@ -281,7 +406,7 @@ class HistoryManager:
         return None
 
     def find_index_by_session_id(self, session_id: str) -> Optional[int]:
-        """Find the index of a session by its session_id."""
+        """根据 session_id 查找索引"""
         if not session_id:
             return None
         for i, session in enumerate(self._history_sessions):
@@ -290,7 +415,7 @@ class HistoryManager:
         return None
 
     def get_session_by_session_id(self, session_id: str) -> Optional[Dict]:
-        """Get a session record by its session_id."""
+        """根据 session_id 获取会话"""
         if not session_id:
             return None
         for session in self._history_sessions:
@@ -306,6 +431,7 @@ class HistoryManager:
         compaction_cache: Dict = None,
         system_prompt: str = None,
     ):
+        """更新会话"""
         if 0 <= index < len(self._history_sessions):
             merged_messages = merge_session_messages(messages)
             existing = self._history_sessions[index]
@@ -337,7 +463,14 @@ class HistoryManager:
             self._save_timer = QTimer.singleShot(self._save_delay_ms, self._do_save)
 
     def _do_save(self):
-        self._save_to_disk()
+        """延迟保存所有会话"""
+        if self._use_sqlite and self._session_store:
+            # SQLite 模式下逐条保存
+            for session in self._history_sessions:
+                session["canvas_id"] = self.canvas_name
+                self._session_store.save_session(session)
+        else:
+            self._save_to_disk_json()
         self._save_timer = None
 
     def _extract_last_message_time(self, messages: List[Dict]) -> str:
@@ -377,6 +510,14 @@ class HistoryManager:
         return ""
 
     def get_total_storage_size(self) -> int:
+        """获取总存储大小"""
+        if self._use_sqlite and self._session_store:
+            # 估算 SQLite 数据库大小
+            db_path = os.path.join("canvas_files", "sessions.db")
+            if os.path.exists(db_path):
+                return os.path.getsize(db_path)
+
+        # JSON 模式
         total_size = 0
         if self.history_file.exists():
             try:
@@ -399,4 +540,5 @@ class HistoryManager:
             "total_messages": total_messages,
             "total_chars": total_chars,
             "storage_size": self.get_total_storage_size(),
+            "storage_mode": "sqlite" if self._use_sqlite else "json",
         }

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 长期记忆管理模块 - 处理用户偏好和会话记忆
+支持 SQLite 持久化存储
 """
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -13,6 +15,9 @@ from openai import OpenAI
 
 from app.widgets.side_dock_area.plugins.llm_chatter.utils.retry_helper import (
     create_api_call_with_retry,
+)
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.session_store import (
+    SessionStore,
 )
 
 
@@ -53,18 +58,77 @@ class MemoryManagerCore:
 
     def __init__(self, canvas_name: str = "default"):
         self._canvas_name = canvas_name
+
+        # SQLite 存储层
+        self._session_store: Optional[SessionStore] = None
+        self._use_sqlite = False
         self._memory_file: Optional[Path] = None
+
+        # 初始化存储
+        self._init_storage()
+
+    def _init_storage(self):
+        """初始化存储层"""
+        use_sqlite = os.environ.get("LLM_MEMORY_SQLITE", "1") == "1"
+
+        if use_sqlite:
+            try:
+                self._session_store = SessionStore(db_dir="canvas_files")
+                if self._session_store.is_initialized:
+                    self._use_sqlite = True
+                    logger.info(f"[MemoryManager] SQLite 存储已启用: {self._canvas_name}")
+
+                    # 检查是否需要迁移旧 JSON 数据
+                    self._migrate_if_needed()
+                    return
+                else:
+                    logger.warning("[MemoryManager] SQLite 初始化失败，回退 JSON")
+            except Exception as e:
+                logger.warning(f"[MemoryManager] SQLite 初始化异常: {e}")
+
+        # 回退到 JSON 模式
+        self._use_sqlite = False
         self._ensure_memory_file()
+        logger.info(f"[MemoryManager] JSON 存储模式: {self._canvas_name}")
 
     def _ensure_memory_file(self):
         """确保记忆文件存在"""
         try:
-            canvas_name = "default"
-            memory_dir = Path("canvas_files") / "workflows" / canvas_name
+            memory_dir = Path("canvas_files") / "workflows" / self._canvas_name
             memory_dir.mkdir(parents=True, exist_ok=True)
             self._memory_file = memory_dir / "soul.md"
         except Exception as e:
             logger.error(f"[MemoryManager] Failed to create memory file: {e}")
+
+    def _migrate_if_needed(self):
+        """迁移旧 JSON 数据到 SQLite"""
+        if not self._session_store:
+            return
+
+        if not self._memory_file or not self._memory_file.exists():
+            return
+
+        # 检查 SQLite 是否已有数据
+        memories = self._session_store.load_memories(self._canvas_name, limit=1)
+        if len(memories) > 0:
+            return  # 已有数据，不需要迁移
+
+        # 迁移数据
+        try:
+            migrated = self._session_store.migrate_memories_from_json(
+                str(self._memory_file), self._canvas_name
+            )
+            if migrated > 0:
+                logger.info(f"[MemoryManager] 已迁移 {migrated} 条记忆到 SQLite")
+
+                # 删除 JSON 文件
+                try:
+                    self._memory_file.unlink()
+                    logger.info(f"[MemoryManager] 已删除 JSON 文件: {self._memory_file}")
+                except Exception as e:
+                    logger.warning(f"[MemoryManager] 删除 JSON 文件失败: {e}")
+        except Exception as e:
+            logger.error(f"[MemoryManager] 记忆迁移失败: {e}")
 
     @property
     def memory_file(self) -> Optional[Path]:
@@ -72,6 +136,20 @@ class MemoryManagerCore:
 
     def load_memory(self) -> Dict:
         """加载记忆数据"""
+        if self._use_sqlite and self._session_store:
+            # SQLite 模式
+            memories = self._session_store.load_memories(self._canvas_name, limit=200)
+            return {
+                "version": "2.0",
+                "user_profile": {},
+                "topics": [],
+                "user_memories": memories,
+                "total_conversations": len(memories),
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+
+        # JSON 模式
         if self._memory_file and self._memory_file.exists():
             try:
                 with open(self._memory_file, "r", encoding="utf-8") as f:
@@ -181,6 +259,15 @@ class MemoryManagerCore:
     def save_memory(self, memory_data: Dict) -> bool:
         """保存记忆数据"""
         try:
+            if self._use_sqlite and self._session_store:
+                # SQLite 模式：批量保存记忆
+                memories = memory_data.get("user_memories", [])
+                success = self._session_store.save_memories(memories, self._canvas_name)
+                if success:
+                    logger.info(f"[MemoryManager] Memory saved to SQLite: {len(memories)} items")
+                return success
+
+            # JSON 模式
             if not self._memory_file:
                 return False
 
@@ -602,6 +689,13 @@ class MemoryManagerCore:
     def clear_memory(self) -> bool:
         """清空记忆"""
         try:
+            if self._use_sqlite and self._session_store:
+                # SQLite 模式
+                self._session_store.clear_memories(self._canvas_name)
+                logger.info("[MemoryManager] Memory cleared from SQLite")
+                return True
+
+            # JSON 模式
             if self._memory_file and self._memory_file.exists():
                 self._memory_file.unlink()
             logger.info("[MemoryManager] Memory cleared")
@@ -649,4 +743,6 @@ class MemoryManagerCore:
     def set_canvas_name(self, canvas_name: str):
         """设置画布名称（切换工作区时调用）"""
         self._canvas_name = canvas_name
-        self._ensure_memory_file()
+        # SQLite 模式下不需要切换文件，canvas_id 在查询时指定
+        if not self._use_sqlite:
+            self._ensure_memory_file()

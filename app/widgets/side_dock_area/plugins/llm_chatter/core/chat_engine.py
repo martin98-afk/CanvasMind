@@ -795,7 +795,7 @@ class ChatEngine:
         prompt_parts = [
             full_system_prompt,
             # task_state.build_context_block(),
-            task_state.build_event_digest(),
+            # task_state.build_event_digest(),
         ]
 
         enabled_skills = Settings.get_instance().llm_enabled_skills.value

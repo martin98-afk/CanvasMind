@@ -364,6 +364,8 @@ def _inject_tool_blocks(md_text: str, completed: bool = True) -> str:
 def _inject_context_links(md_text: str) -> str:
     def replacer(match):
         content, action = match.group(1), match.group(2)
+        if action.startswith("http://") or action.startswith("https://"):
+            return match.group(0)
         import urllib.parse
 
         encoded_c = urllib.parse.quote(content, safe="")
@@ -400,6 +402,15 @@ class ConsoleMonitorPage(QWebEnginePage):
                     pass
             elif "context_lost" in msg:
                 self._handle_context_lost()
+            elif "open_url:" in msg:
+                try:
+                    url_str = msg.split("open_url:", 1)[1]
+                    from PyQt5.QtGui import QDesktopServices
+                    from PyQt5.QtCore import QUrl
+
+                    QDesktopServices.openUrl(QUrl(url_str))
+                except:
+                    pass
             else:
                 try:
                     p = msg.split(":")
@@ -926,6 +937,14 @@ class CodeWebViewer(QWebEngineView):
                     }}
                     const tag = e.target.closest('.context-tag');
                     if (tag) console.log('pywebview_action:context|||' + tag.getAttribute('data-content') + '|||' + tag.getAttribute('data-action'));
+                    const link = e.target.closest('a');
+                    if (link) {{
+                        console.log('pywebview_action:link_found:' + link.href);
+                    }}
+                    if (link && link.href) {{
+                        e.preventDefault();
+                        console.log('pywebview_action:open_url:' + link.href);
+                    }}
                 }});
                 document.addEventListener('DOMContentLoaded', () => {{
                     console.log('pywebview_ready');
