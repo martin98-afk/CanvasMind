@@ -140,9 +140,10 @@ class AdaptiveStackedWidget(QStackedWidget):
 class ToolPopupDialog(QDialog):
     popupClosed = pyqtSignal(str, bool, object)
 
-    def __init__(self, tool_instance: ToolWindow, parent=None):
+    def __init__(self, tool_instance: ToolWindow, parent=None, border_color: str = "none"):
         super().__init__(parent)
         self.tool_instance = tool_instance
+        self._border_color = border_color
         self._drag_pos = None
         self._is_maximized = False
         self._restore_tool_name = None
@@ -316,12 +317,26 @@ class ToolPopupDialog(QDialog):
 
         if isDarkTheme():
             bg_color = QColor(38, 38, 38, int(255 * opacity))
-            border_color = QColor(55, 55, 55, int(255 * opacity))
             shadow_color = QColor(0, 0, 0, int(120 * opacity))
         else:
             bg_color = QColor(245, 245, 245, int(255 * opacity))
-            border_color = QColor(200, 200, 200, int(255 * opacity))
             shadow_color = QColor(0, 0, 0, int(50 * opacity))
+
+        # 根据配置设置边框颜色
+        border_color_map = {
+            "white": QColor(255, 255, 255, int(255 * opacity)),
+            "yellow": QColor(255, 200, 0, int(255 * opacity)),
+        }
+        if self._border_color == "none":
+            if isDarkTheme():
+                border_color = QColor(55, 55, 55, int(255 * opacity))
+            else:
+                border_color = QColor(200, 200, 200, int(255 * opacity))
+        else:
+            border_color = border_color_map.get(
+                self._border_color,
+                QColor(55, 55, 55, int(255 * opacity)),
+            )
 
         painter.setBrush(shadow_color)
         painter.setPen(Qt.NoPen)
@@ -564,7 +579,18 @@ class SideDockArea(QWidget):
 
         btn.setVisible(False)
 
-        popup = ToolPopupDialog(instance, None)
+        # 获取该插件的边框颜色配置
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+        from app.widgets.side_dock_area.tool_window import DockCategory
+
+        border_color = "none"
+        for ctx_id in [c.value for c in DockCategory]:
+            bc = SideDockRegistry.get_plugin_border_color(ctx_id, tool_name)
+            if bc != "none":
+                border_color = bc
+                break
+
+        popup = ToolPopupDialog(instance, None, border_color)
         popup.setRestoreInfo(tool_name, was_in_top, btn)
         popup.popupClosed.connect(self._on_popup_closed)
         self._popup_windows[tool_name] = popup

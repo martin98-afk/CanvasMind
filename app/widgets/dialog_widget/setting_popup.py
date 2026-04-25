@@ -973,6 +973,46 @@ class SettingDialog(QDialog):
         )
         card_layout.addWidget(position_combo, 0, Qt.AlignRight)
 
+        border_color_label = BodyLabel(self.tr("边框:"))
+        border_color_label.setStyleSheet("color: #888888; font-size: 12px;")
+        card_layout.addWidget(border_color_label, 0, Qt.AlignRight)
+
+        border_color_combo = ComboBox()
+        border_color_combo.setFixedWidth(70)
+        border_color_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border: 1px solid #0078d4;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                selection-background-color: #0078d4;
+            }
+        """)
+        border_color_combo.addItems([self.tr("无"), self.tr("白色"), self.tr("黄色")])
+        border_color_map = {"none": 0, "white": 1, "yellow": 2}
+        border_color_value = state.get("border_color", "none")
+        border_color_combo.setCurrentIndex(border_color_map.get(border_color_value, 0))
+        border_color_combo._context_id = context_id
+        border_color_combo._plugin_name = plugin_name
+        border_color_combo.currentIndexChanged.connect(
+            lambda idx, combo=border_color_combo: self._on_plugin_border_color_changed(
+                combo, idx
+            )
+        )
+        card_layout.addWidget(border_color_combo, 0, Qt.AlignRight)
+
         enable_switch = SwitchButton()
         enable_switch.setOnText("")
         enable_switch.setOffText("")
@@ -1012,6 +1052,22 @@ class SettingDialog(QDialog):
         }
         new_position = position_map.get(index, DockPosition.HIDDEN)
         SideDockRegistry.set_plugin_position(context_id, plugin_name, new_position)
+        self._save_plugin_states()
+        self.onConfigChanged()
+
+    def _on_plugin_border_color_changed(self, combo, index):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+
+        context_id = combo._context_id
+        plugin_name = combo._plugin_name
+
+        border_color_map = {
+            0: "none",
+            1: "white",
+            2: "yellow",
+        }
+        new_border_color = border_color_map.get(index, "none")
+        SideDockRegistry.set_plugin_border_color(context_id, plugin_name, new_border_color)
         self._save_plugin_states()
         self.onConfigChanged()
 
