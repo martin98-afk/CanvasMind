@@ -260,6 +260,58 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._initialize_history_manager()
 
+    def _setup_title_bar(self):
+        """设置标题栏按钮"""
+        title_bar = self.get_title_bar()
+
+        # 创建复制窗口按钮
+        self._copy_btn = TransparentToolButton(FluentIcon.COPY, self)
+        self._copy_btn.setToolTip("复制窗口")
+        self._copy_btn.clicked.connect(self._duplicate_window)
+        title_bar.add_button(self._copy_btn)
+
+    def _duplicate_window(self):
+        """复制当前窗口并以弹窗方式显示"""
+        try:
+            # 创建新的窗口实例
+            new_instance = OpenAIChatToolWindow(self.homepage, None)
+            # 延迟调用，确保 UI 初始化完成
+            QTimer.singleShot(100, lambda: new_instance._restore_latest_or_create_session())
+
+            # 复制模型选择（确保两个实例都已初始化 UI）
+            try:
+                if (
+                    hasattr(self, "model_combo")
+                    and hasattr(new_instance, "model_combo")
+                    and self.model_combo.count() > 0
+                ):
+                    new_instance.model_combo.setCurrentText(
+                        self.model_combo.currentText()
+                    )
+            except Exception:
+                pass  # 忽略模型复制失败
+
+            # 设置 session 初始化的标志，避免重复创建新 session
+            # 并标记为新会话模式，跳过历史会话恢复
+            # 注意：不要设置 _session_initialized，让 showEvent 正常执行初始化
+            new_instance._skip_restore_history = True  # 跳过历史会话恢复
+
+            # 以弹窗方式显示
+            from app.widgets.side_dock_area.side_dock_area import ToolPopupDialog
+
+            popup = ToolPopupDialog(new_instance, None)
+            popup.setWindowTitle(f"{self.name} - 副本")
+            popup.resize(600, 900)
+            # 保存引用防止被垃圾回收
+            if not hasattr(self, '_popup_refs'):
+                self._popup_refs = []
+            self._popup_refs.append(popup)
+            popup.show()
+        except Exception as e:
+            from qfluentwidgets import InfoBar
+
+            InfoBar.error("复制失败", str(e), parent=self)
+
     def _request_tool_start_ui_sync(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
     ):
@@ -355,6 +407,10 @@ class OpenAIChatToolWindow(ToolWindow):
         return is_canvas
 
     def _restore_latest_or_create_session(self):
+        # 如果是新复制的窗口，跳过历史会话恢复
+        if getattr(self, "_skip_restore_history", False):
+            self._create_new_session()
+            return
         if self._restore_latest_session():
             return
         self._create_new_session()
@@ -682,6 +738,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._valid_configs[current_name] = new_config
             setting = Settings.get_instance()
             saved_providers = setting.llm_saved_providers.value or {}
+            old_model_list = saved_providers.get(current_name, {}).get("模型列表", [])
+            if old_model_list and "模型列表" not in new_config:
+                new_config["模型列表"] = old_model_list
             saved_providers[current_name] = new_config
             setting.set(setting.llm_saved_providers, saved_providers, save=True)
             self._load_model_configs()
@@ -693,6 +752,9 @@ class OpenAIChatToolWindow(ToolWindow):
             ):
                 custom_vars = self.homepage.global_variables.custom
                 if current_name in custom_vars:
+                    old_model_list = custom_vars[current_name].value.get("模型列表", [])
+                    if old_model_list and "模型列表" not in new_config:
+                        new_config["模型列表"] = old_model_list
                     custom_vars[current_name].value = new_config
                     self.homepage._on_global_variables_changed(
                         "custom", current_name, "update"

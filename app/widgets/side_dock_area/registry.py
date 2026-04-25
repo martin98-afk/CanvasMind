@@ -234,6 +234,21 @@ class SideDockRegistry:
         )
 
     @classmethod
+    def set_plugin_border_color(cls, context_id: str, plugin_name: str, border_color: str):
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
+        if context_id not in cls._plugin_states:
+            cls._plugin_states[context_id] = {}
+        if plugin_name not in cls._plugin_states[context_id]:
+            cls._plugin_states[context_id][plugin_name] = {}
+        cls._plugin_states[context_id][plugin_name]["border_color"] = border_color
+
+    @classmethod
+    def get_plugin_border_color(cls, context_id: str, plugin_name: str) -> str:
+        context_id = context_id.value if not isinstance(context_id, str) else context_id
+        state = cls._plugin_states.get(context_id, {}).get(plugin_name, {})
+        return state.get("border_color", "none")
+
+    @classmethod
     def get_all_plugin_states(cls, context_id: str) -> Dict[str, Dict[str, Any]]:
         context_id = context_id.value if not isinstance(context_id, str) else context_id
         return cls._plugin_states.get(context_id, {}).copy()

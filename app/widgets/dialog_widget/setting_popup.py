@@ -22,9 +22,9 @@ from qfluentwidgets import (
     FluentIcon,
 )
 
-from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_unified_font
+from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.widgets.side_dock_area.tool_window import DockCategory
 
 
@@ -430,9 +430,7 @@ class SettingDialog(QDialog):
 
     def _setup_llm_settings(self, layout):
         from qfluentwidgets import (
-            PrimaryPushSettingCard,
             SwitchSettingCard,
-            RangeSettingCard,
             OptionsSettingCard,
         )
         from app.widgets.card_widget.provider_setting_card import (
@@ -973,6 +971,46 @@ class SettingDialog(QDialog):
         )
         card_layout.addWidget(position_combo, 0, Qt.AlignRight)
 
+        border_color_label = BodyLabel(self.tr("边框:"))
+        border_color_label.setStyleSheet("color: #888888; font-size: 12px;")
+        card_layout.addWidget(border_color_label, 0, Qt.AlignRight)
+
+        border_color_combo = ComboBox()
+        border_color_combo.setFixedWidth(70)
+        border_color_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QComboBox:hover {
+                border: 1px solid #0078d4;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2b2b2b;
+                color: #e0e0e0;
+                border: 1px solid #444444;
+                selection-background-color: #0078d4;
+            }
+        """)
+        border_color_combo.addItems([self.tr("无"), self.tr("白色"), self.tr("黄色")])
+        border_color_map = {"none": 0, "white": 1, "yellow": 2}
+        border_color_value = state.get("border_color", "none")
+        border_color_combo.setCurrentIndex(border_color_map.get(border_color_value, 0))
+        border_color_combo._context_id = context_id
+        border_color_combo._plugin_name = plugin_name
+        border_color_combo.currentIndexChanged.connect(
+            lambda idx, combo=border_color_combo: self._on_plugin_border_color_changed(
+                combo, idx
+            )
+        )
+        card_layout.addWidget(border_color_combo, 0, Qt.AlignRight)
+
         enable_switch = SwitchButton()
         enable_switch.setOnText("")
         enable_switch.setOffText("")
@@ -1012,6 +1050,22 @@ class SettingDialog(QDialog):
         }
         new_position = position_map.get(index, DockPosition.HIDDEN)
         SideDockRegistry.set_plugin_position(context_id, plugin_name, new_position)
+        self._save_plugin_states()
+        self.onConfigChanged()
+
+    def _on_plugin_border_color_changed(self, combo, index):
+        from app.widgets.side_dock_area.registry import SideDockRegistry
+
+        context_id = combo._context_id
+        plugin_name = combo._plugin_name
+
+        border_color_map = {
+            0: "none",
+            1: "white",
+            2: "yellow",
+        }
+        new_border_color = border_color_map.get(index, "none")
+        SideDockRegistry.set_plugin_border_color(context_id, plugin_name, new_border_color)
         self._save_plugin_states()
         self.onConfigChanged()
 
@@ -1127,19 +1181,70 @@ class SettingDialog(QDialog):
             QApplication.instance().removeEventFilter(self)
             self._event_filter_installed = False
 
+    def _is_widget_in_dialog_tree(self, widget) -> bool:
+        """检查 widget 是否在 SettingDialog 的窗口树中（包括子对话框和弹出列表）"""
+        if widget is None:
+            return False
+        
+        # 检查是否是 SettingDialog 本身
+        if widget == self:
+            return True
+        
+        # 检查 widget 是否是 SettingDialog 的子窗口
+        current = widget
+        while current:
+            if current == self:
+                return True
+            # 检查是否是 QDialog（子对话框）
+            if isinstance(current, QDialog) and current.isVisible():
+                # 如果是子对话框，且它是 SettingDialog 的子窗口，则不隐藏
+                parent = current.parent()
+                while parent:
+                    if parent == self:
+                        return True
+                    parent = parent.parent()
+            current = current.parent()
+        
+        return False
+
+    def _is_combobox_popup(self, widget) -> bool:
+        """检查 widget 是否是 QComboBox 相关的弹出列表"""
+        if widget is None:
+            return False
+        
+        # 检查 widget 本身
+        if isinstance(widget, QComboBox):
+            return True
+        
+        # 检查 widget 的父窗口链中是否有 QComboBox
+        current = widget.parent() if hasattr(widget, 'parent') else None
+        while current:
+            if isinstance(current, QComboBox):
+                return True
+            current = current.parent() if hasattr(current, 'parent') else None
+        
+        # 检查是否是 QCompleter 的弹出窗口
+        class_name = widget.metaObject().className() if hasattr(widget, 'metaObject') else ''
+        if 'Completer' in class_name or 'Popup' in class_name:
+            # 检查是否是 ComboBox 相关的弹出
+            if hasattr(widget, 'parent') and widget.parent():
+                return self._is_combobox_popup(widget.parent())
+        
+        return False
+
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
             if not self.geometry().contains(event.globalPos()):
                 target = QApplication.widgetAt(event.globalPos())
-                if target:
-                    parent = target.parent()
-                    while parent:
-                        if parent == self or isinstance(target, QComboBox):
-                            return super().eventFilter(obj, event)
-                        try:
-                            parent = parent.parent()
-                        except Exception:
-                            pass
+                
+                # 如果点击目标是 SettingDialog 窗口树中的部件，不隐藏
+                if self._is_widget_in_dialog_tree(target):
+                    return super().eventFilter(obj, event)
+                
+                # 如果点击目标是 QComboBox 或其弹出列表，不隐藏
+                if self._is_combobox_popup(target):
+                    return super().eventFilter(obj, event)
+                
                 self.hidePopup()
                 return False
         return super().eventFilter(obj, event)
