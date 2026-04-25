@@ -6,10 +6,18 @@ from loguru import logger
 from typing import Dict, Optional, Callable
 
 from app.widgets.side_dock_area.plugins.llm_chatter.tools import BuiltinTools, ToolResult
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.file_operation_recorder import (
+    FileOperationRecorder,
+)
 
 
 class ToolExecutor:
     """工具执行器 - 统一调度各种工具"""
+
+    # 需要记录的文件操作
+    _FILE_OPS_TO_TRACK = {
+        "write", "edit", "multiedit", "patch"
+    }
 
     def __init__(self, homepage=None, workdir: str = None):
         self._homepage = homepage
@@ -17,6 +25,11 @@ class ToolExecutor:
         self._canvas_tools_executor = None
         self._workdir = workdir
         self._custom_tools: Dict[str, Callable] = {}
+        self._session_id: Optional[str] = None
+        self._call_id: Optional[str] = None
+
+        # 文件操作记录器
+        self._file_recorder: Optional[FileOperationRecorder] = None
 
         self._initialize_builtin_tools()
 
@@ -80,22 +93,107 @@ class ToolExecutor:
         if self._builtin_tools:
             self._builtin_tools.reset_session_state()
 
+    def _init_file_recorder(self):
+        """初始化文件操作记录器"""
+        if self._file_recorder is None:
+            self._file_recorder = FileOperationRecorder()
+
+    def set_session_context(self, session_id: str, call_id: str = None):
+        """
+        设置会话上下文（用于文件操作记录）
+
+        Args:
+            session_id: 会话 ID
+            call_id: 当前调用 ID（可选）
+        """
+        self._session_id = session_id
+        self._call_id = call_id
+        self._init_file_recorder()
+
+    def set_call_id(self, call_id: str):
+        """设置当前调用 ID"""
+        self._call_id = call_id
+
+    @property
+    def file_recorder(self) -> Optional[FileOperationRecorder]:
+        """获取文件操作记录器"""
+        return self._file_recorder
+
+    def _record_file_operation_before(self, tool_name: str, args: dict):
+        """
+        在文件操作执行前记录备份信息
+
+        Args:
+            tool_name: 工具名称
+            args: 工具参数
+        """
+        if tool_name not in self._FILE_OPS_TO_TRACK:
+            
+            return
+
+        if not self._session_id:
+            
+            return
+
+        if not self._call_id:
+            
+            return
+
+        if not self._file_recorder:
+            
+            return
+
+        # 获取文件路径
+        path = args.get("path")
+        if not path:
+            
+            return
+
+        logger.debug(f"[ToolExecutor] 准备记录文件操作: tool={tool_name}, path={path}")
+
+        # 处理 URL 格式的文件路径 (如 file:/D:/xxx 或 file:///D:/xxx)
+        import re
+        if path.startswith("file:"):
+            # 移除 file: 前缀，处理单斜杠或双斜杠
+            path = re.sub(r'^file:/{1,3}', '', path)
+            
+
+        # 获取完整的文件路径
+        if hasattr(self._builtin_tools, "_file_tools"):
+            full_path = self._builtin_tools._file_tools._resolve_path(path)
+        else:
+            from pathlib import Path
+            full_path = Path(path).resolve()
+
+        
+
+        # 记录操作（内部会处理文件不存在的情况）
+        try:
+            backup_path = self._file_recorder.record_operation(
+                session_id=self._session_id,
+                call_id=self._call_id,
+                tool_name=tool_name,
+                file_path=str(full_path)
+            )
+            if backup_path:
+                logger.info(f"[FileRecorder] 已备份: {full_path} -> {backup_path}")
+            else:
+                # 文件不存在（如新建文件 write_file），跳过记录是正常的
+                logger.debug(f"[ToolExecutor] 文件操作记录返回 None")
+        except Exception as e:
+            # 记录失败不阻塞工具执行
+            logger.warning(f"[ToolExecutor] 记录文件操作失败: {e}")
+
     def cancel_tool(self, tool_name: str = None):
         """取消正在执行的工具
         
         Args:
             tool_name: 要取消的工具名称，None 表示取消所有
         """
-        from app.widgets.side_dock_area.plugins.llm_chatter.tools.terminal_tools import BashProcessManager
-        
         if self._builtin_tools:
             # 取消文件工具（如 grep）
             if self._builtin_tools._file_tools:
                 self._builtin_tools._file_tools.cancel()
-            
-            # 取消 bash 进程
-            if tool_name is None or tool_name == "bash":
-                BashProcessManager.get_instance().terminate_all(force=True)
         
         logger.info(f"[ToolExecutor] Tool cancelled: {tool_name or 'all'}")
 
@@ -187,6 +285,9 @@ class ToolExecutor:
             return self._execute_webfetch_async(args, cancelled_ref)
         elif tool_name == "websearch":
             return self._execute_websearch_async(args, cancelled_ref)
+
+        # 文件操作前记录（用于撤销）
+        self._record_file_operation_before(tool_name, args)
 
         if tool_name in self._custom_tools:
             try:

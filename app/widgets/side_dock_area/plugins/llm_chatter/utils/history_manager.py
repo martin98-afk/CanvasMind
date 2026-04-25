@@ -223,16 +223,13 @@ class HistoryManager:
         self._persist_session(session_record)
 
     def _persist_session(self, session_record: Dict):
-        """持久化单个会话"""
+        """持久化单个会话（延迟保存）"""
         # 添加 canvas_id
         session_record["canvas_id"] = self.canvas_name
 
         if self._use_sqlite and self._session_store:
-            # SQLite 模式：原子性保存
-            success = self._session_store.save_session(session_record)
-            if not success:
-                logger.warning(f"[HistoryManager] SQLite 保存失败，回退 JSON")
-                self._save_to_disk_json()
+            # SQLite 模式：延迟保存，只保存当前会话
+            self._schedule_save(session_record.get("session_id"))
         else:
             # JSON 模式
             self._save_to_disk_json()
@@ -456,22 +453,36 @@ class HistoryManager:
                 ),
             )
             self._history_sessions[index] = updated
-            self._schedule_save()
+            self._schedule_save(existing.get("session_id"))
 
-    def _schedule_save(self):
+    def _schedule_save(self, session_id: str = None):
+        """延迟保存会话，指定 session_id 时只保存该会话"""
+        self._pending_save_session_id = session_id
         if self._save_timer is None:
             self._save_timer = QTimer.singleShot(self._save_delay_ms, self._do_save)
 
     def _do_save(self):
-        """延迟保存所有会话"""
+        """延迟保存会话"""
         if self._use_sqlite and self._session_store:
-            # SQLite 模式下逐条保存
-            for session in self._history_sessions:
-                session["canvas_id"] = self.canvas_name
-                self._session_store.save_session(session)
+            # SQLite 模式下保存指定会话或所有会话
+            pending_id = getattr(self, '_pending_save_session_id', None)
+            logger.debug(f"[HistoryManager] 保存会话: pending_id={pending_id}, total={len(self._history_sessions)}")
+            if pending_id:
+                # 只保存指定会话
+                for session in self._history_sessions:
+                    if session.get("session_id") == pending_id:
+                        session["canvas_id"] = self.canvas_name
+                        self._session_store.save_session(session)
+                        break
+            else:
+                # 保存所有会话
+                for session in self._history_sessions:
+                    session["canvas_id"] = self.canvas_name
+                    self._session_store.save_session(session)
         else:
             self._save_to_disk_json()
         self._save_timer = None
+        self._pending_save_session_id = None
 
     def _extract_last_message_time(self, messages: List[Dict]) -> str:
         for msg in reversed(messages or []):

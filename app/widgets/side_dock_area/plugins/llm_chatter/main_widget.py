@@ -107,6 +107,9 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
     get_user_round_ranges,
     group_messages_for_display,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.widgets.file_undo_dialog import (
+    FileUndoPreviewDialog,
+)
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -186,6 +189,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._question_tool_call_id: Optional[str] = None
         self.session_manager = SessionManager()
         self.session_manager.create_new_session()
+        self._current_session_id = self.session_manager.get_current_session().session_id
         app = QApplication.instance()
         if app is not None:
             try:
@@ -195,6 +199,10 @@ class OpenAIChatToolWindow(ToolWindow):
         if hasattr(self.homepage, "global_variables_changed"):
             self.homepage.global_variables_changed.connect(self._load_model_configs)
         self._initialize_managers()
+
+        # 设置文件操作记录的会话上下文
+        if self._tool_executor:
+            self._tool_executor.set_session_context(self._current_session_id)
 
     def _initialize_managers(self):
         """初始化核心管理器"""
@@ -441,6 +449,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._todo_floating_widget.clear()
         if self._tool_executor:
             self._tool_executor.clear_todo_list()
+            self._tool_executor.set_session_context(self._current_session_id)
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
@@ -1073,6 +1082,8 @@ class OpenAIChatToolWindow(ToolWindow):
         self._current_session_id = session_id
         self.title_edit.setText(latest.get("title") or "最近会话")
         self._load_agent_list()
+        if self._tool_executor:
+            self._tool_executor.set_session_context(self._current_session_id)
         is_canvas = getattr(self.homepage, "workflow_name", None) is not None
         logger.info(f"[DEBUG] _restore_latest_session: is_on_canvas={is_canvas}")
         if is_canvas and self._current_agent != "canvas":
@@ -1652,6 +1663,11 @@ class OpenAIChatToolWindow(ToolWindow):
         old_session_manager = self.session_manager
         old_chat_engine = self._chat_engine
 
+        # 清理归档会话的文件操作记录和备份
+        if self._tool_executor and self._tool_executor.file_recorder:
+            self._tool_executor.file_recorder.clear_session(target_session_id)
+            logger.info(f"[FileRecorder] 已清理归档会话的文件操作记录: {target_session_id}")
+
         archived = self.history_manager.archive_history(index)
 
         if archived_current and archived:
@@ -1662,6 +1678,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
             if old_chat_engine and hasattr(old_chat_engine, "set_session_manager"):
                 old_chat_engine.set_session_manager(self.session_manager)
+
+            if self._tool_executor:
+                self._tool_executor.set_session_context(self._current_session_id)
 
             self._clear_chat_area()
             self._show_initial_welcome()
@@ -1955,6 +1974,43 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
+        # 获取待回滚的文件操作
+        all_call_ids = self._get_all_tool_call_ids_for_round(round_index)
+        
+
+        # 如果有文件操作，显示预览对话框
+        if all_call_ids and self._tool_executor and self._tool_executor.file_recorder:
+            # 获取所有 call_id 对应的操作
+            operations = []
+            for call_id in all_call_ids:
+                ops = self._tool_executor.file_recorder.get_operations_for_preview(
+                    self._current_session_id, call_id
+                )
+                operations.extend(ops)
+            # 去重（基于 id 或 file_path+call_id 组合）
+            seen = set()
+            unique_ops = []
+            for op in operations:
+                key = (op.get("id"), op.get("file_path"), op.get("call_id"))
+                if key not in seen:
+                    seen.add(key)
+                    unique_ops.append(op)
+            operations = unique_ops
+            
+            
+            if operations:
+                dialog = FileUndoPreviewDialog(operations, self)
+                result = dialog.exec_()
+
+                if result == FileUndoPreviewDialog.CANCEL:
+                    return  # 取消撤销，什么都不做
+
+                # 执行回滚 - 只还原选中的操作
+                selected_ops = dialog.get_selected_operations()
+                if selected_ops:
+                    result = self._tool_executor.file_recorder.rollback_operations(selected_ops)
+                    self._show_undo_result(result)
+
         user_input = card.get_plain_text()
         context_tags = card.context_tags.copy()
         if not self._truncate_session_from_user_round(round_index):
@@ -1965,6 +2021,85 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.moveCursor(QTextCursor.End)
         self.input_area._on_text_changed()
         self.input_area.setFocus()
+
+    def _get_last_tool_call_id_after_round(self, round_index: int) -> Optional[str]:
+        """获取指定 round_index 之后最后一个 tool_call_id"""
+        session = self.session_manager.get_current_session()
+        if not session:
+            return None
+
+        canonical_messages = consolidate_messages(session.messages)
+        round_ranges = get_user_round_ranges(canonical_messages)
+
+        if round_index < 0 or round_index >= len(round_ranges):
+            return None
+
+        # 获取该 round 之后的所有消息的 start index
+        _, end_idx = round_ranges[round_index]
+
+        # 查找 end_idx 之后的所有 tool_call_id
+        last_call_id = None
+        for i in range(end_idx, len(canonical_messages)):
+            msg = canonical_messages[i]
+            if msg.get("role") == "tool":
+                call_id = msg.get("tool_call_id")
+                if call_id:
+                    last_call_id = call_id
+
+        return last_call_id
+
+    def _get_all_tool_call_ids_for_round(self, round_index: int) -> List[str]:
+        """获取指定 round 的所有 tool_call_id"""
+        session = self.session_manager.get_current_session()
+        if not session:
+            return []
+
+        canonical_messages = consolidate_messages(session.messages)
+        round_ranges = get_user_round_ranges(canonical_messages)
+
+        if round_index < 0 or round_index >= len(round_ranges):
+            return []
+
+        # 获取该 round 的范围 [start_idx, end_idx)
+        start_idx, end_idx = round_ranges[round_index]
+        
+        # 从该 round 的 assistant 消息中提取 tool_calls（不包括 start_idx 的 user 消息）
+        call_ids = []
+        for i in range(start_idx + 1, end_idx):  # 从 user 之后开始
+            msg = canonical_messages[i]
+            role = msg.get("role")
+            if role == "assistant":
+                tool_calls = msg.get("tool_calls", [])
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        tid = tc.get("id")
+                        if tid and tid not in call_ids:
+                            call_ids.append(tid)
+            elif role == "tool":
+                # 也从 tool 消息中提取 tool_call_id
+                tid = msg.get("tool_call_id")
+                if tid and tid not in call_ids:
+                    call_ids.append(tid)
+
+        return call_ids
+
+    def _show_undo_result(self, result):
+        """显示撤销结果"""
+        if result.failed_count > 0:
+            failed_list = "\n".join(f"  - {f}" for f in result.failed_files[:5])
+            InfoBar.warning(
+                "部分文件回滚失败",
+                f"成功: {result.success_count}, 失败: {result.failed_count}\n{failed_list}",
+                parent=self,
+                duration=5000,
+            )
+        elif result.success_count > 0:
+            InfoBar.success(
+                "文件已回滚",
+                f"已恢复 {result.success_count} 个文件",
+                parent=self,
+                duration=3000,
+            )
 
     def _on_code_action(self, code: str, action: str = "copy"):
         if action == "insert":
