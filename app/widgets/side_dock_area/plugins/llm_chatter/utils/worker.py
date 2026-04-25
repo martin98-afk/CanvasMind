@@ -1034,6 +1034,10 @@ class OpenAIChatWorker(QThread):
                         continue
 
             try:
+                # 设置当前调用的 call_id（用于文件操作记录）
+                if hasattr(self.tool_executor, "set_call_id"):
+                    self.tool_executor.set_call_id(tool_call_id)
+
                 # 传递取消标志引用，以便异步工具可以检测取消
                 cancelled_ref = [self._is_cancelled or self._tool_execution_cancelled]
                 result = self.tool_executor.execute(tool_name, arguments, cancelled_ref)
