@@ -6,6 +6,8 @@ import traceback
 from datetime import datetime
 from threading import Event
 from typing import Any, Dict, List
+
+import httpx
 from loguru import logger
 
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThread, pyqtSignal, QCoreApplication
@@ -612,7 +614,7 @@ class OpenAIChatWorker(QThread):
         client = OpenAI(
             api_key=api_key if api_key and auth_type != "none" else "dummy",
             base_url=base_url,
-            timeout=120.0,
+            timeout=httpx.Timeout(300.0, connect=30.0),
         )
 
         if "o1-preview" in model or "o1-mini" in model:
@@ -623,6 +625,11 @@ class OpenAIChatWorker(QThread):
         retry_delay = 5
         last_error = None
 
+        # 需要重试的错误类型
+        from openai import RateLimitError, APIError, APIConnectionError
+        from httpx import ReadTimeout as HttpxReadTimeout
+        import httpcore
+
         for attempt in range(max_retries):
             try:
                 response = client.chat.completions.create(**req_kwargs)
@@ -630,16 +637,24 @@ class OpenAIChatWorker(QThread):
             except Exception as e:
                 last_error = e
                 error_str = str(e)
-                from openai import RateLimitError, APIError
+                error_type = type(e).__name__
 
+                # 判断是否应该重试
                 is_rate_limit = isinstance(e, RateLimitError)
-                is_server_overload = isinstance(e, APIError) and "2064" in error_str
+                is_server_overload = isinstance(e, APIError) and ("2064" in error_str or "overload" in error_str.lower())
+                is_read_timeout = isinstance(e, (httpcore.ReadTimeout, HttpxReadTimeout))
+                is_conn_error = isinstance(e, (httpcore.ConnectError, httpcore.ConnectTimeout, APIConnectionError))
 
-                if (is_rate_limit or is_server_overload) and attempt < max_retries - 1:
+                should_retry = (
+                    is_rate_limit or is_server_overload or is_read_timeout or is_conn_error
+                )
+
+                if should_retry and attempt < max_retries - 1:
                     wait_time = retry_delay * (attempt + 1)
+                    retry_reason = "RateLimit" if is_rate_limit else ("ServerOverload" if is_server_overload else "ReadTimeout" if is_read_timeout else "ConnectionError")
                     logger.warning(
-                        f"[API] {'RateLimit' if is_rate_limit else 'ServerOverload'} error, "
-                        f"retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})"
+                        f"[API] {retry_reason} error, retrying in {wait_time}s "
+                        f"(attempt {attempt + 1}/{max_retries})"
                     )
                     time.sleep(wait_time)
                     continue
@@ -858,7 +873,7 @@ class OpenAIChatWorker(QThread):
                                     },
                                 }
                             )
-                            del self._tool_calls_buffer[tc_id]
+                            self._tool_calls_buffer.pop(tc_id, None)
                         except json.JSONDecodeError:
                             pass
 
@@ -869,33 +884,19 @@ class OpenAIChatWorker(QThread):
                 )
                 self.content_received.emit(content)
 
-        for tc_id, buffer in self._tool_calls_buffer.items():
+        for tc_id, buffer in list(self._tool_calls_buffer.items()):
             if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                try:
-                    parsed_args = json.loads(buffer["function"]["arguments"])
-                    self._current_tool_calls.append(
-                        {
-                            "id": buffer["id"],
-                            "type": buffer["type"],
-                            "function": {
-                                "name": buffer["function"]["name"],
-                                "arguments": buffer["function"]["arguments"],
-                            },
-                        }
-                    )
-                except json.JSONDecodeError:
-                    self._current_tool_calls.append(
-                        {
-                            "id": buffer["id"],
-                            "type": buffer["type"],
-                            "function": {
-                                "name": buffer["function"]["name"],
-                                "arguments": buffer["function"]["arguments"],
-                            },
-                        }
-                    )
-                finally:
-                    del self._tool_calls_buffer[tc_id]
+                self._current_tool_calls.append(
+                    {
+                        "id": buffer["id"],
+                        "type": buffer["type"],
+                        "function": {
+                            "name": buffer["function"]["name"],
+                            "arguments": buffer["function"]["arguments"],
+                        },
+                    }
+                )
+                self._tool_calls_buffer.pop(tc_id, None)
 
         return tool_calls_found
 
@@ -1135,7 +1136,7 @@ class OpenAIChatWorker(QThread):
             )
         elif isinstance(error, APITimeoutError):
             self.error_occurred.emit(
-                f"[超时] 请求超时（120秒），请检查网络或模型负载。详情: {error_msg}"
+                f"[超时] 请求超时（300秒），请检查网络或模型负载。详情: {error_msg}"
             )
         elif isinstance(error, APIError):
             if "context length" in error_msg and "overflow" in error_msg:

@@ -682,6 +682,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._valid_configs[current_name] = new_config
             setting = Settings.get_instance()
             saved_providers = setting.llm_saved_providers.value or {}
+            old_model_list = saved_providers.get(current_name, {}).get("模型列表", [])
+            if old_model_list and "模型列表" not in new_config:
+                new_config["模型列表"] = old_model_list
             saved_providers[current_name] = new_config
             setting.set(setting.llm_saved_providers, saved_providers, save=True)
             self._load_model_configs()
@@ -693,6 +696,9 @@ class OpenAIChatToolWindow(ToolWindow):
             ):
                 custom_vars = self.homepage.global_variables.custom
                 if current_name in custom_vars:
+                    old_model_list = custom_vars[current_name].value.get("模型列表", [])
+                    if old_model_list and "模型列表" not in new_config:
+                        new_config["模型列表"] = old_model_list
                     custom_vars[current_name].value = new_config
                     self.homepage._on_global_variables_changed(
                         "custom", current_name, "update"

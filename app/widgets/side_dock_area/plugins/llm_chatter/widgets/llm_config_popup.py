@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import ast
+import json
 import webbrowser
+from loguru import logger
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QApplication
 from PyQt5.QtGui import QCursor
@@ -97,6 +100,12 @@ class LLMConfigPopup(QWidget):
 
             model_combo = SearchableEditableComboBox(self)
             saved_models = config.get("模型列表", [])
+            if isinstance(saved_models, str):
+                try:
+                    saved_models = ast.literal_eval(saved_models)
+                except:
+                    logger.exception("无法解析模型列表")
+                    saved_models = []
             if isinstance(saved_models, list) and len(saved_models) > 0:
                 model_combo.addItems(saved_models)
             elif provider_key in PROVIDER_MODELS:

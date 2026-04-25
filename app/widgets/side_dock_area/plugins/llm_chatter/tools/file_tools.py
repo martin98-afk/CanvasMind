@@ -418,7 +418,6 @@ class FileTools:
             if not full_path.exists():
                 return ToolResult(False, error=f"File not found: {path}")
 
-            # 检查文件是否被外部修改
             check_result = self._check_file_modified(full_path)
             if check_result:
                 return check_result
@@ -426,12 +425,10 @@ class FileTools:
             with open(full_path, "r", encoding="utf-8") as f:
                 original_lines = f.read().splitlines()
 
-            # 处理转义字符：如果 \\n 多于真正的换行符，说明 LLM 生成的内容被双重转义
             processed_content = patch_content.strip()
             real_newlines = processed_content.count('\n')
             escaped_newlines = processed_content.count('\\n')
             if escaped_newlines > real_newlines:
-                # 大部分换行符是转义的，需要转换
                 processed_content = processed_content.replace('\\n', '\n')
 
             patch_lines = processed_content.split('\n')
@@ -445,58 +442,55 @@ class FileTools:
                 content = hunk['content']
                 old_start = hunk['old_start']
 
-                # 定位 hunk 在 result 中的起始位置
-                hunk_start_pos = old_start - 1
+                ctx_lines = [(i, t) for i, (typ, t) in enumerate(content) if typ == ' ']
+                if not ctx_lines:
+                    return ToolResult(False, error="Patch hunk has no context lines, cannot verify position")
 
-                # 验证位置
-                first_ctx_idx = -1
-                for i, (typ, text) in enumerate(content):
-                    if typ == ' ':
-                        first_ctx_idx = i
+                hunk_start_pos = old_start - 1
+                matched = False
+
+                for candidate_start in range(max(0, hunk_start_pos - 100), min(len(result), hunk_start_pos + 100)):
+                    if candidate_start + len(content) > len(result):
+                        continue
+                    match = True
+                    for ctx_idx, ctx_text in ctx_lines:
+                        if result[candidate_start + ctx_idx] != ctx_text:
+                            match = False
+                            break
+                    if match:
+                        hunk_start_pos = candidate_start
+                        matched = True
                         break
 
-                if first_ctx_idx >= 0 and hunk_start_pos + first_ctx_idx < len(result):
-                    expected_text = content[first_ctx_idx][1]
-                    if result[hunk_start_pos + first_ctx_idx] != expected_text:
-                        for i in range(len(result)):
-                            if result[i] == expected_text:
-                                hunk_start_pos = i - first_ctx_idx
-                                break
+                if not matched:
+                    return ToolResult(False,
+                        error=f"Cannot match patch context in file. Expected context around line {old_start}, but content differs. "
+                              f"The file may have been modified since it was read.")
 
-                # 收集删除和添加
+                ctx_offsets = {i for i, _ in ctx_lines}
                 removes = []
                 adds = []
 
                 for i, (typ, text) in enumerate(content):
                     if typ == '-':
-                        result_pos = hunk_start_pos + i
-                        if 0 <= result_pos < len(result) and result[result_pos] == text:
-                            removes.append(result_pos)
+                        file_pos = hunk_start_pos + i
+                        if 0 <= file_pos < len(result) and result[file_pos] == text:
+                            removes.append(file_pos)
                     elif typ == '+':
-                        adds.append((i, text))
+                        adds.append((hunk_start_pos + i, text))
 
-                # 删除（从后往前）
-                for pos in sorted(set(removes), reverse=True):
+                removes_sorted = sorted(set(removes), reverse=True)
+                for pos in removes_sorted:
                     del result[pos]
 
-                # 计算插入位置
-                if removes:
-                    insert_pos = min(removes)
-                elif adds:
-                    first_add_idx = adds[0][0]
-                    insert_pos = hunk_start_pos + first_add_idx
-                    insert_pos -= len(removes)
-                else:
-                    insert_pos = hunk_start_pos
+                insert_pos = removes_sorted[-1] + 1 if removes_sorted else hunk_start_pos
 
-                # 插入（从后往前）
-                for idx, text in sorted(adds, key=lambda x: -x[0]):
+                for file_pos, text in sorted(adds, key=lambda x: -x[0]):
                     result.insert(insert_pos, text)
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(result) + "\n")
 
-            # 更新修改时间记录
             self._file_mtimes[str(full_path)] = full_path.stat().st_mtime
 
             return ToolResult(True, content=f"Patch applied: {path}")
