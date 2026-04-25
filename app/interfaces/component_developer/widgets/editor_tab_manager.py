@@ -51,8 +51,8 @@ class ComponentTabManager(TabWidget):
         self.top_bar_layout.setContentsMargins(5, 0, 5, 0)
         self.top_bar_layout.setSpacing(4)
 
-        self._init_left_corner()
-        self.top_bar_layout.addWidget(self.template_btn)
+        # self._init_left_corner()
+        # self.top_bar_layout.addWidget(self.template_btn)
 
         self.top_bar_layout.addWidget(self.tabBar, 1)
 

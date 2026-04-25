@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 import os
 
-from PyQt5.QtCore import Qt, QSize, QPoint, QTimer
+from PyQt5.QtCore import Qt, QSize, QPoint, QTimer, QEasingCurve, QVariantAnimation
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame
 from qfluentwidgets import (
     TransparentToolButton,
@@ -41,6 +41,8 @@ class CanvasUISetUp:
         self.nodes_container = None
         self._hidden_quick_components = []
         self.is_zen_mode = False
+        self._nav_panel_animating = False
+        self._nav_panel_animating_visible = False
 
         # UI 引用
         self.env_combo = None
@@ -512,10 +514,70 @@ class CanvasUISetUp:
             )
 
     def _toggle_nav_panel(self):
+        """切换导航面板显示/隐藏，带60fps滑动动画效果"""
+        if getattr(self, "_nav_panel_animating", False):
+            return
+
         visible = self.nav_panel.isVisible()
-        self.nav_panel.setVisible(not visible)
-        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-        self.btn_toggle_nav.setIcon(FluentIcon.MENU if visible else get_icon("左收起"))
+        current_sizes = self.splitter.sizes()
+
+        self._nav_panel_animating = True
+        self._nav_panel_animating_visible = not visible
+
+        start_sizes = list(current_sizes)
+        end_sizes = list(current_sizes)
+
+        if visible:
+            end_sizes[0] = 0
+        else:
+            end_sizes[0] = DEFAULT_SPLITTER_SIZES[0]
+
+        self._nav_anim_start = start_sizes
+        self._nav_anim_end = end_sizes
+        self._nav_anim_elapsed = 0.0
+        self._nav_anim_duration = 200.0
+
+        if hasattr(self, "_nav_panel_timer") and self._nav_panel_timer:
+            self._nav_panel_timer.stop()
+            self._nav_panel_timer.deleteLater()
+
+        self._nav_panel_timer = QTimer()
+        self._nav_panel_timer.setInterval(16)
+
+        def step():
+            self._nav_anim_elapsed += 16.0
+            progress = min(self._nav_anim_elapsed / self._nav_anim_duration, 1.0)
+
+            eased = QEasingCurve(QEasingCurve.InOutCubic).valueForProgress(progress)
+
+            current = [
+                int(
+                    self._nav_anim_start[i]
+                    + (self._nav_anim_end[i] - self._nav_anim_start[i]) * eased
+                )
+                for i in range(3)
+            ]
+            self.splitter.setSizes(current)
+
+            if progress >= 1.0:
+                self._nav_panel_timer.stop()
+                self._nav_panel_animating = False
+                if self._nav_panel_animating_visible:
+                    self.btn_toggle_nav.setIcon(get_icon("左收起"))
+                    self.nav_panel.setVisible(True)
+                else:
+                    self.btn_toggle_nav.setIcon(FluentIcon.MENU)
+                    self.nav_panel.setVisible(False)
+
+        self._nav_panel_timer.timeout.connect(step)
+
+        if visible:
+            self.btn_toggle_nav.setIcon(FluentIcon.MENU)
+        else:
+            self.btn_toggle_nav.setIcon(get_icon("左收起"))
+            self.nav_panel.setVisible(True)
+
+        self._nav_panel_timer.start()
 
     def show_splitter(self):
         self.side_dock_area.show()

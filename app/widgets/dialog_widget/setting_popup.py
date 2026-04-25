@@ -22,9 +22,9 @@ from qfluentwidgets import (
     FluentIcon,
 )
 
-from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_unified_font
+from app.widgets.card_widget.list_setting_card import FontListSettingCard
 from app.widgets.side_dock_area.tool_window import DockCategory
 
 
@@ -430,9 +430,7 @@ class SettingDialog(QDialog):
 
     def _setup_llm_settings(self, layout):
         from qfluentwidgets import (
-            PrimaryPushSettingCard,
             SwitchSettingCard,
-            RangeSettingCard,
             OptionsSettingCard,
         )
         from app.widgets.card_widget.provider_setting_card import (
@@ -1183,19 +1181,70 @@ class SettingDialog(QDialog):
             QApplication.instance().removeEventFilter(self)
             self._event_filter_installed = False
 
+    def _is_widget_in_dialog_tree(self, widget) -> bool:
+        """检查 widget 是否在 SettingDialog 的窗口树中（包括子对话框和弹出列表）"""
+        if widget is None:
+            return False
+        
+        # 检查是否是 SettingDialog 本身
+        if widget == self:
+            return True
+        
+        # 检查 widget 是否是 SettingDialog 的子窗口
+        current = widget
+        while current:
+            if current == self:
+                return True
+            # 检查是否是 QDialog（子对话框）
+            if isinstance(current, QDialog) and current.isVisible():
+                # 如果是子对话框，且它是 SettingDialog 的子窗口，则不隐藏
+                parent = current.parent()
+                while parent:
+                    if parent == self:
+                        return True
+                    parent = parent.parent()
+            current = current.parent()
+        
+        return False
+
+    def _is_combobox_popup(self, widget) -> bool:
+        """检查 widget 是否是 QComboBox 相关的弹出列表"""
+        if widget is None:
+            return False
+        
+        # 检查 widget 本身
+        if isinstance(widget, QComboBox):
+            return True
+        
+        # 检查 widget 的父窗口链中是否有 QComboBox
+        current = widget.parent() if hasattr(widget, 'parent') else None
+        while current:
+            if isinstance(current, QComboBox):
+                return True
+            current = current.parent() if hasattr(current, 'parent') else None
+        
+        # 检查是否是 QCompleter 的弹出窗口
+        class_name = widget.metaObject().className() if hasattr(widget, 'metaObject') else ''
+        if 'Completer' in class_name or 'Popup' in class_name:
+            # 检查是否是 ComboBox 相关的弹出
+            if hasattr(widget, 'parent') and widget.parent():
+                return self._is_combobox_popup(widget.parent())
+        
+        return False
+
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
             if not self.geometry().contains(event.globalPos()):
                 target = QApplication.widgetAt(event.globalPos())
-                if target:
-                    parent = target.parent()
-                    while parent:
-                        if parent == self or isinstance(target, QComboBox):
-                            return super().eventFilter(obj, event)
-                        try:
-                            parent = parent.parent()
-                        except Exception:
-                            pass
+                
+                # 如果点击目标是 SettingDialog 窗口树中的部件，不隐藏
+                if self._is_widget_in_dialog_tree(target):
+                    return super().eventFilter(obj, event)
+                
+                # 如果点击目标是 QComboBox 或其弹出列表，不隐藏
+                if self._is_combobox_popup(target):
+                    return super().eventFilter(obj, event)
+                
                 self.hidePopup()
                 return False
         return super().eventFilter(obj, event)
