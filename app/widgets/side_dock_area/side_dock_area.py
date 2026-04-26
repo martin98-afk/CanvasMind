@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QLabel,
 )
 from PyQt5.QtGui import QPainter, QColor
-from qfluentwidgets import isDarkTheme, ToolButton, IconWidget, FluentIcon as FIF
+from qfluentwidgets import isDarkTheme, ToolButton, IconWidget, FluentIcon as FIF, TransparentToolButton
 
 from .button_bar import RightToolPanel
 from .registry import SideDockRegistry
@@ -182,13 +182,13 @@ class ToolPopupDialog(QDialog):
         self._switch_btn = title_bar._switch_layout_btn
         self._switch_btn.hide()
 
-        self._min_btn = ToolButton(get_icon("最小化"), self)
+        self._min_btn = TransparentToolButton(get_icon("最小化"), self)
         self._min_btn.setFixedSize(24, 24)
         self._min_btn.setToolTip("最小化")
         self._min_btn.clicked.connect(self.showMinimized)
         title_bar.add_popup_button(self._min_btn)
 
-        self._max_btn = ToolButton(get_icon("最大化"), self)
+        self._max_btn = TransparentToolButton(get_icon("最大化"), self)
         self._max_btn.setFixedSize(24, 24)
         self._max_btn.setToolTip("最大化")
         self._max_btn.clicked.connect(self._toggle_maximize)

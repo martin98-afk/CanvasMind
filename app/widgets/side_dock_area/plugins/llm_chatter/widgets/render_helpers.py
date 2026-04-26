@@ -27,6 +27,7 @@ def render_tool_block(
     result: str = None,
     success: bool = None,
     collapsed: bool = False,
+    tool_call_id: str = None,
 ) -> str:
     """渲染工具块 - 参数截断，结果可折叠"""
     max_args_display = 80
@@ -59,6 +60,19 @@ def render_tool_block(
         text = re.sub(r"```", "", text)
         return text
 
+    # 判断是否是需要文件操作的工具
+    file_edit_tools = {"write", "edit", "multiedit", "patch"}
+    is_file_edit = tool_name in file_edit_tools and tool_args.get("path")
+    
+    # 差异对比按钮
+    diff_button_html = ""
+    if is_file_edit and tool_call_id:
+        diff_button_html = f'''
+        <button type="button" class="tool-diff-btn" data-tool-call-id="{escape(tool_call_id)}" 
+            style="cursor: pointer; padding: 2px 8px; font-size: 11px; background: #2d5a87; color: #fff; border: none; border-radius: 4px; margin-left: 4px;"
+            onclick="window._requestToolDiff(this.dataset.toolCallId)"
+            title="查看此工具产生的文件差异">📄 差异</button>'''
+
     if result is not None:
         result_str = str(result)
         result_stripped = strip_code_blocks(result_str[:500])
@@ -67,7 +81,7 @@ def render_tool_block(
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
             <div style="color: #888; margin-bottom: 4px;">{"调用子智能体" if is_sub_agent_task else "参数"}:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-            <div style="color: #888; margin: 8px 0 4px;">{"子智能体结果" if is_sub_agent_task else "结果"}:</div>
+            <div style="color: #888; margin: 8px 0 4px; display: flex; align-items: center; gap: 8px;">{"子智能体结果" if is_sub_agent_task else "结果"}{diff_button_html}</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px; max-height: 400px; overflow-y: auto;">{result_escaped}</pre>
         </div>"""
     else:
@@ -89,7 +103,7 @@ def render_tool_block(
     expanded_attr = "false" if collapsed else "true"
     body_style = "" if collapsed else " style=\"height:auto; opacity:1;\""
 
-    return f"""<div class="cm-collapsible tool-block" data-block-key="{block_key}" data-expanded="{expanded_attr}" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;">
+    return f"""<div class="cm-collapsible tool-block" data-block-key="{block_key}" data-expanded="{expanded_attr}" data-tool-call-id="{escape(tool_call_id or '')}" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;">
     <button type="button" class="cm-collapsible__summary tool-block__summary" aria-expanded="{expanded_attr}" style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; width: 100%; background: transparent; border: none; text-align: left;">
         <span class="cm-collapsible__chevron" aria-hidden="true"></span>
         <span>{icon}</span>

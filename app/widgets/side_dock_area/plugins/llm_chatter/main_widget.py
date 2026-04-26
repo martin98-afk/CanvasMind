@@ -1854,6 +1854,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.contextActionRequested.connect(self.handle_recommended_question)
+        card.toolDiffRequested.connect(self._on_tool_diff_requested)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -2164,6 +2165,123 @@ class OpenAIChatToolWindow(ToolWindow):
                 f"已恢复 {result.success_count} 个文件",
                 parent=self,
                 duration=3000,
+            )
+
+    def _on_tool_diff_requested(self, tool_call_id: str):
+        """
+        处理工具差异对比请求
+        
+        Args:
+            tool_call_id: 工具调用 ID
+        """
+        if not tool_call_id:
+            return
+        
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+        
+        session_id = session.session_id
+        
+        # 检查是否有 file_recorder
+        if not self._tool_executor or not self._tool_executor.file_recorder:
+            logger.warning("[LLMChatter] file_recorder 未初始化")
+            return
+        
+        try:
+            # 获取该 tool_call_id 对应的文件操作记录
+            operations = self._tool_executor.file_recorder.get_operations_for_preview(
+                session_id=session_id,
+                call_id=tool_call_id
+            )
+            
+            if not operations:
+                InfoBar.warning(
+                    "无差异信息",
+                    "此工具没有修改任何文件，或备份信息已丢失",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            
+            # 只取该工具产生的第一个文件操作（通常每个工具只修改一个文件）
+            op = operations[0]
+            file_path = op.get("file_path", "")
+            backup_path = op.get("backup_path", "")
+            
+            if not file_path or not backup_path:
+                InfoBar.warning(
+                    "无差异信息",
+                    "文件路径或备份路径无效",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            
+            # 读取备份文件和当前文件
+            from pathlib import Path
+            import difflib
+            
+            try:
+                with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                    old_content = f.read()
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    new_content = f.read()
+            except FileNotFoundError as e:
+                InfoBar.error(
+                    "文件不存在",
+                    f"无法读取文件: {e}",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            except Exception as e:
+                InfoBar.error(
+                    "读取失败",
+                    f"无法读取文件: {e}",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            
+            # 生成 unified diff
+            old_lines = old_content.splitlines(keepends=True)
+            new_lines = new_content.splitlines(keepends=True)
+            
+            diff = difflib.unified_diff(
+                old_lines,
+                new_lines,
+                fromfile=Path(file_path).name,
+                tofile=Path(file_path).name,
+                lineterm='\n'
+            )
+            
+            diff_output = ''.join(diff)
+            
+            # 生成并显示差异对比
+            from app.widgets.side_dock_area.plugins.llm_chatter.utils.diff_viewer import (
+                DiffHtmlGenerator,
+                DiffViewerWindow,
+            )
+            
+            html = DiffHtmlGenerator.generate_html_report(diff_output, "")
+            
+            viewer = DiffViewerWindow(parent=self)
+            viewer.load_html(html)
+            viewer.show()
+            
+        except Exception as e:
+            logger.error(f"[LLMChatter] 显示工具差异失败: {e}")
+            InfoBar.error(
+                "差异显示失败",
+                str(e),
+                duration=3000,
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
             )
 
     def _on_code_action(self, code: str, action: str = "copy"):
