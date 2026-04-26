@@ -1820,6 +1820,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self.title_edit.setText(title or "历史对话")
         if self._history_popup:
             self._history_popup.close()
+
+        # 更新工具执行器的会话上下文
+        if self._tool_executor:
+            self._tool_executor.set_session_context(self._current_session_id)
+
         self._display_current_session()
 
     def _append_user_message(
@@ -2207,32 +2212,47 @@ class OpenAIChatToolWindow(ToolWindow):
             
             # 只取该工具产生的第一个文件操作（通常每个工具只修改一个文件）
             op = operations[0]
-            file_path = op.get("file_path", "")
             backup_path = op.get("backup_path", "")
-            
-            if not file_path or not backup_path:
+
+            if not backup_path:
                 InfoBar.warning(
                     "无差异信息",
-                    "文件路径或备份路径无效",
+                    "备份路径无效",
                     duration=3000,
                     parent=self,
                     position=InfoBarPosition.TOP_RIGHT,
                 )
                 return
-            
-            # 读取备份文件和当前文件
+
+            # 编辑前备份路径 -> 编辑后备份路径（固定后缀 .after.bak）
             from pathlib import Path
             import difflib
-            
+
+            backup_file = Path(backup_path)
+            after_backup_path = str(backup_file.with_suffix('.after.bak'))
+            after_backup_file = Path(after_backup_path)
+
+            # 检查编辑后备份是否存在
+            if not after_backup_file.exists():
+                InfoBar.warning(
+                    "无差异信息",
+                    "编辑后备份文件不存在，可能该工具执行于早期版本",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
             try:
+                # 读取编辑前和编辑后的备份文件进行对比
                 with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
                     old_content = f.read()
-                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                with open(after_backup_path, 'r', encoding='utf-8', errors='replace') as f:
                     new_content = f.read()
             except FileNotFoundError as e:
                 InfoBar.error(
                     "文件不存在",
-                    f"无法读取文件: {e}",
+                    f"无法读取备份文件: {e}",
                     duration=3000,
                     parent=self,
                     position=InfoBarPosition.TOP_RIGHT,
@@ -2241,22 +2261,22 @@ class OpenAIChatToolWindow(ToolWindow):
             except Exception as e:
                 InfoBar.error(
                     "读取失败",
-                    f"无法读取文件: {e}",
+                    f"无法读取备份文件: {e}",
                     duration=3000,
                     parent=self,
                     position=InfoBarPosition.TOP_RIGHT,
                 )
                 return
-            
+
             # 生成 unified diff
             old_lines = old_content.splitlines(keepends=True)
             new_lines = new_content.splitlines(keepends=True)
-            
+
             diff = difflib.unified_diff(
                 old_lines,
                 new_lines,
-                fromfile=Path(file_path).name,
-                tofile=Path(file_path).name,
+                fromfile=backup_file.name,
+                tofile=backup_file.name,
                 lineterm='\n'
             )
             
