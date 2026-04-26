@@ -2039,8 +2039,8 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._is_streaming:
             self._on_stop_clicked()
 
-        # 获取待回滚的文件操作
-        all_call_ids = self._get_all_tool_call_ids_for_round(round_index)
+        # 获取待回滚的文件操作（从该轮次到最后的全部）
+        all_call_ids = self._get_all_tool_call_ids_from_round(round_index)
         
 
         # 如果有文件操作，显示预览对话框
@@ -2113,8 +2113,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         return last_call_id
 
-    def _get_all_tool_call_ids_for_round(self, round_index: int) -> List[str]:
-        """获取指定 round 的所有 tool_call_id"""
+    def _get_all_tool_call_ids_from_round(self, round_index: int) -> List[str]:
+        """获取从指定 round 到最后的所有 tool_call_id"""
         session = self.session_manager.get_current_session()
         if not session:
             return []
@@ -2125,12 +2125,12 @@ class OpenAIChatToolWindow(ToolWindow):
         if round_index < 0 or round_index >= len(round_ranges):
             return []
 
-        # 获取该 round 的范围 [start_idx, end_idx)
-        start_idx, end_idx = round_ranges[round_index]
+        # 获取该 round 的起始位置，之后的所有消息都需要统计
+        start_idx, _ = round_ranges[round_index]
         
-        # 从该 round 的 assistant 消息中提取 tool_calls（不包括 start_idx 的 user 消息）
+        # 从该 round 的 user 消息开始，遍历到消息列表末尾
         call_ids = []
-        for i in range(start_idx + 1, end_idx):  # 从 user 之后开始
+        for i in range(start_idx, len(canonical_messages)):
             msg = canonical_messages[i]
             role = msg.get("role")
             if role == "assistant":

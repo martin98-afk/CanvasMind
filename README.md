@@ -6,16 +6,18 @@
 <div align="center">
   <h1>Visual Programming Platform for Algorithm & AI Workflow Development</h1>
 
-  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/) | [b站相关介绍视频](https://www.bilibili.com/video/BV153zCBGEU2?spm_id_from=333.788.videopod.sections&vd_source=730f7f3382f460e22f17a3b2c58f0256)
+  [🇨🇳 中文](README_zh.md) | [🇬🇧 English](README.md) | [📘 Documentation](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/) | [🎥 Demo Video](https://www.bilibili.com/video/BV153zCBGEU2)
 
 </div>
 
 <div align="center">
 
-![Low-Code Platform](https://img.shields.io/badge/Python-3.8%2B-blue)
-![NodeGraphQt](https://img.shields.io/badge/NodeGraphQt-v0.3%2B-orange)
-![qfluentwidgets](https://img.shields.io/badge/qfluentwidgets-v1.0%2B-green)
-
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![License](https://img.shields.io/github/license/martin98-afk/CanvasMind)
+![Stars](https://img.shields.io/github/stars/martin98-afk/CanvasMind)
+![Downloads](https://img.shields.io/github/downloads/martin98-afk/CanvasMind/total)
+![Last Commit](https://img.shields.io/github/last-commit/martin98-afk/CanvasMind)
+![Issues](https://img.shields.io/github/issues/martin98-afk/CanvasMind)
 
 </div>
 
@@ -28,6 +30,8 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 <img src="images/宣传图3.png" width="100%" height="100%"><br>
 
 <img src="images/大模型对话框.png" width="100%" height="100%"><br>
+
+<img src="images/文档差异对比.png" width="100%" height="100%"><br>
 
 ---
 
@@ -78,11 +82,48 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 - **Visual Differentiation** – Color-coded suggestions per port type  
 - **Cross-Canvas Learning** – Tracks component connection frequency to improve recommendations over time  
 
-### 🤖 LLM-Canvas Context Integration (✅ Implemented)
-- **Yellow Jump Buttons**: When the LLM references an existing node, a yellow `[Node Name](jump)` button appears—click to instantly navigate to that node on the canvas.  
-- **Purple Create Buttons**: When recommending a new capability, a purple `[Component Name](create)` button is generated—click to instantiate the component from your library and auto-connect it.  
-- **Multimodal Context Injection**: Automatically passes node JSON, variable states, and base64-encoded images to the LLM for precise, actionable suggestions.  
-- **Canvas-Aware Completion**: Supports simultaneous references to multiple existing nodes (yellow) and recommendations for missing components (purple), enabling end-to-end workflow completion.
+### 🤖 LLM-Chatter: Intelligent Coding Assistant
+A powerful built-in coding assistant with OpenCode-style agent architecture and comprehensive tool system.
+
+#### 🧠 Agent System
+- **Multi-Agent Support**: Primary agents for main tasks, Subagents for parallel subtasks, Hidden agents for background operations
+- **Permission System**: Fine-grained tool permission control per agent (allow/deny/ask)
+- **Flexible Configuration**: Define agents via Markdown (YAML frontmatter) or YAML files
+- **Agent Profiles**: Support for custom temperature, top_p, max_steps, model selection per agent
+
+#### 🛠️ Comprehensive Tool Suite (30+ Tools)
+| Category | Tools |
+|----------|-------|
+| **File Operations** | `read`, `write`, `edit`, `multiedit`, `patch`, `grep`, `glob`, `list`, `diff_files` |
+| **Terminal** | `bash`, `run_verify` |
+| **Web** | `webfetch`, `websearch` |
+| **Code Analysis** | `get_diagnostics` (Python/JS/TS/Shell) |
+| **Task Management** | `todowrite`, `todoread`, `ask_question` |
+| **Skills** | `skill`, `list_skills`, `scan_repo`, `stage_files` |
+| **Memory** | `memory_list`, `memory_search`, `memory_save`, `memory_consolidate` |
+| **Canvas Integration** | `list_webhooks`, `trigger_webhook` |
+| **Sub-Agents** | `task` (distribute work to build/plan/skillful/explore agents) |
+
+#### 💾 Long-Term Memory System
+- **Persistent Context**: Save key facts across sessions with confidence scores
+- **Conflict Management**: Group memories to auto-suppress outdated information
+- **Category-based Organization**: Task preferences, project constraints, user habits
+- **Auto-Consolidation**: Extract important facts from conversations automatically
+
+#### 🎨 Canvas-Aware Integration
+- **Canvas Tools**: Run nodes, get logs, create nodes, connect ports, set properties, edit property strings
+- **Context Injection**: Automatic canvas image + node structure + global variables
+- **Yellow Jump Buttons**: Click to navigate to referenced nodes on canvas
+- **Purple Create Buttons**: One-click instantiation of recommended components
+- **Execution State**: Query running tasks, failed nodes, logs in real-time
+
+#### ✨ Advanced Features
+- **Conversation Preview**: Rich message cards with code syntax highlighting
+- **Context Usage Ring**: Visual token budget monitoring
+- **History Management**: Search past conversations, auto-summarize topics
+- **File Undo Preview**: Review changes before applying via diff viewer
+- **Tool Floating Panel**: Real-time tool call status display
+- **Sub-Agent Manager**: Coordinate parallel task execution
 
 ### 🔁 Advanced Control Flow ✨
 - **Conditional Branching** – Enable/disable branches based on `$...$` expressions (`if/else` logic)  
@@ -135,17 +176,38 @@ A modern low-code visual programming platform built on **NodeGraphQt** and **qfl
 
 ## 🚀 Quick Start
 
-### Install Dependencies
+### Prerequisites
+- Python 3.8+
+- PyQt5 or PySide6
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/martin98-afk/CanvasMind.git
+cd CanvasMind
+
+# Create virtual environment (recommended)
+python -m venv .venv
+
+# Activate virtual environment
+# Linux/Mac:
+source .venv/bin/activate
+# Windows:
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Run the Application
+### Run
+
 ```bash
 python main.py
 ```
 
-### Package with PyInstaller
+### Build (Optional)
+
 ```bash
 python build.py
 ```
@@ -192,14 +254,14 @@ python build.py
 ### Basic Operations
 1. **Create Node** – Drag from left panel to canvas  
 2. **Connect Nodes** – Drag from output port to input port  
-3. **Run Node** – Right-click → “Run This Node”  
-4. **View Logs** – Right-click → “View Node Logs”  
+3. **Run Node** – Right-click → "Run This Node"  
+4. **View Logs** – Right-click → "View Node Logs"  
 
 ### Advanced Features
 - **Loops** – Use Loop/Iterate nodes with Backdrop for structured iteration  
 - **File Handling** – Click file picker in property panel  
 - **Workflow Management** – Save/load via top-left buttons  
-- **Node Grouping** – Select multiple nodes → right-click → “Create Backdrop”  
+- **Node Grouping** – Select multiple nodes → right-click → "Create Backdrop"  
 - **Dependency Management** – Failed components auto-install missing `requirements`  
 
 ### Keyboard Shortcuts
@@ -256,7 +318,7 @@ Export **any subgraph as a self-contained project** that runs in any Python envi
 
 ### Export Steps
 1. **Select Nodes** – Choose any nodes on canvas (multi-select supported)  
-2. **Click Export** – Top-left **“Export Model”** button (📤 icon)  
+2. **Click Export** – Top-left **"Export Model"** button (📤 icon)  
 3. **Choose Directory** – Project folder auto-generated  
 4. **Run Externally**:
 
@@ -290,28 +352,62 @@ model_xxxxxxxx/
 
 ---
 
-## 📊 Feature Status (✅ Implemented | ⏳ Planned)
+## 🗺️ Roadmap
 
-- ✅ Visual canvas (NodeGraphQt)  
-- ✅ Control flow: conditionals, loops, iteration  
-- ✅ Global variables + expression system  
-- ✅ Dynamic code components (embedded editor)  
-- ✅ Intelligent node recommendations  
-- ✅ One-click export (CLI + API)  
-- ✅ Multi-environment management  
-- ✅ **LLM context integration (yellow jump / purple create buttons)**
-- ✅ Parallel & remote execution  
-- ⏳ Code-to-canvas auto-creation (from editor → new node)  
+| Status | Feature |
+|--------|---------|
+| 🚧 In Progress | Code-to-canvas auto-creation (from editor → new node) |
+| 📋 Planned | Enhanced visualization for large-scale workflows |
+| 📋 Planned | Cloud execution support |
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository  
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)  
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)  
-4. Push to the branch (`git push origin feature/AmazingFeature`)  
-5. Open a Pull Request  
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Setup
+
+```bash
+# 1. Fork and clone the repository
+git clone https://github.com/martin98-afk/CanvasMind.git
+cd CanvasMind
+
+# 2. Create a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run in development mode
+python main.py
+
+# 5. Run tests (if available)
+pytest
+```
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📖 Documentation
+
+For full documentation, visit: [CanvasMind Docs](https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/)
+
+---
+
+## 💬 Get Help
+
+- 📋 [Open an Issue](https://github.com/martin98-afk/CanvasMind/issues) - Report bugs or request features
+- 💬 [Discussions](https://github.com/martin98-afk/CanvasMind/discussions) - Ask questions and share ideas
 
 ---
 
@@ -327,13 +423,14 @@ This project is licensed under the [GPLv3 License](LICENSE).
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) – Fluent Design UI library  
 - [Loguru](https://github.com/Delgan/loguru) – Elegant Python logging
 
+---
 
 ## Star History
 
 <a href="https://www.star-history.com/#martin98-afk/CanvasMind&type=date&legend=top-left">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&theme=dark&legend=top-left" />
    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=martin98-afk/CanvasMind&type=date&legend=top-left" />
  </picture>
 </a>
