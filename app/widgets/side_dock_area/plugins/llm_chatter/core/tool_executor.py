@@ -126,28 +126,26 @@ class ToolExecutor:
         Args:
             tool_name: 工具名称
             args: 工具参数
+
+        Returns:
+            str: 文件完整路径，用于后续的编辑后备份
         """
         if tool_name not in self._FILE_OPS_TO_TRACK:
-            
-            return
+            return None
 
         if not self._session_id:
-            
-            return
+            return None
 
         if not self._call_id:
-            
-            return
+            return None
 
         if not self._file_recorder:
-            
-            return
+            return None
 
         # 获取文件路径
         path = args.get("path")
         if not path:
-            
-            return
+            return None
 
         logger.debug(f"[ToolExecutor] 准备记录文件操作: tool={tool_name}, path={path}")
 
@@ -156,7 +154,7 @@ class ToolExecutor:
         if path.startswith("file:"):
             # 移除 file: 前缀，处理单斜杠或双斜杠
             path = re.sub(r'^file:/{1,3}', '', path)
-            
+
 
         # 获取完整的文件路径
         if hasattr(self._builtin_tools, "_file_tools"):
@@ -165,7 +163,7 @@ class ToolExecutor:
             from pathlib import Path
             full_path = Path(path).resolve()
 
-        
+
 
         # 记录操作（内部会处理文件不存在的情况）
         try:
@@ -183,6 +181,40 @@ class ToolExecutor:
         except Exception as e:
             # 记录失败不阻塞工具执行
             logger.warning(f"[ToolExecutor] 记录文件操作失败: {e}")
+
+        return str(full_path)
+
+    def _record_file_operation_after(self, tool_name: str, args: dict, file_path_before: str):
+        """
+        在文件操作执行成功后备份编辑后的文件
+
+        Args:
+            tool_name: 工具名称
+            args: 工具参数
+            file_path_before: 执行前的文件路径
+        """
+        if not file_path_before:
+            return
+
+        if tool_name not in self._FILE_OPS_TO_TRACK:
+            return
+
+        if not self._session_id or not self._call_id:
+            return
+
+        if not self._file_recorder:
+            return
+
+        try:
+            self._file_recorder.record_after_operation(
+                session_id=self._session_id,
+                call_id=self._call_id,
+                tool_name=tool_name,
+                file_path=file_path_before
+            )
+        except Exception as e:
+            # 记录失败不阻塞主流程
+            logger.warning(f"[ToolExecutor] 编辑后备份失败: {e}")
 
     def cancel_tool(self, tool_name: str = None):
         """取消正在执行的工具
@@ -287,7 +319,7 @@ class ToolExecutor:
             return self._execute_websearch_async(args, cancelled_ref)
 
         # 文件操作前记录（用于撤销）
-        self._record_file_operation_before(tool_name, args)
+        file_path_before = self._record_file_operation_before(tool_name, args)
 
         if tool_name in self._custom_tools:
             try:
@@ -406,7 +438,11 @@ class ToolExecutor:
         executor = tool_map.get(tool_name)
         if executor:
             try:
-                return executor()
+                result = executor()
+                # 文件操作成功后备份编辑后的文件（用于差异对比）
+                if tool_name in self._FILE_OPS_TO_TRACK and result and result.success:
+                    self._record_file_operation_after(tool_name, args, file_path_before)
+                return result
             except Exception as e:
                 return ToolResult(False, error=f"Execution error: {str(e)}")
 

@@ -49,6 +49,9 @@ class FileOperationRecorder:
         """判断是否为需要记录的操作"""
         return tool_name in self.TRACKED_OPERATIONS
 
+    # 编辑后备份文件的后缀
+    AFTER_BACKUP_SUFFIX = ".after.bak"
+
     def record_operation(self, session_id: str, call_id: str,
                         tool_name: str, file_path: str) -> Optional[str]:
         """
@@ -136,6 +139,84 @@ class FileOperationRecorder:
             
             return None
 
+    def record_after_operation(self, session_id: str, call_id: str,
+                               tool_name: str, file_path: str) -> Optional[str]:
+        """
+        记录文件操作后的备份（用于差异对比）
+
+        Args:
+            session_id: 会话 ID
+            call_id: 工具调用 ID
+            tool_name: 工具名称
+            file_path: 目标文件路径
+
+        Returns:
+            str: 编辑后备份文件路径，失败返回 None
+        """
+        if not self.is_tracked_operation(tool_name):
+            return None
+
+        try:
+            resolved_path = Path(file_path).resolve()
+            
+            # 获取对应的备份路径
+            backup_path = self._get_backup_path(session_id, call_id)
+            if not backup_path:
+                logger.warning(f"[FileRecorder] 未找到对应的备份路径: session={session_id}, call={call_id}")
+                return None
+            
+            backup_file = Path(backup_path)
+            # 生成编辑后备份路径：xxx.bak -> xxx.after.bak
+            after_backup_path = backup_file.with_suffix('.after.bak')
+            
+            # 如果文件不存在（被删除），创建空文件
+            if not resolved_path.exists():
+                after_backup_path.touch()
+            else:
+                shutil.copy2(resolved_path, after_backup_path)
+            
+            logger.info(f"[FileRecorder] 已备份编辑后: {file_path} -> {after_backup_path}")
+            return str(after_backup_path)
+
+        except Exception as e:
+            logger.error(f"[FileRecorder] 编辑后备份失败: {e}")
+            return None
+
+    def _get_backup_path(self, session_id: str, call_id: str) -> Optional[str]:
+        """根据 session_id 和 call_id 获取备份路径"""
+        operations = self._session_store.get_file_operations_by_call_id(session_id, call_id)
+        if operations:
+            return operations[0].get("backup_path")
+        return None
+
+    def _get_after_backup_path(self, backup_path: str) -> str:
+        """根据备份路径获取编辑后备份路径"""
+        return str(Path(backup_path).with_suffix(self.AFTER_BACKUP_SUFFIX))
+
+    def _cleanup_backup_files(self, backup_path: str):
+        """清理备份文件及其对应的编辑后备份"""
+        try:
+            backup_file = Path(backup_path)
+            # 删除主备份文件
+            if backup_file.exists():
+                backup_file.unlink()
+                logger.debug(f"[FileRecorder] 已删除备份: {backup_file}")
+            
+            # 删除编辑后备份文件
+            after_backup = self._get_after_backup_path(backup_path)
+            after_file = Path(after_backup)
+            if after_file.exists():
+                after_file.unlink()
+                logger.debug(f"[FileRecorder] 已删除编辑后备份: {after_file}")
+        except Exception as e:
+            logger.warning(f"[FileRecorder] 清理备份失败: {e}")
+
+        except Exception as e:
+            logger.error(f"[FileRecorder] 备份失败: {e}")
+            import traceback
+            
+            return None
+
     def get_operations_for_preview(self, session_id: str, call_id: str) -> List[Dict]:
         """
         获取指定 call_id 的操作记录
@@ -216,8 +297,8 @@ class FileOperationRecorder:
                     resolved_path = Path(file_path)
                     shutil.copy2(backup_file, resolved_path)
 
-                    # 删除备份文件
-                    backup_file.unlink()
+                    # 删除备份文件（包括编辑后备份）
+                    self._cleanup_backup_files(backup_path)
 
                     result.success_count += 1
                     logger.info(f"[FileRecorder] 已回滚: {file_path}")
@@ -250,13 +331,9 @@ class FileOperationRecorder:
         """
         deleted_count, backup_paths = self._session_store.clear_session_file_operations(session_id)
 
-        # 删除备份文件
+        # 删除备份文件（包括编辑后备份）
         for backup_path in backup_paths:
-            try:
-                Path(backup_path).unlink()
-                logger.debug(f"[FileRecorder] 已删除备份: {backup_path}")
-            except Exception as e:
-                logger.warning(f"[FileRecorder] 删除备份失败: {backup_path}, {e}")
+            self._cleanup_backup_files(backup_path)
 
         # 删除备份目录（如果为空）
         backup_dir = self._backup_base_dir / session_id

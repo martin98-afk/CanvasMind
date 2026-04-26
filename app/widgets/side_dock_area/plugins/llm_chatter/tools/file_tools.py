@@ -9,6 +9,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool, QRunnable
 from loguru import logger
 from app.widgets.side_dock_area.plugins.llm_chatter.tools.result import ToolResult
 
+MAX_GREP_CONTENT_LENGTH = 15000
 
 class GrepTask(QRunnable):
     """异步 Grep 任务，在子线程中执行"""
@@ -44,7 +45,7 @@ class GrepTask(QRunnable):
             regex = re.compile(self.pattern, re.IGNORECASE)
             results = []
             
-            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 
+            exclude_dirs = {'.mypy_cache', '.git', 'node_modules', '__pycache__', 'venv', '.venv',
                            'dist', 'build', '.idea', '.vscode'}
             
             for root, dirs, files in os.walk(search_root):
@@ -79,7 +80,10 @@ class GrepTask(QRunnable):
                     except:
                         continue
             
-            return ToolResult(True, content="\n".join(results) if results else "No matches found.")
+            content = "\n".join(results) if results else "No matches found."
+            if len(content) > MAX_GREP_CONTENT_LENGTH:
+                content = content[:MAX_GREP_CONTENT_LENGTH] + f"\n\n... (Content truncated, exceeds {MAX_GREP_CONTENT_LENGTH} characters limit)"
+            return ToolResult(True, content=content)
         except Exception as e:
             return ToolResult(False, error=f"Grep error: {str(e)}")
     
@@ -295,7 +299,7 @@ class FileTools:
             regex = re.compile(pattern, re.IGNORECASE)
             results = []
 
-            exclude_dirs = {'.git', 'node_modules', '__pycache__', 'venv', '.venv', 
+            exclude_dirs = {'.mypy_cache', '.git', 'node_modules', '__pycache__', 'venv', '.venv',
                            'dist', 'build', '.idea', '.vscode'}
 
             for root, dirs, files in os.walk(search_root):
@@ -326,7 +330,10 @@ class FileTools:
                     except:
                         continue
 
-            return ToolResult(True, content="\n".join(results) if results else "No matches found.")
+            content = "\n".join(results) if results else "No matches found."
+            if len(content) > MAX_GREP_CONTENT_LENGTH:
+                content = content[:MAX_GREP_CONTENT_LENGTH] + f"\n\n... (Content truncated, exceeds {MAX_GREP_CONTENT_LENGTH} characters limit)"
+            return ToolResult(True, content=content)
         except Exception as e:
             return ToolResult(False, error=f"Grep error: {str(e)}")
     

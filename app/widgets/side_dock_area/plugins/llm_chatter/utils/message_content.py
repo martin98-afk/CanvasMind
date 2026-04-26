@@ -179,18 +179,19 @@ def content_to_markdown(content: Any) -> str:
             args_json = json.dumps(block.get("arguments", {}) or {}, ensure_ascii=False)
             result = str(block.get("result", ""))
             success = bool(block.get("success", True))
-            parts.append(
-                "\n".join(
-                    [
-                        "<tool>",
-                        f"name: {block.get('name', 'tool')}",
-                        f"args: {args_json}",
-                        f"result: {result}",
-                        f"success: {success}",
-                        "</tool>",
-                    ]
-                )
-            )
+            tool_call_id = block.get("tool_call_id", "")
+            tool_lines = [
+                "<tool>",
+                f"name: {block.get('name', 'tool')}",
+                f"args: {args_json}",
+                f"result: {result}",
+                f"success: {success}",
+            ]
+            # 保留 tool_call_id 用于差异对比功能
+            if tool_call_id:
+                tool_lines.append(f"tool_call_id: {tool_call_id}")
+            tool_lines.append("</tool>")
+            parts.append("\n".join(tool_lines))
     return "\n\n".join(part for part in parts if part).strip()
 
 

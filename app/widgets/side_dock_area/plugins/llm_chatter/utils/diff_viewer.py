@@ -3,10 +3,11 @@
 Git Diff 差异对比模块
 
 提供生成 HTML diff 报告和在 PyQt WebEngine 中显示的功能
-样式贴近 GitHub 网页实现
+样式 100% 复刻 GitHub 网页合并差异审核界面
 """
 
 import difflib
+import re
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -15,79 +16,117 @@ from loguru import logger
 
 
 class DiffHtmlGenerator:
-    """Git Diff HTML 生成器 - GitHub 风格"""
+    """Git Diff HTML 生成器 - GitHub 风格 100% 复刻"""
 
-    # GitHub 风格的深色主题样式
-    DARK_THEME_CSS = """
+    # GitHub Dark 主题样式 - 完整复刻 GitHub Diff Review Interface
+    GITHUB_DARK_CSS = """
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gh-bg-primary: #0d1117;
+            --gh-bg-secondary: #161b22;
+            --gh-bg-tertiary: #21262d;
+            --gh-border: #30363d;
+            --gh-text-primary: #c9d1d9;
+            --gh-text-secondary: #8b949e;
+            --gh-text-link: #58a6ff;
+            --gh-green-bg: rgba(63, 185, 80, 0.15);
+            --gh-green-text: #3fb950;
+            --gh-green-border: rgba(63, 185, 80, 0.4);
+            --gh-red-bg: rgba(248, 81, 73, 0.15);
+            --gh-red-text: #f85149;
+            --gh-red-border: rgba(248, 81, 73, 0.4);
+            --gh-blue-bg: rgba(31, 111, 235, 0.15);
+            --gh-blue-text: #388bfd;
+            --gh-blue-border: rgba(31, 111, 235, 0.4);
+            --gh-purple-bg: rgba(163, 113, 247, 0.15);
+            --gh-purple-text: #a371f7;
+            --gh-font-mono: 'Consolas', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            --gh-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+        }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0d1117;
-            color: #c9d1d9;
+            font-family: var(--gh-font-sans);
+            background: var(--gh-bg-primary);
+            color: var(--gh-text-primary);
             line-height: 1.5;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            font-size: 12px;
         }
 
-        /* 主容器：文件树和内容并排 */
-        .main-container {
+        .diff-app {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
 
-        /* 文件树侧边栏 */
         .file-tree {
-            width: 260px;
-            min-width: 260px;
-            background: #161b22;
-            border-right: 1px solid #30363d;
+            width: 280px;
+            min-width: 280px;
+            background: var(--gh-bg-secondary);
+            border-right: 1px solid var(--gh-border);
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .file-tree-header {
-            padding: 8px 16px;
-            font-size: 12px;
+            padding: 12px 16px;
+            font-size: 11px;
             font-weight: 600;
-            color: #8b949e;
             text-transform: uppercase;
-            border-bottom: 1px solid #30363d;
+            letter-spacing: 0.5px;
+            color: var(--gh-text-secondary);
+            border-bottom: 1px solid var(--gh-border);
             flex-shrink: 0;
         }
 
-        /* 统计信息合并到文件树顶部 */
-        .file-tree-stats {
+        .file-tree-header .file-count {
+            font-weight: 400;
+            margin-left: 4px;
+            opacity: 0.7;
+        }
+
+        .diff-summary {
             padding: 10px 16px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            display: flex;
-            gap: 12px;
-            font-size: 12px;
-            flex-shrink: 0;
-        }
-
-        .file-tree-stats .stat-item {
+            background: var(--gh-bg-tertiary);
+            border-bottom: 1px solid var(--gh-border);
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 16px;
+            font-size: 12px;
+            flex-shrink: 0;
         }
 
-        .file-tree-stats .count {
-            font-weight: 600;
+        .diff-summary .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .file-tree-stats .stat-item.added .count { color: #3fb950; }
-        .file-tree-stats .stat-item.deleted .count { color: #f85149; }
+        .diff-summary .additions {
+            color: var(--gh-green-text);
+        }
 
-        .file-tree-list {
+        .diff-summary .deletions {
+            color: var(--gh-red-text);
+        }
+
+        .diff-summary .separator {
+            color: var(--gh-border);
+        }
+
+        .file-list {
             flex: 1;
             overflow-y: auto;
-            padding: 6px 0;
         }
 
         .file-item {
@@ -95,223 +134,301 @@ class DiffHtmlGenerator:
             align-items: center;
             padding: 8px 16px;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: background 0.1s;
             border-left: 3px solid transparent;
             text-decoration: none;
-            color: inherit;
+            color: var(--gh-text-primary);
+            font-size: 12px;
         }
 
         .file-item:hover {
-            background: #1f6feb1a;
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .file-item.active {
-            background: #1f6feb26;
-            border-left-color: #1f6feb;
+            background: rgba(56, 139, 253, 0.15);
+            border-left-color: var(--gh-blue-text);
         }
 
-        .file-icon {
-            margin-right: 8px;
+        .file-item .file-icon {
+            margin-right: 10px;
             font-size: 14px;
+            opacity: 0.8;
         }
 
-        .file-name {
+        .file-item .file-name {
             flex: 1;
-            font-size: 13px;
+            font-family: var(--gh-font-mono);
+            font-size: 12px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .file-additions {
-            font-size: 12px;
-            color: #3fb950;
+        .file-item .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 10px;
             margin-left: 8px;
         }
 
-        .file-deletions {
-            font-size: 12px;
-            color: #f85149;
-            margin-left: 4px;
+        .file-item .file-badge.added {
+            background: var(--gh-green-bg);
+            color: var(--gh-green-text);
         }
 
-        /* 差异内容区域 */
-        .diff-container {
+        .file-item .file-badge.deleted {
+            background: var(--gh-red-bg);
+            color: var(--gh-red-text);
+        }
+
+        .file-item .file-badge.renamed {
+            background: var(--gh-purple-bg);
+            color: var(--gh-purple-text);
+        }
+
+        .diff-content {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
         }
 
-        /* 文件块 */
         .file-block {
-            margin-bottom: 30px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            overflow: hidden;
+            border-bottom: 1px solid var(--gh-border);
         }
 
-        /* 固定的文件头 */
+        .file-block:last-child {
+            border-bottom: none;
+        }
+
         .file-header {
             position: sticky;
             top: 0;
             z-index: 10;
-            background: #21262d;
-            padding: 12px 16px;
-            border-bottom: 1px solid #30363d;
+            background: var(--gh-bg-tertiary);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--gh-border);
             display: flex;
             align-items: center;
+            gap: 10px;
         }
 
         .file-header .file-icon {
-            margin-right: 10px;
+            font-size: 16px;
         }
 
         .file-header .file-path {
-            color: #58a6ff;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
+            color: var(--gh-text-link);
+            font-family: var(--gh-font-mono);
+            font-size: 13px;
             flex: 1;
         }
 
-        .file-stats {
+        .file-header .file-stats {
             display: flex;
             gap: 12px;
             font-size: 12px;
+            font-family: var(--gh-font-mono);
         }
 
-        .add-count { color: #3fb950; }
-        .del-count { color: #f85149; }
+        .file-header .add-stat {
+            color: var(--gh-green-text);
+        }
 
-        /* 差异表格 */
+        .file-header .del-stat {
+            color: var(--gh-red-text);
+        }
+
         .diff-table {
             width: 100%;
             border-collapse: collapse;
-            font-family: 'Consolas', 'Monaco', monospace;
+            font-family: var(--gh-font-mono);
             font-size: 12px;
         }
 
-        .diff-table tr:hover {
-            background: #1f2937;
+        .diff-line {
+            display: flex;
         }
 
-        /* 行号列 */
+        .diff-line:hover {
+            filter: brightness(1.1);
+        }
+
         .line-num {
-            width: 60px;
+            width: 50px;
+            min-width: 50px;
             padding: 0 8px;
             text-align: right;
             color: #6e7681;
-            background: #0d1117;
+            background: var(--gh-bg-primary);
             user-select: none;
-            border-right: 1px solid #30363d;
+            border-right: 1px solid var(--gh-border);
             vertical-align: top;
-            white-space: nowrap;
+            white-space: pre;
+            display: inline-block;
+            font-size: 11px;
+            line-height: 20px;
         }
 
         .line-num.old {
-            background: rgba(248, 81, 73, 0.1);
+            background: rgba(248, 81, 73, 0.08);
+            border-right-color: rgba(248, 81, 73, 0.2);
         }
 
         .line-num.new {
-            background: rgba(63, 185, 80, 0.1);
+            background: rgba(63, 185, 80, 0.08);
+            border-right-color: rgba(63, 185, 80, 0.2);
         }
 
-        /* 代码内容列 */
-        .line-content {
+        .line-sign {
+            width: 20px;
+            min-width: 20px;
+            text-align: center;
+            user-select: none;
+            display: inline-block;
+            vertical-align: top;
+            font-size: 12px;
+            line-height: 20px;
+        }
+
+        .line-code {
+            flex: 1;
             padding: 0 12px;
             white-space: pre;
             vertical-align: top;
+            display: inline-block;
+            line-height: 20px;
+            font-size: 12px;
+            min-height: 20px;
         }
 
-        /* 行类型样式 */
-        .add-line {
-            background: rgba(63, 185, 80, 0.15);
+        .diff-line.added {
+            background: var(--gh-green-bg);
         }
 
-        .add-line .line-num {
-            background: rgba(63, 185, 80, 0.2);
-            color: #3fb950;
+        .diff-line.added .line-num.new {
+            color: var(--gh-green-text);
+            background: rgba(63, 185, 80, 0.12);
         }
 
-        .add-line .line-content {
-            color: #3fb950;
+        .diff-line.added .line-sign {
+            color: var(--gh-green-text);
         }
 
-        .del-line {
-            background: rgba(248, 81, 73, 0.15);
+        .diff-line.added .line-code {
+            color: var(--gh-green-text);
         }
 
-        .del-line .line-num {
-            background: rgba(248, 81, 73, 0.2);
-            color: #f85149;
+        .diff-line.deleted {
+            background: var(--gh-red-bg);
         }
 
-        .del-line .line-content {
-            color: #f85149;
+        .diff-line.deleted .line-num.old {
+            color: var(--gh-red-text);
+            background: rgba(248, 81, 73, 0.12);
         }
 
-        .context-line .line-content {
-            color: #c9d1d9;
+        .diff-line.deleted .line-sign {
+            color: var(--gh-red-text);
         }
 
-        /* Hunk 头 */
-        .hunk-header {
-            background: rgba(31, 111, 235, 0.15) !important;
+        .diff-line.deleted .line-code {
+            color: var(--gh-red-text);
         }
 
-        .hunk-header td {
-            color: #58a6ff;
-            padding: 4px 8px;
-            font-size: 11px;
-            border-top: 1px solid rgba(31, 111, 235, 0.3);
+        .diff-line.context {
+            background: transparent;
         }
 
-        /* 行前缀符号 */
-        .line-prefix {
-            width: 20px;
-            text-align: center;
-            user-select: none;
-        }
-
-        .add-line .line-prefix { color: #3fb950; }
-        .del-line .line-prefix { color: #f85149; }
-
-        /* 无差异提示 */
-        .no-diff {
-            text-align: center;
-            padding: 60px 20px;
+        .diff-line.context .line-num {
             color: #6e7681;
         }
 
+        .diff-line.context .line-sign {
+            color: #6e7681;
+        }
+
+        .diff-line.context .line-code {
+            color: var(--gh-text-primary);
+        }
+
+        .diff-line.hunk-header {
+            background: var(--gh-blue-bg);
+            border-top: 1px solid var(--gh-blue-border);
+            border-bottom: 1px solid var(--gh-blue-border);
+        }
+
+        .diff-line.hunk-header .line-num {
+            color: transparent;
+            background: transparent;
+            border: none;
+        }
+
+        .diff-line.hunk-header .line-sign {
+            color: var(--gh-blue-text);
+        }
+
+        .diff-line.hunk-header .line-code {
+            color: var(--gh-blue-text);
+            font-size: 11px;
+        }
+
+        .diff-line.blank .line-code {
+            background: var(--gh-bg-secondary);
+        }
+
+        .word-add {
+            background: rgba(63, 185, 80, 0.35);
+            border-radius: 2px;
+        }
+
+        .word-del {
+            background: rgba(248, 81, 73, 0.35);
+            border-radius: 2px;
+            text-decoration: line-through;
+        }
+
+        .no-diff {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--gh-text-secondary);
+        }
+
         .no-diff-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
         }
 
-        /* 滚动条样式 */
-        .file-tree-stats::-webkit-scrollbar,
-        .file-tree-list::-webkit-scrollbar,
-        .diff-container::-webkit-scrollbar {
+        .no-diff h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--gh-text-primary);
+        }
+
+        ::-webkit-scrollbar {
             width: 8px;
+            height: 8px;
         }
 
-        .file-tree-stats::-webkit-scrollbar-track,
-        .file-tree-list::-webkit-scrollbar-track,
-        .diff-container::-webkit-scrollbar-track {
-            background: #161b22;
+        ::-webkit-scrollbar-track {
+            background: var(--gh-bg-secondary);
         }
 
-        .file-tree-stats::-webkit-scrollbar-thumb,
-        .file-tree-list::-webkit-scrollbar-thumb,
-        .diff-container::-webkit-scrollbar-thumb {
-            background: #30363d;
+        ::-webkit-scrollbar-thumb {
+            background: var(--gh-border);
             border-radius: 4px;
         }
 
-        .file-tree-stats::-webkit-scrollbar-thumb:hover,
-        .file-tree-list::-webkit-scrollbar-thumb:hover,
-        .diff-container::-webkit-scrollbar-thumb:hover {
+        ::-webkit-scrollbar-thumb:hover {
             background: #484f58;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: var(--gh-bg-secondary);
         }
     </style>
     """
@@ -321,12 +438,13 @@ class DiffHtmlGenerator:
         """HTML 实体转义"""
         if not text:
             return ""
-        return (text
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace('"', "&quot;")
-                .replace("'", "&#39;"))
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
+        )
 
     @classmethod
     def generate_html_report(cls, diff_output: str, session_id: str = "") -> str:
@@ -353,74 +471,66 @@ class DiffHtmlGenerator:
 
         # 如果没有差异
         if not files:
-            file_blocks_html = '''
+            file_blocks_html = """
             <div class="no-diff">
                 <div class="no-diff-icon">&#9989;</div>
                 <h2>没有检测到文件差异</h2>
                 <p>当前会话没有修改任何文件，或所有文件已恢复到原始状态</p>
             </div>
-            '''
+            """
 
         # 生成完整 HTML
-        html = f'''<!DOCTYPE html>
+        html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件差异对比报告</title>
-    {cls.DARK_THEME_CSS}
+    {cls.GITHUB_DARK_CSS}
 </head>
 <body>
-    <!-- 主容器：文件树和内容区域并排 -->
-    <div class="main-container">
-        <!-- 文件树侧边栏 -->
+    <div class="diff-app">
         <div class="file-tree">
             <div class="file-tree-header">
                 已修改的文件
-                <span style="font-weight: 400; opacity: 0.7">({total_files})</span>
+                <span class="file-count">({total_files})</span>
             </div>
-            <!-- 统计信息合并到文件树 -->
-            <div class="file-tree-stats">
-                <div class="stat-item added">
-                    <span class="count">+{total_additions}</span>
-                </div>
-                <div class="stat-item deleted">
-                    <span class="count">-{total_deletions}</span>
-                </div>
-                <div class="stat-item" style="margin-left: auto; color: #8b949e;">
-                    <span>{datetime.now().strftime("%H:%M")}</span>
-                </div>
+            <div class="diff-summary">
+                <span class="summary-item additions">
+                    <span>+{total_additions}</span>
+                </span>
+                <span class="separator">|</span>
+                <span class="summary-item deletions">
+                    <span>-{total_deletions}</span>
+                </span>
+                <span class="separator" style="margin-left: auto; opacity: 0.5;">
+                    {datetime.now().strftime("%H:%M")}
+                </span>
             </div>
-            <div class="file-tree-list">
+            <div class="file-list">
                 {file_tree_html}
             </div>
         </div>
 
-        <!-- 差异内容区域 -->
-        <div class="diff-container" id="diff-container">
+        <div class="diff-content" id="diff-content">
             {file_blocks_html}
         </div>
     </div>
 
     <script>
-        // 文件点击滚动到对应位置
         document.querySelectorAll('.file-item').forEach(item => {{
             item.addEventListener('click', function(e) {{
                 e.preventDefault();
                 const targetId = this.getAttribute('data-target');
                 const target = document.getElementById(targetId);
                 if (target) {{
-                    // 移除其他 active
                     document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
-                    // 添加 active
                     this.classList.add('active');
-                    // 滚动到目标
                     target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
                 }}
             }});
         }});
 
-        // 监听滚动，更新文件树 active 状态
         const observer = new IntersectionObserver((entries) => {{
             entries.forEach(entry => {{
                 if (entry.isIntersecting) {{
@@ -438,12 +548,11 @@ class DiffHtmlGenerator:
             observer.observe(block);
         }});
 
-        // 默认激活第一个文件
         const firstItem = document.querySelector('.file-item');
         if (firstItem) firstItem.classList.add('active');
     </script>
 </body>
-</html>'''
+</html>"""
 
         return html
 
@@ -463,12 +572,14 @@ class DiffHtmlGenerator:
             if line.startswith("--- "):
                 # 保存之前的文件
                 if current_file and current_lines:
-                    files.append({
-                        "path": current_file,
-                        "additions": current_stats["additions"],
-                        "deletions": current_stats["deletions"],
-                        "lines": current_lines
-                    })
+                    files.append(
+                        {
+                            "path": current_file,
+                            "additions": current_stats["additions"],
+                            "deletions": current_stats["deletions"],
+                            "lines": current_lines,
+                        }
+                    )
 
                 # 提取文件名
                 parts = line[4:].strip()
@@ -494,12 +605,14 @@ class DiffHtmlGenerator:
 
         # 保存最后一个文件
         if current_file and current_lines:
-            files.append({
-                "path": current_file,
-                "additions": current_stats["additions"],
-                "deletions": current_stats["deletions"],
-                "lines": current_lines
-            })
+            files.append(
+                {
+                    "path": current_file,
+                    "additions": current_stats["additions"],
+                    "deletions": current_stats["deletions"],
+                    "lines": current_lines,
+                }
+            )
 
         return files
 
@@ -510,26 +623,20 @@ class DiffHtmlGenerator:
         additions = file_info["additions"]
         deletions = file_info["deletions"]
 
-        # 获取文件图标
-        if path.endswith(".py"):
-            icon = "&#128464;"  # 蛇
-        elif path.endswith(".json"):
-            icon = "&#128196;"  # 文档
-        elif path.endswith((".js", ".ts")):
-            icon = "&#128203;"  # 脚本
-        elif path.endswith((".html", ".css")):
-            icon = "&#127760;"  # 网页
-        else:
-            icon = "&#128196;"  # 通用文件
-
+        icon = cls._get_file_icon(path)
         file_name = Path(path).name
+
+        badges = ""
+        if additions > 0:
+            badges += f'<span class="file-badge added">+{additions}</span>'
+        if deletions > 0:
+            badges += f'<span class="file-badge deleted">-{deletions}</span>'
 
         return f'''
         <a href="#{file_id}" class="file-item" data-target="{file_id}">
             <span class="file-icon">{icon}</span>
             <span class="file-name" title="{cls.escape_html(path)}">{cls.escape_html(file_name)}</span>
-            {f'<span class="file-additions">+{additions}</span>' if additions > 0 else ''}
-            {f'<span class="file-deletions">-{deletions}</span>' if deletions > 0 else ''}
+            {badges}
         </a>
         '''
 
@@ -541,78 +648,67 @@ class DiffHtmlGenerator:
         deletions = file_info["deletions"]
         lines = file_info["lines"]
 
-        # 获取文件图标
-        if path.endswith(".py"):
-            icon = "&#128464;"
-        elif path.endswith(".json"):
-            icon = "&#128196;"
-        elif path.endswith((".js", ".ts")):
-            icon = "&#128203;"
-        elif path.endswith((".html", ".css")):
-            icon = "&#127760;"
-        else:
-            icon = "&#128196;"
+        icon = cls._get_file_icon(path)
 
-        # 生成差异行 HTML
         diff_rows_html = ""
         old_line_num = 1
         new_line_num = 1
 
         for line in lines:
             if line.startswith("@@"):
-                # 解析 hunk 头获取起始行号
-                import re
-                match = re.search(r'@@ -(\d+),?\d* \+(\d+),?\d* @@', line)
+                match = re.search(r"@@ -(\d+),?\d* \+(\d+),?\d* @@", line)
                 if match:
                     old_line_num = int(match.group(1))
                     new_line_num = int(match.group(2))
 
-                diff_rows_html += f'''
-                <tr class="hunk-header">
-                    <td colspan="3">{cls.escape_html(line)}</td>
-                </tr>
-                '''
+                diff_rows_html += f"""
+                <div class="diff-line hunk-header">
+                    <span class="line-num"></span>
+                    <span class="line-num"></span>
+                    <span class="line-sign"></span>
+                    <span class="line-code">{cls.escape_html(line)}</span>
+                </div>
+                """
             elif line.startswith("-"):
-                diff_rows_html += f'''
-                <tr class="del-line">
-                    <td class="line-num old">{old_line_num}</td>
-                    <td class="line-num"></td>
-                    <td class="line-prefix">-</td>
-                    <td class="line-content">{cls.escape_html(line[1:])}</td>
-                </tr>
-                '''
+                diff_rows_html += f"""
+                <div class="diff-line deleted">
+                    <span class="line-num old">{old_line_num}</span>
+                    <span class="line-num"></span>
+                    <span class="line-sign">-</span>
+                    <span class="line-code">{cls.escape_html(line[1:])}</span>
+                </div>
+                """
                 old_line_num += 1
             elif line.startswith("+"):
-                diff_rows_html += f'''
-                <tr class="add-line">
-                    <td class="line-num"></td>
-                    <td class="line-num new">{new_line_num}</td>
-                    <td class="line-prefix">+</td>
-                    <td class="line-content">{cls.escape_html(line[1:])}</td>
-                </tr>
-                '''
+                diff_rows_html += f"""
+                <div class="diff-line added">
+                    <span class="line-num"></span>
+                    <span class="line-num new">{new_line_num}</span>
+                    <span class="line-sign">+</span>
+                    <span class="line-code">{cls.escape_html(line[1:])}</span>
+                </div>
+                """
                 new_line_num += 1
             elif line.startswith(" "):
-                diff_rows_html += f'''
-                <tr class="context-line">
-                    <td class="line-num">{old_line_num}</td>
-                    <td class="line-num">{new_line_num}</td>
-                    <td class="line-prefix"> </td>
-                    <td class="line-content">{cls.escape_html(line[1:] if line else '')}</td>
-                </tr>
-                '''
+                diff_rows_html += f"""
+                <div class="diff-line context">
+                    <span class="line-num">{old_line_num}</span>
+                    <span class="line-num">{new_line_num}</span>
+                    <span class="line-sign"></span>
+                    <span class="line-code">{cls.escape_html(line[1:] if line else "")}</span>
+                </div>
+                """
                 old_line_num += 1
                 new_line_num += 1
             else:
-                # 没有前缀的行（difflib 可能产生）
-                diff_rows_html += f'''
-                <tr class="context-line">
-                    <td class="line-num"></td>
-                    <td class="line-num"></td>
-                    <td class="line-prefix"></td>
-                    <td class="line-content">{cls.escape_html(line)}</td>
-                </tr>
-                '''
+                diff_rows_html += f"""
+                <div class="diff-line context">
+                    <span class="line-num"></span>
+                    <span class="line-num"></span>
+                    <span class="line-sign"></span>
+                    <span class="line-code">{cls.escape_html(line)}</span>
+                </div>
+                """
 
         return f'''
         <div class="file-block" id="{file_id}">
@@ -620,17 +716,29 @@ class DiffHtmlGenerator:
                 <span class="file-icon">{icon}</span>
                 <span class="file-path">{cls.escape_html(path)}</span>
                 <div class="file-stats">
-                    {f'<span class="add-count">+{additions}</span>' if additions > 0 else ''}
-                    {f'<span class="del-count">-{deletions}</span>' if deletions > 0 else ''}
+                    {f'<span class="add-stat">+{additions}</span>' if additions > 0 else ""}
+                    {f'<span class="del-stat">-{deletions}</span>' if deletions > 0 else ""}
                 </div>
             </div>
-            <table class="diff-table">
-                <tbody>
-                    {diff_rows_html}
-                </tbody>
-            </table>
+            <div class="diff-table">
+                {diff_rows_html}
+            </div>
         </div>
         '''
+
+    @classmethod
+    def _get_file_icon(cls, path: str) -> str:
+        """获取文件图标"""
+        if path.endswith(".py"):
+            return "&#128464;"
+        elif path.endswith(".json"):
+            return "&#128196;"
+        elif path.endswith((".js", ".ts")):
+            return "&#128203;"
+        elif path.endswith((".html", ".css")):
+            return "&#127760;"
+        else:
+            return "&#128196;"
 
     @classmethod
     def get_diff_for_files(cls, file_paths: List[str], session_id: str = "") -> str:
@@ -656,10 +764,14 @@ class DiffHtmlGenerator:
             for current_path in existing_files:
                 try:
                     filename = Path(current_path).name
+                    file_stem = Path(current_path).stem
 
-                    # 在备份目录中查找匹配的文件
+                    # 在备份目录中查找匹配的文件（跳过 .after.bak）
                     backup_path = None
-                    bak_files = sorted(backup_dir.glob(f"{Path(current_path).stem}*.bak"))
+                    bak_files = sorted(
+                        f for f in backup_dir.glob(f"{file_stem}*.bak")
+                        if not f.name.endswith('.after.bak')
+                    )
                     if bak_files:
                         backup_path = bak_files[0]  # 选择最早的备份
 
@@ -668,24 +780,34 @@ class DiffHtmlGenerator:
                         continue
 
                     # 读取文件内容
-                    with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                    with open(
+                        backup_path, "r", encoding="utf-8", errors="replace"
+                    ) as f:
                         old_content = f.read()
-                    with open(current_path, 'r', encoding='utf-8', errors='replace') as f:
+                    with open(
+                        current_path, "r", encoding="utf-8", errors="replace"
+                    ) as f:
                         new_content = f.read()
 
-                    # 使用 difflib 生成 unified diff
-                    old_lines = old_content.splitlines(keepends=True)
-                    new_lines = new_content.splitlines(keepends=True)
+                    # 使用 difflib 生成 unified diff（确保每行都有换行符，处理单行文件无末尾换行符的情况）
+                    def normalize_lines(content):
+                        lines = content.splitlines(keepends=True)
+                        if lines and not lines[-1].endswith('\n'):
+                            lines[-1] += '\n'
+                        return lines
+
+                    old_lines = normalize_lines(old_content)
+                    new_lines = normalize_lines(new_content)
 
                     diff = difflib.unified_diff(
                         old_lines,
                         new_lines,
                         fromfile=filename,
                         tofile=filename,
-                        lineterm='\n'
+                        lineterm="\n",
                     )
 
-                    diff_text = ''.join(diff)
+                    diff_text = "".join(diff)
                     if diff_text:
                         diff_parts.append(diff_text)
                         logger.debug(f"[DiffHtml] {filename}: 找到差异")
@@ -695,7 +817,9 @@ class DiffHtmlGenerator:
                     continue
 
             result = "\n".join(diff_parts)
-            logger.info(f"[DiffHtml] 对比完成: {len(result)} 字符, {len(diff_parts)} 个文件")
+            logger.info(
+                f"[DiffHtml] 对比完成: {len(result)} 字符, {len(diff_parts)} 个文件"
+            )
             return result
 
         except Exception as e:
@@ -703,7 +827,9 @@ class DiffHtmlGenerator:
             return ""
 
     @classmethod
-    def generate_report_for_files(cls, file_paths: List[str], session_id: str = "") -> str:
+    def generate_report_for_files(
+        cls, file_paths: List[str], session_id: str = ""
+    ) -> str:
         """为指定文件生成 diff 报告"""
         diff_output = cls.get_diff_for_files(file_paths, session_id)
         return cls.generate_html_report(diff_output or "", session_id)
@@ -736,9 +862,7 @@ class DiffViewerWindow:
         self._window.resize(1200, 800)
 
         if parent:
-            self._window.setWindowFlags(
-                self._window.windowFlags() | Qt.Dialog
-            )
+            self._window.setWindowFlags(self._window.windowFlags() | Qt.WindowModal)
 
         # 创建布局
         layout = QHBoxLayout(self._window)

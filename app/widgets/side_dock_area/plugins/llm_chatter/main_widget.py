@@ -1820,6 +1820,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self.title_edit.setText(title or "历史对话")
         if self._history_popup:
             self._history_popup.close()
+
+        # 更新工具执行器的会话上下文
+        if self._tool_executor:
+            self._tool_executor.set_session_context(self._current_session_id)
+
         self._display_current_session()
 
     def _append_user_message(
@@ -1854,6 +1859,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.contextActionRequested.connect(self.handle_recommended_question)
+        card.toolDiffRequested.connect(self._on_tool_diff_requested)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -2164,6 +2170,144 @@ class OpenAIChatToolWindow(ToolWindow):
                 f"已恢复 {result.success_count} 个文件",
                 parent=self,
                 duration=3000,
+            )
+
+    def _on_tool_diff_requested(self, tool_call_id: str):
+        """
+        处理工具差异对比请求
+        
+        Args:
+            tool_call_id: 工具调用 ID
+        """
+        if not tool_call_id:
+            return
+        
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+        
+        session_id = session.session_id
+        
+        # 检查是否有 file_recorder
+        if not self._tool_executor or not self._tool_executor.file_recorder:
+            logger.warning("[LLMChatter] file_recorder 未初始化")
+            return
+        
+        try:
+            # 获取该 tool_call_id 对应的文件操作记录
+            operations = self._tool_executor.file_recorder.get_operations_for_preview(
+                session_id=session_id,
+                call_id=tool_call_id
+            )
+            
+            if not operations:
+                InfoBar.warning(
+                    "无差异信息",
+                    "此工具没有修改任何文件，或备份信息已丢失",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            
+            # 只取该工具产生的第一个文件操作（通常每个工具只修改一个文件）
+            op = operations[0]
+            backup_path = op.get("backup_path", "")
+
+            if not backup_path:
+                InfoBar.warning(
+                    "无差异信息",
+                    "备份路径无效",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            # 编辑前备份路径 -> 编辑后备份路径（固定后缀 .after.bak）
+            from pathlib import Path
+            import difflib
+
+            backup_file = Path(backup_path)
+            after_backup_path = str(backup_file.with_suffix('.after.bak'))
+            after_backup_file = Path(after_backup_path)
+
+            # 检查编辑后备份是否存在
+            if not after_backup_file.exists():
+                InfoBar.warning(
+                    "无差异信息",
+                    "编辑后备份文件不存在，可能该工具执行于早期版本",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            try:
+                # 读取编辑前和编辑后的备份文件进行对比
+                with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                    old_content = f.read()
+                with open(after_backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                    new_content = f.read()
+            except FileNotFoundError as e:
+                InfoBar.error(
+                    "文件不存在",
+                    f"无法读取备份文件: {e}",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+            except Exception as e:
+                InfoBar.error(
+                    "读取失败",
+                    f"无法读取备份文件: {e}",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            # 生成 unified diff（确保每行都有换行符，处理单行文件无末尾换行符的情况）
+            def normalize_lines(content):
+                lines = content.splitlines(keepends=True)
+                if lines and not lines[-1].endswith('\n'):
+                    lines[-1] += '\n'
+                return lines
+
+            old_lines = normalize_lines(old_content)
+            new_lines = normalize_lines(new_content)
+
+            diff = difflib.unified_diff(
+                old_lines,
+                new_lines,
+                fromfile=backup_file.name,
+                tofile=backup_file.name,
+                lineterm='\n'
+            )
+            
+            diff_output = ''.join(diff)
+            
+            # 生成并显示差异对比
+            from app.widgets.side_dock_area.plugins.llm_chatter.utils.diff_viewer import (
+                DiffHtmlGenerator,
+                DiffViewerWindow,
+            )
+            
+            html = DiffHtmlGenerator.generate_html_report(diff_output, "")
+            
+            viewer = DiffViewerWindow(parent=self)
+            viewer.load_html(html)
+            viewer.show()
+            
+        except Exception as e:
+            logger.error(f"[LLMChatter] 显示工具差异失败: {e}")
+            InfoBar.error(
+                "差异显示失败",
+                str(e),
+                duration=3000,
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
             )
 
     def _on_code_action(self, code: str, action: str = "copy"):

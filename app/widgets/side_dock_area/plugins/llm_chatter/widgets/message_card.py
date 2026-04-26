@@ -308,6 +308,7 @@ def _render_tool_block_content(content: str) -> str:
     tool_args = ""
     tool_result = ""
     tool_success = True
+    tool_call_id = None
 
     for line in lines:
         if line.startswith("name: "):
@@ -316,13 +317,26 @@ def _render_tool_block_content(content: str) -> str:
             tool_args = line[6:].strip()
         elif line.startswith("success: "):
             tool_success = line[9:].strip().lower() == "true"
+        elif line.startswith("tool_call_id: "):
+            tool_call_id = line[14:].strip()
 
     result_match = content.find("result: ")
     if result_match != -1:
         result_start = result_match + len("result: ")
+        # 查找 success 或 tool_call_id 的位置来确定 result 的结束
         success_match = content.find("\nsuccess: ", result_start)
+        tool_call_match = content.find("\ntool_call_id: ", result_start)
+        
+        # 取最近的标记位置
+        end_markers = []
         if success_match != -1:
-            tool_result = content[result_start:success_match].strip()
+            end_markers.append(success_match)
+        if tool_call_match != -1:
+            end_markers.append(tool_call_match)
+        
+        if end_markers:
+            end_pos = min(end_markers)
+            tool_result = content[result_start:end_pos].strip()
         else:
             tool_result = content[result_start:].strip()
 
@@ -332,7 +346,8 @@ def _render_tool_block_content(content: str) -> str:
         args_dict = {}
 
     return render_tool_block(
-        tool_name, args_dict, tool_result, tool_success, collapsed=True
+        tool_name, args_dict, tool_result, tool_success, collapsed=True,
+        tool_call_id=tool_call_id
     )
 
 
@@ -381,6 +396,7 @@ class ConsoleMonitorPage(QWebEnginePage):
     contextActionRequested = pyqtSignal(str, str)
     heightReported = pyqtSignal(int)
     contentReady = pyqtSignal()
+    toolDiffRequested = pyqtSignal(str)  # tool_call_id
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
@@ -411,6 +427,13 @@ class ConsoleMonitorPage(QWebEnginePage):
                     QDesktopServices.openUrl(QUrl(url_str))
                 except:
                     pass
+            elif "tool_diff:" in msg:
+                # 处理工具差异对比请求
+                try:
+                    tool_call_id = msg.split("tool_diff:", 1)[1]
+                    self.toolDiffRequested.emit(tool_call_id)
+                except Exception:
+                    pass
             else:
                 try:
                     p = msg.split(":")
@@ -428,6 +451,7 @@ class CodeWebViewer(QWebEngineView):
     contentHeightChanged = pyqtSignal(int)
     codeActionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
+    toolDiffRequested = pyqtSignal(str)  # tool_call_id
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -468,6 +492,7 @@ class CodeWebViewer(QWebEngineView):
         self._page.contextActionRequested.connect(self.contextActionRequested.emit)
         self._page.heightReported.connect(self._on_height_reported)
         self._page.contentReady.connect(self._on_js_ready)
+        self._page.toolDiffRequested.connect(self.toolDiffRequested.emit)
 
         self._load_skeleton()
 
@@ -963,6 +988,11 @@ class CodeWebViewer(QWebEngineView):
                     reportHeight();
                 }}, false);
                 window.pywebview = {{ reportHeight: reportHeight }};
+                
+                // 工具差异对比请求函数
+                window._requestToolDiff = function(toolCallId) {{
+                    console.log('pywebview_action:tool_diff:' + toolCallId);
+                }};
             </script>
         </body>
         </html>
@@ -1167,6 +1197,7 @@ class MessageCard(SimpleCardWidget):
     contextActionRequested = pyqtSignal(str, str)
     optionSelected = pyqtSignal(dict)
     interventionRequested = pyqtSignal(dict)
+    toolDiffRequested = pyqtSignal(str)  # tool_call_id
 
     def __init__(
         self,
@@ -1370,6 +1401,7 @@ class MessageCard(SimpleCardWidget):
             self.viewer.codeActionRequested.connect(self.actionRequested.emit)
             self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
             self.viewer.contentHeightChanged.connect(self._update_height)
+            self.viewer.toolDiffRequested.connect(self.toolDiffRequested.emit)
         main.addWidget(self.viewer)
 
         self.options_widget = QWidget(self)
