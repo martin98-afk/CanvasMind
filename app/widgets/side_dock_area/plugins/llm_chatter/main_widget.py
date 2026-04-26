@@ -110,6 +110,10 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
 from app.widgets.side_dock_area.plugins.llm_chatter.widgets.file_undo_dialog import (
     FileUndoPreviewDialog,
 )
+from app.widgets.side_dock_area.plugins.llm_chatter.utils.diff_viewer import (
+    DiffHtmlGenerator,
+    DiffViewerWindow,
+)
 
 
 class OpenAIChatToolWindow(ToolWindow):
@@ -614,12 +618,13 @@ class OpenAIChatToolWindow(ToolWindow):
         self.history_btn.setToolTip("历史对话")
         self.history_btn.clicked.connect(self._open_history_popup)
 
-        self.shell_btn = TransparentToggleToolButton(get_icon("shell"), self)
-        self.shell_btn.setFixedSize(26, 26)
-        self.shell_btn.setToolTip("Shell执行模式")
-        self.shell_btn.toggled.connect(self._toggle_shell_mode)
+        # Diff 按钮 - 查看文件差异
+        self.diff_btn = TransparentToolButton(get_icon("差异对比"), self)
+        self.diff_btn.setFixedSize(26, 26)
+        self.diff_btn.setToolTip("查看文件差异")
+        self.diff_btn.clicked.connect(self._open_diff_viewer)
 
-        hlayout.addWidget(self.shell_btn)
+        hlayout.addWidget(self.diff_btn)
         hlayout.addWidget(self.memory_btn)
         hlayout.addWidget(self.history_btn)
         hlayout.addWidget(self.new_session_btn)
@@ -970,6 +975,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._todo_floating_widget.clear()
         if self._tool_executor:
             self._tool_executor.clear_todo_list()
+            self._tool_executor.set_session_context(self._current_session_id)  # 同步更新 session_id
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
@@ -1153,6 +1159,65 @@ class OpenAIChatToolWindow(ToolWindow):
 
         task = ShellExecutionTask(cmd, on_result)
         self._gen_thread_pool.start(task)
+
+    def _open_diff_viewer(self):
+        """打开差异查看窗口，显示当前会话修改文件的 git diff"""
+        try:
+            # 获取当前会话 ID
+            session_id = self._current_session_id
+            if not session_id:
+                InfoBar.warning("提示", "当前没有活动会话", parent=self)
+                return
+
+            # 从 ToolExecutor 获取当前会话的文件操作记录
+            if not self._tool_executor:
+                InfoBar.warning("提示", "工具执行器未初始化", parent=self)
+                return
+
+            # 获取文件操作记录
+            from app.widgets.side_dock_area.plugins.llm_chatter.utils.file_operation_recorder import FileOperationRecorder
+            from app.widgets.side_dock_area.plugins.llm_chatter.utils.session_store import SessionStore
+
+            session_store = SessionStore()
+            file_recorder = FileOperationRecorder(session_store)
+
+            # 获取当前会话的所有文件操作
+            operations = file_recorder.get_all_operations_for_session(session_id)
+
+            if not operations:
+                InfoBar.info("提示", "当前会话没有文件修改记录", parent=self)
+                return
+
+            # 提取文件路径列表（去重）
+            file_paths = list({op.get("file_path") for op in operations if op.get("file_path")})
+
+            if not file_paths:
+                InfoBar.info("提示", "未找到修改的文件", parent=self)
+                return
+
+            # 生成 git diff
+            try:
+                diff_output = DiffHtmlGenerator.get_diff_for_files(file_paths, session_id)
+            except Exception as e:
+                logger.warning(f"[DiffViewer] 获取 git diff 失败: {e}")
+                diff_output = ""
+
+            # 生成 HTML 报告
+            html = DiffHtmlGenerator.generate_html_report(diff_output or "", session_id)
+
+            # 创建并显示差异查看窗口
+            viewer = DiffViewerWindow(parent=self)
+            viewer.load_html(html)
+            viewer.show()
+
+            logger.info(f"[DiffViewer] 已打开差异查看窗口，文件数: {len(file_paths)}")
+
+        except ImportError as e:
+            logger.error(f"[DiffViewer] 导入模块失败: {e}")
+            InfoBar.error("错误", f"功能加载失败: {str(e)}", parent=self)
+        except Exception as e:
+            logger.exception(f"[DiffViewer] 打开差异查看器失败: {e}")
+            InfoBar.error("错误", f"打开差异查看器失败: {str(e)}", parent=self)
 
     def _display_history_sessions(self):
         self._clear_chat_area()

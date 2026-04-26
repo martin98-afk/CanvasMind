@@ -27,6 +27,7 @@
     <file>expand_all.svg</file>
     <file>fill.svg</file>
     <file>gemini-ai.svg</file>
+    <file>github.svg</file>
     <file>groq.svg</file>
     <file>ipython.svg</file>
     <file>list.svg</file>
@@ -88,6 +89,7 @@
     <file>工具.svg</file>
     <file>工具包.png</file>
     <file>左收起.svg</file>
+    <file>差异对比.svg</file>
     <file>广义回归.svg</file>
     <file>异常检测.svg</file>
     <file>弹出窗.svg</file>
@@ -119,6 +121,8 @@
     <file>暂停.svg</file>
     <file>更多.svg</file>
     <file>更新.svg</file>
+    <file>最大化.svg</file>
+    <file>最小化.svg</file>
     <file>条件分支.png</file>
     <file>框选.svg</file>
     <file>模型.png</file>
