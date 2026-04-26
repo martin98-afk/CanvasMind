@@ -182,13 +182,13 @@ class ToolPopupDialog(QDialog):
         self._switch_btn = title_bar._switch_layout_btn
         self._switch_btn.hide()
 
-        self._min_btn = ToolButton(FIF.MINIMIZE, self)
+        self._min_btn = ToolButton(get_icon("最小化"), self)
         self._min_btn.setFixedSize(24, 24)
         self._min_btn.setToolTip("最小化")
         self._min_btn.clicked.connect(self.showMinimized)
         title_bar.add_popup_button(self._min_btn)
 
-        self._max_btn = ToolButton(get_icon("放大"), self)
+        self._max_btn = ToolButton(get_icon("最大化"), self)
         self._max_btn.setFixedSize(24, 24)
         self._max_btn.setToolTip("最大化")
         self._max_btn.clicked.connect(self._toggle_maximize)

@@ -20,8 +20,12 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import (
     PrimaryPushButton,
     PushButton,
+    TransparentToolButton,
+    FluentIcon,
     isDarkTheme,
 )
+
+from app.utils.utils import get_icon
 
 
 class FileUndoPreviewDialog(QDialog):
@@ -128,6 +132,14 @@ class FileUndoPreviewDialog(QDialog):
             item_layout.addWidget(name_label, 0)
             item_layout.addWidget(path_label, 1)
 
+            # 添加差异查看按钮
+            diff_btn = TransparentToolButton(get_icon("差异对比"), self)
+            diff_btn.setFixedSize(24, 24)
+            diff_btn.setToolTip("查看差异")
+            diff_btn.op_index = i
+            diff_btn.clicked.connect(lambda _, idx=i: self._show_diff(idx))
+            item_layout.addWidget(diff_btn, 0)
+
             item.setSizeHint(item_widget.sizeHint())
             list_widget.addItem(item)
             list_widget.setItemWidget(item, item_widget)
@@ -193,6 +205,51 @@ class FileUndoPreviewDialog(QDialog):
         if not self.selected_ops:
             return
         self.accept()
+
+    def _show_diff(self, index: int):
+        """显示指定操作的差异"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.utils.diff_viewer import (
+            DiffHtmlGenerator,
+            DiffViewerWindow,
+        )
+
+        op = self.operations[index]
+        file_path = op.get("file_path", "")
+        backup_path = op.get("backup_path", "")
+
+        if not file_path or not backup_path:
+            return
+
+        try:
+            # 读取备份文件和当前文件
+            with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                old_content = f.read()
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                new_content = f.read()
+
+            # 生成 unified diff
+            import difflib
+            old_lines = old_content.splitlines(keepends=True)
+            new_lines = new_content.splitlines(keepends=True)
+
+            diff = difflib.unified_diff(
+                old_lines,
+                new_lines,
+                fromfile=Path(file_path).name,
+                tofile=Path(file_path).name,
+                lineterm='\n'
+            )
+
+            diff_output = ''.join(diff)
+            html = DiffHtmlGenerator.generate_html_report(diff_output, "")
+
+            viewer = DiffViewerWindow(parent=self)
+            viewer.load_html(html)
+            viewer.show()
+
+        except Exception as e:
+            from loguru import logger
+            logger.error(f"[FileUndo] 显示差异失败: {e}")
 
     def get_result(self) -> int:
         """获取用户的选择"""
