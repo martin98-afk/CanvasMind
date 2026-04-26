@@ -63,15 +63,17 @@ def render_tool_block(
     # 判断是否是需要文件操作的工具
     file_edit_tools = {"write", "edit", "multiedit", "patch"}
     is_file_edit = tool_name in file_edit_tools and tool_args.get("path")
-    
-    # 差异对比按钮
-    diff_button_html = ""
+
+    # 差异对比图标按钮（折叠框右侧）
+    diff_icon_html = ""
     if is_file_edit and tool_call_id:
-        diff_button_html = f'''
-        <button type="button" class="tool-diff-btn" data-tool-call-id="{escape(tool_call_id)}" 
-            style="cursor: pointer; padding: 2px 8px; font-size: 11px; background: #2d5a87; color: #fff; border: none; border-radius: 4px; margin-left: 4px;"
+        diff_icon_html = f'''
+        <button type="button" class="tool-diff-icon-btn" data-tool-call-id="{escape(tool_call_id)}"
+            style="background: transparent; border: none; cursor: pointer; padding: 4px; margin-left: 8px; border-radius: 4px;"
             onclick="window._requestToolDiff(this.dataset.toolCallId)"
-            title="查看此工具产生的文件差异">📄 差异</button>'''
+            title="查看文件差异">
+            <img src="qrc:/icons/差异对比.svg" style="width: 16px; height: 16px;" />
+        </button>'''
 
     if result is not None:
         result_str = str(result)
@@ -81,7 +83,7 @@ def render_tool_block(
         <div style="padding: 8px 12px; border-top: 1px solid #3d3d3d; font-size: 12px;">
             <div style="color: #888; margin-bottom: 4px;">{"调用子智能体" if is_sub_agent_task else "参数"}:</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px;">{escape(json.dumps(tool_args, ensure_ascii=False, indent=2))}</pre>
-            <div style="color: #888; margin: 8px 0 4px; display: flex; align-items: center; gap: 8px;">{"子智能体结果" if is_sub_agent_task else "结果"}{diff_button_html}</div>
+            <div style="color: #888; margin: 8px 0 4px;">{"子智能体结果" if is_sub_agent_task else "结果"}</div>
             <pre style="margin: 0; padding: 6px; background: #1e1e1e; border-radius: 4px; overflow-x: auto; color: #d4d4d4; font-size: 11px; max-height: 400px; overflow-y: auto;">{result_escaped}</pre>
         </div>"""
     else:
@@ -110,6 +112,7 @@ def render_tool_block(
         <span>{escape(tool_name)}</span>
         {status_html}
         <span style="color: #888; font-size: 11px; font-weight: normal; margin-left: auto;">{escape(args_preview)}</span>
+        {diff_icon_html}
     </button>
     <div class="cm-collapsible__body"{body_style}>
         {result_html}

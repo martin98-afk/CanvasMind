@@ -764,11 +764,13 @@ class DiffHtmlGenerator:
             for current_path in existing_files:
                 try:
                     filename = Path(current_path).name
+                    file_stem = Path(current_path).stem
 
-                    # 在备份目录中查找匹配的文件
+                    # 在备份目录中查找匹配的文件（跳过 .after.bak）
                     backup_path = None
                     bak_files = sorted(
-                        backup_dir.glob(f"{Path(current_path).stem}*.bak")
+                        f for f in backup_dir.glob(f"{file_stem}*.bak")
+                        if not f.name.endswith('.after.bak')
                     )
                     if bak_files:
                         backup_path = bak_files[0]  # 选择最早的备份
@@ -787,9 +789,15 @@ class DiffHtmlGenerator:
                     ) as f:
                         new_content = f.read()
 
-                    # 使用 difflib 生成 unified diff
-                    old_lines = old_content.splitlines(keepends=True)
-                    new_lines = new_content.splitlines(keepends=True)
+                    # 使用 difflib 生成 unified diff（确保每行都有换行符，处理单行文件无末尾换行符的情况）
+                    def normalize_lines(content):
+                        lines = content.splitlines(keepends=True)
+                        if lines and not lines[-1].endswith('\n'):
+                            lines[-1] += '\n'
+                        return lines
+
+                    old_lines = normalize_lines(old_content)
+                    new_lines = normalize_lines(new_content)
 
                     diff = difflib.unified_diff(
                         old_lines,
