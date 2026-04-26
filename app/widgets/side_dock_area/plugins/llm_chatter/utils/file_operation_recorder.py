@@ -5,7 +5,6 @@
 用于记录文件操作并在需要时回滚
 """
 
-import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -74,10 +73,34 @@ class FileOperationRecorder:
             resolved_path = Path(file_path).resolve()
             
 
-            # 如果文件不存在，可能是在 write_file 中新建的文件，不创建备份
-            if not resolved_path.exists():
-                logger.debug(f"[FileRecorder] 文件不存在，跳过备份: {file_path}")
-                return None
+            # 如果文件不存在，可能是新建的文件，创建一个空备份文件用于差异比较
+            file_existed = resolved_path.exists()
+            if not file_existed:
+                # 创建备份目录
+                backup_dir = self._backup_base_dir / session_id
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                
+                # 生成备份文件名
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_name = self._sanitize_filename(resolved_path.name)
+                call_prefix = call_id[:8] if len(call_id) >= 8 else call_id
+                backup_name = f"{safe_name}_{timestamp}_{call_prefix}.bak"
+                backup_path = backup_dir / backup_name
+                
+                # 创建一个空的备份文件
+                backup_path.touch()
+                logger.info(f"[FileRecorder] 新文件已创建空备份: {file_path} -> {backup_path}")
+                
+                # 记录到数据库
+                self._session_store.record_file_operation(
+                    session_id=session_id,
+                    call_id=call_id,
+                    tool_name=tool_name,
+                    file_path=str(resolved_path),
+                    backup_path=str(backup_path)
+                )
+                
+                return str(backup_path)
 
             # 创建备份目录
             backup_dir = self._backup_base_dir / session_id
@@ -175,15 +198,29 @@ class FileOperationRecorder:
                     result.failed_files.append(file_path)
                     continue
 
-                # 恢复备份文件
-                resolved_path = Path(file_path)
-                shutil.copy2(backup_path, resolved_path)
+                backup_file = Path(backup_path)
+                
+                # 检查是否是新建文件（备份文件为空）
+                is_new_file = backup_file.stat().st_size == 0
+                
+                if is_new_file:
+                    # 新建文件的回滚：删除创建的文件
+                    resolved_path = Path(file_path)
+                    if resolved_path.exists():
+                        resolved_path.unlink()
+                    backup_file.unlink()
+                    result.success_count += 1
+                    logger.info(f"[FileRecorder] 已删除新建的文件: {file_path}")
+                else:
+                    # 恢复备份文件
+                    resolved_path = Path(file_path)
+                    shutil.copy2(backup_file, resolved_path)
 
-                # 删除备份文件
-                Path(backup_path).unlink()
+                    # 删除备份文件
+                    backup_file.unlink()
 
-                result.success_count += 1
-                logger.info(f"[FileRecorder] 已回滚: {file_path}")
+                    result.success_count += 1
+                    logger.info(f"[FileRecorder] 已回滚: {file_path}")
 
             except FileNotFoundError:
                 # 文件已被外部删除，跳过
