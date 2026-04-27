@@ -272,6 +272,45 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._initialize_history_manager()
 
+        # 自动启动 LLM API 服务
+        self._init_llm_api_service()
+
+    def _init_llm_api_service(self):
+        """初始化 LLM API 服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import (
+            ensure_service_running,
+            LLMAPIService,
+        )
+
+        # 注册服务商列表获取回调
+        def get_providers():
+            providers = []
+            for name in self._valid_configs.keys():
+                providers.append({"name": name})
+            return providers
+
+        # 注册当前配置获取回调
+        def get_current_config():
+            return self._get_current_model_config()
+
+        # 注册切换配置回调
+        def on_provider_changed(provider_name):
+            if provider_name in self._valid_configs:
+                idx = self.model_combo.findText(provider_name)
+                if idx >= 0:
+                    self.model_combo.setCurrentIndex(idx)
+
+        LLMAPIService.set_providers_callback(get_providers)
+        LLMAPIService.set_config_callback(get_current_config)
+
+        # 连接模型切换信号以更新 API 服务的当前提供商
+        self.model_combo.currentTextChanged.connect(
+            lambda name: LLMAPIService.update_current_provider(name) if name else None
+        )
+
+        # 自动启动服务
+        ensure_service_running()
+
     def _setup_title_bar(self):
         """设置标题栏按钮"""
         title_bar = self.get_title_bar()
@@ -281,6 +320,17 @@ class OpenAIChatToolWindow(ToolWindow):
         self._copy_btn.setToolTip("复制窗口")
         self._copy_btn.clicked.connect(self._duplicate_window)
         title_bar.add_button(self._copy_btn)
+
+        # 创建 API 文档按钮
+        self._api_btn = TransparentToolButton(get_icon("Global"), self)
+        self._api_btn.setToolTip("API 文档 (http://localhost:8765/docs)")
+        self._api_btn.clicked.connect(self._open_api_docs)
+        title_bar.add_button(self._api_btn)
+
+    def _open_api_docs(self):
+        """打开 API 文档页面"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import open_docs
+        open_docs()
 
     def _duplicate_window(self):
         """复制当前窗口并以弹窗方式显示"""
@@ -2934,6 +2984,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._current_session_id is None and session and session.messages:
             self.history_manager.save_session(
                 session.messages if session else [],
+                title=session.topic_summary,  # 传递当前标题，避免被消息内容覆盖
                 session_id=session.session_id if session else None,
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),
