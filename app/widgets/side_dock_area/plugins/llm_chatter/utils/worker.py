@@ -565,6 +565,64 @@ class OpenAIChatWorker(QThread):
         self._last_compaction_state = normalized
         self.compaction_status_changed.emit(dict(normalized))
 
+    def _fix_tool_result_order(self, messages: List[Dict]) -> tuple[List[Dict], bool]:
+        """
+        修复消息列表中 tool result 顺序问题。
+        
+        处理 API 格式消息（tool 消息只有 role, tool_call_id, name, content）。
+        规则：每个 tool 消息的 tool_call_id 必须与紧邻前一个 assistant 消息的 tool_calls 中的 id 匹配。
+        
+        Returns:
+            (修复后的消息列表, 是否进行了修复)
+        """
+        fixed_messages: List[Dict] = []
+        modified = False
+        
+        # 记录最近一个包含 tool_calls 的 assistant 消息的 tool_call ids
+        recent_tool_call_ids: set = set()
+        
+        for msg in messages:
+            role = msg.get("role", "")
+            
+            if role == "assistant":
+                # 更新最近的有效 tool_call ids
+                tool_calls = msg.get("tool_calls") or []
+                tool_call_ids = {tc.get("id") for tc in tool_calls if tc.get("id")}
+                
+                # 检查是否包含 tool_calls
+                has_tool_calls = bool(tool_call_ids)
+                
+                if has_tool_calls:
+                    recent_tool_call_ids = tool_call_ids
+                else:
+                    # 如果 assistant 消息没有 tool_calls，清空记录
+                    recent_tool_call_ids = set()
+                    
+                fixed_messages.append(msg)
+                
+            elif role == "tool":
+                tool_call_id = msg.get("tool_call_id", "")
+                
+                # 检查这个 tool result 是否匹配最近的 tool_call
+                if tool_call_id and tool_call_id in recent_tool_call_ids:
+                    # 匹配，保留并清空记录（因为后续的 tool result 应该匹配下一个 assistant）
+                    fixed_messages.append(msg)
+                    recent_tool_call_ids = set()
+                elif tool_call_id:
+                    # 不匹配，这是一个孤立的 tool result，需要删除
+                    logger.warning(f"[ToolCall修复] 移除孤立的 tool result: id={tool_call_id[:20]}...")
+                    modified = True
+                else:
+                    # 没有 tool_call_id，也删除
+                    logger.warning(f"[ToolCall修复] 移除无效的 tool result（无tool_call_id）")
+                    modified = True
+            else:
+                fixed_messages.append(msg)
+                # 非 assistant/tool 消息后，tool_call 上下文应该结束
+                recent_tool_call_ids = set()
+        
+        return fixed_messages, modified
+
     def _make_api_call(self, messages: List[Dict]) -> bool:
         api_key = self.llm_config.get("API_KEY", "").strip()
         base_url = self.llm_config.get("API_URL") or None
@@ -648,7 +706,7 @@ class OpenAIChatWorker(QThread):
         last_error = None
 
         # 需要重试的错误类型
-        from openai import RateLimitError, APIError, APIConnectionError
+        from openai import RateLimitError, APIError, APIConnectionError, BadRequestError
         from httpx import ReadTimeout as HttpxReadTimeout
         import httpcore
 
@@ -656,6 +714,40 @@ class OpenAIChatWorker(QThread):
             try:
                 response = client.chat.completions.create(**req_kwargs)
                 break
+            except BadRequestError as e:
+                last_error = e
+                error_str = str(e)
+                
+                # 检测 tool call result 错误码 2013
+                is_tool_call_order_error = "2013" in error_str or "tool call result does not follow tool call" in error_str.lower()
+                
+                if is_tool_call_order_error and attempt < max_retries - 1:
+                    # 自动修复 tool result 顺序问题
+                    logger.warning(f"[API] 检测到 tool call result 顺序错误 (2013)，尝试自动修复...")
+                    
+                    # 打印最近的消息用于调试
+                    recent_msgs = req_kwargs["messages"][-10:] if len(req_kwargs["messages"]) > 10 else req_kwargs["messages"]
+                    for i, msg in enumerate(recent_msgs):
+                        role = msg.get("role", "?")
+                        has_tc = "tool_calls" in msg
+                        tc_ids = [tc.get("id", "")[:15] for tc in msg.get("tool_calls", [])] if has_tc else []
+                        tc_id = msg.get("tool_call_id", "")[:15] if role == "tool" else ""
+                        logger.warning(f"[API] Msg[{i}]: role={role}, has_tool_calls={has_tc}, tc_ids={tc_ids}, tool_call_id={tc_id}")
+                    
+                    fixed_messages, was_fixed = self._fix_tool_result_order(req_kwargs["messages"])
+                    
+                    if was_fixed:
+                        req_kwargs["messages"] = messages_to_api(fixed_messages)
+                        logger.warning(f"[API] 已修复消息顺序，重试 (attempt {attempt + 1}/{max_retries})")
+                        continue
+                    else:
+                        logger.error(f"[API] 无法自动修复 tool call result 顺序问题 - 可能需要查看上面的消息结构")
+                        
+                # 其他 BadRequestError 继续抛出
+                if hasattr(e, "response") and e.response is not None:
+                    resp_body = getattr(e.response, "text", "") or ""
+                    logger.error(f"[API] Error response body: {resp_body[:500]}")
+                raise
             except Exception as e:
                 last_error = e
                 error_str = str(e)

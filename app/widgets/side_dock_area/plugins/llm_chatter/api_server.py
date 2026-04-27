@@ -1,12 +1,29 @@
 # -*- coding: utf-8 -*-
 """
 LLM Chatter HTTP API 服务
-提供远程调用接口，使用与 LLMChatter 相同的模型配置
+提供远程调用接口，复用 UI 对话逻辑
 
-用法：
-    from app.widgets.side_dock_area.plugins.llm_chatter.api_server import start_llm_api_service
-    start_llm_api_service(host="0.0.0.0", port=8765)
+核心设计：
+- API 调用直接复用 UI 的 ChatEngine 和 SessionManager
+- 通过 SSE 流式推送响应
+- 会话管理完全复用
+
+接口列表：
+- GET  /health                      - 健康检查
+- GET  /docs                        - 打开 API 文档页面
+
+会话管理：
+- GET  /sessions                    - 获取所有会话列表
+- POST /sessions                    - 创建新会话
+- GET  /sessions/{id}               - 获取指定会话详情
+- DELETE /sessions/{id}             - 删除会话
+
+对话接口：
+- POST /sessions/{id}/chat/stream    - 在指定会话中对话（流式 SSE）
+- POST /chat/stop                   - 停止当前流式请求
 """
+
+import asyncio
 import json
 import threading
 from typing import Optional, Dict, Any, List, Callable
@@ -46,319 +63,224 @@ def ensure_service_running() -> "LLMAPIService":
 
 class LLMAPIService:
     """LLM API 服务（单例）
-
-    提供以下接口：
-    - GET  /health             - 健康检查
-    - GET  /providers          - 获取所有服务商列表
-    - GET  /config             - 获取当前 LLM 配置（自动使用 LLMChatter 选中配置）
-    - POST /config             - 更新当前配置
-    - POST /chat               - 简单聊天（非流式）
-    - POST /chat/stream        - 流式聊天
-    - POST /tools/call         - 带工具调用的聊天
+    
+    复用 UI 对话逻辑的完整实现，包括：
+    - ChatEngine（对话引擎）
+    - SessionManager（会话管理）
+    - ToolExecutor（工具执行）
+    - AgentManager（Agent 管理）
     """
 
-    # 服务商列表获取回调
-    _get_providers_callback: Optional[Callable] = None
-    # 当前选中的服务商名称
-    _current_provider_name: str = "系统默认配置"
-    # 配置获取回调（返回当前选中的完整配置）
-    _get_current_config_callback: Optional[Callable] = None
+    # 会话处理器引用
+    _session_handler: Optional[Any] = None
 
     @classmethod
-    def set_providers_callback(cls, callback):
-        """设置服务商列表获取回调"""
-        cls._get_providers_callback = callback
+    def set_session_handler(cls, handler):
+        """设置会话处理器"""
+        cls._session_handler = handler
 
     @classmethod
-    def set_config_callback(cls, callback):
-        """设置配置获取回调"""
-        cls._get_current_config_callback = callback
-
-    @classmethod
-    def update_current_provider(cls, provider_name: str):
-        """更新当前选中的服务商名称"""
-        cls._current_provider_name = provider_name
+    def get_session_handler(cls):
+        """获取会话处理器"""
+        return cls._session_handler
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8765):
         self.host = host
         self.port = port
-        self.app = FastAPI(title="LLM Chatter API")
+        self.app = FastAPI(
+            title="LLM Chatter API",
+            description="复用 UI 对话逻辑的远程 API 接口",
+            version="2.0.0",
+        )
         self.server = None
         self._running = False
         self._setup_routes()
 
     def _setup_routes(self):
-        """设置路由"""
-
+        """设置所有路由"""
+        
+        # ==================== 健康检查 ====================
         @self.app.get("/health")
         async def health_check():
             """健康检查"""
+            handler = self.get_session_handler()
             return {
                 "status": "ok" if self._running else "stopped",
                 "service": "llm_chatter_api",
-                "version": "1.0.0",
+                "version": "2.0.0",
                 "running": self._running,
                 "address": f"http://{self.host}:{self.port}" if self._running else None,
+                "ui_linked": handler is not None,
             }
 
-        @self.app.get("/providers")
-        async def get_providers():
-            """获取所有服务商列表"""
-            if self._get_providers_callback:
-                try:
-                    result = self._get_providers_callback()
-                    # 如果返回的是 dict 列表
-                    if isinstance(result, list):
-                        providers = result
-                    else:
-                        providers = result.get("providers", [])
-                    return {"success": True, "providers": providers}
-                except Exception as e:
-                    logger.error(f"[LLMAPI] get_providers 失败: {e}")
-            return {"success": False, "error": "Providers callback not set"}
+        # ==================== 会话管理 ====================
+        @self.app.get("/sessions", response_model=Dict[str, Any])
+        async def list_sessions():
+            """获取所有会话列表"""
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(
+                    status_code=503,
+                    detail="会话处理器未初始化，请确保 LLMChatter 窗口已打开"
+                )
+            
+            sessions = handler.list_sessions()
+            return {"success": True, "sessions": sessions}
 
-        @self.app.post("/providers/switch")
-        async def switch_provider(request: Dict[str, Any]):
-            """切换到指定服务商
+        @self.app.post("/sessions", response_model=Dict[str, Any])
+        async def create_session(request: Optional[Dict[str, Any]] = None):
+            """创建新会话
+            
+            Request Body (可选):
+                {"title": "会话标题"}
+            """
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(
+                    status_code=503,
+                    detail="会话处理器未初始化"
+                )
+            
+            title = ""
+            if request:
+                title = request.get("title", "")
+            
+            session = handler.create_session(title=title)
+            if not session:
+                raise HTTPException(status_code=500, detail="创建会话失败")
+            
+            return {"success": True, "session": session}
+
+        @self.app.get("/sessions/{session_id}", response_model=Dict[str, Any])
+        async def get_session(session_id: str):
+            """获取指定会话详情"""
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(status_code=503, detail="会话处理器未初始化")
+            
+            session = handler.get_session(session_id)
+            if not session:
+                raise HTTPException(status_code=404, detail=f"会话 {session_id} 不存在")
+            
+            return {"success": True, "session": session}
+
+        @self.app.delete("/sessions/{session_id}", response_model=Dict[str, Any])
+        async def delete_session(session_id: str):
+            """删除会话"""
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(status_code=503, detail="会话处理器未初始化")
+            
+            if handler.delete_session(session_id):
+                return {"success": True, "message": f"会话 {session_id} 已删除"}
+            else:
+                raise HTTPException(status_code=500, detail="删除会话失败")
+
+        # ==================== 对话接口（核心，支持并发） ====================
+        @self.app.post("/sessions/{session_id}/chat/stream")
+        async def chat_stream(session_id: str, request: Dict[str, Any]):
+            """在指定会话中对话（流式 SSE，支持并发）
+            
+            特性：
+            - 每个请求创建独立的 ChatEngine 实例，并发安全
+            - 自动复用 UI 的 ToolExecutor、SessionManager、AgentManager
+            - 会话自动保存
             
             Request Body:
-                {"provider_name": "服务商名称"}
-            """
-            provider_name = request.get("provider_name", "")
-            if not provider_name:
-                raise HTTPException(status_code=400, detail="provider_name is required")
+            {
+                "message": "用户消息",
+                "context": {}  // 可选，上下文参数
+            }
             
-            # 记录当前选中的服务商
-            self.update_current_provider(provider_name)
-            return {"success": True, "message": f"已切换到 {provider_name}"}
+            SSE 事件：
+            - started: 流开始，包含 stream_id
+            - content: 收到的内容片段
+            - tool_call_started: 工具调用开始
+            - tool_result: 工具执行结果
+            - error: 错误
+            - stream_finished: 流结束
+            - complete: 完整响应
+            """
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(
+                    status_code=503,
+                    detail="会话处理器未初始化"
+                )
+
+            message = request.get("message", "")
+            if not message:
+                raise HTTPException(status_code=400, detail="message 是必填项")
+
+            context_params = request.get("context", {})
+
+            async def event_generator():
+                try:
+                    async for event in handler.chat_stream(
+                        session_id=session_id,
+                        message=message,
+                        context_params=context_params,
+                    ):
+                        yield event
+                except Exception as e:
+                    logger.exception(f"[API] chat_stream 错误: {e}")
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+        @self.app.post("/chat/stop")
+        async def stop_chat(request: Optional[Dict[str, Any]] = None):
+            """停止当前流式请求"""
+            handler = self.get_session_handler()
+            if not handler:
+                raise HTTPException(status_code=503, detail="会话处理器未初始化")
+            
+            stream_id = request.get("stream_id") if request else None
+            handler.stop_stream(stream_id)
+            
+            return {"success": True, "message": "已停止流式请求"}
+
+        # ==================== 保留旧接口（简单测试用） ====================
+        @self.app.get("/providers")
+        async def get_providers():
+            """获取所有服务商列表（兼容旧接口）"""
+            handler = self.get_session_handler()
+            if handler and handler._main_widget:
+                try:
+                    # 从 UI 获取服务商列表
+                    config_popup = handler._main_widget._settings_popup
+                    if config_popup and hasattr(config_popup, '_providers'):
+                        providers = config_popup._providers
+                        return {"success": True, "providers": providers}
+                except Exception as e:
+                    logger.error(f"[API] get_providers 失败: {e}")
+            
+            return {"success": True, "providers": []}
 
         @self.app.get("/config")
         async def get_config():
-            """获取当前 LLM 配置（自动使用 LLMChatter 选中的配置）"""
-            if self._get_current_config_callback:
+            """获取当前 LLM 配置（自动使用 LLMChatter 选中配置）"""
+            handler = self.get_session_handler()
+            if handler and handler._main_widget:
                 try:
-                    config = self._get_current_config_callback()
+                    config = handler._main_widget._get_current_model_config()
+                    if config:
+                        safe_config = {**config}
+                        if safe_config.get("API_KEY"):
+                            safe_config["API_KEY"] = "***" + safe_config["API_KEY"][-4:]
+                        return {"config": safe_config}
                 except Exception as e:
-                    logger.error(f"[LLMAPI] get_config 失败: {e}")
-                    config = None
-
-                if config:
-                    safe_config = {**config}
-                    if safe_config.get("API_KEY"):
-                        safe_config["API_KEY"] = "***" + safe_config["API_KEY"][-4:]
-                    return {
-                        "config": safe_config,
-                        "provider_name": self._current_provider_name,
-                    }
+                    logger.error(f"[API] get_config 失败: {e}")
             
-            raise HTTPException(status_code=503, detail="Config callback not set")
-
-        @self.app.post("/config")
-        async def config_update(request: Dict[str, Any]):
-            """更新当前配置（临时覆盖）"""
-            return {"success": True, "message": "配置已更新（临时）"}
-
-        @self.app.post("/chat")
-        async def chat(request: Dict[str, Any]):
-            """简单聊天接口（非流式，不支持工具调用）
-            自动使用 LLMChatter 当前选中的服务商配置
-            """
-            try:
-                message = request.get("message", "")
-                system_prompt = request.get("system_prompt", "")
-                history = request.get("history", [])
-
-                if not message:
-                    raise HTTPException(status_code=400, detail="message is required")
-
-                config = self._get_current_config()
-                if not config:
-                    raise HTTPException(status_code=503, detail="LLM not configured")
-
-                messages = []
-                if system_prompt:
-                    messages.append({"role": "system", "content": system_prompt})
-                messages.extend(history)
-                messages.append({"role": "user", "content": message})
-
-                from openai import OpenAI
-                client = OpenAI(
-                    api_key=config.get("API_KEY", ""),
-                    base_url=config.get("API_URL"),
-                )
-
-                response = client.chat.completions.create(
-                    model=config.get("模型名称", "gpt-4o"),
-                    messages=messages,
-                    stream=False,
-                    temperature=float(config.get("temperature", 0.7)),
-                    max_tokens=int(config.get("max_tokens", 4096)),
-                )
-
-                content = response.choices[0].message.content or ""
-
-                return {
-                    "success": True,
-                    "content": content,
-                    "usage": {
-                        "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-                        "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-                        "total_tokens": response.usage.total_tokens if response.usage else 0,
-                    },
-                }
-
-            except Exception as e:
-                logger.exception(f"[LLMAPI] Chat 请求失败: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @self.app.post("/chat/stream")
-        async def chat_stream(request: Dict[str, Any]):
-            """流式聊天接口"""
-            try:
-                message = request.get("message", "")
-                system_prompt = request.get("system_prompt", "")
-                history = request.get("history", [])
-
-                if not message:
-                    raise HTTPException(status_code=400, detail="message is required")
-
-                config = self._get_current_config()
-                if not config:
-                    raise HTTPException(status_code=503, detail="LLM not configured")
-
-                messages = []
-                if system_prompt:
-                    messages.append({"role": "system", "content": system_prompt})
-                messages.extend(history)
-                messages.append({"role": "user", "content": message})
-
-                from openai import OpenAI
-                client = OpenAI(
-                    api_key=config.get("API_KEY", ""),
-                    base_url=config.get("API_URL"),
-                )
-
-                async def event_generator():
-                    try:
-                        response = client.chat.completions.create(
-                            model=config.get("模型名称", "gpt-4o"),
-                            messages=messages,
-                            stream=True,
-                            temperature=float(config.get("temperature", 0.7)),
-                            max_tokens=int(config.get("max_tokens", 4096)),
-                        )
-
-                        for chunk in response:
-                            delta = chunk.choices[0].delta
-                            content = delta.content if delta else ""
-                            if content:
-                                yield f"data: {json.dumps({'content': content})}\n\n"
-
-                        yield "data: [DONE]\n\n"
-
-                    except Exception as e:
-                        logger.error(f"[LLMAPI] Stream error: {e}")
-                        yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-                return StreamingResponse(
-                    event_generator(),
-                    media_type="text/event-stream",
-                )
-
-            except Exception as e:
-                logger.exception(f"[LLMAPI] Stream 请求失败: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @self.app.post("/tools/call")
-        async def tools_call(request: Dict[str, Any]):
-            """带工具调用的聊天接口"""
-            try:
-                message = request.get("message", "")
-                system_prompt = request.get("system_prompt", "")
-                tools = request.get("tools", [])
-                history = request.get("history", [])
-
-                if not message:
-                    raise HTTPException(status_code=400, detail="message is required")
-
-                config = self._get_current_config()
-                if not config:
-                    raise HTTPException(status_code=503, detail="LLM not configured")
-
-                messages = []
-                if system_prompt:
-                    messages.append({"role": "system", "content": system_prompt})
-                messages.extend(history)
-                messages.append({"role": "user", "content": message})
-
-                from openai import OpenAI
-                client = OpenAI(
-                    api_key=config.get("API_KEY", ""),
-                    base_url=config.get("API_URL"),
-                )
-
-                response = client.chat.completions.create(
-                    model=config.get("模型名称", "gpt-4o"),
-                    messages=messages,
-                    tools=tools if tools else None,
-                    stream=False,
-                    temperature=float(config.get("temperature", 0.7)),
-                    max_tokens=int(config.get("max_tokens", 4096)),
-                )
-
-                choice = response.choices[0]
-                message_data = choice.message
-
-                tool_calls_list = []
-                if message_data.tool_calls:
-                    for tc in message_data.tool_calls:
-                        if hasattr(tc, 'function'):
-                            tool_calls_list.append({
-                                "id": tc.id,
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            })
-                        elif hasattr(tc, 'name'):
-                            tool_calls_list.append({
-                                "id": tc.id,
-                                "name": tc.name,
-                                "arguments": getattr(tc, 'arguments', '{}'),
-                            })
-
-                return {
-                    "success": True,
-                    "content": message_data.content or "",
-                    "finish_reason": choice.finish_reason,
-                    "tool_calls": tool_calls_list,
-                    "usage": {
-                        "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
-                        "completion_tokens": response.usage.completion_tokens if response.usage else 0,
-                        "total_tokens": response.usage.total_tokens if response.usage else 0,
-                    },
-                }
-
-            except Exception as e:
-                logger.exception(f"[LLMAPI] Tools call 请求失败: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-
-    def _get_current_config(self) -> Optional[Dict[str, Any]]:
-        """获取当前配置"""
-        if self._get_current_config_callback:
-            return self._get_current_config_callback()
-        
-        # 降级：从 Settings 读取系统默认配置
-        try:
-            from app.utils.config import Settings
-            settings = Settings.get_instance()
-            return {
-                "API_URL": settings.llm_api_url.value or "https://api.openai.com/v1",
-                "API_KEY": settings.llm_api_key.value or "",
-                "模型名称": settings.llm_model.value or "gpt-4o",
-                "temperature": float(settings.llm_temperature.value or 0.7),
-                "max_tokens": int(settings.llm_max_tokens.value or 4096),
-            }
-        except Exception:
-            return None
+            raise HTTPException(status_code=503, detail="配置不可用")
 
     def start(self, background: bool = True):
         """启动服务"""
@@ -371,6 +293,7 @@ class LLMAPIService:
             thread = threading.Thread(target=self._run_server, daemon=True)
             thread.start()
             logger.info(f"[LLMAPI] 服务已启动: http://{self.host}:{self.port}")
+            logger.info("[LLMAPI] API 文档: http://localhost:{}/docs".format(self.port))
         else:
             self._run_server()
 
@@ -422,7 +345,6 @@ def open_docs():
         import webbrowser
         webbrowser.open(f"http://localhost:{_llm_api_service.port}/docs")
     else:
-        # 服务未启动，先启动再打开
         start_llm_api_service()
         import time
         time.sleep(1)

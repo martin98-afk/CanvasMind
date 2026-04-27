@@ -281,20 +281,17 @@ class OpenAIChatToolWindow(ToolWindow):
             ensure_service_running,
             LLMAPIService,
         )
+        from app.widgets.side_dock_area.plugins.llm_chatter.api_session_handler import (
+            APISessionHandler,
+        )
 
         # 注册服务商列表获取回调
         def get_providers_list():
             return [{"name": name} for name in self._valid_configs.keys()]
-        
-        LLMAPIService.set_providers_callback(get_providers_list)
 
-        # 注册当前配置获取回调
-        LLMAPIService.set_config_callback(lambda: self._get_current_model_config())
-
-        # 连接模型切换信号以更新 API 服务的当前提供商
-        self.model_combo.currentTextChanged.connect(
-            lambda name: LLMAPIService.update_current_provider(name) if name else None
-        )
+        # 创建并注册 API 会话处理器（复用 UI 的 ChatEngine 和 SessionManager）
+        self._api_session_handler = APISessionHandler(self)
+        LLMAPIService.set_session_handler(self._api_session_handler)
 
         # 自动启动服务
         ensure_service_running()
@@ -2730,6 +2727,8 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         system_prompt = getattr(session, "system_prompt", "") or ""
+        # 优先使用已有的 topic_summary，避免被用户消息前30字覆盖
+        session_title = getattr(session, "topic_summary", "") or ""
 
         if self._current_session_id is not None:
             idx = self.history_manager.find_index_by_session_id(
@@ -2746,6 +2745,7 @@ class OpenAIChatToolWindow(ToolWindow):
             else:
                 self.history_manager.save_session(
                     saved_messages,
+                    title=session_title,  # 使用已有的 topic_summary
                     session_id=session.session_id if session else None,
                     compaction_state=getattr(session, "compaction_state", {}),
                     compaction_cache=getattr(session, "compaction_cache", {}),
@@ -2755,6 +2755,7 @@ class OpenAIChatToolWindow(ToolWindow):
         else:
             self.history_manager.save_session(
                 saved_messages,
+                title=session_title,  # 使用已有的 topic_summary
                 session_id=session.session_id if session else None,
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),
@@ -2969,10 +2970,14 @@ class OpenAIChatToolWindow(ToolWindow):
         clean_summary = summary.strip()
         session = self.session_manager.get_current_session()
 
+        # 先设置 session 的 topic_summary，避免 save_session 时 title 为空
+        if session:
+            session.set_topic_summary(clean_summary)
+
         if self._current_session_id is None and session and session.messages:
             self.history_manager.save_session(
                 session.messages if session else [],
-                title=session.topic_summary,  # 传递当前标题，避免被消息内容覆盖
+                title=clean_summary,  # 使用生成的摘要作为标题
                 session_id=session.session_id if session else None,
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),
@@ -2985,9 +2990,6 @@ class OpenAIChatToolWindow(ToolWindow):
             )
             if idx is not None:
                 self.history_manager.update_topic_summary(idx, clean_summary)
-
-        if session:
-            session.set_topic_summary(clean_summary)
 
         self._update_title_display(clean_summary)
 

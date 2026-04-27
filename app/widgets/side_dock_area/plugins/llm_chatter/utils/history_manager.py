@@ -50,7 +50,7 @@ class HistoryManager:
         self.canvas_name = canvas_name
         self.history_dir = Path("canvas_files") / "workflows" / canvas_name
         self.history_file = self.history_dir / "llm_history.json"
-        self.archive_dir = self.history_dir / "archived"
+        self.archive_dir = Path("canvas_files") / "archived"
         self.history_dir.mkdir(parents=True, exist_ok=True)
         self.archive_dir.mkdir(parents=True, exist_ok=True)
 
@@ -356,11 +356,7 @@ class HistoryManager:
             )
             filename = f"{date_str}_{safe_title}_{session_id}.json"
 
-            default_archive_dir = (
-                Path("canvas_files") / "workflows" / "default" / "archived"
-            )
-            default_archive_dir.mkdir(parents=True, exist_ok=True)
-            archive_file = default_archive_dir / filename
+            archive_file = self.archive_dir / filename
 
             try:
                 with open(archive_file, "w", encoding="utf-8") as f:
