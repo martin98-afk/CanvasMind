@@ -333,6 +333,7 @@ class ToolExecutor:
                 path=args.get("path"),  # 统一使用 path
                 offset=args.get("offset", 1),
                 limit=args.get("limit", 500),  # 建议默认值设为 500，防止 Token 溢出
+                show_line_numbers=args.get("show_line_numbers", False),
             ),
             "write": lambda: self._builtin_tools.write_file(
                 path=args.get("path"), content=args.get("content", "")

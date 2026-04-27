@@ -84,8 +84,8 @@ class BuiltinTools(QObject):
     def diagnostics_tools(self):
         return self._diagnostics_tools
 
-    def read_file(self, path: str, offset: int = 1, limit: int = 2000):
-        return self._file_tools.read_file(path, offset, limit)
+    def read_file(self, path: str, offset: int = 1, limit: int = 2000, show_line_numbers: bool = False):
+        return self._file_tools.read_file(path, offset, limit, show_line_numbers)
 
     def write_file(self, path: str, content: str):
         result = self._file_tools.write_file(path, content)
@@ -401,7 +401,7 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "read",
-                "description": "读取文件内容。输出会包含行号。建议大文件使用 offset 和 limit 分段读取。",
+                "description": "读取文件内容。可选带行号输出方便定位编辑。",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -415,6 +415,11 @@ def get_builtin_tools_schema() -> List[Dict]:
                             "type": "integer",
                             "description": "读取的行数",
                             "default": 500,
+                        },
+                        "show_line_numbers": {
+                            "type": "boolean",
+                            "description": "是否显示行号，用于定位编辑",
+                            "default": False,
                         },
                     },
                     "required": ["path"],

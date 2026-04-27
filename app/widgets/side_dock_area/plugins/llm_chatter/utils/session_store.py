@@ -391,7 +391,16 @@ class SessionStore:
         if not self.is_initialized:
             return False
 
-        memory_id = memory.get("memory_id") or memory.get("id") or datetime.now().strftime("%Y%m%d%H%M%S%f")
+        # 生成唯一的 memory_id
+        existing_id = memory.get("memory_id") or memory.get("id")
+        if existing_id:
+            memory_id = str(existing_id)
+        else:
+            # 使用 content hash + timestamp 确保唯一性
+            import hashlib
+            content_hash = hashlib.md5(str(memory.get("content", "")).encode()).hexdigest()[:8]
+            memory_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{content_hash}"
+        
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         success, _ = self._execute(f'''
@@ -415,29 +424,88 @@ class SessionStore:
         return success
 
     def save_memories(self, memories: List[Dict], canvas_id: str = "default") -> bool:
-        """批量保存记忆"""
-        if not self.is_initialized:
+        """批量保存记忆（全量替换，先清空再插入）"""
+        if not self.is_initialized or not self._db:
+            return False
+
+        # 使用原生连接，避免 DatabaseManager 自动 commit 破坏事务
+        conn = self._db._conn
+        if not conn:
             return False
 
         try:
+            cursor = conn.cursor()
+            cursor.execute("BEGIN TRANSACTION")
+            
+            # 先清空该画布的所有记忆（确保删除操作生效）
+            cursor.execute(f'DELETE FROM {self.MEMORIES_TABLE} WHERE canvas_id = ?', (canvas_id,))
+            
+            # 重新插入所有记忆
             for memory in memories:
-                self.save_memory(memory, canvas_id)
+                self._save_memory_with_cursor(cursor, memory, canvas_id)
+            
+            conn.commit()
             return True
         except Exception as e:
+            conn.rollback()
             logger.error(f"[SessionStore] 批量保存记忆失败: {e}")
             return False
 
-    def load_memories(self, canvas_id: str = "default", limit: int = 100) -> List[Dict]:
-        """加载长期记忆列表"""
+    def _save_memory_with_cursor(self, cursor, memory: Dict, canvas_id: str):
+        """使用指定 cursor 保存记忆（不自动 commit）"""
+        existing_id = memory.get("memory_id") or memory.get("id")
+        if existing_id:
+            memory_id = str(existing_id)
+        else:
+            import hashlib
+            content_hash = hashlib.md5(str(memory.get("content", "")).encode()).hexdigest()[:8]
+            memory_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{content_hash}"
+        
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute(f'''
+            INSERT OR REPLACE INTO {self.MEMORIES_TABLE}
+            (memory_id, canvas_id, content, enabled, confidence, category, source,
+             last_accessed, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            memory_id,
+            canvas_id,
+            memory.get("content", ""),
+            1 if memory.get("enabled", True) else 0,
+            memory.get("confidence", 0.8),
+            memory.get("category", "key_knowledge"),
+            memory.get("source", ""),
+            now,
+            memory.get("created_at") or now,
+            now,
+        ))
+
+    def load_memories(self, canvas_id: str = "default", limit: int = 100, include_disabled: bool = False) -> List[Dict]:
+        """加载长期记忆列表
+        
+        Args:
+            canvas_id: 画布 ID
+            limit: 返回数量限制
+            include_disabled: 是否包含禁用的记忆
+        """
         if not self.is_initialized:
             return []
 
-        success, rows = self._execute(f'''
-            SELECT * FROM {self.MEMORIES_TABLE}
-            WHERE canvas_id = ? AND enabled = 1
-            ORDER BY confidence DESC, updated_at DESC
-            LIMIT ?
-        ''', (canvas_id, limit))
+        if include_disabled:
+            success, rows = self._execute(f'''
+                SELECT * FROM {self.MEMORIES_TABLE}
+                WHERE canvas_id = ?
+                ORDER BY confidence DESC, updated_at DESC
+                LIMIT ?
+            ''', (canvas_id, limit))
+        else:
+            success, rows = self._execute(f'''
+                SELECT * FROM {self.MEMORIES_TABLE}
+                WHERE canvas_id = ? AND enabled = 1
+                ORDER BY confidence DESC, updated_at DESC
+                LIMIT ?
+            ''', (canvas_id, limit))
 
         if not success:
             return []

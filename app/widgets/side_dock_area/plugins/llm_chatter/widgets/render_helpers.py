@@ -111,18 +111,21 @@ def render_tool_block(
     expanded_attr = "false" if collapsed else "true"
     body_style = "" if collapsed else ' style="height:auto; opacity:1;"'
 
+    # 参数预览区域 + 对比按钮（参数可换行，按钮固定在右侧）
+    preview_section = f"""<span style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-width: 0; width: 100%; margin-left: 15px;">
+        <span style="color: #888; font-size: 11px; font-weight: normal; word-break: break-all; text-align: right; min-width: 0;">{escape(args_preview)}</span>
+        {diff_icon_html}
+    </span>"""
+
     return f"""<div class="cm-collapsible tool-block" data-block-key="{block_key}" data-expanded="{expanded_attr}" data-tool-call-id="{escape(tool_call_id or '')}" style="margin: 8px 0; background: #252525; border: 1px solid #3d3d3d; border-radius: 6px;">
-    <button type="button" class="cm-collapsible__summary tool-block__summary" aria-expanded="{expanded_attr}" style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: none; text-align: left; box-sizing: border-box; flex-wrap: nowrap;">
+    <button type="button" class="cm-collapsible__summary tool-block__summary" aria-expanded="{expanded_attr}" style="cursor: pointer; padding: 6px 10px; color: {title_color}; font-size: 13px; font-weight: 500; display: flex; align-items: flex-start; gap: 10px; width: 100%; background: transparent; border: none; text-align: left; box-sizing: border-box; flex-wrap: nowrap;">
         <span style="display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto;">
             <span class="cm-collapsible__chevron" aria-hidden="true"></span>
             <span style="flex: 0 0 auto;">{icon}</span>
             <span style="white-space: nowrap; flex: 0 0 auto;">{escape(tool_name)}</span>
             {status_html}
         </span>
-        <span style="display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; justify-content: flex-end; overflow: hidden;">
-            <span style="color: #888; font-size: 11px; font-weight: normal; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;">{escape(args_preview)}</span>
-            {diff_icon_html}
-        </span>
+        {preview_section}
     </button>
     <div class="cm-collapsible__body"{body_style}>
         {result_html}

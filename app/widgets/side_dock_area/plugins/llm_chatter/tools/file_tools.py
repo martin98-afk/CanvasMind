@@ -170,9 +170,16 @@ class FileTools:
 
         return None
 
-    def read_file(self, path: str, offset: int = 1, limit: int = 500) -> ToolResult:
+    def read_file(self, path: str, offset: int = 1, limit: int = 500, show_line_numbers: bool = False) -> ToolResult:
         """
-        读取文件，返回带行号的内容，方便 AI 定位
+        读取文件内容
+
+        Args:
+            path: 文件路径
+            offset: 起始行号（从1开始）
+            limit: 最大读取行数
+            show_line_numbers: 是否显示行号，默认 False（返回原文）
+
         读取时记录文件的修改时间，用于后续编辑时检测文件是否被外部修改
         """
         try:
@@ -194,12 +201,17 @@ class FileTools:
             end_idx = min(total_lines, start_idx + limit)
 
             content_slice = all_lines[start_idx:end_idx]
-            formatted_content = "".join(
-                f"{i + start_idx + 1:6d} | {line}" for i, line in enumerate(content_slice)
-            )
 
-            res_info = f"File: {path} (Lines {start_idx + 1}-{end_idx} of {total_lines})\n\n"
-            return ToolResult(True, content=res_info + formatted_content)
+            if show_line_numbers:
+                # 带行号格式（AI 定位用）
+                formatted_content = "".join(
+                    f"{i + start_idx + 1:6d} | {line}" for i, line in enumerate(content_slice)
+                )
+                res_info = f"File: {path} (Lines {start_idx + 1}-{end_idx} of {total_lines})\n\n"
+                return ToolResult(True, content=res_info + formatted_content)
+            else:
+                # 返回原文
+                return ToolResult(True, content="".join(content_slice))
         except Exception as e:
             return ToolResult(False, error=f"Read error: {str(e)}")
 

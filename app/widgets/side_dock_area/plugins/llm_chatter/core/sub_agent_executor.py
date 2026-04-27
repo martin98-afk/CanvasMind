@@ -157,6 +157,24 @@ class SubAgentExecutor(QThread):
         pattern = r"<think>[\s\S]*?</think>"
         return re.sub(pattern, "", content)
 
+    def _parse_tool_arguments_json(self, raw_arguments: Any):
+        if isinstance(raw_arguments, dict):
+            return raw_arguments, ""
+
+        text = str(raw_arguments or "")
+        if not text.strip():
+            return {}, ""
+
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as exc:
+            return None, str(exc)
+
+        if not isinstance(parsed, dict):
+            return None, f"expected JSON object, got {type(parsed).__name__}"
+
+        return parsed, ""
+
     def _make_api_call(self, messages: List[Dict], tools: List[Dict] = None) -> tuple:
         """调用 LLM API"""
         api_key = self.llm_config.get("API_KEY", "").strip()
@@ -249,21 +267,46 @@ class SubAgentExecutor(QThread):
                         buffer["function"]["arguments"] += tc.function.arguments
 
                     if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                        try:
-                            parsed_args = json.loads(buffer["function"]["arguments"])
+                        parsed_args, _ = self._parse_tool_arguments_json(
+                            buffer["function"]["arguments"]
+                        )
+                        if parsed_args is not None:
                             tool_calls_found.append(
                                 {
                                     "id": buffer["id"],
                                     "type": buffer["type"],
                                     "function": {
                                         "name": buffer["function"]["name"],
-                                        "arguments": buffer["function"]["arguments"],
+                                        "arguments": json.dumps(
+                                            parsed_args, ensure_ascii=False
+                                        ),
                                     },
                                 }
                             )
                             del tool_calls_buffer[tc_id]
-                        except json.JSONDecodeError:
-                            pass
+
+        for tc_id, buffer in list(tool_calls_buffer.items()):
+            if not (buffer["function"]["name"] and buffer["function"]["arguments"]):
+                continue
+            parsed_args, error = self._parse_tool_arguments_json(
+                buffer["function"]["arguments"]
+            )
+            if parsed_args is None:
+                logger.warning(
+                    f"[SubAgentExecutor] Dropping invalid tool arguments for "
+                    f"tool_call {tc_id} ({buffer['function']['name']}): {error}"
+                )
+                continue
+            tool_calls_found.append(
+                {
+                    "id": buffer["id"],
+                    "type": buffer["type"],
+                    "function": {
+                        "name": buffer["function"]["name"],
+                        "arguments": json.dumps(parsed_args, ensure_ascii=False),
+                    },
+                }
+            )
 
         return full_response, tool_calls_found
 

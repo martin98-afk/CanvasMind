@@ -104,46 +104,68 @@ class TopicSummaryTask(QRunnable):
 
             if self.previous_summary:
                 prompt = (
-                    "你是一个对话标题和长期记忆辅助助手。\n"
-                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
+                    "你是一个对话标题和长期记忆助手。\n"
+                    "根据对话生成标题，判断是否需要保存长期记忆。\n\n"
                     "【标题要求】\n"
-                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
-                    "- 不超过15字\n\n"
-                    "【已有的长期记忆】：\n"
+                    "- 不超过15字，体现用户意图\n"
+                    "- 如：\"生成PPT\"、\"调试bug\"、\"咨询问题\"\n\n"
+                    "【记忆生成规则】\n"
+                    "只有同时满足以下3个条件才生成记忆：\n"
+                    "1. 跨任务复用：下次遇到类似场景时这条记忆能直接指导决策\n"
+                    "2. 客观事实：平台限制、配置规则、业务逻辑等稳定知识\n"
+                    "3. 用户偏好：反复出现的行为习惯或风格偏好\n\n"
+                    "【禁止生成】\n"
+                    "- 过程描述：包含\"正在\"、\"排查中\"、\"进行中\"\n"
+                    "- 一次性结论：只在当前上下文有效的临时内容\n"
+                    "- 重复内容：与已有记忆语义重叠超过50%\n"
+                    "- 路径/参数：可通过代码/文档随时查到的信息\n\n"
+                    "【合并规则】\n"
+                    "同主题多条记忆 → 合并为一条完整描述\n\n"
+                    "【已有记忆】（避免重复）：\n"
                     f"{existing_memories_text}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
-                    f"最新用户对话内容：\n{summary_text}\n\n"
-                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    f"最新对话：\n{summary_text}\n\n"
+                    "输出JSON：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false, \n'
-                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
-                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
-                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
+                    '  "topic_summary": "简短标题（≤15字）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "记忆内容（should_update=true时填写）",\n'
+                    f'  "memory_category": "{category_list}",\n'
+                    '  "hit_memories": ["本轮引用的已有记忆"]\n'
                     "}\n"
                     "```"
                 )
             else:
                 prompt = (
-                    "你是一个对话标题生成助手。\n"
-                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
+                    "你是一个对话标题和长期记忆助手。\n"
+                    "根据对话生成标题，判断是否需要保存长期记忆。\n\n"
                     "【标题要求】\n"
-                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
-                    "- 不超过15字\n\n"
-                    "【已有的长期记忆】：\n"
+                    "- 不超过15字，体现用户意图\n"
+                    "- 如：\"生成PPT\"、\"调试bug\"、\"咨询问题\"\n\n"
+                    "【记忆生成规则】\n"
+                    "只有同时满足以下3个条件才生成记忆：\n"
+                    "1. 跨任务复用：下次遇到类似场景时这条记忆能直接指导决策\n"
+                    "2. 客观事实：平台限制、配置规则、业务逻辑等稳定知识\n"
+                    "3. 用户偏好：反复出现的行为习惯或风格偏好\n\n"
+                    "【禁止生成】\n"
+                    "- 过程描述：包含\"正在\"、\"排查中\"、\"进行中\"\n"
+                    "- 一次性结论：只在当前上下文有效的临时内容\n"
+                    "- 重复内容：与已有记忆语义重叠超过50%\n"
+                    "- 路径/参数：可通过代码/文档随时查到的信息\n\n"
+                    "【合并规则】\n"
+                    "同主题多条记忆 → 合并为一条完整描述\n\n"
+                    "【已有记忆】（避免重复）：\n"
                     f"{existing_memories_text}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
-                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    "输出JSON：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false, \n'
-                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
-                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
-                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
+                    '  "topic_summary": "简短标题（≤15字）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "记忆内容（should_update=true时填写）",\n'
+                    f'  "memory_category": "{category_list}",\n'
+                    '  "hit_memories": ["本轮引用的已有记忆"]\n'
                     "}\n"
                     "```"
                 )

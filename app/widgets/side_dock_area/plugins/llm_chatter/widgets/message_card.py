@@ -370,9 +370,10 @@ def _inject_tool_blocks(md_text: str, completed: bool = True) -> str:
             parts.append(_render_tool_block_content(content))
             i = end_idx + len("</tool>")
         else:
-            content = md_text[start_idx + len("<tool>") :]
-            parts.append(_render_tool_block_content(content))
-            i = len(md_text)
+            # 工具块未完成（</tool>未出现），保留原始标记，不渲染
+            # 避免流式输出时部分内容被错误渲染到折叠框外
+            parts.append(md_text[start_idx:])
+            break
     return "".join(parts)
 
 

@@ -272,6 +272,33 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._initialize_history_manager()
 
+        # 自动启动 LLM API 服务
+        self._init_llm_api_service()
+
+    def _init_llm_api_service(self):
+        """初始化 LLM API 服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import (
+            ensure_service_running,
+            LLMAPIService,
+        )
+
+        # 注册服务商列表获取回调
+        def get_providers_list():
+            return [{"name": name} for name in self._valid_configs.keys()]
+        
+        LLMAPIService.set_providers_callback(get_providers_list)
+
+        # 注册当前配置获取回调
+        LLMAPIService.set_config_callback(lambda: self._get_current_model_config())
+
+        # 连接模型切换信号以更新 API 服务的当前提供商
+        self.model_combo.currentTextChanged.connect(
+            lambda name: LLMAPIService.update_current_provider(name) if name else None
+        )
+
+        # 自动启动服务
+        ensure_service_running()
+
     def _setup_title_bar(self):
         """设置标题栏按钮"""
         title_bar = self.get_title_bar()
@@ -281,6 +308,17 @@ class OpenAIChatToolWindow(ToolWindow):
         self._copy_btn.setToolTip("复制窗口")
         self._copy_btn.clicked.connect(self._duplicate_window)
         title_bar.add_button(self._copy_btn)
+
+        # 创建 API 文档按钮
+        self._api_btn = TransparentToolButton(get_icon("Global"), self)
+        self._api_btn.setToolTip("API 文档 (http://localhost:8765/docs)")
+        self._api_btn.clicked.connect(self._open_api_docs)
+        title_bar.add_button(self._api_btn)
+
+    def _open_api_docs(self):
+        """打开 API 文档页面"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import open_docs
+        open_docs()
 
     def _duplicate_window(self):
         """复制当前窗口并以弹窗方式显示"""
@@ -2682,7 +2720,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
                     content = content_to_text(content)
                 preview = content[:50] + "..." if len(content) > 50 else content
-                self._notify_if_inactive("大模型回复", preview)
+                current_title = self.title_edit.text() if self.title_edit else "对话完成"
+                self._notify_if_inactive(current_title, preview)
 
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
@@ -2749,6 +2788,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._tool_floating_widget.setVisible(False)
 
         self._toggle_send_stop(False)
+
+        current_title = self.title_edit.text() if self.title_edit else "对话"
+        self._notify_if_inactive(f"{current_title} - 错误", error[:100])
 
     def _on_user_message_added(self, user_text: str):
         pass
@@ -2930,6 +2972,7 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._current_session_id is None and session and session.messages:
             self.history_manager.save_session(
                 session.messages if session else [],
+                title=session.topic_summary,  # 传递当前标题，避免被消息内容覆盖
                 session_id=session.session_id if session else None,
                 compaction_state=getattr(session, "compaction_state", {}),
                 compaction_cache=getattr(session, "compaction_cache", {}),

@@ -45,7 +45,7 @@ class ToolFloatingWidget(CardWidget):
         header = QHBoxLayout()
         header.setSpacing(10)
 
-        self.icon_label = QLabel("⚙️", self)
+        self.icon_label = QLabel("🔧", self)
         self.icon_label.setFont(get_unified_font(14))
 
         self.tool_name_label = QLabel("", self)
