@@ -66,6 +66,7 @@ class ChatEngine:
         agent_manager: Any = None,
         get_chat_cards: Callable[[], List[Any]] = None,
         get_memory_context: Optional[Callable[[], str]] = None,
+        worker_signal_callbacks: Optional[Dict[str, Callable]] = None,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
@@ -81,6 +82,9 @@ class ChatEngine:
         self._is_streaming = False
         self._callbacks: Dict[str, Callable] = {}
         self._current_agent: Optional[str] = "plan"
+        
+        # 外部 worker 信号回调（用于 API 模式，绕过 Qt 信号-槽）
+        self._worker_signal_callbacks = worker_signal_callbacks or {}
 
     def _make_compaction_state(
         self,
@@ -1002,18 +1006,27 @@ class ChatEngine:
             compaction_config=compaction_config,
         )
 
-        self._current_worker.content_received.connect(self._on_content_received)
-        self._current_worker.tool_call_started.connect(self._on_tool_call_started)
-        self._current_worker.tool_result_received.connect(self._on_tool_result_received)
-        self._current_worker.error_occurred.connect(self._on_error)
-        self._current_worker.finished_with_content.connect(self._on_worker_finished)
-        self._current_worker.finished_with_messages.connect(
-            self._on_worker_messages_updated
-        )
-        self._current_worker.question_asked.connect(self._on_question_asked)
-        self._current_worker.permission_approval_requested.connect(
-            self._on_permission_approval_requested
-        )
+        # 如果有外部 worker 信号回调（API 模式），直接连接信号到回调
+        # 这样可以绕过 Qt 信号-槽机制，在非 Qt 线程中正常工作
+        if self._worker_signal_callbacks:
+            for signal_name, callback in self._worker_signal_callbacks.items():
+                signal = getattr(self._current_worker, signal_name, None)
+                if signal and hasattr(signal, 'connect'):
+                    signal.connect(callback)
+        else:
+            # UI 模式：使用 Qt 信号-槽机制
+            self._current_worker.content_received.connect(self._on_content_received)
+            self._current_worker.tool_call_started.connect(self._on_tool_call_started)
+            self._current_worker.tool_result_received.connect(self._on_tool_result_received)
+            self._current_worker.error_occurred.connect(self._on_error)
+            self._current_worker.finished_with_content.connect(self._on_worker_finished)
+            self._current_worker.finished_with_messages.connect(
+                self._on_worker_messages_updated
+            )
+            self._current_worker.question_asked.connect(self._on_question_asked)
+            self._current_worker.permission_approval_requested.connect(
+                self._on_permission_approval_requested
+            )
 
         self._current_worker.start()
         self._emit("stream_started")

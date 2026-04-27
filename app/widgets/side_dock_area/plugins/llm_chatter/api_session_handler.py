@@ -26,6 +26,9 @@ class StreamContext:
         self.sse_queue: asyncio.Queue = asyncio.Queue()
         self._active = True
         self._lock = threading.Lock()
+        # API 模式专用：事件通知（替代 Qt 信号）
+        self._event = threading.Event()
+        self._pending_event: Optional[Dict[str, Any]] = None
 
     @property
     def is_active(self) -> bool:
@@ -35,6 +38,23 @@ class StreamContext:
     def set_active(self, active: bool) -> None:
         with self._lock:
             self._active = active
+        if not active:
+            self._event.set()  # 通知等待的线程
+
+    def wait_for_event(self, timeout: float = 0.5) -> Optional[Dict[str, Any]]:
+        """等待事件发生（用于 API 模式，替代 Qt 信号）"""
+        self._event.wait(timeout=timeout)
+        self._event.clear()
+        with self._lock:
+            event = self._pending_event
+            self._pending_event = None
+            return event
+
+    def push_event(self, event_data: Dict[str, Any]) -> None:
+        """推送事件（用于 API 模式，替代 Qt 信号）"""
+        with self._lock:
+            self._pending_event = event_data
+        self._event.set()  # 通知等待的线程
 
     def append_content(self, piece: str) -> None:
         with self._lock:
@@ -97,8 +117,17 @@ class APISessionHandler:
         """设置 API 回调"""
         self._api_callbacks[event] = callback
 
-    def _create_isolated_chat_engine(self) -> Any:
-        """创建独立的 ChatEngine 实例"""
+    def _create_isolated_chat_engine(
+        self,
+        worker_callbacks: Optional[Dict[str, Callable]] = None,
+        api_mode: bool = False,
+    ) -> Any:
+        """创建独立的 ChatEngine 实例
+        
+        Args:
+            worker_callbacks: worker 回调字典（API 模式直接调用，不通过 Qt 信号）
+            api_mode: 是否为 API 模式（API 模式下直接调用回调，跳过 Qt 信号）
+        """
         from app.widgets.side_dock_area.plugins.llm_chatter.core.chat_engine import (
             ChatEngine,
         )
@@ -111,6 +140,7 @@ class APISessionHandler:
             agent_manager=self.agent_manager,
             get_chat_cards=None,
             get_memory_context=getattr(self._main_widget, '_get_memory_context', None),
+            worker_signal_callbacks=worker_signal_callbacks,
         )
         
         return engine
@@ -294,13 +324,20 @@ class APISessionHandler:
                         "last_updated": session_data.get("last_updated"),
                     })
                     self.session_manager.set_current_session(session)
+                    
+                    # 关键修复：同步更新 UI 的 _current_session_id
+                    self._main_widget._current_session_id = session.session_id
+                    
+                    # 同步工具执行器的会话上下文
+                    if self._main_widget._tool_executor:
+                        self._main_widget._tool_executor.set_session_context(session.session_id)
+                    
                     return True
             
             # 如果找不到，返回 False
             logger.warning(f"[APISession] 会话不存在: {session_id}")
             return False
             
-            return True
         except Exception as e:
             logger.error(f"[APISession] switch_session 失败: {e}")
             return False
@@ -336,23 +373,30 @@ class APISessionHandler:
         ctx.session_id = session_id
         self._active_streams[stream_id] = ctx
         
-        # 创建独立的 ChatEngine（关键：隔离并发）
-        engine = self._create_isolated_chat_engine()
-        ctx.engine = engine
-        
-        # 设置 API 回调
+        # 设置 API 回调 - 直接在 worker 线程中调用（不使用 Qt 信号）
         def make_callback(event_name: str):
             def callback(*args, **kwargs):
                 self._handle_engine_event(stream_id, event_name, *args, **kwargs)
             return callback
         
-        engine.set_callback("content_received", make_callback("content"))
-        engine.set_callback("tool_call_started", make_callback("tool_call_started"))
-        engine.set_callback("tool_result_received", make_callback("tool_result"))
-        engine.set_callback("stream_started", make_callback("stream_started"))
-        engine.set_callback("stream_finished", make_callback("stream_finished"))
-        engine.set_callback("error", make_callback("error"))
-        engine.set_callback("permission_approval_requested", make_callback("permission"))
+        # 构建 worker 回调字典（API 模式直接调用，不通过 Qt 信号）
+        worker_callbacks = {
+            "content_received": make_callback("content"),
+            "tool_call_started": make_callback("tool_call_started"),
+            "tool_result_received": make_callback("tool_result"),
+            "error_occurred": make_callback("error"),
+            "finished_with_content": make_callback("stream_finished"),
+            "question_asked": make_callback("question"),
+            "permission_approval_requested": make_callback("permission"),
+        }
+        
+        # 创建独立的 ChatEngine（关键：隔离并发，并传入回调）
+        # 传入 _api_mode=True 和 worker_callbacks，让 ChatEngine 直接调用回调
+        engine = self._create_isolated_chat_engine(
+            worker_callbacks=worker_callbacks,
+            api_mode=True
+        )
+        ctx.engine = engine
         
         try:
             # 发送开始事件
@@ -365,18 +409,18 @@ class APISessionHandler:
                 lambda: engine.send_message(message, context_params or {})
             )
             
-            # 等待并推送事件
+            # 等待并推送事件（使用 threading.Event 机制）
             while ctx.is_active:
-                try:
-                    event = await asyncio.wait_for(ctx.sse_queue.get(), timeout=0.5)
+                event = ctx.wait_for_event(timeout=0.5)
+                if event:
                     yield f"data: {json.dumps(event)}\n\n"
                     
                     if event.get("event") == "stream_finished":
                         break
                     elif event.get("event") == "error":
                         break
-                        
-                except asyncio.TimeoutError:
+                else:
+                    # 超时，检查引擎状态
                     if engine and not engine._is_streaming:
                         break
             
@@ -452,11 +496,8 @@ class APISessionHandler:
                 ctx.engine.approve_tool_permission(tool_call_id, True)
             return
         
-        # 推送到队列
-        try:
-            ctx.sse_queue.put_nowait(event_data)
-        except Exception as e:
-            logger.warning(f"[APISession] 推送事件失败: {e}")
+        # 推送事件（使用 threading.Event 机制，线程安全）
+        ctx.push_event(event_data)
 
     def stop_stream(self, stream_id: Optional[str] = None) -> bool:
         """停止指定的流式请求"""

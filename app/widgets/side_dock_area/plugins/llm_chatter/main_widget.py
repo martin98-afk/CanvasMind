@@ -1034,6 +1034,9 @@ class OpenAIChatToolWindow(ToolWindow):
         self._on_task_state_changed(session.task_state)
         self.title_edit.setText(session.topic_summary or session.name or "新对话")
 
+        # 关键修复：同步 _current_session_id 与实际显示的会话
+        self._current_session_id = session.session_id
+
         if self._restore_cached_session_cards(session):
             self._update_node_preview()
             self._refresh_context_usage_indicator()
@@ -1074,6 +1077,8 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             self._displayed_session_id = session.session_id
+            # 关键修复：同步 _current_session_id 与实际显示的会话
+            self._current_session_id = session.session_id
 
         self._render_message_to_card(self._message_batch)
 
@@ -1421,6 +1426,8 @@ class OpenAIChatToolWindow(ToolWindow):
         for card in alive_cards:
             self._add_chat_widget(card)
         self._displayed_session_id = session.session_id
+        # 关键修复：同步 _current_session_id 与实际显示的会话
+        self._current_session_id = session.session_id
         self._current_assistant_card = (
             alive_cards[-1]
             if alive_cards and alive_cards[-1].role == "assistant"
@@ -2417,6 +2424,12 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._is_streaming = True
         self._toggle_send_stop(True)
+
+        # 关键修复：确保 ToolExecutor 使用正确的 session_id
+        session = self.session_manager.get_current_session()
+        if session and self._tool_executor:
+            self._tool_executor.set_session_context(session.session_id)
+
         self._chat_engine.send_message(user_text, context_params)
         self._current_assistant_card = assistant_card
         self._maybe_generate_topic_summary()
