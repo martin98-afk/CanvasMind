@@ -137,8 +137,8 @@ class MemoryManagerCore:
     def load_memory(self) -> Dict:
         """加载记忆数据"""
         if self._use_sqlite and self._session_store:
-            # SQLite 模式
-            memories = self._session_store.load_memories(self._canvas_name, limit=200)
+            # SQLite 模式 - 加载所有记忆（包括禁用的），管理界面需要能看到全部
+            memories = self._session_store.load_memories(self._canvas_name, limit=200, include_disabled=True)
             return {
                 "version": "2.0",
                 "user_profile": {},

@@ -2682,7 +2682,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
                     content = content_to_text(content)
                 preview = content[:50] + "..." if len(content) > 50 else content
-                self._notify_if_inactive("大模型回复", preview)
+                current_title = self.title_edit.text() if self.title_edit else "对话完成"
+                self._notify_if_inactive(current_title, preview)
 
     def _save_current_session_to_history(self):
         session = self.session_manager.get_current_session()
@@ -2749,6 +2750,9 @@ class OpenAIChatToolWindow(ToolWindow):
             self._tool_floating_widget.setVisible(False)
 
         self._toggle_send_stop(False)
+
+        current_title = self.title_edit.text() if self.title_edit else "对话"
+        self._notify_if_inactive(f"{current_title} - 错误", error[:100])
 
     def _on_user_message_added(self, user_text: str):
         pass
