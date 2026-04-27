@@ -3,7 +3,10 @@
 LLM Chatter API 使用示例
 
 核心特性：
-- 复用 UI 对话逻辑（ChatEngine + SessionManager + 工具调用）
+- 完全隔离的 API 调用（参考复制窗口的实现）
+- 每个请求创建独立的 IsolatedChatContext
+- 独立的 SessionManager、ToolExecutor、AgentManager
+- API 调用与 UI 完全隔离，不会产生任何状态冲突
 - 自动使用 UI 当前配置的模型
 - 会话管理复用，数据持久化
 

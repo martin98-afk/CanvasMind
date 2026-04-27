@@ -66,7 +66,8 @@ class ChatEngine:
         agent_manager: Any = None,
         get_chat_cards: Callable[[], List[Any]] = None,
         get_memory_context: Optional[Callable[[], str]] = None,
-        worker_signal_callbacks: Optional[Dict[str, Callable]] = None,
+        worker_callbacks: Optional[Dict[str, Callable]] = None,
+        api_mode: bool = False,
     ):
         self._session_manager = session_manager
         self._get_model_config = get_model_config
@@ -83,8 +84,9 @@ class ChatEngine:
         self._callbacks: Dict[str, Callable] = {}
         self._current_agent: Optional[str] = "plan"
         
-        # 外部 worker 信号回调（用于 API 模式，绕过 Qt 信号-槽）
-        self._worker_signal_callbacks = worker_signal_callbacks or {}
+        # API 模式专用：直接回调（绕过 Qt 信号-槽，避免跨线程事件循环问题）
+        self._worker_callbacks = worker_callbacks or {}
+        self._api_mode = api_mode
 
     def _make_compaction_state(
         self,
@@ -1006,13 +1008,10 @@ class ChatEngine:
             compaction_config=compaction_config,
         )
 
-        # 如果有外部 worker 信号回调（API 模式），直接连接信号到回调
-        # 这样可以绕过 Qt 信号-槽机制，在非 Qt 线程中正常工作
-        if self._worker_signal_callbacks:
-            for signal_name, callback in self._worker_signal_callbacks.items():
-                signal = getattr(self._current_worker, signal_name, None)
-                if signal and hasattr(signal, 'connect'):
-                    signal.connect(callback)
+        # API 模式：直接调用回调（不使用 Qt 信号-槽，避免跨线程事件循环问题）
+        # API 模式下 worker 运行在没有 Qt 事件循环的线程中，Qt 信号无法传递
+        if self._api_mode and self._worker_callbacks:
+            self._current_worker.set_direct_callbacks(self._worker_callbacks)
         else:
             # UI 模式：使用 Qt 信号-槽机制
             self._current_worker.content_received.connect(self._on_content_received)

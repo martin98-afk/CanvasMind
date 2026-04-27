@@ -76,6 +76,20 @@ class ToolExecutor:
     def builtin_tools(self) -> Optional[BuiltinTools]:
         return self._builtin_tools
 
+    def is_valid(self) -> bool:
+        """检查 ToolExecutor 是否仍然有效（UI 未关闭）"""
+        if self._builtin_tools is None:
+            return False
+        # 检查 QObject 是否已被删除
+        try:
+            # 如果对象已删除，尝试访问 sip 会有异常
+            from PyQt5 import sip
+            if sip.isdeleted(self._builtin_tools):
+                return False
+        except Exception:
+            pass
+        return True
+
     @property
     def todo_list(self):
         """获取待办事项列表"""
@@ -301,6 +315,11 @@ class ToolExecutor:
         Returns:
             ToolResult: 执行结果
         """
+        # 检查 ToolExecutor 是否仍然有效（API 模式下 UI 可能已关闭）
+        if not self.is_valid():
+            logger.warning(f"[ToolExecutor] ToolExecutor is invalid (UI may be closed)")
+            return ToolResult(False, error="UI has been closed, tool execution unavailable")
+
         logger.info(f"[ToolExecutor] Executing tool: {tool_name}, args: {args}")
 
         # 校验必需参数

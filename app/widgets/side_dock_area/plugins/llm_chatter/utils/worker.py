@@ -5,7 +5,7 @@ import time
 import traceback
 from datetime import datetime
 from threading import Event
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable
 
 import httpx
 from loguru import logger
@@ -332,6 +332,46 @@ class OpenAIChatWorker(QThread):
             "note": "",
         }
         self._current_session_messages = list(self.session_messages)
+        # API 模式专用：直接回调（绕过 Qt 信号-槽）
+        self._direct_callbacks: Dict[str, Callable] = {}
+
+    def set_direct_callbacks(self, callbacks: Dict[str, Callable]) -> None:
+        """设置直接回调（API 模式专用，绕过 Qt 信号-槽）
+        
+        Args:
+            callbacks: 回调字典，键为信号名，值为回调函数
+        """
+        self._direct_callbacks = callbacks
+
+    def _emit_direct(self, signal_name: str, *args) -> None:
+        """直接调用回调（API 模式，替代 Qt 信号发射）
+        
+        Args:
+            signal_name: 信号名
+            *args: 传递给回调的参数
+        """
+        callback = self._direct_callbacks.get(signal_name)
+        if callback:
+            try:
+                callback(*args)
+            except Exception as e:
+                from loguru import logger
+                logger.error(f"[Worker] Direct callback error for {signal_name}: {e}")
+
+    def _emit_with_callback(self, signal_name: str, signal, *args) -> None:
+        """发射信号并尝试直接回调（API 模式优先使用直接回调）
+        
+        Args:
+            signal_name: 信号名（用于查找直接回调）
+            signal: Qt 信号对象
+            *args: 传递给回调/信号的参数
+        """
+        # API 模式：优先使用直接回调（避免 Qt 信号跨线程问题）
+        if self._direct_callbacks:
+            self._emit_direct(signal_name, *args)
+        # UI 模式：发射 Qt 信号
+        if signal is not None:
+            signal.emit(*args)
 
     def cancel(self):
         self._is_cancelled = True
@@ -405,9 +445,9 @@ class OpenAIChatWorker(QThread):
                     current_messages.extend(response_sequence)
                     current_session_messages.extend(response_sequence)
                     self._current_session_messages = list(current_session_messages)
-                    self.finished_with_messages.emit(current_session_messages)
+                    self._emit_with_callback("finished_with_messages", self.finished_with_messages, current_session_messages)
                     self._clear_pending_response_state()
-                    self.finished_with_content.emit(self.full_response)
+                    self._emit_with_callback("finished_with_content", self.finished_with_content, self.full_response)
                     return
 
                 tool_results = self._execute_all_tools()
@@ -433,7 +473,7 @@ class OpenAIChatWorker(QThread):
                     current_messages.append(question_result)
                     current_session_messages.append(question_result)
                     self._current_session_messages = list(current_session_messages)
-                    self.finished_with_messages.emit(current_session_messages)
+                    self._emit_with_callback("finished_with_messages", self.finished_with_messages, current_session_messages)
                     self._clear_pending_response_state()
                     self._question_pending = None
                     self._pending_answer = None
@@ -444,7 +484,7 @@ class OpenAIChatWorker(QThread):
                 current_messages.extend(response_sequence)
                 current_session_messages.extend(response_sequence)
                 self._current_session_messages = list(current_session_messages)
-                self.finished_with_messages.emit(current_session_messages)
+                self._emit_with_callback("finished_with_messages", self.finished_with_messages, current_session_messages)
                 self._clear_pending_response_state()
 
                 self._check_and_notify_stage_change()
@@ -563,7 +603,7 @@ class OpenAIChatWorker(QThread):
         if normalized == self._last_compaction_state:
             return
         self._last_compaction_state = normalized
-        self.compaction_status_changed.emit(dict(normalized))
+        self._emit_with_callback("compaction_status_changed", self.compaction_status_changed, dict(normalized))
 
     def _fix_tool_result_order(self, messages: List[Dict]) -> tuple[List[Dict], bool]:
         """
@@ -968,7 +1008,8 @@ class OpenAIChatWorker(QThread):
                                     tc_id, tool_name, {}, "preview"
                                 )
                             else:
-                                self.tool_call_started.emit(
+                                self._emit_with_callback(
+                                    "tool_call_started", self.tool_call_started,
                                     tc_id, tool_name, {}, "preview"
                                 )
                     if tc.function and tc.function.arguments:
@@ -996,7 +1037,7 @@ class OpenAIChatWorker(QThread):
                 self._response_content_blocks = append_text_block(
                     self._response_content_blocks, content
                 )
-                self.content_received.emit(content)
+                self._emit_with_callback("content_received", self.content_received, content)
 
         for tc_id, buffer in list(self._tool_calls_buffer.items()):
             if buffer["function"]["name"] and buffer["function"]["arguments"]:
@@ -1030,7 +1071,9 @@ class OpenAIChatWorker(QThread):
                     args = json.loads(tc["function"]["arguments"])
                 except:
                     args = {}
-                self.tool_result_received.emit(
+                self._emit_with_callback(
+                    "tool_result_received",
+                    self.tool_result_received,
                     cancelled_tc_id,
                     tool_name,
                     args,
@@ -1040,7 +1083,8 @@ class OpenAIChatWorker(QThread):
                         {"success": False, "content": None, "error": "用户中止"},
                     )(),
                 )
-                QApplication.processEvents()
+                if not self._direct_callbacks:
+                    QApplication.processEvents()
                 self._is_cancelled = True
                 return None
 
@@ -1059,16 +1103,19 @@ class OpenAIChatWorker(QThread):
             if self.tool_start_callback:
                 self.tool_start_callback(tool_call_id, tool_name, arguments, round_id)
             else:
-                self.tool_call_started.emit(
+                self._emit_with_callback(
+                    "tool_call_started",
+                    self.tool_call_started,
                     tool_call_id, tool_name, arguments, round_id
                 )
-                QApplication.processEvents()
+                if not self._direct_callbacks:
+                    QApplication.processEvents()
 
             if tool_name == "question":
                 question_text = arguments.get("question", "")
                 options = arguments.get("options", [])
                 multiple = arguments.get("multiple", False)
-                self.question_asked.emit(tool_call_id, question_text, options, multiple)
+                self._emit_with_callback("question_asked", self.question_asked, tool_call_id, question_text, options, multiple)
                 self._question_pending = {
                     "tool_call_id": tool_call_id,
                     "question": question_text,
@@ -1085,9 +1132,7 @@ class OpenAIChatWorker(QThread):
                         tool_name, arguments
                     )
                 if permission_result == "ask":
-                    self.permission_approval_requested.emit(
-                        tool_call_id, tool_name, arguments
-                    )
+                    self._emit_with_callback("permission_approval_requested", self.permission_approval_requested, tool_call_id, tool_name, arguments)
                     self._permission_pending = {
                         "tool_call_id": tool_call_id,
                         "tool_name": tool_name,
@@ -1099,12 +1144,15 @@ class OpenAIChatWorker(QThread):
                         and not self._is_cancelled
                         and not self._tool_execution_cancelled
                     ):
-                        QApplication.processEvents()
+                        if not self._direct_callbacks:
+                            QApplication.processEvents()
                         time.sleep(0.1)
 
                     if self._is_cancelled or self._tool_execution_cancelled:
                         cancelled_tc_id = tool_call_id
-                        self.tool_result_received.emit(
+                        self._emit_with_callback(
+                            "tool_result_received",
+                            self.tool_result_received,
                             cancelled_tc_id,
                             tool_name,
                             arguments,
@@ -1118,12 +1166,15 @@ class OpenAIChatWorker(QThread):
                                 },
                             )(),
                         )
-                        QApplication.processEvents()
+                        if not self._direct_callbacks:
+                            QApplication.processEvents()
                         self._is_cancelled = True
                         return None
 
                     if not self._permission_approved:
-                        self.tool_result_received.emit(
+                        self._emit_with_callback(
+                            "tool_result_received",
+                            self.tool_result_received,
                             tool_call_id,
                             tool_name,
                             arguments,
@@ -1136,7 +1187,8 @@ class OpenAIChatWorker(QThread):
                                 },
                             )(),
                         )
-                        QApplication.processEvents()
+                        if not self._direct_callbacks:
+                            QApplication.processEvents()
                         results.append(
                             {
                                 "role": "tool",
@@ -1176,15 +1228,19 @@ class OpenAIChatWorker(QThread):
                         "error": "用户中止",
                     },
                 )()
-                self.tool_result_received.emit(
+                self._emit_with_callback(
+                    "tool_result_received",
+                    self.tool_result_received,
                     tool_call_id, tool_name, arguments, cancelled_result
                 )
-                QApplication.processEvents()
+                if not self._direct_callbacks:
+                    QApplication.processEvents()
                 self._is_cancelled = True
                 return None
 
-            self.tool_result_received.emit(tool_call_id, tool_name, arguments, result)
-            QApplication.processEvents()
+            self._emit_with_callback("tool_result_received", self.tool_result_received, tool_call_id, tool_name, arguments, result)
+            if not self._direct_callbacks:
+                QApplication.processEvents()
             results.append(
                 {
                     "role": "tool",
@@ -1227,58 +1283,68 @@ class OpenAIChatWorker(QThread):
             "peer closed connection" in error_msg.lower()
             or "incomplete chunked read" in error_msg.lower()
         ):
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[连接中断] 服务器在响应中途关闭了连接，可能是服务器过载或网络不稳定。请稍后重试。"
             )
             return
         if "ProtocolError" in error_msg or "RemoteProtocolError" in error_msg:
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[连接错误] 网络协议错误，可能是服务器关闭了连接。请稍后重试。"
             )
             return
 
         if isinstance(error, BadRequestError):
             if "json" in error_msg.lower() or "format" in error_msg.lower():
-                self.error_occurred.emit(
+                self._emit_with_callback(
+                    "error_occurred", self.error_occurred,
                     f"[JSON格式错误] 请确保输入有效的JSON格式: {error_msg}"
                 )
             else:
-                self.error_occurred.emit(f"[请求错误] {error_msg}")
+                self._emit_with_callback("error_occurred", self.error_occurred, f"[请求错误] {error_msg}")
         elif isinstance(error, RateLimitError):
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[速率限制] 请求过于频繁，请稍后再试。详情: {error_msg}"
             )
         elif isinstance(error, APIConnectionError):
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[连接失败] 无法连接到 API 服务器，请检查网络或 API_URL 设置。详情: {error_msg}"
             )
         elif isinstance(error, APITimeoutError):
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[超时] 请求超时（300秒），请检查网络或模型负载。详情: {error_msg}"
             )
         elif isinstance(error, APIError):
             if "context length" in error_msg and "overflow" in error_msg:
-                self.error_occurred.emit(
+                self._emit_with_callback(
+                    "error_occurred", self.error_occurred,
                     f"[上下文超限] 输入内容过长，请缩短对话或清除历史记录。详情: {error_msg}"
                 )
             elif "insufficient_quota" in error_msg:
-                self.error_occurred.emit(
+                self._emit_with_callback(
+                    "error_occurred", self.error_occurred,
                     f"[配额不足] API配额已用完，请检查账户余额或更换API Key。"
                 )
             else:
-                self.error_occurred.emit(f"[API错误] {error_msg}")
+                self._emit_with_callback("error_occurred", self.error_occurred, f"[API错误] {error_msg}")
         elif "unrecognized_parameter" in error_msg or "extra_parameters" in error_msg:
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[兼容性提示] 当前模型可能不支持某些高级设置（如思考模式或温度）。错误: {error_msg}"
             )
         elif "max_tokens" in error_msg.lower() or "context length" in error_msg.lower():
-            self.error_occurred.emit(
+            self._emit_with_callback(
+                "error_occurred", self.error_occurred,
                 f"[错误] 模型上下文或最大Token超出限制，请减少输入长度或调低 max_tokens"
             )
         elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
-            self.error_occurred.emit(f"[认证错误] API Key无效或已过期，请检查配置。")
+            self._emit_with_callback("error_occurred", self.error_occurred, f"[认证错误] API Key无效或已过期，请检查配置。")
         else:
-            self.error_occurred.emit(f"[未知错误] {error_msg}")
+            self._emit_with_callback("error_occurred", self.error_occurred, f"[未知错误] {error_msg}")
 
 
 class ShellExecutionTask(QRunnable):

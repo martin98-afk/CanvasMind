@@ -1,4 +1,6 @@
 # 大模型输入框
+import re
+
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QDragEnterEvent, QDropEvent
 from PyQt5.QtWidgets import QShortcut, QTextEdit
@@ -234,13 +236,28 @@ class SendableTextEdit(QTextEdit):
             component_path = lines[0] if lines else ""
             extension_path = lines[1] if len(lines) > 1 else ""
 
+            # 统一去除 file:/ 或 file:/// 前缀
+            component_path = re.sub(r'^file:/{1,3}', '', component_path)
+            extension_path = re.sub(r'^file:/{1,3}', '', extension_path)
+
             insert_text = f"路径: {component_path}"
             if extension_path:
                 insert_text += f"\n扩展资源路径: {extension_path}"
 
+            # 获取当前文本和光标位置
+            current_text = self.toPlainText()
             cursor = self.textCursor()
+
+            # 记录当前光标位置
+            cursor_pos = cursor.position()
+
+            # 在当前光标位置插入文本
             cursor.insertText(insert_text)
+
+            # 重置光标到插入后的位置（保持在此位置，可以自由移动）
+            cursor.setPosition(cursor_pos + len(insert_text))
             self.setTextCursor(cursor)
+
             self._on_text_changed()
             event.acceptProposedAction()
         else:
