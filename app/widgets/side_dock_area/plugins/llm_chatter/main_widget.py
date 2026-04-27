@@ -283,25 +283,13 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         # 注册服务商列表获取回调
-        def get_providers():
-            providers = []
-            for name in self._valid_configs.keys():
-                providers.append({"name": name})
-            return providers
+        def get_providers_list():
+            return [{"name": name} for name in self._valid_configs.keys()]
+        
+        LLMAPIService.set_providers_callback(get_providers_list)
 
         # 注册当前配置获取回调
-        def get_current_config():
-            return self._get_current_model_config()
-
-        # 注册切换配置回调
-        def on_provider_changed(provider_name):
-            if provider_name in self._valid_configs:
-                idx = self.model_combo.findText(provider_name)
-                if idx >= 0:
-                    self.model_combo.setCurrentIndex(idx)
-
-        LLMAPIService.set_providers_callback(get_providers)
-        LLMAPIService.set_config_callback(get_current_config)
+        LLMAPIService.set_config_callback(lambda: self._get_current_model_config())
 
         # 连接模型切换信号以更新 API 服务的当前提供商
         self.model_combo.currentTextChanged.connect(

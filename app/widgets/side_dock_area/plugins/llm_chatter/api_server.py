@@ -105,8 +105,16 @@ class LLMAPIService:
         async def get_providers():
             """获取所有服务商列表"""
             if self._get_providers_callback:
-                providers = self._get_providers_callback()
-                return {"success": True, "providers": providers}
+                try:
+                    result = self._get_providers_callback()
+                    # 如果返回的是 dict 列表
+                    if isinstance(result, list):
+                        providers = result
+                    else:
+                        providers = result.get("providers", [])
+                    return {"success": True, "providers": providers}
+                except Exception as e:
+                    logger.error(f"[LLMAPI] get_providers 失败: {e}")
             return {"success": False, "error": "Providers callback not set"}
 
         @self.app.post("/providers/switch")
@@ -128,14 +136,20 @@ class LLMAPIService:
         async def get_config():
             """获取当前 LLM 配置（自动使用 LLMChatter 选中的配置）"""
             if self._get_current_config_callback:
-                config = self._get_current_config_callback()
-                safe_config = {**config}
-                if safe_config.get("API_KEY"):
-                    safe_config["API_KEY"] = "***" + safe_config["API_KEY"][-4:]
-                return {
-                    "config": safe_config,
-                    "provider_name": self._current_provider_name,
-                }
+                try:
+                    config = self._get_current_config_callback()
+                except Exception as e:
+                    logger.error(f"[LLMAPI] get_config 失败: {e}")
+                    config = None
+
+                if config:
+                    safe_config = {**config}
+                    if safe_config.get("API_KEY"):
+                        safe_config["API_KEY"] = "***" + safe_config["API_KEY"][-4:]
+                    return {
+                        "config": safe_config,
+                        "provider_name": self._current_provider_name,
+                    }
             
             raise HTTPException(status_code=503, detail="Config callback not set")
 
