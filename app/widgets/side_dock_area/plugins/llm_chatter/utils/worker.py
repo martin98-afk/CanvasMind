@@ -31,21 +31,6 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
 )
 
 
-def _fix_incomplete_json(raw_arguments: Any) -> str | None:
-    text = str(raw_arguments or "")
-    if not text.strip():
-        return "{}"
-
-    try:
-        parsed = json.loads(text)
-    except Exception:
-        return None
-
-    if not isinstance(parsed, dict):
-        return None
-    return json.dumps(parsed, ensure_ascii=False)
-
-
 class TopicSummaryTask(QRunnable):
     """异步生成话题摘要任务 - 支持增量摘要和长期记忆判断"""
 
@@ -119,46 +104,68 @@ class TopicSummaryTask(QRunnable):
 
             if self.previous_summary:
                 prompt = (
-                    "你是一个对话标题和长期记忆辅助助手。\n"
-                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
+                    "你是一个对话标题和长期记忆助手。\n"
+                    "根据对话生成标题，判断是否需要保存长期记忆。\n\n"
                     "【标题要求】\n"
-                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
-                    "- 不超过15字\n\n"
-                    "【已有的长期记忆】：\n"
+                    "- 不超过15字，体现用户意图\n"
+                    "- 如：\"生成PPT\"、\"调试bug\"、\"咨询问题\"\n\n"
+                    "【记忆生成规则】\n"
+                    "只有同时满足以下3个条件才生成记忆：\n"
+                    "1. 跨任务复用：下次遇到类似场景时这条记忆能直接指导决策\n"
+                    "2. 客观事实：平台限制、配置规则、业务逻辑等稳定知识\n"
+                    "3. 用户偏好：反复出现的行为习惯或风格偏好\n\n"
+                    "【禁止生成】\n"
+                    "- 过程描述：包含\"正在\"、\"排查中\"、\"进行中\"\n"
+                    "- 一次性结论：只在当前上下文有效的临时内容\n"
+                    "- 重复内容：与已有记忆语义重叠超过50%\n"
+                    "- 路径/参数：可通过代码/文档随时查到的信息\n\n"
+                    "【合并规则】\n"
+                    "同主题多条记忆 → 合并为一条完整描述\n\n"
+                    "【已有记忆】（避免重复）：\n"
                     f"{existing_memories_text}\n\n"
                     f"之前的标题：{self.previous_summary}\n\n"
-                    f"最新用户对话内容：\n{summary_text}\n\n"
-                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    f"最新对话：\n{summary_text}\n\n"
+                    "输出JSON：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false, \n'
-                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
-                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
-                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
+                    '  "topic_summary": "简短标题（≤15字）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "记忆内容（should_update=true时填写）",\n'
+                    f'  "memory_category": "{category_list}",\n'
+                    '  "hit_memories": ["本轮引用的已有记忆"]\n'
                     "}\n"
                     "```"
                 )
             else:
                 prompt = (
-                    "你是一个对话标题生成助手。\n"
-                    "请根据用户对话生成一个简短标题，概况当前整体的会话内容。\n\n"
+                    "你是一个对话标题和长期记忆助手。\n"
+                    "根据对话生成标题，判断是否需要保存长期记忆。\n\n"
                     "【标题要求】\n"
-                    '- 格式像标题，如："生成一个关于xxx的ppt"、"调试某个bug"、"咨询法律问题"\n'
-                    "- 体现用户意图，不要描述过程，需要具有代表性、简短性，能概括用户整体的会话内容。\n"
-                    "- 不超过15字\n\n"
-                    "【已有的长期记忆】：\n"
+                    "- 不超过15字，体现用户意图\n"
+                    "- 如：\"生成PPT\"、\"调试bug\"、\"咨询问题\"\n\n"
+                    "【记忆生成规则】\n"
+                    "只有同时满足以下3个条件才生成记忆：\n"
+                    "1. 跨任务复用：下次遇到类似场景时这条记忆能直接指导决策\n"
+                    "2. 客观事实：平台限制、配置规则、业务逻辑等稳定知识\n"
+                    "3. 用户偏好：反复出现的行为习惯或风格偏好\n\n"
+                    "【禁止生成】\n"
+                    "- 过程描述：包含\"正在\"、\"排查中\"、\"进行中\"\n"
+                    "- 一次性结论：只在当前上下文有效的临时内容\n"
+                    "- 重复内容：与已有记忆语义重叠超过50%\n"
+                    "- 路径/参数：可通过代码/文档随时查到的信息\n\n"
+                    "【合并规则】\n"
+                    "同主题多条记忆 → 合并为一条完整描述\n\n"
+                    "【已有记忆】（避免重复）：\n"
                     f"{existing_memories_text}\n\n"
                     f"对话内容：\n{summary_text}\n\n"
-                    "请严格按以下JSON格式输出，不要有其他内容：\n"
+                    "输出JSON：\n"
                     "```json\n"
                     "{\n"
-                    '  "topic_summary": "生成的具有代表性、简短的主旨标题（如：生成一个关于xxx的ppt）",\n'
-                    '  "should_update_memory": true/false, \n'
-                    '  "memory_content": "需要保存的长期记忆（只有should_update_memory为true时才填写）",\n'
-                    f'  "memory_category": "分类key（记忆类型列表：{category_list}）",\n'
-                    '  "hit_memories": ["已有记忆内容1", "已有记忆内容2"]（本轮对话中引用或验证过的已有记忆，最多3条）\n'
+                    '  "topic_summary": "简短标题（≤15字）",\n'
+                    '  "should_update_memory": true/false,\n'
+                    '  "memory_content": "记忆内容（should_update=true时填写）",\n'
+                    f'  "memory_category": "{category_list}",\n'
+                    '  "hit_memories": ["本轮引用的已有记忆"]\n'
                     "}\n"
                     "```"
                 )
@@ -312,7 +319,6 @@ class OpenAIChatWorker(QThread):
         self._previewed_tool_call_ids = set()
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
-        self._invalid_tool_calls = []
         self._response_content_blocks = []
         self._tool_execution_cancelled = False
         self._last_compaction_state = {
@@ -346,62 +352,8 @@ class OpenAIChatWorker(QThread):
     def _clear_pending_response_state(self):
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
-        self._invalid_tool_calls = []
         self._response_content_blocks = []
         self._previewed_tool_call_ids = set()
-
-    def _parse_tool_arguments_json(self, raw_arguments: Any):
-        if isinstance(raw_arguments, dict):
-            return raw_arguments, ""
-
-        text = str(raw_arguments or "")
-        if not text.strip():
-            return {}, ""
-
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError as exc:
-            return None, str(exc)
-
-        if not isinstance(parsed, dict):
-            return None, f"expected JSON object, got {type(parsed).__name__}"
-
-        return parsed, ""
-
-    def _append_valid_tool_call(self, buffer: Dict[str, Any]) -> bool:
-        parsed_args, error = self._parse_tool_arguments_json(
-            buffer.get("function", {}).get("arguments", "")
-        )
-        if parsed_args is None:
-            tool_name = buffer.get("function", {}).get("name", "") or "unknown"
-            tool_call_id = str(buffer.get("id") or "")
-            raw_args = buffer.get("function", {}).get("arguments", "")
-            self._invalid_tool_calls.append(
-                {
-                    "id": tool_call_id,
-                    "name": tool_name,
-                    "arguments": raw_args,
-                    "error": error,
-                }
-            )
-            logger.error(
-                f"[ToolCall] Dropping invalid tool arguments for tool_call {tool_call_id} "
-                f"({tool_name}): {error}; raw_len={len(str(raw_args or ''))}"
-            )
-            return False
-
-        serialized_args = json.dumps(parsed_args, ensure_ascii=False)
-        self._current_tool_calls.append(
-            {
-                "id": buffer["id"],
-                "type": buffer["type"],
-                "function": {
-                    "name": buffer["function"]["name"],
-                    "arguments": serialized_args,
-                },
-            }
-        )
-        return True
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
@@ -876,15 +828,11 @@ class OpenAIChatWorker(QThread):
         self._response_content_blocks = []
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
-        self._invalid_tool_calls = []
         tool_calls_found = False
 
         for chunk in response:
             if self._is_cancelled:
                 return False
-
-            # 定期处理 UI 事件，让 tool_call_started 信号有机会触发弹窗显示
-            QCoreApplication.processEvents()
 
             delta = chunk.choices[0].delta
             content = getattr(delta, "content", None)
@@ -914,7 +862,6 @@ class OpenAIChatWorker(QThread):
                         )
 
                     buffer = self._tool_calls_buffer[tc_id]
-                    # 收到 tool name 时立即触发弹窗，让用户感知到正在执行工具
                     if tc.function and tc.function.name:
                         buffer["function"]["name"] = tc.function.name
                         tool_name = buffer["function"]["name"]
@@ -935,42 +882,22 @@ class OpenAIChatWorker(QThread):
                     if tc.function and tc.function.arguments:
                         buffer["function"]["arguments"] += tc.function.arguments
 
-                    # 当参数累积后，尝试解析并修复不完整的 JSON
                     if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                        raw_args = buffer["function"]["arguments"]
-                        parsed_args, error = self._parse_tool_arguments_json(raw_args)
-                        
-                        # 如果解析失败，尝试修复不完整的 JSON
-                        if parsed_args is None:
-                            fixed_args = _fix_incomplete_json(raw_args)
-                            if fixed_args:
-                                try:
-                                    parsed_args = json.loads(fixed_args)
-                                    logger.warning(
-                                        f"[ToolCall] Fixed incomplete JSON for tool_call {tc_id}: "
-                                        f"original_len={len(raw_args)}, fixed_len={len(fixed_args)}"
-                                    )
-                                except Exception:
-                                    parsed_args = None
-                        
-                        if parsed_args is not None:
-                            self._append_valid_tool_call(buffer)
-                        else:
-                            # 解析/修复都失败，记录到 invalid（但仍尝试添加到 current）
-                            tool_name = buffer["function"]["name"]
-                            logger.error(
-                                f"[ToolCall] Invalid JSON for tool_call {tc_id} ({tool_name}): {error}; "
-                                f"raw_len={len(raw_args)}"
+                        try:
+                            parsed_args = json.loads(buffer["function"]["arguments"])
+                            self._current_tool_calls.append(
+                                {
+                                    "id": buffer["id"],
+                                    "type": buffer["type"],
+                                    "function": {
+                                        "name": buffer["function"]["name"],
+                                        "arguments": buffer["function"]["arguments"],
+                                    },
+                                }
                             )
-                            self._invalid_tool_calls.append({
-                                "id": tc_id,
-                                "name": tool_name,
-                                "arguments": raw_args,
-                                "error": error,
-                            })
-                        
-                        # 无论成功失败，都从 buffer 中移除
-                        self._tool_calls_buffer.pop(tc_id, None)
+                            self._tool_calls_buffer.pop(tc_id, None)
+                        except json.JSONDecodeError:
+                            pass
 
             if content:
                 self.full_response += content
@@ -979,51 +906,21 @@ class OpenAIChatWorker(QThread):
                 )
                 self.content_received.emit(content)
 
-        # 二次处理剩余 buffer，也需要 JSON 修复逻辑
         for tc_id, buffer in list(self._tool_calls_buffer.items()):
             if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                raw_args = buffer["function"]["arguments"]
-                parsed_args, error = self._parse_tool_arguments_json(raw_args)
-                
-                if parsed_args is None:
-                    fixed_args = _fix_incomplete_json(raw_args)
-                    if fixed_args:
-                        try:
-                            parsed_args = json.loads(fixed_args)
-                            logger.warning(
-                                f"[ToolCall] Fixed incomplete JSON for tool_call {tc_id}: "
-                                f"original_len={len(raw_args)}, fixed_len={len(fixed_args)}"
-                            )
-                        except Exception:
-                            parsed_args = None
-                
-                if parsed_args is not None:
-                    self._append_valid_tool_call(buffer)
-                else:
-                    tool_name = buffer["function"]["name"]
-                    logger.error(
-                        f"[ToolCall] Invalid JSON for tool_call {tc_id} ({tool_name}): {error}"
-                    )
-                    self._invalid_tool_calls.append({
-                        "id": tc_id,
-                        "name": tool_name,
-                        "arguments": raw_args,
-                        "error": error,
-                    })
-            
-            self._tool_calls_buffer.pop(tc_id, None)
+                self._current_tool_calls.append(
+                    {
+                        "id": buffer["id"],
+                        "type": buffer["type"],
+                        "function": {
+                            "name": buffer["function"]["name"],
+                            "arguments": buffer["function"]["arguments"],
+                        },
+                    }
+                )
+                self._tool_calls_buffer.pop(tc_id, None)
 
-        if self._invalid_tool_calls:
-            invalid_count = len(self._invalid_tool_calls)
-            summary = ", ".join(
-                f"{item['name']}({item['id']})" for item in self._invalid_tool_calls[:3]
-            )
-            self.error_occurred.emit(
-                f"[工具参数解析失败] 已丢弃 {invalid_count} 个无效工具调用，"
-                f"避免其进入历史并触发后续 400 错误: {summary}"
-            )
-
-        return bool(self._current_tool_calls)
+        return tool_calls_found
 
     def _execute_all_tools(self):
         if not self._current_tool_calls or not self.tool_executor:
