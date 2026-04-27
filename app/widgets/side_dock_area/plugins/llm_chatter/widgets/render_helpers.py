@@ -112,7 +112,7 @@ def render_tool_block(
     body_style = "" if collapsed else ' style="height:auto; opacity:1;"'
 
     # 参数预览区域 + 对比按钮（参数可换行，按钮固定在右侧）
-    preview_section = f"""<span style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-width: 0; width: 100%; margin-left: 12px;">
+    preview_section = f"""<span style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-width: 0; width: 100%; margin-left: 15px;">
         <span style="color: #888; font-size: 11px; font-weight: normal; word-break: break-all; text-align: right; min-width: 0;">{escape(args_preview)}</span>
         {diff_icon_html}
     </span>"""

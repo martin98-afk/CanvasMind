@@ -245,12 +245,20 @@ def normalize_tool_call(tool_call: Any) -> Optional[Dict[str, Any]]:
     else:
         function_arguments = str(function_arguments or "{}")
 
+    try:
+        parsed_arguments = json.loads(function_arguments)
+    except Exception:
+        return None
+
+    if not isinstance(parsed_arguments, dict):
+        return None
+
     normalized = {
         "id": str(tool_call.get("id", "") or ""),
         "type": str(tool_call.get("type", "function") or "function"),
         "function": {
             "name": function_name,
-            "arguments": function_arguments,
+            "arguments": json.dumps(parsed_arguments, ensure_ascii=False),
         },
     }
     if not normalized["id"] or not function_name:

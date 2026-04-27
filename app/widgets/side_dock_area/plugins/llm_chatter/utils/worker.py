@@ -31,6 +31,21 @@ from app.widgets.side_dock_area.plugins.llm_chatter.utils.message_content import
 )
 
 
+def _fix_incomplete_json(raw_arguments: Any) -> str | None:
+    text = str(raw_arguments or "")
+    if not text.strip():
+        return "{}"
+
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        return None
+
+    if not isinstance(parsed, dict):
+        return None
+    return json.dumps(parsed, ensure_ascii=False)
+
+
 class TopicSummaryTask(QRunnable):
     """异步生成话题摘要任务 - 支持增量摘要和长期记忆判断"""
 
@@ -297,6 +312,7 @@ class OpenAIChatWorker(QThread):
         self._previewed_tool_call_ids = set()
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
+        self._invalid_tool_calls = []
         self._response_content_blocks = []
         self._tool_execution_cancelled = False
         self._last_compaction_state = {
@@ -330,8 +346,62 @@ class OpenAIChatWorker(QThread):
     def _clear_pending_response_state(self):
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
+        self._invalid_tool_calls = []
         self._response_content_blocks = []
         self._previewed_tool_call_ids = set()
+
+    def _parse_tool_arguments_json(self, raw_arguments: Any):
+        if isinstance(raw_arguments, dict):
+            return raw_arguments, ""
+
+        text = str(raw_arguments or "")
+        if not text.strip():
+            return {}, ""
+
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as exc:
+            return None, str(exc)
+
+        if not isinstance(parsed, dict):
+            return None, f"expected JSON object, got {type(parsed).__name__}"
+
+        return parsed, ""
+
+    def _append_valid_tool_call(self, buffer: Dict[str, Any]) -> bool:
+        parsed_args, error = self._parse_tool_arguments_json(
+            buffer.get("function", {}).get("arguments", "")
+        )
+        if parsed_args is None:
+            tool_name = buffer.get("function", {}).get("name", "") or "unknown"
+            tool_call_id = str(buffer.get("id") or "")
+            raw_args = buffer.get("function", {}).get("arguments", "")
+            self._invalid_tool_calls.append(
+                {
+                    "id": tool_call_id,
+                    "name": tool_name,
+                    "arguments": raw_args,
+                    "error": error,
+                }
+            )
+            logger.error(
+                f"[ToolCall] Dropping invalid tool arguments for tool_call {tool_call_id} "
+                f"({tool_name}): {error}; raw_len={len(str(raw_args or ''))}"
+            )
+            return False
+
+        serialized_args = json.dumps(parsed_args, ensure_ascii=False)
+        self._current_tool_calls.append(
+            {
+                "id": buffer["id"],
+                "type": buffer["type"],
+                "function": {
+                    "name": buffer["function"]["name"],
+                    "arguments": serialized_args,
+                },
+            }
+        )
+        return True
 
     def provide_answer(self, answer: str):
         self._pending_answer = answer
@@ -806,11 +876,15 @@ class OpenAIChatWorker(QThread):
         self._response_content_blocks = []
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
+        self._invalid_tool_calls = []
         tool_calls_found = False
 
         for chunk in response:
             if self._is_cancelled:
                 return False
+
+            # 定期处理 UI 事件，让 tool_call_started 信号有机会触发弹窗显示
+            QCoreApplication.processEvents()
 
             delta = chunk.choices[0].delta
             content = getattr(delta, "content", None)
@@ -840,6 +914,7 @@ class OpenAIChatWorker(QThread):
                         )
 
                     buffer = self._tool_calls_buffer[tc_id]
+                    # 收到 tool name 时立即触发弹窗，让用户感知到正在执行工具
                     if tc.function and tc.function.name:
                         buffer["function"]["name"] = tc.function.name
                         tool_name = buffer["function"]["name"]
@@ -860,22 +935,42 @@ class OpenAIChatWorker(QThread):
                     if tc.function and tc.function.arguments:
                         buffer["function"]["arguments"] += tc.function.arguments
 
+                    # 当参数累积后，尝试解析并修复不完整的 JSON
                     if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                        try:
-                            parsed_args = json.loads(buffer["function"]["arguments"])
-                            self._current_tool_calls.append(
-                                {
-                                    "id": buffer["id"],
-                                    "type": buffer["type"],
-                                    "function": {
-                                        "name": buffer["function"]["name"],
-                                        "arguments": buffer["function"]["arguments"],
-                                    },
-                                }
+                        raw_args = buffer["function"]["arguments"]
+                        parsed_args, error = self._parse_tool_arguments_json(raw_args)
+                        
+                        # 如果解析失败，尝试修复不完整的 JSON
+                        if parsed_args is None:
+                            fixed_args = _fix_incomplete_json(raw_args)
+                            if fixed_args:
+                                try:
+                                    parsed_args = json.loads(fixed_args)
+                                    logger.warning(
+                                        f"[ToolCall] Fixed incomplete JSON for tool_call {tc_id}: "
+                                        f"original_len={len(raw_args)}, fixed_len={len(fixed_args)}"
+                                    )
+                                except Exception:
+                                    parsed_args = None
+                        
+                        if parsed_args is not None:
+                            self._append_valid_tool_call(buffer)
+                        else:
+                            # 解析/修复都失败，记录到 invalid（但仍尝试添加到 current）
+                            tool_name = buffer["function"]["name"]
+                            logger.error(
+                                f"[ToolCall] Invalid JSON for tool_call {tc_id} ({tool_name}): {error}; "
+                                f"raw_len={len(raw_args)}"
                             )
-                            self._tool_calls_buffer.pop(tc_id, None)
-                        except json.JSONDecodeError:
-                            pass
+                            self._invalid_tool_calls.append({
+                                "id": tc_id,
+                                "name": tool_name,
+                                "arguments": raw_args,
+                                "error": error,
+                            })
+                        
+                        # 无论成功失败，都从 buffer 中移除
+                        self._tool_calls_buffer.pop(tc_id, None)
 
             if content:
                 self.full_response += content
@@ -884,21 +979,51 @@ class OpenAIChatWorker(QThread):
                 )
                 self.content_received.emit(content)
 
+        # 二次处理剩余 buffer，也需要 JSON 修复逻辑
         for tc_id, buffer in list(self._tool_calls_buffer.items()):
             if buffer["function"]["name"] and buffer["function"]["arguments"]:
-                self._current_tool_calls.append(
-                    {
-                        "id": buffer["id"],
-                        "type": buffer["type"],
-                        "function": {
-                            "name": buffer["function"]["name"],
-                            "arguments": buffer["function"]["arguments"],
-                        },
-                    }
-                )
-                self._tool_calls_buffer.pop(tc_id, None)
+                raw_args = buffer["function"]["arguments"]
+                parsed_args, error = self._parse_tool_arguments_json(raw_args)
+                
+                if parsed_args is None:
+                    fixed_args = _fix_incomplete_json(raw_args)
+                    if fixed_args:
+                        try:
+                            parsed_args = json.loads(fixed_args)
+                            logger.warning(
+                                f"[ToolCall] Fixed incomplete JSON for tool_call {tc_id}: "
+                                f"original_len={len(raw_args)}, fixed_len={len(fixed_args)}"
+                            )
+                        except Exception:
+                            parsed_args = None
+                
+                if parsed_args is not None:
+                    self._append_valid_tool_call(buffer)
+                else:
+                    tool_name = buffer["function"]["name"]
+                    logger.error(
+                        f"[ToolCall] Invalid JSON for tool_call {tc_id} ({tool_name}): {error}"
+                    )
+                    self._invalid_tool_calls.append({
+                        "id": tc_id,
+                        "name": tool_name,
+                        "arguments": raw_args,
+                        "error": error,
+                    })
+            
+            self._tool_calls_buffer.pop(tc_id, None)
 
-        return tool_calls_found
+        if self._invalid_tool_calls:
+            invalid_count = len(self._invalid_tool_calls)
+            summary = ", ".join(
+                f"{item['name']}({item['id']})" for item in self._invalid_tool_calls[:3]
+            )
+            self.error_occurred.emit(
+                f"[工具参数解析失败] 已丢弃 {invalid_count} 个无效工具调用，"
+                f"避免其进入历史并触发后续 400 错误: {summary}"
+            )
+
+        return bool(self._current_tool_calls)
 
     def _execute_all_tools(self):
         if not self._current_tool_calls or not self.tool_executor:
