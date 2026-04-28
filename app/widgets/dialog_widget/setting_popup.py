@@ -136,8 +136,7 @@ class SettingDialog(QDialog):
         self.nav_items = {}
         self.nav_buttons = {}
         categories = [
-            ("llm", self.tr("大模型"), "大模型"),
-            ("sidebar_plugins", self.tr("侧边栏插件"), "收起侧边栏"),
+            ("llm", self.tr("大模型"), "大模型")
         ]
         for key, label, icon_name in categories:
             btn = self._create_nav_button(key, label, icon_name)
@@ -216,7 +215,7 @@ class SettingDialog(QDialog):
 
         container_layout.addWidget(content_widget, 1)
 
-        self.resize(800, 500)
+        self.resize(900, 600)
 
     def _create_nav_button(self, key, text, icon_name=None):
         btn = QPushButton()

@@ -556,16 +556,14 @@ class HistoryPopup(QWidget):
             # 重新计算弹窗实际高度
             popup_height = self.height()
 
-            # 智能选择显示位置：优先空间更大的一侧
-            use_below = space_below >= space_above
+            # 优先向上显示（向上伸展）
+            use_above = True  # 默认向上伸展
 
             # 计算位置
             x = btn_global_pos.x() + btn_width - popup_width
             x = max(x, screen_geom.left())
 
-            if use_below:
-                y = btn_global_pos.y() + btn_height
-            else:
+            if use_above:
                 y = btn_global_pos.y() - popup_height
 
             # 最终边界检查：如果超出屏幕，限制内容区高度

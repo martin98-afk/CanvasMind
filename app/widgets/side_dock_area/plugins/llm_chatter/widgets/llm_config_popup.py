@@ -343,6 +343,7 @@ class LLMConfigPopup(QWidget):
         self.close()
 
     def show_at(self, reference_widget: QWidget):
+        """在参考控件上方显示弹窗（向上展开）"""
         self.adjustSize()
         btn_rect = reference_widget.rect()
         btn_global_pos = reference_widget.mapToGlobal(btn_rect.topLeft())
@@ -352,15 +353,22 @@ class LLMConfigPopup(QWidget):
         popup_width = self.width()
         popup_height = self.height()
 
-        x = btn_global_pos.x() + btn_width - popup_width
-        y = btn_global_pos.y() + btn_height
+        # 水平位置：左对齐到按钮左边缘
+        x = btn_global_pos.x()
+
+        # 垂直位置：弹窗显示在按钮上方
+        y = btn_global_pos.y() - popup_height
 
         screen = QApplication.primaryScreen()
         if screen:
             screen_geom = screen.availableGeometry()
+            # 水平边界检查
             x = max(x, screen_geom.left())
-            if y + popup_height > screen_geom.bottom():
-                y = btn_global_pos.y() - popup_height
+            if x + popup_width > screen_geom.right():
+                x = screen_geom.right() - popup_width
+            # 如果上方空间不够，显示在下方
+            if y < screen_geom.top():
+                y = btn_global_pos.y() + btn_height
 
         self.move(x, y)
         self.show()

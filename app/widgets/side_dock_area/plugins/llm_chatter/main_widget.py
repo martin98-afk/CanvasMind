@@ -245,7 +245,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._chat_engine = ChatEngine(
             session_manager=self.session_manager,
             get_model_config=self._get_current_model_config,
-            get_context_provider=lambda: self.context_selector,
+            get_context_provider=lambda: None,
             tool_executor=self._tool_executor,
             agent_manager=self._agent_manager,
             get_chat_cards=self._get_chat_cards_for_engine,
@@ -572,28 +572,13 @@ class OpenAIChatToolWindow(ToolWindow):
         self._create_context_menu()
         left_layout.addWidget(self.menu_btn)
 
+        # right_layout 保持简化，仅保留 context_usage_ring
         right_layout = QHBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(6)
 
         self.context_usage_ring = ContextUsageRing(self)
         right_layout.addWidget(self.context_usage_ring)
-
-        model_label = QLabel("模型：", self)
-        setFont(model_label, 12, QFont.Bold)
-        model_label.setStyleSheet("color: #ffffff;")
-        right_layout.addWidget(model_label)
-
-        self.model_combo = ComboBox(self)
-        self._load_model_configs()
-        setFont(self.model_combo, 12)
-        self.model_combo.currentTextChanged.connect(self._on_model_changed)
-        self.model_combo.pressed.connect(self._load_model_configs)
-        right_layout.addWidget(self.model_combo)
-        self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
-        self.settings_btn.setToolTip("模型设置")
-        self.settings_btn.clicked.connect(self._open_settings_popup)
-        right_layout.addWidget(self.settings_btn)
 
         session_bar_layout.addLayout(left_layout)
         session_bar_layout.addStretch()
@@ -655,13 +640,29 @@ class OpenAIChatToolWindow(ToolWindow):
 
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
-        hlayout.setSpacing(0)
-        self.context_selector = ContextSelector(self)
-        self.context_selector.selectionChanged.connect(
-            self._on_context_selection_changed
-        )
-        hlayout.addWidget(self.context_selector)
-        hlayout.addStretch(1)
+        hlayout.setSpacing(6)
+
+        # 模型选择相关 - 放在输入框左上
+        model_label = QLabel("模型：", self)
+        setFont(model_label, 12, QFont.Bold)
+        model_label.setStyleSheet("color: #ffffff;")
+        hlayout.addWidget(model_label)
+
+        self.model_combo = ComboBox(self)
+        self._load_model_configs()
+        setFont(self.model_combo, 12)
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
+        self.model_combo.pressed.connect(self._load_model_configs)
+        hlayout.addWidget(self.model_combo)
+
+        self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+        self.settings_btn.setToolTip("模型设置")
+        self.settings_btn.clicked.connect(self._open_settings_popup)
+        hlayout.addWidget(self.settings_btn)
+
+        hlayout.addSpacing(12)  # 和其他按钮分隔
+
+        hlayout.addStretch(1)  # 弹性空间，把其他按钮挤到右边
 
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
         self.new_session_btn.setFixedSize(26, 26)
@@ -1905,7 +1906,7 @@ class OpenAIChatToolWindow(ToolWindow):
             role="user",
             timestamp=timestamp,
             tag_params=tag_params
-            or {key: value for key, value in self.context_selector.context.items()},
+            or {},
         )
         card.update_content(content)
         card.finish_streaming()
@@ -2440,7 +2441,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._hide_welcome_cards()
 
-        context_params = {k: v for k, v in self.context_selector.context.items()}
+        context_params = {}
 
         self.input_area.clear()
         self._append_user_message(user_text, tag_params=context_params)

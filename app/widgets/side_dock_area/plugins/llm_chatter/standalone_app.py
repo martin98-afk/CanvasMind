@@ -8,7 +8,7 @@ import os
 from PyQt5.QtCore import Qt, QPoint, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QSystemTrayIcon, QMenu, QAction, QDesktopWidget
 from PyQt5.QtGui import QPainter, QColor
-from qfluentwidgets import TransparentToolButton
+from qfluentwidgets import TransparentToolButton, FluentIcon
 
 from app.utils.config import Settings
 
@@ -33,79 +33,8 @@ def setup_logging():
     )
 
 
-class OpacitySlider(QWidget):
-    """透明度滑块控件"""
-    opacityChanged = pyqtSignal(int)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._opacity = 100
-        self.setFixedWidth(36)
-        self.setFixedHeight(200)
-        self._is_dragging = False
-        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self._knob_height = 12
-        self._track_padding = 10
-        from qfluentwidgets import isDarkTheme
-        self._is_dark = isDarkTheme()
-    
-    def paintEvent(self, e):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
-        
-        bg_color = QColor(38, 38, 38, 230) if self._is_dark else QColor(245, 245, 245, 230)
-        painter.setBrush(bg_color)
-        painter.drawRoundedRect(self.rect(), 8, 8)
-        
-        track_height = self.height() - 2 * self._track_padding
-        track_width = 4
-        track_x = (self.width() - track_width) // 2
-        track_y = self._track_padding
-        
-        track_bg = QColor(100, 100, 100, 150) if self._is_dark else QColor(180, 180, 180, 150)
-        painter.setBrush(track_bg)
-        painter.drawRoundedRect(track_x, track_y, track_width, track_height, 2, 2)
-        
-        fill_height = int(track_height * self._opacity / 100)
-        fill_color = QColor("#0078d4")
-        painter.setBrush(fill_color)
-        painter.drawRoundedRect(track_x, track_y + track_height - fill_height, track_width, fill_height, 2, 2)
-        
-        knob_y = track_y + track_height - fill_height - self._knob_height // 2
-        knob_color = QColor(255, 255, 255) if self._is_dark else QColor(80, 80, 80)
-        painter.setBrush(knob_color)
-        painter.drawEllipse(QPoint(self.width() // 2, knob_y + self._knob_height // 2), 7, 7)
-        
-        painter.setPen(QColor(200, 200, 200) if self._is_dark else QColor(80, 80, 80))
-        painter.setFont(self.font())
-        painter.drawText(self.rect(), Qt.AlignBottom | Qt.AlignHCenter, f"{self._opacity}%")
-    
-    def setOpacity(self, value: int):
-        self._opacity = max(0, min(100, value))
-        self.update()
-        self.opacityChanged.emit(self._opacity)
-    
-    def mousePressEvent(self, e):
-        if e.button() == Qt.LeftButton:
-            self._is_dragging = True
-            self._update_from_mouse(e.pos())
-            self.update()
-    
-    def mouseMoveEvent(self, e):
-        if self._is_dragging:
-            self._update_from_mouse(e.pos())
-            self.update()
-    
-    def mouseReleaseEvent(self, e):
-        self._is_dragging = False
-    
-    def _update_from_mouse(self, pos: QPoint):
-        track_height = self.height() - 2 * self._track_padding
-        rel_y = pos.y() - self._track_padding
-        value = int((1 - rel_y / track_height) * 100)
-        self.setOpacity(value)
+# 复用 side_dock_area 中的 OpacitySlider
+from app.widgets.side_dock_area.side_dock_area import OpacitySlider
 
 
 def create_window():
@@ -159,7 +88,6 @@ def create_window():
             logger.info("LLM Chatter 独立模式启动成功")
         
         def _init_window(self):
-            # 使用 FramelessWindowHint 但保留大小调整能力
             self.setWindowFlags(
                 Qt.Dialog 
                 | Qt.FramelessWindowHint 
@@ -167,7 +95,6 @@ def create_window():
                 | Qt.WindowMinimizeButtonHint
                 | Qt.WindowMaximizeButtonHint
             )
-            self.setAttribute(Qt.WA_TranslucentBackground)
             self.setMinimumSize(400, 300)
             self.setSizeGripEnabled(True)
             self.setWindowTitle("LLM Chatter")
@@ -229,6 +156,27 @@ def create_window():
             layout.addWidget(title_label)
             layout.addStretch()
             
+            # 复制会话按钮
+            copy_btn = TransparentToolButton(FluentIcon.COPY, self)
+            copy_btn.setFixedSize(28, 28)
+            copy_btn.setToolTip("复制会话")
+            copy_btn.clicked.connect(self._duplicate_session)
+            layout.addWidget(copy_btn)
+            
+            # API文档按钮
+            api_btn = TransparentToolButton(get_icon("Global"), self)
+            api_btn.setFixedSize(28, 28)
+            api_btn.setToolTip("API 文档")
+            api_btn.clicked.connect(self._open_api_docs)
+            layout.addWidget(api_btn)
+            
+            # 设置按钮
+            settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+            settings_btn.setFixedSize(28, 28)
+            settings_btn.setToolTip("设置")
+            settings_btn.clicked.connect(self._show_settings)
+            layout.addWidget(settings_btn)
+            
             # 最小化
             min_btn = TransparentToolButton(get_icon("最小化"), self)
             min_btn.setFixedSize(28, 28)
@@ -247,21 +195,43 @@ def create_window():
             close_btn = TransparentToolButton(FluentIcon.CLOSE, self)
             close_btn.setFixedSize(28, 28)
             close_btn.clicked.connect(self._on_close)
-            close_btn.setToolTip("最大化")
-            close_btn.installEventFilter(self)
+            close_btn.setToolTip("关闭")
             layout.addWidget(close_btn)
             
             return title_bar
+        
+        def _duplicate_session(self):
+            """复制会话"""
+            if hasattr(self, 'chat_window') and hasattr(self.chat_window, '_duplicate_window'):
+                self.chat_window._duplicate_window()
+        
+        def _open_api_docs(self):
+            """打开 API 文档"""
+            if hasattr(self, 'chat_window') and hasattr(self.chat_window, '_open_api_docs'):
+                self.chat_window._open_api_docs()
+            else:
+                from app.widgets.side_dock_area.plugins.llm_chatter.api import open_docs
+                open_docs()
+        
+        def _show_settings(self):
+            """显示设置弹窗"""
+            from app.widgets.dialog_widget.setting_popup import SettingDialog
+            from PyQt5.QtWidgets import QDesktopWidget
+            
+            settings = SettingDialog(self)
+            # 显示在屏幕中心
+            screen = QDesktopWidget().screenGeometry()
+            settings.move(
+                (screen.width() - settings.width()) // 2,
+                (screen.height() - settings.height()) // 2
+            )
+            settings.exec()
         
         def _init_chat_component(self):
             from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import OpenAIChatToolWindow
             
             fake_page = FakePage()
             self.chat_window = OpenAIChatToolWindow(fake_page, None)
-            
-            # 确保标题栏按钮被初始化（复制窗口、API文档等）
-            if hasattr(self.chat_window, '_setup_title_bar'):
-                self.chat_window._setup_title_bar()
             
             # 隐藏内置标题栏，因为我们有自己的标题栏
             title_bar = self.chat_window.get_title_bar()
@@ -337,6 +307,7 @@ def create_window():
                 self.move(event.globalPos() - self._drag_pos)
                 event.accept()
             else:
+                # 非拖动时显示透明度滑块
                 self._show_opacity_slider()
                 self._hide_timer_start()
         
@@ -367,10 +338,12 @@ def create_window():
                 self._opacity_slider = OpacitySlider(self)
                 self._opacity_slider.opacityChanged.connect(self._on_opacity_changed)
             self._opacity_slider.setOpacity(int(self.windowOpacity() * 100))
-            pos = self.mapToGlobal(QPoint(self.width() + 5, 10))
+            # 显示在窗口右侧居中位置
+            pos = self.mapToGlobal(QPoint(self.width() + 5, (self.height() - 200) // 2))
             self._opacity_slider.move(pos)
             self._opacity_slider.show()
             self._opacity_slider.raise_()
+            self._opacity_slider.activateWindow()
         
         def _hide_opacity_slider(self):
             if self._opacity_slider:
@@ -416,22 +389,6 @@ def create_window():
         def leaveEvent(self, e):
             super().leaveEvent(e)
             self._hide_timer_start()
-        
-        def eventFilter(self, obj, event):
-            # 简化 eventFilter
-            return super().eventFilter(obj, event)
-        
-        def paintEvent(self, event):
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            
-            is_dark = isDarkTheme()
-            bg_color = QColor(45, 45, 45) if is_dark else QColor(245, 245, 245)
-            border_color = QColor(55, 55, 55) if is_dark else QColor(200, 200, 200)
-            
-            painter.setBrush(bg_color)
-            painter.setPen(border_color)
-            painter.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
     
     return LLMChatterWindow
 
