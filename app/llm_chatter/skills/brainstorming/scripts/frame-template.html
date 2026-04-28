@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Superpowers Brainstorming</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #fafafa;
+      color: #222;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .frame-header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .frame-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      letter-spacing: 0.025em;
+    }
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #888;
+    }
+    .connection-dot.connected { background: #4ade80; }
+    #indicator {
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      padding: 0.75rem 1.5rem;
+      text-align: center;
+      font-size: 0.875rem;
+      color: #666;
+    }
+    #indicator strong { color: #1a1a2e; }
+    .frame-content {
+      padding: 2rem 1.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .section { margin-bottom: 2rem; }
+    .section:last-child { margin-bottom: 0; }
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option, .card {
+      background: #fff;
+      border: 2px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .option:hover, .card:hover {
+      border-color: #c0c0c0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .option.selected, .card.selected {
+      border-color: #4f46e5;
+      background: #f0f0ff;
+    }
+    .option-indicator, .card-indicator {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .option.selected .option-indicator, .card.selected .card-indicator {
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+    .option.selected .option-indicator::after, .card.selected .card-indicator::after {
+      content: '✓';
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .card { flex-direction: column; }
+    .card-header { display: flex; align-items: center; gap: 0.75rem; width: 100%; }
+    .card-body { padding-left: 2.25rem; color: #666; font-size: 0.875rem; margin-top: 0.25rem; }
+    .option-label, .card-label {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .card-content { width: 100%; }
+  </style>
+</head>
+<body>
+  <header class="frame-header">
+    <span class="frame-title">Superpowers Brainstorming</span>
+    <div class="connection-status">
+      <span class="connection-dot" id="ws-dot"></span>
+      <span id="ws-status">Connecting...</span>
+    </div>
+  </header>
+  <div id="indicator">
+    <span id="indicator-text">Click an option above, then return to the terminal</span>
+  </div>
+  <main class="frame-content">
+    {{CONTENT}}
+  </main>
+  <script src="/files/helper.js"></script>
+</body>
+</html>

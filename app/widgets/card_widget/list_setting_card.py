@@ -325,9 +325,7 @@ class SkillListSettingCard(ExpandSettingCard):
         import yaml
 
         skills_dirs = [
-            Path(__file__).parent.parent
-            / "side_dock_area"
-            / "plugins"
+            Path(__file__).parent.parent.parent
             / "llm_chatter"
             / "skills",
             Path.home() / ".agents" / "skills",
