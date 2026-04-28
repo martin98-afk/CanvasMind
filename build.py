@@ -13,6 +13,9 @@ extra_modules = [
 # 需要删除的冗余库列表
 to_remove = [
     "scipy",
+    "cv2",
+    "pyarrow",
+    "jieba",
     "scipy.libs",
     "sphinx",
     "matplotlib",
@@ -36,18 +39,11 @@ elif platform.system() == "Darwin":
 params = [
     "main.py",
     "--onedir",
-    # "--windowed",
+    "--windowed",
     "--name=LLMChatter",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
     f"--add-data=app{os.pathsep}app",
     f"--add-data=resource{os.pathsep}resource",
-    f"--add-data=examples{os.pathsep}examples",
-    # 隐藏导入：合并基础依赖与动态搜寻到的插件
-    "--hidden-import=jupyter_client.provisioning.local",
-    "--hidden-import=ipykernel",
-    "--copy-metadata=jupyter_client",
-    # OpenCV on macOS needs bundled .dylibs (e.g., libpng)
-    "--collect-binaries=cv2",
 ]
 
 if icon_arg:
@@ -108,7 +104,7 @@ if __name__ == "__main__":
     PyInstaller.__main__.run(params)
 
     # 4. 后置处理
-    dist_final = os.path.join("dist", "CanvasMind")
+    dist_final = os.path.join("dist", "LLMChatter")
     if os.path.exists(dist_final):
         post_build_cleanup(dist_final)
 

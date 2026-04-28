@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only
 
-#define MyAppName "CanvasMind"
+#define MyAppName "LLMChatter"
 #define MyAppVersion "v0.4.7"
 #define MyAppPublisher "Jinshan Psychiatric Hospital"
-#define MyAppURL "https://canvasmind-sphinx-build.readthedocs.io/zh-cn/latest/"
-#define MyAppExeName "CanvasMind.exe"
+#define MyAppURL "https://LLMChatter-sphinx-build.readthedocs.io/zh-cn/latest/"
+#define MyAppExeName "LLMChatter.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".workflow.json"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -15,7 +15,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{9F1BD92B-9BD5-4952-BA03-D7EA4C7B2444}
+AppId={{9F1BD92B-9BD5-4952-BA03-D7EA4C7B2434}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -24,7 +24,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
-OutputBaseFilename=CanvasMind_installer
+OutputBaseFilename=LLMChatter_installer
 Compression=lzma2
 SolidCompression=yes
 SetupIconFile=logoico.ico
@@ -51,7 +51,7 @@ Name: "chinesesimplified"; MessagesFile: "./ChineseSimplified.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
 
 [Files]
-Source: "CanvasMind\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "LLMChatter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
@@ -60,8 +60,8 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: s
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Icons]
-Name: "{autoprograms}\CanvasMind"; Filename: "{app}\CanvasMind.exe"
-Name: "{autodesktop}\CanvasMind"; Filename: "{app}\CanvasMind.exe"; Tasks: desktopicon
+Name: "{autoprograms}\LLMChatter"; Filename: "{app}\LLMChatter.exe"
+Name: "{autodesktop}\LLMChatter"; Filename: "{app}\LLMChatter.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

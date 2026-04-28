@@ -282,8 +282,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._initialize_history_manager()
 
-        # 自动启动 LLM API 服务
-        self._init_llm_api_service()
+        # # 自动启动 LLM API 服务
+        # self._init_llm_api_service()
 
     def _init_llm_api_service(self):
         """初始化 LLM API 服务"""
