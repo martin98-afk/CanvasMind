@@ -3209,15 +3209,25 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_agent_role_changed(self, role_id: str):
         """角色变化时更新 agent 注册"""
+        logger.info(f"[AgentRole] _on_agent_role_changed called with role_id: '{role_id}'")
+        
         session_id = self._current_session_id
+        logger.info(f"[AgentRole] Current session_id: {session_id}")
+        
         if not session_id:
             logger.warning(f"[AgentRole] No session_id, cannot register")
+            return
+
+        if not role_id:
+            logger.warning(f"[AgentRole] Empty role_id, skipping")
             return
 
         # 获取角色配置
         from app.llm_chatter.core.role_config import get_role_config_manager
         role_config_mgr = get_role_config_manager()
         role_config = role_config_mgr.get_role(role_id)
+        
+        logger.info(f"[AgentRole] Got role_config: {role_config}")
 
         if role_config:
             # 更新/注册 agent

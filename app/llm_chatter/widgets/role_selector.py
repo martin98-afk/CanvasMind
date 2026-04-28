@@ -142,12 +142,18 @@ class RoleSelector(QWidget):
     def _on_role_changed(self, text: str):
         """角色选择变化"""
         role_id = self._combo.currentData() or ""
+        role_text = self._combo.currentText()
+
+        print(f"[RoleSelector] _on_role_changed: text='{text}', display='{role_text}', role_id='{role_id}'")
 
         if role_id == self._current_role_id:
+            print(f"[RoleSelector] Same role, returning")
             return
 
         old_role_id = self._current_role_id
         self._current_role_id = role_id
+
+        print(f"[RoleSelector] Emitting signal: roleChanged('{role_id}') or roleCleared()")
 
         if not role_id:
             # 选择"无身份"

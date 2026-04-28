@@ -648,12 +648,22 @@ class ToolExecutor:
             try:
                 from app.llm_chatter.core.agent_registry import get_agent_registry
                 registry = get_agent_registry()
+                
+                # 检查 session_id
+                if not session_id:
+                    logger.warning(f"[AgentTools] No session_id available!")
+                    agent_tools = create_agent_tools("", "")
+                    return agent_tools.send_to_agent(
+                        agent=kwargs.get("agent") or (args[0] if args else ""),
+                        message=kwargs.get("message") or (args[1] if len(args) > 1 else ""),
+                        need_callback=kwargs.get("need_callback", False),
+                    )
+                
                 agent = registry.get_agent_by_session(session_id)
                 if agent:
                     agent_id = agent.id
                     logger.info(f"[AgentTools] Found agent: {agent_id} for session: {session_id}")
                 else:
-                    # 如果没有找到，尝试列出所有 agent 用于调试
                     all_agents = registry.list_all_agents_with_status()
                     logger.warning(f"[AgentTools] No agent for session {session_id}, all agents: {all_agents}")
             except Exception as e:
