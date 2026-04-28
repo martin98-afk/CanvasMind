@@ -327,6 +327,12 @@ class Settings(QConfig):
         OptionsValidator(["beep", "short", "none"]),
     )
 
+    # ========== LLM API 服务配置 ==========
+    llm_api_enabled = ConfigItem("LLM", "APIEnabled", False, BoolValidator())
+    llm_api_port = RangeConfigItem(
+        "LLM", "APIPort", 8765, RangeValidator(1024, 65535)
+    )
+
     # ========== 侧边栏插件配置 ==========
     side_dock_plugins = ConfigItem("SideDock", "Plugins", {})
 

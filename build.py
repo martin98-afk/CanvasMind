@@ -51,7 +51,7 @@ elif platform.system() == "Darwin":
 params = [
     "main.py",
     "--onedir",
-    "--windowed",
+    # "--windowed",
     "--name=CanvasMind",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
     f"--add-data=app{os.pathsep}app",
@@ -130,3 +130,4 @@ if __name__ == "__main__":
         post_build_cleanup(dist_final)
 
     print("\n✅ 打包任务顺利完成！")
+

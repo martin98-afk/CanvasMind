@@ -13,6 +13,7 @@ from PyQt5.QtCore import (
     QEvent,
     pyqtSignal,
     QThreadPool,
+    QProcess,
 )
 from PyQt5.QtGui import QFont, QTextCursor
 from PyQt5.QtWidgets import (
@@ -23,6 +24,15 @@ from PyQt5.QtWidgets import (
     QWidget,
     QFileDialog,
 )
+
+# 注册 QProcess::ExitStatus 元类型，解决跨线程信号连接问题
+# PyInstaller 打包后，uvicorn 可能创建子进程，需要此注册
+try:
+    qRegisterMetaType("QProcess::ExitStatus")
+except NameError:
+    # PyQt5 中 qRegisterMetaType 是内置函数，不需要导入
+    pass
+
 from loguru import logger
 from qfluentwidgets import (
     setFont,
@@ -277,13 +287,16 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _init_llm_api_service(self):
         """初始化 LLM API 服务"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import (
+        from app.utils.config import Settings
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
             ensure_service_running,
+            start_llm_api_service,
             LLMAPIService,
-        )
-        from app.widgets.side_dock_area.plugins.llm_chatter.api_session_handler import (
             APISessionHandler,
+            is_service_running,
         )
+
+        setting = Settings.get_instance()
 
         # 注册服务商列表获取回调
         def get_providers_list():
@@ -293,8 +306,20 @@ class OpenAIChatToolWindow(ToolWindow):
         self._api_session_handler = APISessionHandler(self)
         LLMAPIService.set_session_handler(self._api_session_handler)
 
-        # 自动启动服务
-        ensure_service_running()
+        # 根据配置决定是否启动服务
+        if setting.llm_api_enabled.value:
+            if not is_service_running():
+                service = LLMAPIService()
+                service.port = setting.llm_api_port.value
+                service.start(background=True)
+        else:
+            # 确保服务未启动
+            if is_service_running():
+                from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+                    stop_llm_api_service,
+                )
+
+                stop_llm_api_service()
 
     def _setup_title_bar(self):
         """设置标题栏按钮"""
@@ -314,7 +339,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _open_api_docs(self):
         """打开 API 文档页面"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api_server import open_docs
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import open_docs
         open_docs()
 
     def _duplicate_window(self):

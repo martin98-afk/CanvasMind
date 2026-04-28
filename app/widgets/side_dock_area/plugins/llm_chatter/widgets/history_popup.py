@@ -249,6 +249,8 @@ class HistoryPopup(QWidget):
     sessionArchived = pyqtSignal(int)
     sessionRenamed = pyqtSignal(int, str)
     MAX_CONTENT_HEIGHT = 600
+    POPUP_HEADER_HEIGHT = 60  # 标题栏+分隔线+边距约60px
+    SCROLL_MARGIN = 20  # 距离屏幕边缘的最小边距
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -367,7 +369,13 @@ class HistoryPopup(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-    def _update_display(self):
+    def _update_display(self, reset_scroll: bool = True):
+        """更新显示内容
+
+        Args:
+            reset_scroll: 是否重置滚动位置，默认True。
+            用于区分首次打开弹窗（重置）和内部刷新（保持位置）
+        """
         self._clear_content()
 
         if not self._all_history:
@@ -489,7 +497,8 @@ class HistoryPopup(QWidget):
         self.content_layout.addStretch(1)
         self.content_layout.invalidate()
         self.content_widget.adjustSize()
-        self.scroll_area.verticalScrollBar().setValue(0)
+        if reset_scroll:
+            self.scroll_area.verticalScrollBar().setValue(0)
         self.scroll_area.updateGeometry()
         self.content_widget.updateGeometry()
         self.adjustSize()
@@ -508,10 +517,10 @@ class HistoryPopup(QWidget):
     def set_history(self, history_list: List[Dict], current_index: Optional[int]):
         self._all_history = history_list
         self._current_index = current_index
-        self._update_display()
+        self._update_display(reset_scroll=False)
 
     def show_at(self, reference_widget: QWidget):
-        self._update_display()
+        self._update_display(reset_scroll=True)
         self.adjustSize()
         btn_rect = reference_widget.rect()
         btn_global_pos = reference_widget.mapToGlobal(btn_rect.topLeft())
@@ -519,8 +528,8 @@ class HistoryPopup(QWidget):
         btn_height = btn_rect.height()
 
         popup_width = self.width()
-        popup_height = self.height()
 
+        # 默认位置
         x = btn_global_pos.x() + btn_width - popup_width
         y = btn_global_pos.y() + btn_height
 
@@ -529,9 +538,45 @@ class HistoryPopup(QWidget):
         )
         if screen:
             screen_geom = screen.availableGeometry()
+
+            # 计算按钮下方和上方的可用空间
+            space_below = screen_geom.bottom() - (btn_global_pos.y() + btn_height)
+            space_above = btn_global_pos.y() - screen_geom.top()
+
+            # 计算弹窗内容区的最大可用高度（考虑标题栏）
+            max_content_height = min(
+                self.MAX_CONTENT_HEIGHT,
+                max(space_below, space_above) - self.POPUP_HEADER_HEIGHT
+            )
+            max_content_height = max(max_content_height, 100)  # 最小100px
+
+            # 应用动态高度
+            self.scroll_area.setFixedHeight(int(max_content_height))
+
+            # 重新计算弹窗实际高度
+            popup_height = self.height()
+
+            # 智能选择显示位置：优先空间更大的一侧
+            use_below = space_below >= space_above
+
+            # 计算位置
+            x = btn_global_pos.x() + btn_width - popup_width
             x = max(x, screen_geom.left())
-            if y + popup_height > screen_geom.bottom():
+
+            if use_below:
+                y = btn_global_pos.y() + btn_height
+            else:
                 y = btn_global_pos.y() - popup_height
+
+            # 最终边界检查：如果超出屏幕，限制内容区高度
+            if y + popup_height > screen_geom.bottom():
+                available_height = space_below - self.POPUP_HEADER_HEIGHT
+                self.scroll_area.setFixedHeight(int(max(available_height, 100)))
+                y = btn_global_pos.y() + btn_height
+            elif y < screen_geom.top():
+                available_height = space_above - self.POPUP_HEADER_HEIGHT
+                self.scroll_area.setFixedHeight(int(max(available_height, 100)))
+                y = btn_global_pos.y() - self.height()
 
         self.move(x, y)
         self.show()

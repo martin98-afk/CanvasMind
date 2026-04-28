@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QStackedWidget,
     QPushButton,
     QComboBox,
+    QSpinBox,
 )
 from qfluentwidgets import (
     StrongBodyLabel,
@@ -61,6 +62,76 @@ class SettingDialog(QDialog):
         saved_states = self.cfg.side_dock_plugins.value
         if saved_states:
             SideDockRegistry.load_states_from_config(saved_states)
+
+    def _create_port_setting_card(self, title, content, parent=None):
+        """创建端口设置卡片"""
+        from qfluentwidgets import SettingCard
+
+        class PortSettingCard(SettingCard):
+            def __init__(self, title, content, cfg, parent=None):
+                super().__init__(FluentIcon.INFO, title, content, parent)
+                self.cfg = cfg
+
+                self.spinBox = QSpinBox()
+                self.spinBox.setFixedWidth(100)
+                self.spinBox.setRange(1024, 65535)
+                self.spinBox.setValue(cfg.llm_api_port.value)
+                self.spinBox.valueChanged.connect(self._on_value_changed)
+
+                self.hBoxLayout.addWidget(self.spinBox)
+                self.hBoxLayout.addSpacing(16)
+
+            def _on_value_changed(self, value):
+                self.cfg.set(self.cfg.llm_api_port, value, save=True)
+                # 更新 API 服务开关卡片的描述
+                if hasattr(self.parent(), 'llmApiEnabledCard'):
+                    self.parent().llmApiEnabledCard.setContent(
+                        self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(value))
+                    )
+
+        card = PortSettingCard(title, content, self.cfg, parent)
+        return card
+
+    def _on_llm_api_enabled_changed(self, enabled):
+        """API 服务开关变化时启动/停止服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+            start_llm_api_service,
+            stop_llm_api_service,
+            is_service_running,
+            get_llm_api_service,
+        )
+
+        if enabled:
+            if not is_service_running():
+                service = get_llm_api_service()
+                service.port = self.cfg.llm_api_port.value
+                service.start(background=True)
+        else:
+            if is_service_running():
+                stop_llm_api_service()
+        self.onConfigChanged()
+
+    def _on_llm_api_port_changed(self, port):
+        """端口变化时，如果服务正在运行则重启服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+            start_llm_api_service,
+            stop_llm_api_service,
+            is_service_running,
+            get_llm_api_service,
+        )
+
+        if self.cfg.llm_api_enabled.value and is_service_running():
+            # 停止旧服务
+            stop_llm_api_service()
+            # 用新端口启动服务
+            service = get_llm_api_service()
+            service.port = port
+            service.start(background=True)
+        # 更新 API 服务开关卡片的描述
+        if hasattr(self, 'llmApiEnabledCard'):
+            self.llmApiEnabledCard.setContent(
+                self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(port))
+            )
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
@@ -493,10 +564,30 @@ class SettingDialog(QDialog):
         )
         self.llmSoundCard.optionChanged.connect(self.onConfigChanged)
 
+        # API 服务开关
+        self.llmApiEnabledCard = SwitchSettingCard(
+            get_icon("API"),
+            self.tr("启用 API 服务"),
+            self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(self.cfg.llm_api_port.value)),
+            configItem=self.cfg.llm_api_enabled,
+            parent=self.llmGroup,
+        )
+        self.cfg.llm_api_enabled.valueChanged.connect(self._on_llm_api_enabled_changed)
+        self.cfg.llm_api_port.valueChanged.connect(self._on_llm_api_port_changed)
+
+        # 端口号设置
+        self.llmApiPortCard = self._create_port_setting_card(
+            self.tr("API 服务端口"),
+            self.tr("设置 API 服务的监听端口（1024-65535）"),
+            self.llmGroup,
+        )
+
         llmGroupLayout.addWidget(self.llmProviderCard)
         llmGroupLayout.addWidget(self.llmSkillsCard)
         llmGroupLayout.addWidget(self.llmNotifyCard)
         llmGroupLayout.addWidget(self.llmSoundCard)
+        llmGroupLayout.addWidget(self.llmApiEnabledCard)
+        llmGroupLayout.addWidget(self.llmApiPortCard)
         layout.addWidget(self.llmGroup)
 
     def _setup_path_management_settings(self, layout):

@@ -259,7 +259,7 @@ class APISessionHandler:
         self._active_streams: Dict[str, StreamContext] = {}
         
         # 隔离上下文注册表
-        from app.widgets.side_dock_area.plugins.llm_chatter.api_isolated_context import (
+        from . import (
             IsolatedContextRegistry,
         )
         self._context_registry = IsolatedContextRegistry.get_instance()
@@ -341,7 +341,7 @@ class APISessionHandler:
         Returns:
             隔离的 ChatEngine 实例
         """
-        from app.widgets.side_dock_area.plugins.llm_chatter.api_isolated_context import (
+        from . import (
             IsolatedChatContext,
         )
         
@@ -541,6 +541,7 @@ class APISessionHandler:
                         "topic_summary": session_data.get("title", ""),
                         "created_at": session_data.get("created_at"),
                         "last_updated": session_data.get("last_updated"),
+                        "system_prompt": session_data.get("system_prompt", ""),
                     })
                     return session
             

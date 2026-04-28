@@ -28,6 +28,15 @@ import json
 import threading
 from typing import Optional, Dict, Any, List, Callable
 
+# 注册 QProcess::ExitStatus 元类型，解决跨线程信号连接问题
+# PyInstaller 打包后必须注册，否则 QProcess::finished 信号跨线程连接会失败
+from PyQt5.QtCore import QProcess
+try:
+    qRegisterMetaType("QProcess::ExitStatus")
+except NameError:
+    # PyQt5 中 qRegisterMetaType 是内置函数，不需要导入
+    pass
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
@@ -300,15 +309,37 @@ class LLMAPIService:
     def _run_server(self):
         """运行服务器"""
         import uvicorn
+        
+        # 强制单进程模式，避免 PyInstaller 打包后 uvicorn 启动多 worker 进程
+        # 导致 QProcess::ExitStatus 跨线程错误
         config = uvicorn.Config(
             self.app,
             host=self.host,
             port=self.port,
             log_level="info",
+            workers=1,                    # 强制单 worker 进程
+            loop="asyncio",               # 强制使用 asyncio 循环
+            lifespan="off",               # 禁用 lifespan 事件，避免启动时的进程检测
         )
+        
+        # 禁用 uvicorn 的 autoreload 等可能创建子进程的功能
+        config.autoreload = False
+        config.reload = False
+        config.use_colors = False
+        
         server = uvicorn.Server(config)
         self._running = True
-        server.run()
+        
+        # 确保在主线程的事件循环中运行
+        try:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server.serve())
+        except Exception as e:
+            logger.error(f"[LLMAPI] Server error: {e}")
+        finally:
+            self._running = False
 
     def stop(self):
         """停止服务"""

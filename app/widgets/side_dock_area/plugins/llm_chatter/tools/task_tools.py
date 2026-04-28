@@ -120,14 +120,6 @@ class TaskTools:
 
     def load_skill(self, name: str) -> ToolResult:
         try:
-            if name in self._loaded_skills:
-                existing_content = self._loaded_skills[name]
-                workspace = self._skill_workspaces.get(name, "N/A")
-                return ToolResult(
-                    True,
-                    content=f"Skill already loaded: {name}\n\nSkill workspace: {workspace}\n\n{existing_content[:500]}...\n\n(已加载，内容如上)",
-                )
-
             search_paths = [
                 Path(__file__).parent.parent / "skills" / name / f"SKILL.md",
                 Path("canvas_files") / "skills" / name / f"SKILL.md",
