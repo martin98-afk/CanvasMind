@@ -98,6 +98,14 @@ from app.llm_chatter.widgets.sub_agent_floating_widget import (
 from app.llm_chatter.widgets.todo_floating_widget import (
     TodoFloatingWidget,
 )
+from app.llm_chatter.widgets.role_selector import (
+    RoleSelector,
+)
+
+# 多智能体协作相关
+from app.llm_chatter.core.agent_registry import (
+    get_agent_registry,
+)
 from app.llm_chatter.widgets.tool_floating_widget import (
     ToolFloatingWidget,
 )
@@ -367,6 +375,9 @@ class OpenAIChatToolWindow(ToolWindow):
             # 注意：不要设置 _session_initialized，让 showEvent 正常执行初始化
             new_instance._skip_restore_history = True  # 跳过历史会话恢复
 
+            # 复制 agent 注册（多智能体协作）
+            QTimer.singleShot(200, lambda: self._copy_agent_registration(new_instance))
+
             # 以弹窗方式显示
             from app.side_dock_area import ToolPopupDialog
 
@@ -483,6 +494,8 @@ class OpenAIChatToolWindow(ToolWindow):
             self._create_new_session()
             return
         if self._restore_latest_session():
+            # 恢复会话后注册当前角色
+            self._register_current_session_to_agent()
             return
         self._create_new_session()
 
@@ -515,6 +528,8 @@ class OpenAIChatToolWindow(ToolWindow):
             self._tool_executor.set_session_context(self._current_session_id)
         if self._question_floating_widget:
             self._question_floating_widget.clear()
+        # 注册当前角色到 agent registry
+        self._register_current_session_to_agent()
         self._question_tool_call_id = None
         self._load_agent_list()
         self._on_task_state_changed(session.task_state)
@@ -571,10 +586,16 @@ class OpenAIChatToolWindow(ToolWindow):
         self._create_context_menu()
         left_layout.addWidget(self.menu_btn)
 
-        # right_layout 保持简化，仅保留 context_usage_ring
+        # right_layout 添加身份选择器（多智能体协作）
         right_layout = QHBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(6)
+
+        # 添加角色选择器
+        self._role_selector = RoleSelector(self)
+        self._role_selector.roleChanged.connect(self._on_agent_role_changed)
+        self._role_selector.editRequested.connect(self._on_edit_role_requested)
+        right_layout.addWidget(self._role_selector)
 
         self.context_usage_ring = ContextUsageRing(self)
         right_layout.addWidget(self.context_usage_ring)
@@ -594,6 +615,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self._tool_floating_widget = ToolFloatingWidget(self)
         self._tool_floating_widget.setVisible(False)
         self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
+
+        # 设置多智能体协作的消息检查定时器
+        self._inter_agent_check_timer = QTimer(self)
+        self._inter_agent_check_timer.timeout.connect(self._check_inter_agent_messages)
+        self._inter_agent_check_timer.start(5000)  # 每 5 秒检查一次
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -1920,6 +1946,25 @@ class OpenAIChatToolWindow(ToolWindow):
         self._update_node_preview()
         return card
 
+    def _append_inter_agent_message(
+        self, from_agent: str, from_agent_name: str, content: str
+    ):
+        """显示来自其他智能体的消息（作为 assistant 卡片）"""
+        session = self.session_manager.get_current_session()
+        if session:
+            self._displayed_session_id = session.session_id
+
+        card = MessageCard(parent=self, role="assistant")
+        card.update_content(content)
+        card.finish_streaming()
+        card.actionRequested.connect(self._on_code_action)
+        card.contextActionRequested.connect(self.handle_recommended_question)
+        self._add_chat_widget(card)
+        self._scroll_to_bottom()
+
+        self._update_node_preview()
+        return card
+
     def _append_assistant_message(self, timestamp: str = None) -> MessageCard:
         session = self.session_manager.get_current_session()
         if session:
@@ -3141,7 +3186,309 @@ class OpenAIChatToolWindow(ToolWindow):
             self._auto_save_current_session()
         except Exception:
             pass
+
+        # 关闭时更新 agent 状态
+        try:
+            from app.llm_chatter.core.agent_registry import get_agent_registry
+            agent_reg = get_agent_registry()
+            if self._current_session_id:
+                agent_reg.update_status(
+                    self._current_session_id,
+                    status="done",
+                    task=""
+                )
+        except Exception:
+            pass
+
         super().closeEvent(event)
+
+    # ========== 多智能体协作相关方法 ==========
+
+    def _on_agent_role_changed(self, role_id: str):
+        """角色变化时更新 agent 注册"""
+        session_id = self._current_session_id
+        if not session_id:
+            return
+
+        # 获取角色配置
+        from app.llm_chatter.core.role_config import get_role_config_manager
+        role_config_mgr = get_role_config_manager()
+        role_config = role_config_mgr.get_role(role_id)
+
+        if role_config:
+            # 更新/注册 agent
+            agent_reg = get_agent_registry()
+            agent_reg.register(
+                session_id=session_id,
+                role_type=role_id,
+                name=role_config.name,
+                prompt=role_config.prompt,
+                color=role_config.color,
+            )
+
+            # 更新输入区的 agent 标识
+            if hasattr(self, 'input_area'):
+                self.input_area.set_agent_info(role_id, role_config.name, role_config.color)
+
+        logger.info(f"[AgentRole] Changed to: {role_id}")
+
+    def _on_edit_role_requested(self, role_id: str):
+        """打开角色编辑弹窗"""
+        from app.llm_chatter.widgets.role_editor_dialog import RoleEditorDialog
+
+        dialog = RoleEditorDialog(role_id=role_id, parent=self)
+        dialog.roleSaved.connect(self._on_role_saved)
+        dialog.exec_()
+
+    def _on_role_saved(self, role_id: str):
+        """角色保存后刷新选择器"""
+        if hasattr(self, '_role_selector'):
+            self._role_selector.refresh()
+
+    def _check_inter_agent_messages(self):
+        """检查并投递跨身份消息"""
+        if not getattr(self, '_window_active', True):
+            return
+
+        # 避免重复检查
+        if getattr(self, '_processing_messages', False):
+            return
+
+        from app.llm_chatter.core.inter_agent_message import get_message_manager
+
+        msg_manager = get_message_manager()
+
+        # 获取当前会话的所有待处理消息（只取 pending 状态的）
+        pending = msg_manager.get_pending_messages(self._current_session_id)
+
+        if not pending:
+            return
+
+        # 标记正在处理，防止重复
+        self._processing_messages = True
+
+        try:
+            for msg in pending:
+                # 只处理 pending 状态的消息，避免重复发送
+                if msg.status != "pending":
+                    continue
+
+                # 自动投递到会话
+                self._deliver_inter_agent_message(msg)
+
+                # 从队列中移除消息（不仅标记为 delivered，还要彻底移除）
+                msg_manager.pop_message(self._current_session_id)
+        finally:
+            # 清除处理标记
+            self._processing_messages = False
+
+    def _deliver_inter_agent_message(self, message):
+        """将跨身份消息投递到会话并自动触发回答"""
+        from app.llm_chatter.core.agent_registry import get_agent_registry
+
+        agent_reg = get_agent_registry()
+        from_agent = agent_reg.get_agent(message.from_agent)
+
+        from_agent_name = from_agent.name if from_agent else message.from_agent
+        from_color = from_agent.color if from_agent else "#888888"
+
+        # 记录这是跨身份消息
+        self._pending_inter_agent_msg = {
+            'from_agent': message.from_agent,
+            'from_agent_name': from_agent_name,
+            'content': message.content,
+            'need_callback': message.need_callback,
+        }
+
+        # 显示通知
+        from qfluentwidgets import InfoBar, InfoBarPosition
+        InfoBar.info(
+            title=f"📩 来自 {from_agent_name} 的消息",
+            content=message.content[:100] + ("..." if len(message.content) > 100 else ""),
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP_RIGHT,
+            duration=3000,
+            parent=self,
+        )
+
+        # 自动将消息填入输入框并发送
+        inter_agent_prefix = f"📩 来自 {from_agent_name}:\n{message.content}\n\n"
+        if hasattr(self, 'input_area'):
+            self.input_area.setText(inter_agent_prefix)
+
+        # 延迟发送，让用户看到消息内容
+        from PyQt5.QtCore import QTimer
+        QTimer.singleShot(500, lambda: self._send_inter_agent_message())
+
+    def _send_inter_agent_message(self):
+        """自动发送跨身份消息"""
+        if not hasattr(self, '_pending_inter_agent_msg'):
+            return
+
+        msg_data = self._pending_inter_agent_msg
+        self._pending_inter_agent_msg = None
+
+        # 构建完整消息内容
+        full_message = f"📩 来自 **{msg_data['from_agent_name']}** 的消息:\n\n{msg_data['content']}"
+
+        # 显示来自其他智能体的消息（作为 assistant 卡片）
+        self._append_inter_agent_message(
+            from_agent=msg_data['from_agent'],
+            from_agent_name=msg_data['from_agent_name'],
+            content=full_message,
+        )
+
+        # 设置回调状态
+        if msg_data.get('need_callback'):
+            from app.llm_chatter.core.agent_registry import get_agent_registry
+            agent_reg = get_agent_registry()
+            agent_reg.update_status(
+                self._current_session_id,
+                status="busy",
+                task=f"正在处理来自 {msg_data['from_agent_name']} 的任务"
+            )
+
+        # 自动发送回复（模拟用户输入消息触发对话）
+        reply_content = f"已收到来自 {msg_data['from_agent_name']} 的消息，正在处理..."
+
+        self._hide_welcome_cards()
+        self._append_user_message(reply_content)
+
+        assistant_card = self._append_assistant_message()
+        self._is_streaming = True
+        self._toggle_send_stop(True)
+
+        session = self.session_manager.get_current_session()
+        if session and self._tool_executor:
+            self._tool_executor.set_session_context(session.session_id)
+
+        self._chat_engine.send_message(reply_content, {})
+        self._current_assistant_card = assistant_card
+
+        logger.info(f"[InterAgentMessage] Auto-replied to {msg_data.get('from_agent_name')}")
+
+    def _register_current_session_to_agent(self):
+        """将当前会话注册到 agent registry"""
+        if not hasattr(self, '_role_selector'):
+            return
+
+        role_id = self._role_selector.get_current_role()
+        if not role_id:
+            return
+
+        from app.llm_chatter.core.role_config import get_role_config_manager
+        role_config_mgr = get_role_config_manager()
+        role_config = role_config_mgr.get_role(role_id)
+
+        if role_config:
+            agent_reg = get_agent_registry()
+            agent_reg.register(
+                session_id=self._current_session_id,
+                role_type=role_id,
+                name=role_config.name,
+                prompt=role_config.prompt,
+                color=role_config.color,
+            )
+
+            # 更新 session 的 system_prompt 以包含团队成员信息
+            self._update_session_system_prompt()
+
+    def _update_session_system_prompt(self):
+        """更新当前会话的 system prompt，注入团队成员信息"""
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        agent_reg = get_agent_registry()
+        agents = agent_reg.list_all_agents_with_status()
+
+        if not agents:
+            return
+
+        # 构建团队成员信息
+        agent_injection = self._build_agent_context_injection(agents)
+
+        # 更新 session 的 system prompt
+        session.system_prompt = agent_injection
+
+        logger.info(f"[SystemPrompt] Updated with {len(agents)} agents")
+
+    def _build_agent_context_injection(self, agents: List[Dict]) -> str:
+        """构建团队成员注入内容"""
+        lines = [
+            "",
+            "## 团队成员",
+            "以下是你当前团队的所有成员及其状态：",
+            "",
+        ]
+
+        for idx, agent in enumerate(agents, 1):
+            status_icon = "🟢" if agent["status"] == "idle" else "🟡" if agent["status"] == "busy" else "✅"
+            lines.append(f"{idx}. {status_icon} **{agent['name']}**")
+            lines.append(f"   - ID: {agent['id']}")
+            lines.append(f"   - 状态: {agent['status']}")
+
+            if agent["status"] == "busy":
+                progress = agent.get("progress", 0)
+                task = agent.get("task", "")
+                if progress:
+                    lines.append(f"   - 进度: {progress}%")
+                if task:
+                    lines.append(f"   - 任务: {task}")
+            lines.append("")
+
+        lines.extend([
+            "## 协作规则",
+            "1. 通过 send_to_agent 向其他成员派发任务",
+            "2. 任务描述中应包含工作产物文件路径",
+            "3. 完成后如果 need_callback=true，使用 send_to_agent 回复发送方",
+            "4. 通过 list_agents 查看成员状态，优先分配任务给空闲的成员",
+            "5. 协作消息在对方会话中以特殊样式显示",
+            "",
+        ])
+
+        return "\n".join(lines)
+
+    def _copy_agent_registration(self, new_instance):
+        """复制 agent 注册到新窗口"""
+        if not hasattr(self, '_role_selector') or not hasattr(new_instance, '_role_selector'):
+            return
+
+        # 获取当前角色
+        current_role_id = self._role_selector.get_current_role()
+        if not current_role_id:
+            return
+
+        # 在新窗口设置相同角色
+        new_instance._role_selector.set_current_role(current_role_id)
+
+        # 复制 agent 注册
+        from app.llm_chatter.core.role_config import get_role_config_manager
+        role_config_mgr = get_role_config_manager()
+        role_config = role_config_mgr.get_role(current_role_id)
+
+        if role_config:
+            agent_reg = get_agent_registry()
+            agent_reg.register(
+                session_id=new_instance._current_session_id,
+                role_type=current_role_id,
+                name=f"{role_config.name} (副本)",
+                prompt=role_config.prompt,
+                color=role_config.color,
+            )
+
+            # 创建工作目录
+            from app.llm_chatter.utils.work_outcome_manager import get_outcome_manager
+            outcome_mgr = get_outcome_manager()
+            outcome_mgr.ensure_workdir(
+                agent_reg.get_agent_by_session(new_instance._current_session_id).id
+                if agent_reg.get_agent_by_session(new_instance._current_session_id)
+                else "",
+                new_instance._current_session_id
+            )
+
+        logger.info(f"[AgentRole] Copied registration to new window: {current_role_id}")
 
     def _toggle_send_stop(self, is_sending: bool):
         if is_sending:

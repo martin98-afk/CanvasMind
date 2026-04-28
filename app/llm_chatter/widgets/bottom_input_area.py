@@ -133,6 +133,16 @@ class SendableTextEdit(QTextEdit):
     def _on_agent_changed(self, text: str):
         self.agentChanged.emit(text)
 
+    def set_agent_info(self, role_id: str, name: str = "", color: str = ""):
+        """设置当前 agent 信息（多智能体协作）"""
+        self._agent_combo.blockSignals(True)
+        try:
+            # 设置显示文本
+            if name:
+                self._agent_combo.setCurrentText(name)
+        finally:
+            self._agent_combo.blockSignals(False)
+
     def _setup_keyboard_shortcuts(self):
         self._shortcut_clear = QShortcut(QKeySequence("Ctrl+L"), self)
         self._shortcut_clear.activated.connect(self._on_clear_shortcut)

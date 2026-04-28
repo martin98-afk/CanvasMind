@@ -19,6 +19,21 @@ from app.llm_chatter.core.agent import (
 from app.llm_chatter.core.task_state import (
     TaskSessionState,
 )
+from app.llm_chatter.core.agent_registry import (
+    AgentRegistry,
+    AgentInfo,
+    get_agent_registry,
+)
+from app.llm_chatter.core.inter_agent_message import (
+    InterAgentMessage,
+    InterAgentMessageManager,
+    get_message_manager,
+)
+from app.llm_chatter.core.role_config import (
+    RoleConfig,
+    RoleConfigManager,
+    get_role_config_manager,
+)
 
 __all__ = [
     "ChatEngine",
@@ -28,4 +43,13 @@ __all__ = [
     "AgentManager",
     "create_agent_manager",
     "TaskSessionState",
+    "AgentRegistry",
+    "AgentInfo",
+    "get_agent_registry",
+    "InterAgentMessage",
+    "InterAgentMessageManager",
+    "get_message_manager",
+    "RoleConfig",
+    "RoleConfigManager",
+    "get_role_config_manager",
 ]

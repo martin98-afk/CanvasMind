@@ -453,6 +453,24 @@ class ToolExecutor:
                 args.get("callback_url"),
                 args.get("timeout", 300),
             ),
+            # 协作工具
+            "send_to_agent": lambda: self._execute_agent_tool(
+                "send_to_agent",
+                args.get("agent", ""),
+                args.get("message", ""),
+                args.get("need_callback", False),
+            ),
+            "broadcast_to_agents": lambda: self._execute_agent_tool(
+                "broadcast_to_agents",
+                None,
+                args.get("message", ""),
+                args.get("agents"),
+            ),
+            "list_agents": lambda: self._execute_agent_tool("list_agents"),
+            "get_work_outcomes": lambda: self._execute_agent_tool(
+                "get_work_outcomes",
+                args.get("agent_id"),
+            ),
         }
 
         executor = tool_map.get(tool_name)
@@ -617,6 +635,48 @@ class ToolExecutor:
             time.sleep(0.05)
         
         return result_holder[0] if result_holder[0] else ToolResult(False, error="WebSearch failed")
+
+    def _execute_agent_tool(self, tool_name: str, *args, **kwargs):
+        """执行协作工具（多智能体）"""
+        try:
+            from app.llm_chatter.tools.agent_tools import create_agent_tools
+
+            session_id = self._session_id or ""
+            agent_id = ""
+            # 尝试获取当前 agent id
+            try:
+                from app.llm_chatter.core.agent_registry import get_agent_registry
+                registry = get_agent_registry()
+                agent = registry.get_agent_by_session(session_id)
+                if agent:
+                    agent_id = agent.id
+            except Exception:
+                pass
+
+            agent_tools = create_agent_tools(session_id, agent_id)
+
+            if tool_name == "send_to_agent":
+                return agent_tools.send_to_agent(
+                    agent=kwargs.get("agent") or (args[0] if args else ""),
+                    message=kwargs.get("message") or (args[1] if len(args) > 1 else ""),
+                    need_callback=kwargs.get("need_callback", False),
+                )
+            elif tool_name == "broadcast_to_agents":
+                return agent_tools.broadcast_to_agents(
+                    agents=kwargs.get("agents"),
+                    message=kwargs.get("message") or (args[1] if len(args) > 1 else ""),
+                )
+            elif tool_name == "list_agents":
+                return agent_tools.list_agents()
+            elif tool_name == "get_work_outcomes":
+                return agent_tools.get_work_outcomes(
+                    agent_id=kwargs.get("agent_id") or (args[0] if args else None),
+                )
+            else:
+                return ToolResult(False, error=f"Unknown agent tool: {tool_name}")
+        except Exception as e:
+            logger.error(f"[ToolExecutor] Agent tool execution failed: {e}")
+            return ToolResult(False, error=f"Agent tool error: {str(e)}")
 
     def _execute_canvas_tool(self, tool_name: str, args: dict):
         if not self._canvas_tools_executor:

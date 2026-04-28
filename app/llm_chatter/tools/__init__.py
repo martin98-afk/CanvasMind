@@ -806,4 +806,85 @@ def get_builtin_tools_schema() -> List[Dict]:
                 },
             },
         },
+        # 协作工具
+        {
+            "type": "function",
+            "function": {
+                "name": "send_to_agent",
+                "description": "发送消息给团队中的其他成员。发送完成后即可结束任务，无需等待对方回复（除非 need_callback=true）。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {
+                            "type": "string",
+                            "description": "目标身份ID，从 list_agents() 获取，例如 'developer' 或 'developer_1'"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "要发送的消息内容，应该清晰描述任务要求和期望结果"
+                        },
+                        "need_callback": {
+                            "type": "boolean",
+                            "description": "是否需要回调。true=任务完成后对方会回复你；false=对方自行决定后续行动，默认 false"
+                        }
+                    },
+                    "required": ["agent", "message"]
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "broadcast_to_agents",
+                "description": "同时向多个团队成员广播消息。例如：评审时向所有人征询意见，或通知所有人任务变更。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agents": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "目标身份ID列表。null 或空数组表示发给所有成员"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "要广播的消息内容"
+                        }
+                    },
+                    "required": ["message"]
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_agents",
+                "description": "查询当前团队的所有成员及其工作状态。用于了解谁空闲、谁忙碌，以便智能分配任务。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {}
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_work_outcomes",
+                "description": "获取团队成员已完成的工作产物列表，包括文件路径和描述。用于查看其他智能体的工作成果。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_id": {
+                            "type": "string",
+                            "description": "智能体ID，如果为空则返回所有产物"
+                        }
+                    }
+                },
+            },
+        },
     ]
+
+
+def get_agent_tools_schema() -> List[Dict]:
+    """获取协作工具的 schema 定义"""
+    from app.llm_chatter.tools.agent_tools import get_agent_tools_schema as _get_schema
+    return _get_schema()
