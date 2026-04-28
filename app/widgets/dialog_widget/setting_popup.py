@@ -23,6 +23,7 @@ from qfluentwidgets import (
 
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_unified_font
+from dist.CanvasMind._internal.app.widgets.side_dock_area.registry import SideDockRegistry
 
 
 class SettingDialog(QDialog):
@@ -44,7 +45,6 @@ class SettingDialog(QDialog):
         self.setup_ui()
 
     def _load_plugin_states_from_config(self):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
 
         saved_states = self.cfg.side_dock_plugins.value
         if saved_states:

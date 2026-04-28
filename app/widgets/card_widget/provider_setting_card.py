@@ -33,7 +33,7 @@ from app.utils.utils import get_icon
 from app.widgets.basic_widget.searchable_editable_combobox import (
     SearchableEditableComboBox,
 )
-from app.widgets.side_dock_area.plugins.llm_chatter.constants import (
+from app.llm_chatter.constants import (
     PROVIDER_ICONS,
     PROVIDER_MODELS,
     FREE_PROVIDERS,

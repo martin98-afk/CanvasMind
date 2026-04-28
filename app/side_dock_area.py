@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
 )
-from qfluentwidgets import isDarkTheme, FluentIcon as FIF, TransparentToolButton
+from qfluentwidgets import isDarkTheme, FluentIcon as FIF, TransparentToolButton, FluentIcon
 
 from app.utils.utils import get_icon
 
@@ -174,6 +174,13 @@ class ToolPopupDialog(QDialog):
         self._switch_btn = title_bar._switch_layout_btn
         self._switch_btn.hide()
 
+        # 设置按钮
+        settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+        settings_btn.setFixedSize(28, 28)
+        settings_btn.setToolTip("设置")
+        settings_btn.clicked.connect(self._show_settings)
+        title_bar.add_popup_button(settings_btn)
+
         self._min_btn = TransparentToolButton(get_icon("最小化"), self)
         self._min_btn.setFixedSize(24, 24)
         self._min_btn.setToolTip("最小化")
@@ -198,6 +205,20 @@ class ToolPopupDialog(QDialog):
         self._hide_timer.setInterval(200)
         self._hide_timer.timeout.connect(self._check_hide_slider)
         self.setMouseTracking(True)
+
+    def _show_settings(self):
+        """显示设置弹窗"""
+        from app.widgets.dialog_widget.setting_popup import SettingDialog
+        from PyQt5.QtWidgets import QDesktopWidget
+
+        settings = SettingDialog(self)
+        # 显示在屏幕中心
+        screen = QDesktopWidget().screenGeometry()
+        settings.move(
+            (screen.width() - settings.width()) // 2,
+            (screen.height() - settings.height()) // 2
+        )
+        settings.exec()
 
     def _toggle_maximize(self):
         if self._is_maximized:
@@ -380,7 +401,7 @@ class ToolPopupDialog(QDialog):
             self._opacity_slider = OpacitySlider(self)
             self._opacity_slider.opacityChanged.connect(self._on_opacity_changed)
         self._opacity_slider.setOpacity(int(self.windowOpacity() * 100))
-        pos = self.mapToGlobal(QPoint(self.width() + 5, 10))
+        pos = self.mapToGlobal(QPoint(self.width(), 10))
         self._opacity_slider.move(pos)
         self._opacity_slider.show()
         self._opacity_slider.raise_()

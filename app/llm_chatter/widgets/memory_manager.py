@@ -250,7 +250,7 @@ class MemoryManagerDialog(QDialog):
         counts = {k: len(v) for k, v in category_memories.items()}
         total = sum(counts.values())
         current_count = counts.get(self._current_category, 0)
-        from app.widgets.side_dock_area.plugins.llm_chatter.core.memory_manager import MEMORY_CATEGORY_LIMITS
+        from app.llm_chatter.core.memory_manager import MEMORY_CATEGORY_LIMITS
         limit = MEMORY_CATEGORY_LIMITS.get(self._current_category, 20)
         self.category_count_label.setText(
             f"当前分类: {current_count}/{limit} | 总记忆: {total}"
