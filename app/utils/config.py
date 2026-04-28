@@ -312,9 +312,20 @@ class Settings(QConfig):
     llm_max_tokens = ConfigItem("LLM", "MaxTokens", 2048, RangeValidator(1024, 400960))
     llm_temperature = ConfigItem("LLM", "Temperature", 0.7, RangeValidator(0, 1))
     # 保存的免费/自定义服务商配置
-    llm_saved_providers = ConfigItem("LLM", "SavedProviders", {})
+    llm_saved_providers = ConfigItem("LLM", "SavedProviders",
+                                     {
+                                         "MiniMax (月之暗面)": {
+                                             "模型名称": "MiniMax-M2.7",
+                                             "API_URL": "https://api.minimax.chat/v1",
+                                             "API_KEY": "sk-cp-YECP4gj2VZt7NxgUYww5Shn5FXBqb8aSIQDD0zMUoLzx10y4KEAYFKHqrmGhmx5Cxt9KV030zSXvyhDyqVs_0n-R2djEgYx6fzMs46T6gf3HooJdS5c4_Kk",
+                                             "温度": 0.71,
+                                             "最大Token": 208524,
+                                             "获取地址": False
+                                         }
+                                     }
+                                     )
     # 最近选择的模型
-    llm_selected_model = ConfigItem("LLM", "SelectedModel", "")
+    llm_selected_model = ConfigItem("LLM", "SelectedModel", "MiniMax (月之暗面)")
     # 启用的技能列表
     llm_enabled_skills = ConfigItem("LLM", "EnabledSkills", ["brainstroming", "find-skills", "git-commit", "skill-creator", "writing-plans"])
     # 智能体完成通知

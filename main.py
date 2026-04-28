@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
 import platform
+from pathlib import Path
 
 from app.utils.utils import resource_path
 
@@ -82,22 +82,13 @@ def load_localization(app, language="en"):
 if __name__ == "__main__":
     import os
     import sys
-    import NodeGraphQt
-    import qtconsole.client
     import warnings
 
     warnings.filterwarnings("ignore")
 
-    from PyQt5.QtCore import Qt, QLocale
+    from PyQt5.QtCore import Qt
     from PyQt5.QtWidgets import QApplication
-    from PyQt5 import QtGui, QtCore
-    from PyQt5.QtCore import QTranslator, QCoreApplication  # 必须导入这个
-    from PyQt5.QtGui import QPalette, QColor
-    from qtconsole.client import QtKernelClient
-    from qtconsole.manager import QtKernelManager
-    from qtconsole.rich_jupyter_widget import RichJupyterWidget
-    from sshtunnel import SSHTunnelForwarder  # 导入线程级隧道库
-
+    from PyQt5.QtCore import QTranslator  # 必须导入这个
     from app.utils import icons_rc
     from app.widgets.custom_nodegraphqt.nodegraphqt_patcher import patch_nodegraphqt
 

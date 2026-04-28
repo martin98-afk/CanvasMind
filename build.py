@@ -5,25 +5,10 @@ import platform
 from pathlib import Path
 
 import PyInstaller.__main__
-import spyder
 
 # 1. 基础路径配置
 base_dir = os.path.dirname(os.path.abspath(__file__))
-env_dir = str(Path(os.path.dirname(spyder.__file__)).parent)
 extra_modules = [
-    "spyder",
-    "fastapi",
-    "watchdog",
-    "uvicorn",
-    "starlette",
-    "pyecharts",
-    "paho",
-    "redis",
-    "sqlalchemy",
-    "psutil",
-    "prettytable",
-    "apscheduler",
-    "tzlocal",
 ]
 # 需要删除的冗余库列表
 to_remove = [
@@ -52,7 +37,7 @@ params = [
     "main.py",
     "--onedir",
     # "--windowed",
-    "--name=CanvasMind",  # 直接指定名称，省去后期改名麻烦
+    "--name=LLMChatter",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
     f"--add-data=app{os.pathsep}app",
     f"--add-data=resource{os.pathsep}resource",

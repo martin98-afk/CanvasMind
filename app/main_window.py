@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
 
-from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, Qt, QTimer, QPoint
 from PyQt5.QtWidgets import (
     QApplication,
@@ -23,20 +21,9 @@ from qfluentwidgets import (
 )
 
 # --- 页面模块 ---
-from app.interfaces.component_developer import ComponentDeveloperPage
-from app.interfaces.component_market_interface import PluginManagerCenter
 from app.interfaces.exported_project_interface import ExportedProjectsPage
-from app.interfaces.home_interface import HomeInterface
 from app.interfaces.package_manager_interface import EnvManagerUI
-from app.interfaces.update_checker import UpdateChecker
-from app.interfaces.workflow_manager_interface.main_widget import (
-    WorkflowCanvasGalleryPage,
-)
-from app.plugins.constants import PluginType
-from app.plugins.plugin_manager import UnifiedPluginManager
-
 # --- 核心服务 ---
-from app.scan_components import ComponentUsageTracker, ComponentScanner
 from app.utils.config import Settings
 from app.utils.utils import get_icon
 from app.widgets.dialog_widget.logger_dialog import LogPopupWidget
@@ -58,10 +45,10 @@ class LowCodeWindow(FluentWindow):
     def _init_window(self):
         self.setAttribute(Qt.WA_TranslucentBackground)
         setTheme(Theme.DARK)
-        self.setWindowIcon(get_icon("logoico"))
+        self.setWindowIcon(get_icon("大模型"))
 
         # 使用 self.tr 进行国际化
-        self.setWindowTitle(self.tr("Canvas Mind"))
+        self.setWindowTitle(self.tr("LLM Chatter"))
 
         # 窗口尺寸
         screen_rect = QDesktopWidget().screenGeometry()
@@ -78,7 +65,7 @@ class LowCodeWindow(FluentWindow):
         self.navigationInterface.setExpandWidth(175)
 
     def _setup_splash_and_startup(self):
-        self.splashScreen = SplashScreen(get_icon("logo"), self)
+        self.splashScreen = SplashScreen(get_icon("大模型"), self)
         self.splashScreen.titleBar.hide()
         self.splashScreen.setIconSize(QSize(400, 400))
         self.splashScreen.setFixedSize(500, 500)
@@ -90,24 +77,24 @@ class LowCodeWindow(FluentWindow):
     def _init_services(self):
         # ------------初始化日志系统
         self._setup_log_viewer()
-        # ------------启动监听器
-        ComponentUsageTracker()  # 日志使用情况监督
-        ComponentScanner()  # 日志实时监控服务
+        # # ------------启动监听器
+        # ComponentUsageTracker()  # 日志使用情况监督
+        # ComponentScanner()  # 日志实时监控服务
 
         # ------------插件预加载
-        plugin_manager = UnifiedPluginManager.get_instance()
+        # plugin_manager = UnifiedPluginManager.get_instance()
 
-        # ------------插件预加载（节点）
-        node_plugin_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "plugins", "node_plugins")
-        )
-        plugin_manager.load_plugins(node_plugin_dir, plugin_type=PluginType.NODE)
-
-        # ------------加载触发器插件
-        trigger_plugin_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins")
-        )
-        plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
+        # # ------------插件预加载（节点）
+        # node_plugin_dir = os.path.abspath(
+        #     os.path.join(os.path.dirname(__file__), "plugins", "node_plugins")
+        # )
+        # plugin_manager.load_plugins(node_plugin_dir, plugin_type=PluginType.NODE)
+        #
+        # # ------------加载触发器插件
+        # trigger_plugin_dir = os.path.abspath(
+        #     os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins")
+        # )
+        # plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
         # ------------加载配置
         self.config = Settings.get_instance()
         setFontFamilies([self.config.canvas_font_selected.value])
@@ -116,31 +103,31 @@ class LowCodeWindow(FluentWindow):
 
     # region [3. 页面实例化]
     def _init_pages(self):
-        self.updater = UpdateChecker(self)
+        # self.updater = UpdateChecker(self)
         # 页面按需创建
-        self.workflow_manager = WorkflowCanvasGalleryPage(self)
+        # self.workflow_manager = WorkflowCanvasGalleryPage(self)
         self.package_manager = EnvManagerUI(self)
-        self.home_interface = HomeInterface(self)
-        self.develop_page = ComponentDeveloperPage(self)
-        self.market_page = PluginManagerCenter(self)
+        # self.home_interface = HomeInterface(self)
+        # self.develop_page = ComponentDeveloperPage(self)
+        # self.market_page = PluginManagerCenter(self)
         self.project_manager = ExportedProjectsPage(self)
 
-        # 信号连接
-        self.workflow_manager.component_code_changed.connect(
-            self.develop_page.save_component_by_full_path
-        )
-        self.workflow_manager.node_request_edit.connect(
-            lambda uuid: (
-                self.switchTo(self.develop_page),
-                self.develop_page.load_component(uuid=uuid),
-            )
-        )
-        self.project_manager.exported_projects_changed.connect(
-            self.workflow_manager.exported_projects_changed.emit
-        )
-        self.project_manager.running_projects_changed.connect(
-            self.workflow_manager.running_projects_changed.emit
-        )
+        # # 信号连接
+        # self.workflow_manager.component_code_changed.connect(
+        #     self.develop_page.save_component_by_full_path
+        # )
+        # self.workflow_manager.node_request_edit.connect(
+        #     lambda uuid: (
+        #         self.switchTo(self.develop_page),
+        #         self.develop_page.load_component(uuid=uuid),
+        #     )
+        # )
+        # self.project_manager.exported_projects_changed.connect(
+        #     self.workflow_manager.exported_projects_changed.emit
+        # )
+        # self.project_manager.running_projects_changed.connect(
+        #     self.workflow_manager.running_projects_changed.emit
+        # )
 
     # endregion
 
@@ -148,19 +135,19 @@ class LowCodeWindow(FluentWindow):
     def _setup_navigation(self):
         """所有导航栏的 text 参数都使用了 self.tr()"""
 
-        # 主功能区
-        self.addSubInterface(self.home_interface, FluentIcon.HOME, self.tr("首页"))
-
-        workflow_item = self.addSubInterface(
-            self.workflow_manager, get_icon("画布管理"), self.tr("画布管理")
-        )
-        workflow_item.clicked.connect(self._on_workflow_clicked)
-
-        self.addSubInterface(self.develop_page, get_icon("组件"), self.tr("组件管理"))
-
-        self.addSubInterface(
-            self.market_page, get_icon("插件市场"), self.tr("插件市场")
-        )
+        # # 主功能区
+        # self.addSubInterface(self.home_interface, FluentIcon.HOME, self.tr("首页"))
+        #
+        # workflow_item = self.addSubInterface(
+        #     self.workflow_manager, get_icon("画布管理"), self.tr("画布管理")
+        # )
+        # workflow_item.clicked.connect(self._on_workflow_clicked)
+        #
+        # self.addSubInterface(self.develop_page, get_icon("组件"), self.tr("组件管理"))
+        #
+        # self.addSubInterface(
+        #     self.market_page, get_icon("插件市场"), self.tr("插件市场")
+        # )
 
         project_item = self.addSubInterface(
             self.project_manager, get_icon("项目"), self.tr("项目管理")
@@ -171,15 +158,15 @@ class LowCodeWindow(FluentWindow):
             self.package_manager, get_icon("工具包"), self.tr("环境管理")
         )
 
-        # 底部功能区
-        self.navigationInterface.addItem(
-            routeKey="update",
-            icon=FluentIcon.SYNC,
-            text=self.tr("检查更新"),
-            onClick=self.updater.check_update,
-            selectable=False,
-            position=NavigationItemPosition.BOTTOM,
-        )
+        # # 底部功能区
+        # self.navigationInterface.addItem(
+        #     routeKey="update",
+        #     icon=FluentIcon.SYNC,
+        #     text=self.tr("检查更新"),
+        #     onClick=self.updater.check_update,
+        #     selectable=False,
+        #     position=NavigationItemPosition.BOTTOM,
+        # )
 
         self.navigationInterface.addItem(
             routeKey="log",
@@ -288,8 +275,8 @@ class LowCodeWindow(FluentWindow):
             self.desktop_w // 2 - self.width() // 2,
             self.desktop_h // 2 - self.height() // 2,
         )
-        if self.config.auto_check_update.value:
-            QtCore.QTimer.singleShot(500, self.updater.check_update)
+        # if self.config.auto_check_update.value:
+        #     QtCore.QTimer.singleShot(500, self.updater.check_update)
 
     # endregion
     # --- 新增区域：系统托盘与关闭逻辑 ---
@@ -297,7 +284,7 @@ class LowCodeWindow(FluentWindow):
     def _init_system_tray(self):
         """初始化系统托盘图标"""
         self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(get_icon("logoico"))  # 使用您现有的图标获取方法
+        self.tray_icon.setIcon(get_icon("大模型"))  # 使用您现有的图标获取方法
 
         # 创建托盘菜单
         tray_menu = QMenu()

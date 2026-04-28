@@ -70,88 +70,11 @@ class ExportedProjectsPage(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # === 顶部工具栏 ===
-        top_bar = QHBoxLayout()
-        top_bar.setSpacing(5)  # 增加间距
-        top_bar.setContentsMargins(24, 16, 24, 10)  # 优化边距
-
-        self.sort_field_combo = ComboBox(self)
-        self.sort_field_combo.addItems(["创建时间", "名称"])
-        self.sort_field_combo.setCurrentIndex(0)
-        self.sort_field_combo.setFixedWidth(100)
-        self.sort_field_combo.currentIndexChanged.connect(self._on_sort_changed)
-
-        self.sort_order_button = TransparentToggleToolButton(self)
-        self.sort_order_button.setIconSize(QSize(18, 18))
-        self.sort_order_button.setIcon(get_icon("降序"))
-        self.sort_order_button.setChecked(False)
-        self.sort_order_button.setToolTip("当前：降序（点击切换为升序）")
-        self.sort_order_button.clicked.connect(self._on_sort_order_changed)
-
-        self.search_line_edit = SearchLineEdit(self)
-        self.search_line_edit.setPlaceholderText("搜索项目名称...")
-        self.search_line_edit.setFixedWidth(200)  # 加宽搜索框
-        self.search_line_edit.textChanged.connect(self._on_search_changed)
-
-        self.import_btn = TransparentToolButton(get_icon("导入"), self)
-        self.import_btn.setIconSize(QSize(24, 24))
-        self.import_btn.setToolTip("导入已有项目")
-        self.import_btn.clicked.connect(self.import_projects)
-
-        top_bar.addWidget(self.search_line_edit)
-        top_bar.addWidget(self.sort_field_combo)
-        top_bar.addWidget(self.sort_order_button)
-        top_bar.addStretch(1)
-        top_bar.addWidget(self.import_btn)
-
-        # --- 左侧：项目列表 ---
-        left_widget = QWidget()
-        left_widget.setStyleSheet("background-color: transparent;")
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(0)
-        left_layout.addLayout(top_bar)
-
-        self.scroll_area = SmoothScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        self.scroll_widget = QWidget()
-        self.scroll_widget.setStyleSheet("background-color: transparent;")
-        self.list_layout = QVBoxLayout(self.scroll_widget)
-        self.list_layout.setContentsMargins(24, 10, 24, 20)  # 增加两侧边距
-        self.list_layout.setSpacing(16)  # 增加卡片间距
-        self.list_layout.setAlignment(Qt.AlignTop)  # 顶部对齐
-        self.scroll_area.setWidget(self.scroll_widget)
-
-        left_layout.addWidget(self.scroll_area, 1)
-
         # --- 右侧：详情面板 ---
         self.side_dock_area = SideDockArea(self, DockCategory.PROJECT)
-        self.service_test_tool = self.side_dock_area.get_tool_instance("API 调试台")
-        self.project_logs_tool = self.side_dock_area.get_tool_instance("项目日志")
-        self.project_info_tool = self.side_dock_area.get_tool_instance("项目基本信息")
+        self.side_dock_area.switch_to("大模型对话")
+        self.llm_chatter = self.side_dock_area.get_tool_instance("大模型对话")
 
-        # --- 分页器 ---
-        self.pips_pager = PipsPager(Qt.Horizontal)
-        self.pips_pager.setPageNumber(1)
-        self.pips_pager.currentIndexChanged.connect(self._on_page_changed)
-        self.pips_pager.setNextButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        self.pips_pager.setPreviousButtonDisplayMode(PipsScrollButtonDisplayMode.ALWAYS)
-        # self.pips_pager.setFixedHeight(20)
-        left_layout.addWidget(self.pips_pager)
-
-        # 简单美化一下分页器容器背景，使其与列表有区分（可选）
-        pager_container = QWidget()
-        pager_layout = QHBoxLayout(pager_container)
-        pager_layout.setContentsMargins(0, 0, 0, 5)
-        pager_layout.addWidget(self.pips_pager)
-        left_layout.addWidget(pager_container)
-
-        main_layout.addWidget(left_widget)
         main_layout.addWidget(self.side_dock_area, 1)
         main_layout.addWidget(self.side_dock_area.tool_panel)
 
@@ -160,12 +83,10 @@ class ExportedProjectsPage(QWidget):
         return self.llm_context_provider.context_register
 
     def hide_splitter(self):
-        self.splitter.setSizes(HIDE_SPLITTER_SIZES)
-        self.splitter.update()
+        pass
 
     def show_splitter(self):
-        self.splitter.setSizes(DEFAULT_SPLITTER_SIZES)
-        self.splitter.update()
+        pass
 
     def on_card_clicked(self, card: ProjectCard):
         """处理卡片点击事件，处理视觉选中效果"""
@@ -299,7 +220,7 @@ class ExportedProjectsPage(QWidget):
         if self._is_loading:
             return
         self._is_loading = True
-        QTimer.singleShot(10, self._scan_projects)
+        # QTimer.singleShot(10, self._scan_projects)
 
     def _scan_projects(self):
         self.export_dir = self._get_default_export_dir()
@@ -320,7 +241,7 @@ class ExportedProjectsPage(QWidget):
                         }
                     except:
                         project_info_map[project_dir] = {'ctime_ts': 0, 'ctime': '未知'}
-        self._on_scan_finished(project_dirs, project_info_map)
+        # self._on_scan_finished(project_dirs, project_info_map)
 
     def _on_scan_finished(self, project_dirs: List[str], project_info_map: dict):
         self._is_loading = False
