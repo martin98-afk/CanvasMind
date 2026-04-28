@@ -43,7 +43,7 @@ class ToolExecutor:
             try:
                 from app.utils.utils import resource_path
 
-                workdir = resource_path("app")
+                workdir = resource_path("")
             except Exception:
                 workdir = os.path.dirname(
                     os.path.dirname(

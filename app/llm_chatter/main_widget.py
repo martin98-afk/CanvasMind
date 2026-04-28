@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import re
+from pathlib import Path
+
 import sip
 import ctypes
 from datetime import datetime
@@ -222,7 +224,7 @@ class OpenAIChatToolWindow(ToolWindow):
         canvas_name = getattr(self.homepage, "workflow_name", "default") or "default"
 
         self._memory_manager = MemoryManagerCore(canvas_name)
-        self._tool_executor = ToolExecutor(self.homepage)
+        self._tool_executor = ToolExecutor(self.homepage, workdir=Path(__file__).parent.parent.parent)
         self._tool_executor.set_memory_manager(self._memory_manager)
         self._tool_executor.set_llm_config_getter(self._get_current_model_config)
         self._tool_executor.set_session_messages_getter(
