@@ -643,6 +643,7 @@ class ToolExecutor:
 
             session_id = self._session_id or ""
             agent_id = ""
+
             # 尝试获取当前 agent id
             try:
                 from app.llm_chatter.core.agent_registry import get_agent_registry
@@ -650,8 +651,13 @@ class ToolExecutor:
                 agent = registry.get_agent_by_session(session_id)
                 if agent:
                     agent_id = agent.id
-            except Exception:
-                pass
+                    logger.info(f"[AgentTools] Found agent: {agent_id} for session: {session_id}")
+                else:
+                    # 如果没有找到，尝试列出所有 agent 用于调试
+                    all_agents = registry.list_all_agents_with_status()
+                    logger.warning(f"[AgentTools] No agent for session {session_id}, all agents: {all_agents}")
+            except Exception as e:
+                logger.error(f"[AgentTools] Error getting agent: {e}")
 
             agent_tools = create_agent_tools(session_id, agent_id)
 

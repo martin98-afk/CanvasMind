@@ -608,46 +608,58 @@ class OpenAIChatWorker(QThread):
     def _fix_tool_result_order(self, messages: List[Dict]) -> tuple[List[Dict], bool]:
         """
         修复消息列表中 tool result 顺序问题。
-        
+
         处理 API 格式消息（tool 消息只有 role, tool_call_id, name, content）。
         规则：每个 tool 消息的 tool_call_id 必须与紧邻前一个 assistant 消息的 tool_calls 中的 id 匹配。
-        
+        对于并行 tool calls，所有 tool results 必须按顺序紧跟其后。
+
         Returns:
             (修复后的消息列表, 是否进行了修复)
         """
         fixed_messages: List[Dict] = []
         modified = False
-        
+
         # 记录最近一个包含 tool_calls 的 assistant 消息的 tool_call ids
-        recent_tool_call_ids: set = set()
-        
+        # 用 list 而非 set，保留顺序以便正确匹配并行 tool calls
+        pending_tool_call_ids: List[str] = []
+        last_assistant_has_tool_calls: bool = False
+
         for msg in messages:
             role = msg.get("role", "")
-            
+
             if role == "assistant":
+                # 如果前一个 assistant 有未处理的 tool_calls，清理它的 tool_calls
+                if pending_tool_call_ids:
+                    logger.warning(
+                        f"[ToolCall修复] assistant 的 tool_calls {pending_tool_call_ids} "
+                        f"缺少对应 result，移除 tool_calls"
+                    )
+                    modified = True
+                    # 移除前一个 assistant 消息的 tool_calls
+                    if fixed_messages and fixed_messages[-1].get("role") == "assistant":
+                        fixed_messages[-1] = {k: v for k, v in fixed_messages[-1].items() if k != "tool_calls"}
+
                 # 更新最近的有效 tool_call ids
                 tool_calls = msg.get("tool_calls") or []
-                tool_call_ids = {tc.get("id") for tc in tool_calls if tc.get("id")}
-                
-                # 检查是否包含 tool_calls
-                has_tool_calls = bool(tool_call_ids)
-                
-                if has_tool_calls:
-                    recent_tool_call_ids = tool_call_ids
-                else:
-                    # 如果 assistant 消息没有 tool_calls，清空记录
-                    recent_tool_call_ids = set()
-                    
+                pending_tool_call_ids = [tc.get("id") for tc in tool_calls if tc.get("id")]
+                last_assistant_has_tool_calls = bool(pending_tool_call_ids)
+
                 fixed_messages.append(msg)
-                
+
             elif role == "tool":
                 tool_call_id = msg.get("tool_call_id", "")
-                
-                # 检查这个 tool result 是否匹配最近的 tool_call
-                if tool_call_id and tool_call_id in recent_tool_call_ids:
-                    # 匹配，保留并清空记录（因为后续的 tool result 应该匹配下一个 assistant）
+
+                # 检查这个 tool result 是否匹配待处理的 tool_call（用顺序 list 匹配）
+                if tool_call_id and pending_tool_call_ids and tool_call_id == pending_tool_call_ids[0]:
+                    # 匹配，保留并从 pending list 中移除第一个
                     fixed_messages.append(msg)
-                    recent_tool_call_ids = set()
+                    pending_tool_call_ids.pop(0)
+                elif tool_call_id and pending_tool_call_ids and tool_call_id in pending_tool_call_ids:
+                    # tool_call_id 在 pending list 中但不是第一个（顺序错误）
+                    logger.warning(f"[ToolCall修复] tool result 顺序错误: id={tool_call_id[:20]}...")
+                    modified = True
+                    # 跳过这条消息（相当于删除）
+                    continue
                 elif tool_call_id:
                     # 不匹配，这是一个孤立的 tool result，需要删除
                     logger.warning(f"[ToolCall修复] 移除孤立的 tool result: id={tool_call_id[:20]}...")
@@ -658,9 +670,23 @@ class OpenAIChatWorker(QThread):
                     modified = True
             else:
                 fixed_messages.append(msg)
-                # 非 assistant/tool 消息后，tool_call 上下文应该结束
-                recent_tool_call_ids = set()
-        
+                # 非 assistant/tool 消息后，清理 pending 状态
+                if pending_tool_call_ids:
+                    logger.warning(f"[ToolCall修复] 遇到 {role} 消息，清空未完成的 tool_calls: {pending_tool_call_ids}")
+                    modified = True
+                    # 如果最后一个 assistant 消息有 tool_calls，移除它们
+                    if fixed_messages and fixed_messages[-1].get("role") == "assistant":
+                        fixed_messages[-1] = {k: v for k, v in fixed_messages[-1].items() if k != "tool_calls"}
+                pending_tool_call_ids = []
+                last_assistant_has_tool_calls = False
+
+        # 处理结尾：检查是否有未完成的 tool_calls
+        if pending_tool_call_ids:
+            logger.warning(f"[ToolCall修复] 消息列表末尾有未完成的 tool_calls: {pending_tool_call_ids}，移除 tool_calls")
+            modified = True
+            if fixed_messages and fixed_messages[-1].get("role") == "assistant":
+                fixed_messages[-1] = {k: v for k, v in fixed_messages[-1].items() if k != "tool_calls"}
+
         return fixed_messages, modified
 
     def _make_api_call(self, messages: List[Dict]) -> bool:

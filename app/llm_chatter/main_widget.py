@@ -594,6 +594,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 添加角色选择器
         self._role_selector = RoleSelector(self)
         self._role_selector.roleChanged.connect(self._on_agent_role_changed)
+        self._role_selector.roleCleared.connect(self._on_agent_role_cleared)
         self._role_selector.editRequested.connect(self._on_edit_role_requested)
         right_layout.addWidget(self._role_selector)
 
@@ -3187,16 +3188,18 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception:
             pass
 
-        # 关闭时更新 agent 状态
+        # 关闭时更新 agent 状态（如果注册了 agent）
         try:
             from app.llm_chatter.core.agent_registry import get_agent_registry
             agent_reg = get_agent_registry()
             if self._current_session_id:
-                agent_reg.update_status(
-                    self._current_session_id,
-                    status="done",
-                    task=""
-                )
+                current_agent = agent_reg.get_agent_by_session(self._current_session_id)
+                if current_agent:
+                    agent_reg.update_status(
+                        self._current_session_id,
+                        status="done",
+                        task=""
+                    )
         except Exception:
             pass
 
@@ -3208,6 +3211,7 @@ class OpenAIChatToolWindow(ToolWindow):
         """角色变化时更新 agent 注册"""
         session_id = self._current_session_id
         if not session_id:
+            logger.warning(f"[AgentRole] No session_id, cannot register")
             return
 
         # 获取角色配置
@@ -3218,19 +3222,35 @@ class OpenAIChatToolWindow(ToolWindow):
         if role_config:
             # 更新/注册 agent
             agent_reg = get_agent_registry()
-            agent_reg.register(
+            agent = agent_reg.register(
                 session_id=session_id,
                 role_type=role_id,
                 name=role_config.name,
                 prompt=role_config.prompt,
                 color=role_config.color,
             )
+            logger.info(f"[AgentRole] Registered: {agent.id} for session: {session_id}")
 
             # 更新输入区的 agent 标识
             if hasattr(self, 'input_area'):
                 self.input_area.set_agent_info(role_id, role_config.name, role_config.color)
+        else:
+            logger.warning(f"[AgentRole] No role config for: {role_id}")
 
         logger.info(f"[AgentRole] Changed to: {role_id}")
+
+    def _on_agent_role_cleared(self):
+        """清除角色时注销 agent"""
+        session_id = self._current_session_id
+        if not session_id:
+            return
+
+        # 注销 agent
+        from app.llm_chatter.core.agent_registry import get_agent_registry
+        agent_reg = get_agent_registry()
+        agent_reg.unregister(session_id)
+
+        logger.info(f"[AgentRole] Cleared for session: {session_id}")
 
     def _on_edit_role_requested(self, role_id: str):
         """打开角色编辑弹窗"""
@@ -3255,11 +3275,18 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         from app.llm_chatter.core.inter_agent_message import get_message_manager
+        from app.llm_chatter.core.agent_registry import get_agent_registry
 
         msg_manager = get_message_manager()
+        agent_reg = get_agent_registry()
 
-        # 获取当前会话的所有待处理消息（只取 pending 状态的）
-        pending = msg_manager.get_pending_messages(self._current_session_id)
+        # 获取当前会话绑定的 agent_id
+        current_agent = agent_reg.get_agent_by_session(self._current_session_id)
+        if not current_agent:
+            return
+
+        # 使用 agent_id 获取消息（更精确）
+        pending = msg_manager.get_pending_messages(self._current_session_id, current_agent.id)
 
         if not pending:
             return
@@ -3273,11 +3300,17 @@ class OpenAIChatToolWindow(ToolWindow):
                 if msg.status != "pending":
                     continue
 
+                # 避免重复处理同一消息
+                if getattr(self, '_last_processed_msg_id', None) == msg.id:
+                    continue
+
+                self._last_processed_msg_id = msg.id
+
                 # 自动投递到会话
                 self._deliver_inter_agent_message(msg)
 
-                # 从队列中移除消息（不仅标记为 delivered，还要彻底移除）
-                msg_manager.pop_message(self._current_session_id)
+                # 从队列中移除消息
+                msg_manager.pop_message(self._current_session_id, current_agent.id)
         finally:
             # 清除处理标记
             self._processing_messages = False
