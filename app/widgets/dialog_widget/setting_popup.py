@@ -18,15 +18,11 @@ from qfluentwidgets import (
     StrongBodyLabel,
     TransparentPushButton,
     BodyLabel,
-    PrimaryPushSettingCard,
-    SwitchSettingCard,
     FluentIcon,
 )
 
 from app.utils.config import Settings
 from app.utils.utils import get_icon, get_unified_font
-from app.widgets.card_widget.list_setting_card import FontListSettingCard
-from app.widgets.side_dock_area.tool_window import DockCategory
 
 
 class SettingDialog(QDialog):
@@ -35,18 +31,9 @@ class SettingDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._parent_widget = None
-        self._resizing = False
-        self._start_pos = None
-        self._start_width = None
-        self._min_width = 750
-        self._max_width = 1200
-        self._base_x = 0
-        self._resize_zone_width = 5
-        self._follow_window = False
-        self.cfg = Settings.get_instance()
-        self._last_parent_pos = None
         self._event_filter_installed = False
         self._plugin_cards = {}
+        self.cfg = Settings.get_instance()
 
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -62,76 +49,6 @@ class SettingDialog(QDialog):
         saved_states = self.cfg.side_dock_plugins.value
         if saved_states:
             SideDockRegistry.load_states_from_config(saved_states)
-
-    def _create_port_setting_card(self, title, content, parent=None):
-        """创建端口设置卡片"""
-        from qfluentwidgets import SettingCard
-
-        class PortSettingCard(SettingCard):
-            def __init__(self, title, content, cfg, parent=None):
-                super().__init__(FluentIcon.INFO, title, content, parent)
-                self.cfg = cfg
-
-                self.spinBox = QSpinBox()
-                self.spinBox.setFixedWidth(100)
-                self.spinBox.setRange(1024, 65535)
-                self.spinBox.setValue(cfg.llm_api_port.value)
-                self.spinBox.valueChanged.connect(self._on_value_changed)
-
-                self.hBoxLayout.addWidget(self.spinBox)
-                self.hBoxLayout.addSpacing(16)
-
-            def _on_value_changed(self, value):
-                self.cfg.set(self.cfg.llm_api_port, value, save=True)
-                # 更新 API 服务开关卡片的描述
-                if hasattr(self.parent(), 'llmApiEnabledCard'):
-                    self.parent().llmApiEnabledCard.setContent(
-                        self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(value))
-                    )
-
-        card = PortSettingCard(title, content, self.cfg, parent)
-        return card
-
-    def _on_llm_api_enabled_changed(self, enabled):
-        """API 服务开关变化时启动/停止服务"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
-            start_llm_api_service,
-            stop_llm_api_service,
-            is_service_running,
-            get_llm_api_service,
-        )
-
-        if enabled:
-            if not is_service_running():
-                service = get_llm_api_service()
-                service.port = self.cfg.llm_api_port.value
-                service.start(background=True)
-        else:
-            if is_service_running():
-                stop_llm_api_service()
-        self.onConfigChanged()
-
-    def _on_llm_api_port_changed(self, port):
-        """端口变化时，如果服务正在运行则重启服务"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
-            start_llm_api_service,
-            stop_llm_api_service,
-            is_service_running,
-            get_llm_api_service,
-        )
-
-        if self.cfg.llm_api_enabled.value and is_service_running():
-            # 停止旧服务
-            stop_llm_api_service()
-            # 用新端口启动服务
-            service = get_llm_api_service()
-            service.port = port
-            service.start(background=True)
-        # 更新 API 服务开关卡片的描述
-        if hasattr(self, 'llmApiEnabledCard'):
-            self.llmApiEnabledCard.setContent(
-                self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(port))
-            )
 
     def setup_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
@@ -219,14 +136,7 @@ class SettingDialog(QDialog):
         self.nav_items = {}
         self.nav_buttons = {}
         categories = [
-            ("version", self.tr("通用"), "配置"),
             ("llm", self.tr("大模型"), "大模型"),
-            ("path", self.tr("路径管理"), "画布管理"),
-            ("runtime", self.tr("运行环境"), "运行环境"),
-            ("canvas_run", self.tr("画布运行"), "运行模式"),
-            ("canvas_io", self.tr("画布保存"), "自动保存"),
-            ("canvas_display", self.tr("画布显示"), "画布"),
-            ("shortcuts", self.tr("快捷键"), "快捷键"),
             ("sidebar_plugins", self.tr("侧边栏插件"), "收起侧边栏"),
         ]
         for key, label, icon_name in categories:
@@ -241,7 +151,7 @@ class SettingDialog(QDialog):
         footer_layout.setContentsMargins(12, 0, 0, 0)
         footer_layout.setSpacing(2)
 
-        app_name = StrongBodyLabel("CanvasMind")
+        app_name = StrongBodyLabel("LLMChatter")
         app_name.setFont(get_unified_font(12, True))
         app_name.setStyleSheet("color: #888888; background: transparent;")
         footer_layout.addWidget(app_name)
@@ -299,27 +209,14 @@ class SettingDialog(QDialog):
         self.content_widgets = {}
         self._create_content_pages()
 
-        self._select_nav("version")
+        self._select_nav("llm")
 
         content_layout.addWidget(self.nav_widget)
         content_layout.addWidget(self.content_stack, 1)
 
         container_layout.addWidget(content_widget, 1)
 
-        self.resize(1000, 600)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._update_content_width()
-
-    def _update_content_width(self):
-        nav_width = 180
-        scrollbar_width = 20
-        margin = 32
-        available = self.width() - nav_width - scrollbar_width - margin
-        for key, scroll in self.content_widgets.items():
-            if scroll.widget():
-                scroll.widget().setMaximumWidth(max(available, 500))
+        self.resize(800, 500)
 
     def _create_nav_button(self, key, text, icon_name=None):
         btn = QPushButton()
@@ -391,17 +288,7 @@ class SettingDialog(QDialog):
             self.content_stack.setCurrentWidget(self.content_widgets[key])
 
     def _create_content_pages(self):
-        keys = [
-            "version",
-            "llm",
-            "path",
-            "runtime",
-            "canvas_run",
-            "canvas_io",
-            "canvas_display",
-            "shortcuts",
-            "sidebar_plugins",
-        ]
+        keys = ["llm"]
         for key in keys:
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
@@ -415,89 +302,13 @@ class SettingDialog(QDialog):
             layout.setContentsMargins(16, 16, 16, 16)
             layout.setSpacing(16)
 
-            if key == "version":
-                self._setup_version_info(layout)
-            elif key == "llm":
+            if key == "llm":
                 self._setup_llm_settings(layout)
-            elif key == "path":
-                self._setup_path_management_settings(layout)
-            elif key == "runtime":
-                self._setup_runtime_env_settings(layout)
-            elif key == "canvas_run":
-                self._setup_canvas_run_settings(layout)
-            elif key == "canvas_io":
-                self._setup_canvas_io_settings(layout)
-            elif key == "canvas_display":
-                self._setup_canvas_display_settings(layout)
-            elif key == "shortcuts":
-                self._setup_shortcuts_settings(layout)
-            elif key == "sidebar_plugins":
-                self._setup_sidebar_plugins_settings(layout)
 
             layout.addStretch(1)
             scroll.setWidget(content)
             self.content_widgets[key] = scroll
             self.content_stack.addWidget(scroll)
-
-    def _setup_version_info(self, layout):
-        self.versionGroup = QWidget()
-        self.versionGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        versionGroupLayout = QVBoxLayout(self.versionGroup)
-        versionGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("通用设置"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        versionGroupLayout.addWidget(group_label)
-
-        copyright_text = self.tr("© 版权所有 2025 martin-afk. 当前版本：{}").format(
-            self.cfg.current_version
-        )
-        self.info_card = PrimaryPushSettingCard(
-            text=self.tr("检查更新"),
-            icon=FluentIcon.INFO,
-            title=self.tr("关于"),
-            content=copyright_text,
-            parent=self.versionGroup,
-        )
-        self.info_card.clicked.connect(self._on_check_update)
-
-        self.userNameCard = PrimaryPushSettingCard(
-            self.cfg.user_name.value,
-            get_icon("用户名"),
-            self.tr("当前用户名"),
-            self.tr("用户名用于云端组件管理"),
-            parent=self.versionGroup,
-        )
-        self.userNameCard.clicked.connect(
-            lambda: self._on_user_name_clicked(self.userNameCard.button)
-        )
-
-        self.autoUpdateCard = SwitchSettingCard(
-            get_icon("更新"),
-            self.tr("自动更新"),
-            self.tr("是否开启自动版本更新检查"),
-            configItem=self.cfg.auto_check_update,
-            parent=self.versionGroup,
-        )
-        self.cfg.auto_check_update.valueChanged.connect(self.onConfigChanged)
-
-        self.canvasFontCard = FontListSettingCard(
-            icon=get_icon("字体"),
-            fontListItem=self.cfg.canvas_font_list,
-            fontSelectedItem=self.cfg.canvas_font_selected,
-            title=self.tr("画布显示字体设置"),
-            content=self.tr("管理字体列表和选择当前字体"),
-            parent=self.versionGroup,
-            home=self,
-        )
-        self.canvasFontCard.fontChanged.connect(self.onConfigChanged)
-        self.canvasFontCard.fontSelectedChanged.connect(self.onConfigChanged)
-
-        versionGroupLayout.addWidget(self.info_card)
-        versionGroupLayout.addWidget(self.userNameCard)
-        versionGroupLayout.addWidget(self.autoUpdateCard)
-        versionGroupLayout.addWidget(self.canvasFontCard)
-        layout.addWidget(self.versionGroup)
 
     def _setup_llm_settings(self, layout):
         from qfluentwidgets import (
@@ -590,404 +401,75 @@ class SettingDialog(QDialog):
         llmGroupLayout.addWidget(self.llmApiPortCard)
         layout.addWidget(self.llmGroup)
 
-    def _setup_path_management_settings(self, layout):
-        from qfluentwidgets import FolderListSettingCard
+    def _create_port_setting_card(self, title, content, parent=None):
+        """创建端口设置卡片"""
+        from qfluentwidgets import SettingCard
 
-        self.pathManagementGroup = QWidget()
-        self.pathManagementGroup.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
+        class PortSettingCard(SettingCard):
+            def __init__(self, title, content, cfg, parent=None):
+                super().__init__(FluentIcon.INFO, title, content, parent)
+                self.cfg = cfg
+
+                self.spinBox = QSpinBox()
+                self.spinBox.setFixedWidth(100)
+                self.spinBox.setRange(1024, 65535)
+                self.spinBox.setValue(cfg.llm_api_port.value)
+                self.spinBox.valueChanged.connect(self._on_value_changed)
+
+                self.hBoxLayout.addWidget(self.spinBox)
+                self.hBoxLayout.addSpacing(16)
+
+            def _on_value_changed(self, value):
+                self.cfg.set(self.cfg.llm_api_port, value, save=True)
+                # 更新 API 服务开关卡片的描述
+                if hasattr(self.parent(), 'llmApiEnabledCard'):
+                    self.parent().llmApiEnabledCard.setContent(
+                        self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(value))
+                    )
+
+        card = PortSettingCard(title, content, self.cfg, parent)
+        return card
+
+    def _on_llm_api_enabled_changed(self, enabled):
+        """API 服务开关变化时启动/停止服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+            start_llm_api_service,
+            stop_llm_api_service,
+            is_service_running,
+            get_llm_api_service,
         )
-        pathGroupLayout = QVBoxLayout(self.pathManagementGroup)
-        pathGroupLayout.setSpacing(10)
 
-        group_label = StrongBodyLabel(self.tr("路径管理"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        pathGroupLayout.addWidget(group_label)
+        if enabled:
+            if not is_service_running():
+                service = get_llm_api_service()
+                service.port = self.cfg.llm_api_port.value
+                service.start(background=True)
+        else:
+            if is_service_running():
+                stop_llm_api_service()
+        self.onConfigChanged()
 
-        canvas_label = StrongBodyLabel(self.tr("画布路径管理"))
-        canvas_label.setStyleSheet(
-            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
+    def _on_llm_api_port_changed(self, port):
+        """端口变化时，如果服务正在运行则重启服务"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+            start_llm_api_service,
+            stop_llm_api_service,
+            is_service_running,
+            get_llm_api_service,
         )
-        pathGroupLayout.addWidget(canvas_label)
 
-        self.workflowPathsCard = FolderListSettingCard(
-            configItem=self.cfg.workflow_paths,
-            title=self.tr("本地画布路径"),
-            content=self.tr("管理多个画布工作目录"),
-            directory="./",
-            parent=self.pathManagementGroup,
-        )
-        self.cfg.workflow_paths.valueChanged.connect(self.onConfigChanged)
-        pathGroupLayout.addWidget(self.workflowPathsCard)
-
-        project_label = StrongBodyLabel(self.tr("项目路径管理"))
-        project_label.setStyleSheet(
-            "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 8px;"
-        )
-        pathGroupLayout.addWidget(project_label)
-
-        self.projectPathsCard = FolderListSettingCard(
-            configItem=self.cfg.project_paths,
-            title=self.tr("本地项目路径"),
-            content=self.tr("管理多个项目工作目录"),
-            directory="./",
-            parent=self.pathManagementGroup,
-        )
-        self.cfg.project_paths.valueChanged.connect(self.onConfigChanged)
-        pathGroupLayout.addWidget(self.projectPathsCard)
-        layout.addWidget(self.pathManagementGroup)
-
-    def _setup_shortcuts_settings(self, layout):
-        from qfluentwidgets import BodyLabel
-
-        self.shortcutsGroup = QWidget()
-        self.shortcutsGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        shortcutsGroupLayout = QVBoxLayout(self.shortcutsGroup)
-        shortcutsGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("画布快捷键"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        shortcutsGroupLayout.addWidget(group_label)
-
-        shortcuts = [
-            ("Ctrl + 左键", "取消选点"),
-            ("Shift + 左键", "扩展选点"),
-            ("Alt + Shift + 左键拖拽", "切除连接管线"),
-            ("Ctrl + R", "运行选中节点"),
-            ("Delete", "删除选中节点"),
-            ("Ctrl + C", "复制选中节点"),
-            ("Ctrl + V", "黏贴选中节点"),
-            ("Ctrl + S", "保存画布"),
-            ("Ctrl + Z", "撤销"),
-            ("Ctrl + Y", "重做"),
-        ]
-
-        for keys, description in shortcuts:
-            shortcut_item = QWidget()
-            shortcut_item.setStyleSheet(
-                "background-color: #333333; border-radius: 6px; padding: 8px 12px;"
+        if self.cfg.llm_api_enabled.value and is_service_running():
+            # 停止旧服务
+            stop_llm_api_service()
+            # 用新端口启动服务
+            service = get_llm_api_service()
+            service.port = port
+            service.start(background=True)
+        # 更新 API 服务开关卡片的描述
+        if hasattr(self, 'llmApiEnabledCard'):
+            self.llmApiEnabledCard.setContent(
+                self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(port))
             )
-            shortcut_layout = QHBoxLayout(shortcut_item)
-            shortcut_layout.setContentsMargins(12, 6, 12, 6)
-
-            keys_label = BodyLabel(keys)
-            keys_label.setFont(get_unified_font(12, True))
-            keys_label.setStyleSheet(
-                "color: #4fc3f7; background: transparent; min-width: 180px;"
-            )
-
-            desc_label = BodyLabel(description)
-            desc_label.setFont(get_unified_font(12))
-            desc_label.setStyleSheet("color: #e0e0e0; background: transparent;")
-
-            shortcut_layout.addWidget(keys_label)
-            shortcut_layout.addStretch()
-            shortcut_layout.addWidget(desc_label)
-
-            shortcutsGroupLayout.addWidget(shortcut_item)
-
-        layout.addWidget(self.shortcutsGroup)
-
-    def _setup_runtime_env_settings(self, layout):
-        from qfluentwidgets import PrimaryPushSettingCard
-        from app.widgets.card_widget.list_setting_card import PackageListSettingCard
-
-        self.runtimeEnvGroup = QWidget()
-        self.runtimeEnvGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        runtimeGroupLayout = QVBoxLayout(self.runtimeEnvGroup)
-        runtimeGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("运行环境管理"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        runtimeGroupLayout.addWidget(group_label)
-
-        self.pythonVersionsCard = PackageListSettingCard(
-            icon=get_icon("python"),
-            configItem=self.cfg.python_versions,
-            title=self.tr("Python 版本"),
-            content=self.tr("选择支持的 Python 版本"),
-            parent=self.runtimeEnvGroup,
-            home=self,
-        )
-        self.cfg.python_versions.valueChanged.connect(self.onConfigChanged)
-
-        self.mirrorsCard = PackageListSettingCard(
-            icon=get_icon("镜像源"),
-            configItem=self.cfg.mirrors,
-            title=self.tr("镜像源管理"),
-            content=self.tr("选择合适的镜像源连接"),
-            parent=self.runtimeEnvGroup,
-            home=self,
-        )
-        self.cfg.mirrors.valueChanged.connect(self.onConfigChanged)
-
-        self.minicondaVersionCard = PrimaryPushSettingCard(
-            self.cfg.miniconda_version.value,
-            get_icon("Miniconda"),
-            self.tr("Miniconda 版本"),
-            self.tr("用于修改 Miniconda 安装的版本"),
-            parent=self.runtimeEnvGroup,
-        )
-        self.minicondaVersionCard.clicked.connect(
-            lambda: self._on_miniconda_version_clicked(self.minicondaVersionCard.button)
-        )
-
-        self.defaultPackagesCard = PackageListSettingCard(
-            icon=get_icon("安装包"),
-            configItem=self.cfg.default_packages,
-            title=self.tr("默认安装包"),
-            content=self.tr("管理默认安装的 Python 包"),
-            parent=self.runtimeEnvGroup,
-            home=self,
-        )
-        self.cfg.default_packages.valueChanged.connect(self.onConfigChanged)
-
-        runtimeGroupLayout.addWidget(self.pythonVersionsCard)
-        runtimeGroupLayout.addWidget(self.mirrorsCard)
-        runtimeGroupLayout.addWidget(self.minicondaVersionCard)
-        runtimeGroupLayout.addWidget(self.defaultPackagesCard)
-        layout.addWidget(self.runtimeEnvGroup)
-
-    def _setup_canvas_run_settings(self, layout):
-        from qfluentwidgets import (
-            SwitchSettingCard,
-            RangeSettingCard,
-            OptionsSettingCard,
-        )
-
-        self.canvasGroup = QWidget()
-        self.canvasGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        canvasGroupLayout = QVBoxLayout(self.canvasGroup)
-        canvasGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("画布运行设置"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        canvasGroupLayout.addWidget(group_label)
-
-        self.timeoutToggleCard = SwitchSettingCard(
-            get_icon("运行模式"),
-            self.tr("是否启用节点超时"),
-            self.tr("如果启用，节点在超时时间以后会自动中止"),
-            configItem=self.cfg.node_run_timeout_toggle,
-            parent=self.canvasGroup,
-        )
-        self.timeoutToggleCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.nodeTimeoutCard = RangeSettingCard(
-            self.cfg.node_run_timeout,
-            get_icon("运行模式"),
-            self.tr("节点运行超时时间（秒）"),
-            self.tr("超时节点自动中止"),
-            parent=self.canvasGroup,
-        )
-        self.nodeTimeoutCard.valueChanged.connect(self.onConfigChanged)
-
-        self.runParallelCard = SwitchSettingCard(
-            get_icon("运行模式"),
-            self.tr("是否并行运行"),
-            self.tr("是否并行运行画布节点"),
-            configItem=self.cfg.run_parallel,
-            parent=self.canvasGroup,
-        )
-        self.runParallelCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.parallelNumCard = RangeSettingCard(
-            self.cfg.run_parallel_max_workers,
-            get_icon("运行模式"),
-            self.tr("运行并行度"),
-            self.tr("最大并行度控制"),
-            parent=self.canvasGroup,
-        )
-        self.parallelNumCard.valueChanged.connect(self.onConfigChanged)
-
-        self.communicationMethodCard = OptionsSettingCard(
-            self.cfg.communication_method,
-            get_icon("运行模式"),
-            self.tr("节点与UI通信方式"),
-            self.tr("ZMQ通信或日志通信"),
-            texts=[self.tr("ZMQ通信"), self.tr("日志通信")],
-            parent=self.canvasGroup,
-        )
-        self.communicationMethodCard.optionChanged.connect(self.onConfigChanged)
-
-        canvasGroupLayout.addWidget(self.timeoutToggleCard)
-        canvasGroupLayout.addWidget(self.nodeTimeoutCard)
-        canvasGroupLayout.addWidget(self.runParallelCard)
-        canvasGroupLayout.addWidget(self.parallelNumCard)
-        canvasGroupLayout.addWidget(self.communicationMethodCard)
-        layout.addWidget(self.canvasGroup)
-
-    def _setup_canvas_io_settings(self, layout):
-        from qfluentwidgets import SwitchSettingCard, RangeSettingCard
-
-        self.canvasIOGroup = QWidget()
-        self.canvasIOGroup.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        canvasIOGroupLayout = QVBoxLayout(self.canvasIOGroup)
-        canvasIOGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("画布保存设置"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        canvasIOGroupLayout.addWidget(group_label)
-
-        self.autoSaveCard = SwitchSettingCard(
-            get_icon("自动保存"),
-            self.tr("自动保存"),
-            self.tr("每隔一段时间自动保存当前项目"),
-            configItem=self.cfg.canvas_auto_save,
-            parent=self.canvasIOGroup,
-        )
-        self.autoSaveCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.autoSaveIntervalCard = RangeSettingCard(
-            self.cfg.canvas_auto_save_interval,
-            get_icon("自动保存"),
-            self.tr("修改"),
-            self.tr("自动保存间隔 (秒)"),
-            parent=self.canvasIOGroup,
-        )
-        self.autoSaveIntervalCard.valueChanged.connect(self.onConfigChanged)
-
-        canvasIOGroupLayout.addWidget(self.autoSaveCard)
-        canvasIOGroupLayout.addWidget(self.autoSaveIntervalCard)
-        layout.addWidget(self.canvasIOGroup)
-
-    def _setup_canvas_display_settings(self, layout):
-        from qfluentwidgets import (
-            SwitchSettingCard,
-            RangeSettingCard,
-            OptionsSettingCard,
-        )
-
-        self.canvasDisplayGroup = QWidget()
-        self.canvasDisplayGroup.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
-        )
-        canvasDisplayGroupLayout = QVBoxLayout(self.canvasDisplayGroup)
-        canvasDisplayGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("画布显示设置"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        canvasDisplayGroupLayout.addWidget(group_label)
-
-        self.nodeAnimationCard = SwitchSettingCard(
-            get_icon("画布"),
-            self.tr("节点动画"),
-            self.tr("开关节点缩放、新建动画"),
-            configItem=self.cfg.node_animation,
-            parent=self.canvasDisplayGroup,
-        )
-        self.nodeAnimationCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.nodeResizeMemoryCard = SwitchSettingCard(
-            get_icon("画布"),
-            self.tr("节点缩放记忆"),
-            self.tr("用于控制画布加载时是否还原上一次保存时的节点缩放情况"),
-            configItem=self.cfg.canvas_resize_memory,
-            parent=self.canvasDisplayGroup,
-        )
-        self.nodeResizeMemoryCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.autoCollapseCard = SwitchSettingCard(
-            get_icon("画布"),
-            self.tr("Proxy模式自动收缩"),
-            self.tr("当节点处于隐藏控件的proxy模式下是否自动缩小节点为固定大小"),
-            configItem=self.cfg.canvas_auto_collapse,
-            parent=self.canvasDisplayGroup,
-        )
-        self.autoCollapseCard.checkedChanged.connect(self.onConfigChanged)
-
-        self.showGridCard = OptionsSettingCard(
-            self.cfg.canvas_grid_mode,
-            get_icon("画布"),
-            self.tr("显示网格"),
-            self.tr("在画布上显示辅助网格"),
-            texts=[self.tr("线网格"), self.tr("点网格"), self.tr("无网格")],
-            parent=self.canvasDisplayGroup,
-        )
-        self.showGridCard.optionChanged.connect(self.onConfigChanged)
-
-        self.NodeProxyCard = RangeSettingCard(
-            self.cfg.node_proxy_size,
-            get_icon("画布"),
-            self.tr("节点细节绘制距离"),
-            self.tr("设置节点中控件最小绘制距离"),
-            parent=self.canvasDisplayGroup,
-        )
-        self.NodeProxyCard.valueChanged.connect(self.onConfigChanged)
-
-        self.PipeWidthCard = RangeSettingCard(
-            self.cfg.canvas_pipe_width,
-            get_icon("画布"),
-            self.tr("画布连线粗细"),
-            self.tr("控制画布节点之间连线粗细"),
-            parent=self.canvasDisplayGroup,
-        )
-        self.PipeWidthCard.valueChanged.connect(self.onConfigChanged)
-
-        self.pipelayoutCard = OptionsSettingCard(
-            self.cfg.canvas_pipelayout,
-            get_icon("画布"),
-            self.tr("流程图连线类型"),
-            "",
-            texts=[self.tr("直线"), self.tr("曲线"), self.tr("折线")],
-            parent=self.canvasDisplayGroup,
-        )
-        self.pipelayoutCard.optionChanged.connect(self.onConfigChanged)
-
-        canvasDisplayGroupLayout.addWidget(self.nodeResizeMemoryCard)
-        canvasDisplayGroupLayout.addWidget(self.PipeWidthCard)
-        canvasDisplayGroupLayout.addWidget(self.NodeProxyCard)
-        canvasDisplayGroupLayout.addWidget(self.nodeAnimationCard)
-        canvasDisplayGroupLayout.addWidget(self.autoCollapseCard)
-        canvasDisplayGroupLayout.addWidget(self.showGridCard)
-        canvasDisplayGroupLayout.addWidget(self.pipelayoutCard)
-        layout.addWidget(self.canvasDisplayGroup)
-
-    def _setup_sidebar_plugins_settings(self, layout):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-
-        self.sideDockPluginsGroup = QWidget()
-        self.sideDockPluginsGroup.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
-        )
-        sideDockGroupLayout = QVBoxLayout(self.sideDockPluginsGroup)
-        sideDockGroupLayout.setSpacing(10)
-
-        group_label = StrongBodyLabel(self.tr("侧边栏插件管理"))
-        group_label.setStyleSheet("color: #e0e0e0; font-size: 14px; font-weight: bold;")
-        sideDockGroupLayout.addWidget(group_label)
-
-        info_label = BodyLabel(self.tr("修改数值调整插件显示顺序，数值越小越靠前"))
-        info_label.setStyleSheet("color: #888888; font-size: 12px;")
-        sideDockGroupLayout.addWidget(info_label)
-
-        self._plugin_cards = {}
-
-        context_ids = [
-            DockCategory.CANVAS,
-            DockCategory.COMPONENT,
-            DockCategory.PROJECT,
-        ]
-
-        for context_id in context_ids:
-            entries = SideDockRegistry.get_all_entries(context_id)
-            if not entries:
-                continue
-            context_id = context_id.value
-            context_label = StrongBodyLabel(context_id)
-            context_label.setStyleSheet(
-                "color: #cccccc; font-size: 13px; font-weight: bold; margin-top: 12px;"
-            )
-            sideDockGroupLayout.addWidget(context_label)
-
-            for plugin_name, entry in entries.items():
-                plugin_card = self._create_plugin_card(
-                    context_id, plugin_name, entry, self.sideDockPluginsGroup
-                )
-                sideDockGroupLayout.addWidget(plugin_card)
-                self._plugin_cards[f"{context_id}/{plugin_name}"] = plugin_card
-
-        layout.addWidget(self.sideDockPluginsGroup)
 
     def _create_plugin_card(self, context_id, plugin_name, entry, parent):
         from qfluentwidgets import ComboBox, SwitchButton
@@ -1174,73 +656,11 @@ class SettingDialog(QDialog):
 
         self.cfg.set(self.cfg.side_dock_plugins, all_states, save=True)
 
-    def _on_check_update(self):
-        if self._parent_widget and hasattr(self._parent_widget, "updater"):
-            self._parent_widget.updater.check_update()
-
-    def _on_user_name_clicked(self, button):
-        from PyQt5.QtCore import Qt
-        from qfluentwidgets import LineEdit, MessageBox, InfoBar
-
-        w = MessageBox(self.tr("输入当前用户名"), "", self)
-        w.contentLabel.hide()
-
-        lineEdit = LineEdit(w)
-        lineEdit.setText(self.cfg.user_name.value)
-        lineEdit.setFixedWidth(300)
-        lineEdit.setPlaceholderText(self.tr("例如: martin98-afk"))
-
-        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
-        w.yesButton.setText(self.tr("保存"))
-        w.cancelButton.setText(self.tr("取消"))
-
-        if w.exec():
-            new_value = lineEdit.text().strip()
-            if new_value:
-                self.cfg.set(self.cfg.user_name, new_value)
-                button.setText(new_value)
-                self.cfg.save_config()
-                self.configChanged.emit()
-                InfoBar.success(
-                    self.tr("设置已保存"),
-                    self.tr("用户名已更新"),
-                    parent=self,
-                )
-
-    def _on_miniconda_version_clicked(self, button):
-        from PyQt5.QtCore import Qt
-        from qfluentwidgets import LineEdit, MessageBox, InfoBar
-
-        w = MessageBox(self.tr("Miniconda 版本"), "", self)
-        w.contentLabel.hide()
-
-        lineEdit = LineEdit(w)
-        lineEdit.setText(self.cfg.miniconda_version.value)
-        lineEdit.setFixedWidth(300)
-        lineEdit.setPlaceholderText(self.tr("例如: 23.11.0"))
-
-        w.vBoxLayout.insertWidget(1, lineEdit, 0, Qt.AlignCenter)
-        w.yesButton.setText(self.tr("保存"))
-        w.cancelButton.setText(self.tr("取消"))
-
-        if w.exec():
-            new_value = lineEdit.text().strip()
-            if new_value:
-                self.cfg.set(self.cfg.miniconda_version, new_value)
-                button.setText(new_value)
-                self.cfg.save_config()
-                self.configChanged.emit()
-                InfoBar.success(
-                    self.tr("设置已保存"),
-                    self.tr("Miniconda 版本已更新"),
-                    parent=self,
-                )
-
-    def onConfigChanged(self):
+    def _on_llm_providers_changed(self, providers: dict):
         self.configChanged.emit()
         self._save_timer.start()
 
-    def _on_llm_providers_changed(self, providers: dict):
+    def onConfigChanged(self):
         self.configChanged.emit()
         self._save_timer.start()
 
@@ -1249,10 +669,6 @@ class SettingDialog(QDialog):
             self.cfg.save_config()
         except Exception as e:
             print(f"保存配置失败: {e}")
-
-    def set_width(self, width):
-        width = max(self._min_width, min(width, self._max_width))
-        self.resize(width, self.height())
 
     def enterEvent(self, event):
         super().enterEvent(event)
@@ -1277,18 +693,14 @@ class SettingDialog(QDialog):
         if widget is None:
             return False
         
-        # 检查是否是 SettingDialog 本身
         if widget == self:
             return True
         
-        # 检查 widget 是否是 SettingDialog 的子窗口
         current = widget
         while current:
             if current == self:
                 return True
-            # 检查是否是 QDialog（子对话框）
             if isinstance(current, QDialog) and current.isVisible():
-                # 如果是子对话框，且它是 SettingDialog 的子窗口，则不隐藏
                 parent = current.parent()
                 while parent:
                     if parent == self:
@@ -1303,21 +715,17 @@ class SettingDialog(QDialog):
         if widget is None:
             return False
         
-        # 检查 widget 本身
         if isinstance(widget, QComboBox):
             return True
         
-        # 检查 widget 的父窗口链中是否有 QComboBox
         current = widget.parent() if hasattr(widget, 'parent') else None
         while current:
             if isinstance(current, QComboBox):
                 return True
             current = current.parent() if hasattr(current, 'parent') else None
         
-        # 检查是否是 QCompleter 的弹出窗口
         class_name = widget.metaObject().className() if hasattr(widget, 'metaObject') else ''
         if 'Completer' in class_name or 'Popup' in class_name:
-            # 检查是否是 ComboBox 相关的弹出
             if hasattr(widget, 'parent') and widget.parent():
                 return self._is_combobox_popup(widget.parent())
         
@@ -1328,11 +736,9 @@ class SettingDialog(QDialog):
             if not self.geometry().contains(event.globalPos()):
                 target = QApplication.widgetAt(event.globalPos())
                 
-                # 如果点击目标是 SettingDialog 窗口树中的部件，不隐藏
                 if self._is_widget_in_dialog_tree(target):
                     return super().eventFilter(obj, event)
                 
-                # 如果点击目标是 QComboBox 或其弹出列表，不隐藏
                 if self._is_combobox_popup(target):
                     return super().eventFilter(obj, event)
                 

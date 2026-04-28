@@ -1,40 +1,62 @@
 # -*- coding: utf-8 -*-
-import platform
-from pathlib import Path
+"""
+LLM Chatter 主入口
+以独立弹窗模式启动，无需 FluentWindow 框架
+"""
+import os
+import sys
+import warnings
 
-from app.utils.utils import resource_path
+warnings.filterwarnings("ignore")
+os.environ["PYTHONIOENCODING"] = "utf-8"
+
+# 添加项目根目录到 Python 路径
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
 
 
-def enable_dpi_scale():
-    """启用 DPI 缩放支持"""
-    # enable dpi scale
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
+def main():
+    """启动 LLM Chatter"""
+    import platform
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtWidgets import QApplication
+    from loguru import logger
+    from app.utils import icons_rc
+    
+    # ========== 必须在创建 QApplication 之前设置 Qt 属性 ==========
+    # 这些设置必须在任何 Qt 模块导入之前或 QApplication 创建之前完成
+    
+    # DPI 缩放设置
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
-
-
-def enable_opengl():
-    # macOS 下禁用部分 OpenGL 相关属性，避免输入法异常
+    
+    # OpenGL 共享上下文（解决 QtWebEngineWidgets 导入问题）
     if platform.system() != "Darwin":
         QApplication.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
         QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
-
-
-def create_application():
-    # 启用 DPI 缩放
-    enable_dpi_scale()
-    enable_opengl()
+    
+    # ========== 导入可能触发 WebEngine 的模块（在 QApplication 创建之前）==========
+    # 提前导入，确保在 app 创建之前触发
+    from PyQt5.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+    
+    # 设置日志
+    log_dir = os.path.join(project_root, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    logger.add(
+        os.path.join(log_dir, "llm_chatter.log"),
+        rotation="10 MB",
+        level="DEBUG",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
+    )
+    
     # 创建应用
-    # QtWebEngine 在 macOS 下通常不需要 --no-sandbox
-    if platform.system() != "Darwin":
-        sys.argv.append("--no-sandbox")
-
     app = QApplication(sys.argv)
-    # 启用fusion样式
     app.setStyle("Fusion")
-    tooltip_style = """
+    app.setApplicationName("LLM Chatter")
+    app.setApplicationDisplayName("LLM Chatter")
+    
+    app.setStyleSheet("""
         QToolTip {
             color: white;
             background-color: black;
@@ -42,78 +64,26 @@ def create_application():
             padding: 2px;
             font-size: 12px;
         }
-        """
-    # 如果你已有全局样式，合并进去
-    app.setStyleSheet(app.styleSheet() + tooltip_style)
-
-    # Required for correct icon on GNOME/Wayland:
-    if hasattr(app, "setDesktopFileName"):
-        app.setDesktopFileName("CanvasMind")
-
-    return app
-
-
-def load_localization(app, language="en"):
-    # 将 translator 绑定到 app 对象上，防止被垃圾回收
-    app.translator = QTranslator()
-
-    language_map = {"en": "en_US", "zh": "zh_CN"}
-
-    # 确保文件名匹配（比如 zh_CN.qm）
-    file_name = language_map.get(language, "en_US")
-    qm_path = Path(resource_path("resource")) / "i18n" / f"{file_name}.qm"
-
-    if qm_path.exists():
-        # 注意：使用 app.translator
-        if app.translator.load(str(qm_path)):
-            app.installTranslator(app.translator)
-            print(f"✅ 成功加载翻译: {qm_path}")
-            return True
-        else:
-            print(f"❌ 文件存在但加载失败 (格式错误?): {qm_path}")
-    else:
-        print(f"❌ 找不到翻译文件: {qm_path}")
-    return False
-
-
-# ----------------------------
-# 启动应
-# ----------------------------
-if __name__ == "__main__":
-    import os
-    import sys
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    from PyQt5.QtCore import Qt
-    from PyQt5.QtWidgets import QApplication
-    from PyQt5.QtCore import QTranslator  # 必须导入这个
-    from app.utils import icons_rc
-    from app.widgets.custom_nodegraphqt.nodegraphqt_patcher import patch_nodegraphqt
-
-    patch_nodegraphqt()
-
-    from app.main_window import LowCodeWindow
-
-    sys.path.append(".")
-    os.environ["PYTHONIOENCODING"] = "utf-8"
-    app = create_application()
-    app.setQuitOnLastWindowClosed(False)
-    # load_localization(app)
-    # 创建并显示主窗口
-    try:
-        window = LowCodeWindow()
-        window.show()
-        print("✅ 启动成功！")
-    except Exception as e:
-        import traceback
-
-        with open("error.log", "w") as f:
-            f.write(traceback.format_exc())
-        print(f"❌ 启动失败: {e}")
-        print(traceback.format_exc())
-        sys.exit(1)
-
-    # 运行应用
+    """)
+    
+    # 设置主题
+    from qfluentwidgets import Theme, setTheme
+    setTheme(Theme.DARK)
+    
+    # 导入独立应用模块
+    from app.widgets.side_dock_area.plugins.llm_chatter.standalone_app import create_window
+    
+    # 创建并显示窗口
+    logger.info("LLM Chatter 启动中...")
+    
+    window = create_window()
+    llm_window = window()
+    llm_window.show()
+    
+    logger.info("LLM Chatter 启动成功")
+    
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

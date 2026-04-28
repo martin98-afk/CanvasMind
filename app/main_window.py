@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import QSize, Qt, QTimer, QPoint
+from PyQt5.QtCore import Qt, QTimer, QPoint, QSize
 from PyQt5.QtWidgets import (
     QApplication,
     QDesktopWidget,
@@ -46,18 +46,14 @@ class LowCodeWindow(FluentWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         setTheme(Theme.DARK)
         self.setWindowIcon(get_icon("大模型"))
-
-        # 使用 self.tr 进行国际化
         self.setWindowTitle(self.tr("LLM Chatter"))
 
-        # 窗口尺寸
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
         self.window_width = int(0.8 * screen_width)
         self.window_height = int(0.85 * screen_height)
         desktop = QApplication.desktop().availableGeometry()
         self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
-        # 初始化位置
         self.move(
             self.desktop_w // 2 - self.width() // 2,
             self.desktop_h // 2 - self.height() // 2,
@@ -75,27 +71,7 @@ class LowCodeWindow(FluentWindow):
 
     # region [2. 核心服务初始化]
     def _init_services(self):
-        # ------------初始化日志系统
         self._setup_log_viewer()
-        # # ------------启动监听器
-        # ComponentUsageTracker()  # 日志使用情况监督
-        # ComponentScanner()  # 日志实时监控服务
-
-        # ------------插件预加载
-        # plugin_manager = UnifiedPluginManager.get_instance()
-
-        # # ------------插件预加载（节点）
-        # node_plugin_dir = os.path.abspath(
-        #     os.path.join(os.path.dirname(__file__), "plugins", "node_plugins")
-        # )
-        # plugin_manager.load_plugins(node_plugin_dir, plugin_type=PluginType.NODE)
-        #
-        # # ------------加载触发器插件
-        # trigger_plugin_dir = os.path.abspath(
-        #     os.path.join(os.path.dirname(__file__), "plugins", "trigger_plugins")
-        # )
-        # plugin_manager.load_plugins(trigger_plugin_dir, plugin_type=PluginType.TRIGGER)
-        # ------------加载配置
         self.config = Settings.get_instance()
         setFontFamilies([self.config.canvas_font_selected.value])
 
@@ -103,52 +79,13 @@ class LowCodeWindow(FluentWindow):
 
     # region [3. 页面实例化]
     def _init_pages(self):
-        # self.updater = UpdateChecker(self)
-        # 页面按需创建
-        # self.workflow_manager = WorkflowCanvasGalleryPage(self)
         self.package_manager = EnvManagerUI(self)
-        # self.home_interface = HomeInterface(self)
-        # self.develop_page = ComponentDeveloperPage(self)
-        # self.market_page = PluginManagerCenter(self)
         self.project_manager = ExportedProjectsPage(self)
-
-        # # 信号连接
-        # self.workflow_manager.component_code_changed.connect(
-        #     self.develop_page.save_component_by_full_path
-        # )
-        # self.workflow_manager.node_request_edit.connect(
-        #     lambda uuid: (
-        #         self.switchTo(self.develop_page),
-        #         self.develop_page.load_component(uuid=uuid),
-        #     )
-        # )
-        # self.project_manager.exported_projects_changed.connect(
-        #     self.workflow_manager.exported_projects_changed.emit
-        # )
-        # self.project_manager.running_projects_changed.connect(
-        #     self.workflow_manager.running_projects_changed.emit
-        # )
 
     # endregion
 
     # region [4. 导航栏配置]
     def _setup_navigation(self):
-        """所有导航栏的 text 参数都使用了 self.tr()"""
-
-        # # 主功能区
-        # self.addSubInterface(self.home_interface, FluentIcon.HOME, self.tr("首页"))
-        #
-        # workflow_item = self.addSubInterface(
-        #     self.workflow_manager, get_icon("画布管理"), self.tr("画布管理")
-        # )
-        # workflow_item.clicked.connect(self._on_workflow_clicked)
-        #
-        # self.addSubInterface(self.develop_page, get_icon("组件"), self.tr("组件管理"))
-        #
-        # self.addSubInterface(
-        #     self.market_page, get_icon("插件市场"), self.tr("插件市场")
-        # )
-
         project_item = self.addSubInterface(
             self.project_manager, get_icon("项目"), self.tr("项目管理")
         )
@@ -157,16 +94,6 @@ class LowCodeWindow(FluentWindow):
         pkg_item = self.addSubInterface(
             self.package_manager, get_icon("工具包"), self.tr("环境管理")
         )
-
-        # # 底部功能区
-        # self.navigationInterface.addItem(
-        #     routeKey="update",
-        #     icon=FluentIcon.SYNC,
-        #     text=self.tr("检查更新"),
-        #     onClick=self.updater.check_update,
-        #     selectable=False,
-        #     position=NavigationItemPosition.BOTTOM,
-        # )
 
         self.navigationInterface.addItem(
             routeKey="log",
@@ -188,11 +115,7 @@ class LowCodeWindow(FluentWindow):
 
     # endregion
 
-    # region [6. 导航点击回调]
-    def _on_workflow_clicked(self):
-        self.workflow_manager._schedule_refresh()
-        self.workflow_manager.build_recommendation_engine()
-
+    # region [5. 导航点击回调]
     def _on_log_clicked(self):
         if self.log_popup.isVisible():
             self.log_popup.hidePopup()
@@ -240,14 +163,14 @@ class LowCodeWindow(FluentWindow):
 
     # endregion
 
-    # region [7. 日志系统]
+    # region [6. 日志系统]
     def _setup_log_viewer(self):
         self.log_popup = LogPopupWidget(self)
         self.settings_popup = SettingDialog(self)
 
     # endregion
 
-    # region [8. 设置弹窗]
+    # region [7. 设置弹窗]
     def _on_settings_clicked(self):
         if self.settings_popup.isVisible():
             self.settings_popup.hidePopup()
@@ -270,30 +193,30 @@ class LowCodeWindow(FluentWindow):
         self.resize(self.window_width, self.window_height)
         desktop = QApplication.desktop().availableGeometry()
         self.desktop_w, self.desktop_h = desktop.width(), desktop.height()
-        # 初始化位置
         self.move(
             self.desktop_w // 2 - self.width() // 2,
             self.desktop_h // 2 - self.height() // 2,
         )
-        # if self.config.auto_check_update.value:
-        #     QtCore.QTimer.singleShot(500, self.updater.check_update)
 
     # endregion
-    # --- 新增区域：系统托盘与关闭逻辑 ---
 
+    # region [9. 系统托盘]
     def _init_system_tray(self):
-        """初始化系统托盘图标"""
         self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(get_icon("大模型"))  # 使用您现有的图标获取方法
+        self.tray_icon.setIcon(get_icon("大模型"))
 
-        # 创建托盘菜单
         tray_menu = QMenu()
 
-        # 动作：显示主界面
         show_action = QAction("显示主界面", self)
         show_action.triggered.connect(self.show_window)
 
-        # 动作：退出程序
+        # 添加：打开 LLM Chatter 弹窗
+        llm_chat_action = QAction("LLM Chatter", self)
+        llm_chat_action.triggered.connect(self._open_llm_chatter_popup)
+        tray_menu.addAction(llm_chat_action)
+
+        tray_menu.addSeparator()
+
         quit_action = QAction("退出程序", self)
         quit_action.triggered.connect(self.quit_app)
 
@@ -302,20 +225,27 @@ class LowCodeWindow(FluentWindow):
         tray_menu.addAction(quit_action)
 
         self.tray_icon.setContextMenu(tray_menu)
-
-        # 点击托盘图标的事件（左键点击恢复窗口）
         self.tray_icon.activated.connect(self.on_tray_icon_activated)
         self.tray_icon.messageClicked.connect(self._on_tray_message_clicked)
-
         self.tray_icon.show()
 
+    def _open_llm_chatter_popup(self):
+        """打开 LLM Chatter 独立弹窗"""
+        from app.widgets.side_dock_area.plugins.llm_chatter.standalone_app import (
+            LLMChatterWindow,
+        )
+        
+        if not hasattr(self, '_llm_chatter_window') or not self._llm_chatter_window:
+            self._llm_chatter_window = LLMChatterWindow()
+        
+        self._llm_chatter_window.show()
+        self._llm_chatter_window.activateWindow()
+
     def _on_tray_message_clicked(self):
-        """点击托盘消息时触发"""
         self.show_window()
 
     def on_tray_icon_activated(self, reason):
-        """点击托盘图标时的响应"""
-        if reason == QSystemTrayIcon.Trigger:  # 单击
+        if reason == QSystemTrayIcon.Trigger:
             if self.isVisible():
                 if self.isMinimized():
                     self.showNormal()
@@ -324,17 +254,14 @@ class LowCodeWindow(FluentWindow):
                 self.show_window()
 
     def show_window(self):
-        """恢复并显示窗口"""
         self.showNormal()
         self.activateWindow()
 
     def quit_app(self):
-        """彻底退出程序"""
-        self.tray_icon.setVisible(False)  # 隐藏图标，防止残留
+        self.tray_icon.setVisible(False)
         qApp.quit()
 
     def _hide_all_webviews(self):
-        """隐藏所有聊天卡片的WebView，防止遮挡弹窗"""
         try:
             from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import (
                 OpenAIChatToolWindow,
@@ -346,19 +273,16 @@ class LowCodeWindow(FluentWindow):
                     item = chat_window.chat_layout.itemAt(i)
                     if item and item.widget():
                         widget = item.widget()
-                        # 找到 MessageCard 中的 viewer
                         if hasattr(widget, "viewer"):
                             viewer = widget.viewer
                             if hasattr(viewer, "hide"):
                                 viewer.hide()
-                        # 也隐藏 MessageCard 本身
                         if hasattr(widget, "hide"):
                             widget.hide()
-        except Exception as e:
+        except Exception:
             pass
 
     def _show_all_webviews(self):
-        """显示所有聊天卡片的WebView"""
         try:
             from app.widgets.side_dock_area.plugins.llm_chatter.main_widget import (
                 OpenAIChatToolWindow,
@@ -372,17 +296,12 @@ class LowCodeWindow(FluentWindow):
                         widget = item.widget()
                         if hasattr(widget, "show"):
                             widget.show()
-        except Exception as e:
+        except Exception:
             pass
 
     def closeEvent(self, event):
-        """
-        重写关闭事件：弹出对话框询问用户
-        """
         self.log_popup.hidePopup()
         self.settings_popup.hidePopup()
-
-        # 隐藏WebView防止遮挡弹窗
         self._hide_all_webviews()
 
         w = MessageBox("关闭提示", "您希望将程序最小化到系统托盘，还是彻底退出？", self)
@@ -390,7 +309,6 @@ class LowCodeWindow(FluentWindow):
         w.cancelButton.setText("退出程序")
 
         if w.exec():
-            # 恢复WebView显示
             self._show_all_webviews()
             event.ignore()
             self.hide()
@@ -405,3 +323,5 @@ class LowCodeWindow(FluentWindow):
             self.tray_icon.setVisible(False)
             self.config.save()
             qApp.quit()
+
+    # endregion
