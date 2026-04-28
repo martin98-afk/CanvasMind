@@ -1,4 +1,0 @@
-# -*- coding: utf-8 -*-
-
-DEFAULT_SPLITTER_SIZES = [50, 700]
-HIDE_SPLITTER_SIZES = [50, 0]

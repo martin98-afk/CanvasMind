@@ -7,6 +7,8 @@ import os
 import sys
 import warnings
 
+from app.side_dock_area import ToolPopupDialog
+
 warnings.filterwarnings("ignore")
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
@@ -18,7 +20,7 @@ sys.path.insert(0, project_root)
 def main():
     """启动 LLM Chatter"""
     import platform
-    from PyQt5.QtCore import Qt
+    from PyQt5.QtCore import Qt, QTimer
     from PyQt5.QtWidgets import QApplication
     from loguru import logger
     from app.utils import icons_rc
@@ -70,15 +72,59 @@ def main():
     from qfluentwidgets import Theme, setTheme
     setTheme(Theme.DARK)
     
-    # 导入独立应用模块
-    from app.widgets.side_dock_area.plugins.llm_chatter.standalone_app import create_window
-    
-    # 创建并显示窗口
+    # 创建并显示窗口 - 直接使用 ToolPopupDialog
     logger.info("LLM Chatter 启动中...")
     
-    window = create_window()
-    llm_window = window()
-    llm_window.show()
+    from app.llm_chatter.main_widget import OpenAIChatToolWindow
+    from PyQt5.QtWidgets import QWidget
+    
+    # 创建模拟的 homepage
+    class FakePage(QWidget):
+        def __init__(self):
+            super().__init__()
+            from app.utils.config import Settings
+            self.cfg = Settings.get_instance()
+        
+        def isActiveWindow(self):
+            return True
+        
+        @property
+        def workflow_name(self):
+            return "standalone_llm_chatter"
+        
+        @property
+        def global_variables_changed(self):
+            class FakeSignal:
+                def connect(self, *args, **kwargs):
+                    pass
+            return FakeSignal()
+        
+        def setUpdatesEnabled(self, enabled):
+            pass
+        
+        def update(self):
+            pass
+        
+        def show_splitter(self):
+            pass
+        
+        def hide_splitter(self):
+            pass
+    
+    fake_page = FakePage()
+    chat_window = OpenAIChatToolWindow(fake_page, None)
+    
+    # 使用 ToolPopupDialog 包装
+    popup = ToolPopupDialog(chat_window, None)
+    popup.setWindowTitle("LLM Chatter")
+    
+    # 跳过历史会话恢复
+    chat_window._skip_restore_history = True
+    
+    # 延迟初始化会话
+    QTimer.singleShot(100, chat_window._restore_latest_or_create_session)
+    
+    popup.show()
     
     logger.info("LLM Chatter 启动成功")
     

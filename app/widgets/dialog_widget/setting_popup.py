@@ -473,7 +473,7 @@ class SettingDialog(QDialog):
     def _create_plugin_card(self, context_id, plugin_name, entry, parent):
         from qfluentwidgets import ComboBox, SwitchButton
         from app.widgets.side_dock_area.registry import SideDockRegistry
-        from app.widgets.side_dock_area.tool_window import DockPosition
+        from app.tool_window import DockPosition
 
         state = SideDockRegistry.get_plugin_state(context_id, plugin_name)
         is_enabled = state.get("enabled", True)
@@ -610,7 +610,7 @@ class SettingDialog(QDialog):
 
     def _on_plugin_position_changed(self, combo, index):
         from app.widgets.side_dock_area.registry import SideDockRegistry
-        from app.widgets.side_dock_area.tool_window import DockPosition
+        from app.tool_window import DockPosition
 
         context_id = combo._context_id
         plugin_name = combo._plugin_name
