@@ -2155,7 +2155,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if not self._truncate_session_from_user_round(round_index):
             return
 
-        self.context_selector.restore_context_from_tags(context_tags)
         self.input_area.setPlainText(user_input)
         self.input_area.moveCursor(QTextCursor.End)
         self.input_area._on_text_changed()
