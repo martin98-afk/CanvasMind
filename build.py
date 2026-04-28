@@ -61,8 +61,6 @@ if platform.system() == "Darwin":
         arch = "arm64"
     params.append(f"--target-arch={arch}")
 
-for module in extra_modules:
-    params.append(f"--add-data={env_dir}/{module}{os.pathsep}{module}")
 
 # 运行时配置
 params.extend(
