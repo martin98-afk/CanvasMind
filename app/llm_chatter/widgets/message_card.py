@@ -1634,8 +1634,12 @@ class MessageCard(SimpleCardWidget):
             horizontal_margin = 72
 
         target_width = max(320, parent_width - horizontal_margin)
-        self.setMinimumWidth(target_width)
-        self.setMaximumWidth(target_width)
+        # 只有宽度变化时才更新，减少布局重计算
+        if self.minimumWidth() != target_width or self.maximumWidth() != target_width:
+            self.blockSignals(True)
+            self.setMinimumWidth(target_width)
+            self.setMaximumWidth(target_width)
+            self.blockSignals(False)
 
     def wheelEvent(self, event: QWheelEvent):
         try:

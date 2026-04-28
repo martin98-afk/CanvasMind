@@ -184,6 +184,12 @@ class OpenAIChatToolWindow(ToolWindow):
         self._scroll_bottom_timer.setSingleShot(True)
         self._scroll_bottom_timer.setInterval(24)
         self._scroll_bottom_timer.timeout.connect(self._do_scroll_to_bottom)
+        # resize 防抖定时器
+        self._resize_debounce_timer = QTimer(self)
+        self._resize_debounce_timer.setSingleShot(True)
+        self._resize_debounce_timer.setInterval(16)  # ~60fps
+        self._resize_debounce_timer.timeout.connect(self._do_debounced_resize)
+        self._pending_resize_sync = False
         self.toolStartUiSyncRequested.connect(
             self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
         )
@@ -778,6 +784,14 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        # 使用防抖避免频繁同步，只有在需要时才同步
+        if not self._pending_resize_sync:
+            self._pending_resize_sync = True
+            self._resize_debounce_timer.start()
+
+    def _do_debounced_resize(self):
+        """防抖执行卡片宽度同步"""
+        self._pending_resize_sync = False
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
             if item and item.widget() and isinstance(item.widget(), MessageCard):

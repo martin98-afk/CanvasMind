@@ -795,7 +795,7 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "question": {"type": "string", "description": "问题内容"},
+                        "question": {"type": "string", "description": "问题内容及描述，尽量简洁，不要包含选项内容"},
                         "options": {"type": "array", "description": "选项列表"},
                         "multiple": {
                             "type": "boolean",

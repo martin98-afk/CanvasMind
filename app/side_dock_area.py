@@ -129,6 +129,40 @@ class AdaptiveStackedWidget(QStackedWidget):
         return current.minimumSizeHint() if current else QSize(0, 0)
 
 
+class ResizeEdge(QWidget):
+    """边缘拖拽区域"""
+    EDGE_NONE = 0
+    EDGE_TOP = 1
+    EDGE_BOTTOM = 2
+    EDGE_LEFT = 4
+    EDGE_RIGHT = 8
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._edge = ResizeEdge.EDGE_NONE
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.setMouseTracking(True)
+        self._update_cursor()
+    
+    def set_edge(self, edge):
+        self._edge = edge
+        self._update_cursor()
+    
+    def _update_cursor(self):
+        if self._edge == ResizeEdge.EDGE_TOP or self._edge == ResizeEdge.EDGE_BOTTOM:
+            self.setCursor(Qt.SizeVerCursor)
+        elif self._edge == ResizeEdge.EDGE_LEFT or self._edge == ResizeEdge.EDGE_RIGHT:
+            self.setCursor(Qt.SizeHorCursor)
+        elif self._edge == (ResizeEdge.EDGE_TOP | ResizeEdge.EDGE_LEFT) or \
+             self._edge == (ResizeEdge.EDGE_BOTTOM | ResizeEdge.EDGE_RIGHT):
+            self.setCursor(Qt.SizeFDiagCursor)
+        elif self._edge == (ResizeEdge.EDGE_TOP | ResizeEdge.EDGE_RIGHT) or \
+             self._edge == (ResizeEdge.EDGE_BOTTOM | ResizeEdge.EDGE_LEFT):
+            self.setCursor(Qt.SizeBDiagCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+
 class ToolPopupDialog(QDialog):
     popupClosed = pyqtSignal(str, bool, object)
 
@@ -147,6 +181,9 @@ class ToolPopupDialog(QDialog):
         self._geometry_save_timer.setSingleShot(True)
         self._geometry_save_timer.setInterval(160)
         self._geometry_save_timer.timeout.connect(self._save_geometry)
+        self._resize_edge = ResizeEdge.EDGE_NONE
+        self._resize_start_geometry = None
+        self._edge_size = 6  # 边缘检测区域宽度
         self.setWindowTitle(tool_instance.name)
         self.setWindowFlags(
             Qt.Dialog
@@ -273,8 +310,10 @@ class ToolPopupDialog(QDialog):
             self.move(x, y)
 
     def keyPressEvent(self, event):
+        # ESC 不做任何操作，忽略事件
         if event.key() == Qt.Key_Escape:
-            self.close()
+            event.ignore()
+            return
         super().keyPressEvent(event)
 
     def closeEvent(self, event):
@@ -359,6 +398,61 @@ class ToolPopupDialog(QDialog):
         painter.setPen(border_color)
         painter.drawRoundedRect(0, 0, self.width() - 4, self.height() - 4, 10, 10)
 
+    def _get_edge_at_pos(self, pos):
+        """检测指定位置位于哪个边缘"""
+        x, y = pos.x(), pos.y()
+        w, h = self.width(), self.height()
+        edge = ResizeEdge.EDGE_NONE
+        
+        # 检测顶部边缘
+        if y < self._edge_size:
+            edge |= ResizeEdge.EDGE_TOP
+        # 检测底部边缘
+        elif y > h - self._edge_size:
+            edge |= ResizeEdge.EDGE_BOTTOM
+        # 检测左边缘
+        if x < self._edge_size:
+            edge |= ResizeEdge.EDGE_LEFT
+        # 检测右边缘
+        elif x > w - self._edge_size:
+            edge |= ResizeEdge.EDGE_RIGHT
+        
+        return edge
+
+    def _perform_resize(self, global_pos):
+        """执行边缘缩放"""
+        if self._resize_edge == ResizeEdge.EDGE_NONE or not self._resize_start_geometry:
+            return
+        
+        delta = global_pos - self._resize_start_pos
+        geom = self._resize_start_geometry
+        x, y, w, h = geom.x(), geom.y(), geom.width(), geom.height()
+        min_w, min_h = self.minimumSize().width(), self.minimumSize().height()
+        
+        edge = self._resize_edge
+        
+        # 处理左右边缘
+        if edge & ResizeEdge.EDGE_LEFT:
+            new_x = x + delta.x()
+            new_w = w - delta.x()
+            if new_w >= min_w:
+                x = new_x
+                w = new_w
+        elif edge & ResizeEdge.EDGE_RIGHT:
+            w = max(min_w, w + delta.x())
+        
+        # 处理上下边缘
+        if edge & ResizeEdge.EDGE_TOP:
+            new_y = y + delta.y()
+            new_h = h - delta.y()
+            if new_h >= min_h:
+                y = new_y
+                h = new_h
+        elif edge & ResizeEdge.EDGE_BOTTOM:
+            h = max(min_h, h + delta.y())
+        
+        self.setGeometry(x, y, w, h)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             title_bar = self.tool_instance.get_title_bar()
@@ -366,17 +460,56 @@ class ToolPopupDialog(QDialog):
                 self._hide_opacity_slider()
                 self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
                 event.accept()
+                return
+            
+            # 检查是否在边缘区域开始拖拽
+            edge = self._get_edge_at_pos(event.pos())
+            if edge != ResizeEdge.EDGE_NONE:
+                self._resize_edge = edge
+                self._resize_start_pos = event.globalPos()
+                self._resize_start_geometry = self.geometry()
+                self._hide_opacity_slider()
+                event.accept()
+                return
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and self._drag_pos:
-            self.move(event.globalPos() - self._drag_pos)
-            event.accept()
+        if event.buttons() == Qt.LeftButton:
+            # 正在边缘拖拽缩放
+            if self._resize_edge != ResizeEdge.EDGE_NONE:
+                self._perform_resize(event.globalPos())
+                event.accept()
+                return
+            
+            # 标题栏拖拽移动
+            if self._drag_pos:
+                self.move(event.globalPos() - self._drag_pos)
+                event.accept()
+                return
         else:
+            # 更新鼠标光标形状（排除标题栏区域）
+            title_bar = self.tool_instance.get_title_bar()
+            title_height = title_bar.height() if title_bar else 0
+            if event.y() > title_height:
+                edge = self._get_edge_at_pos(event.pos())
+                if edge == ResizeEdge.EDGE_TOP or edge == ResizeEdge.EDGE_BOTTOM:
+                    self.setCursor(Qt.SizeVerCursor)
+                elif edge == ResizeEdge.EDGE_LEFT or edge == ResizeEdge.EDGE_RIGHT:
+                    self.setCursor(Qt.SizeHorCursor)
+                elif edge == (ResizeEdge.EDGE_TOP | ResizeEdge.EDGE_LEFT) or \
+                     edge == (ResizeEdge.EDGE_BOTTOM | ResizeEdge.EDGE_RIGHT):
+                    self.setCursor(Qt.SizeFDiagCursor)
+                elif edge == (ResizeEdge.EDGE_TOP | ResizeEdge.EDGE_RIGHT) or \
+                     edge == (ResizeEdge.EDGE_BOTTOM | ResizeEdge.EDGE_LEFT):
+                    self.setCursor(Qt.SizeBDiagCursor)
+                else:
+                    self.setCursor(Qt.ArrowCursor)
             self._show_opacity_slider()
             self._hide_timer_start()
 
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
+        self._resize_edge = ResizeEdge.EDGE_NONE
+        self._resize_start_geometry = None
         if event.button() == Qt.LeftButton:
             self._save_geometry()
         super().mouseReleaseEvent(event)
