@@ -2788,6 +2788,20 @@ class OpenAIChatToolWindow(ToolWindow):
         self._cancelled_tool_call_id = None
         self._toggle_send_stop(False)
 
+        # 完成后将 agent 状态设置为空闲
+        try:
+            from app.llm_chatter.core.agent_registry import get_agent_registry
+            agent_reg = get_agent_registry()
+            current_agent_id = getattr(self._tool_executor, '_current_agent_id', '') if self._tool_executor else ''
+            if current_agent_id:
+                agent_reg.update_status(
+                    agent_id=current_agent_id,
+                    status="idle",
+                    task=""
+                )
+        except Exception:
+            pass
+
         if self._current_assistant_card:
             self._current_assistant_card.finish_streaming()
         if self.history_manager:
@@ -3407,12 +3421,13 @@ class OpenAIChatToolWindow(ToolWindow):
             }
         )
 
-        # 设置回调状态
-        if need_callback:
-            from app.llm_chatter.core.agent_registry import get_agent_registry
-            agent_reg = get_agent_registry()
+        # 设置为忙碌状态（开始处理跨身份消息）
+        from app.llm_chatter.core.agent_registry import get_agent_registry
+        agent_reg = get_agent_registry()
+        current_agent_id = getattr(self._tool_executor, '_current_agent_id', '') if self._tool_executor else ''
+        if current_agent_id:
             agent_reg.update_status(
-                self._current_session_id,
+                agent_id=current_agent_id,
                 status="busy",
                 task=f"正在处理来自 {from_agent_name} 的任务"
             )
@@ -3549,22 +3564,13 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if role_config:
             agent_reg = get_agent_registry()
+            unique_agent_id = f"{current_role_id}_{new_instance._agent_instance_id}"
             agent_reg.register(
-                session_id=new_instance._current_session_id,
+                agent_id=unique_agent_id,
                 role_type=current_role_id,
-                name=f"{role_config.name} (副本)",
+                name=role_config.name,
                 prompt=role_config.prompt,
                 color=role_config.color,
-            )
-
-            # 创建工作目录
-            from app.llm_chatter.utils.work_outcome_manager import get_outcome_manager
-            outcome_mgr = get_outcome_manager()
-            outcome_mgr.ensure_workdir(
-                agent_reg.get_agent_by_session(new_instance._current_session_id).id
-                if agent_reg.get_agent_by_session(new_instance._current_session_id)
-                else "",
-                new_instance._current_session_id
             )
 
         logger.info(f"[AgentRole] Copied registration to new window: {current_role_id}")

@@ -164,19 +164,24 @@ class AgentTools:
                 content="当前没有团队成员。"
             )
 
-        # 格式化输出（直接返回字符串）
+        # 格式化输出，标识当前智能体
         lines = ["## 团队成员\n"]
         for agent in agents_data:
             emoji = self._get_role_emoji(agent.get("id", ""))
             name = agent.get("name", agent.get("id", ""))
             status = agent.get("status", "unknown")
+            agent_id = agent.get("id", "")
+
+            # 标识当前智能体
+            is_self = "(你)" if agent_id == self.agent_id else ""
+
             status_text = {
                 "idle": "空闲",
                 "busy": "忙碌",
                 "done": "完成"
             }.get(status, status)
 
-            line = f"{emoji} **{name}** ({agent.get('id', '')})"
+            line = f"{emoji} **{name}** {agent_id} {is_self}"
             if status == "busy":
                 progress = agent.get("progress", 0)
                 task = agent.get("task", "")
@@ -231,21 +236,35 @@ class AgentTools:
             }
         )
 
-    def _resolve_agent(self, identifier: str) -> Optional[Dict]:
-        """解析 agent 标识符（可能是 ID 或 role_type）"""
-        # 直接按 ID 查找
+    def _resolve_agent(self, identifier: str) -> Optional["AgentInfo"]:
+        """解析 agent 标识符（可能是 ID、role_type 或 name）
+        
+        匹配优先级：
+        1. 精确匹配 agent_id
+        2. 匹配 role_type（如果自己是该角色，则选其他实例）
+        3. 匹配 name
+        """
+        all_agents = self._registry.list_agents()
+
+        # 1. 精确匹配 agent_id（包含 instance 部分）
         agent = self._registry.get_agent(identifier)
         if agent:
+            # 如果恰好匹配到自己（不应该发生），尝试找同 role 的其他实例
+            if agent.id == self.agent_id and identifier.startswith(agent.role_type):
+                # 找同 role 的其他实例
+                for a in all_agents:
+                    if a.role_type == agent.role_type and a.id != self.agent_id:
+                        return a
             return agent
 
-        # 按 role_type 查找空闲的
-        idle_agent = self._registry.find_idle_agent(identifier)
-        if idle_agent:
-            return idle_agent
+        # 2. 按 role_type 查找（排除自己）
+        for agent in all_agents:
+            if agent.role_type == identifier and agent.id != self.agent_id:
+                return agent
 
-        # 列出所有，找匹配的 name
-        for agent in self._registry.list_agents():
-            if agent.name == identifier or agent.id == identifier:
+        # 3. 列出所有，找匹配的 name
+        for agent in all_agents:
+            if agent.name == identifier and agent.id != self.agent_id:
                 return agent
 
         return None
@@ -322,13 +341,13 @@ def get_agent_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "send_to_agent",
-                "description": "发送消息给团队中的其他成员。发送完成后即可结束任务，无需等待对方回复（除非 need_callback=true）。",
+                "description": "发送消息给团队中的其他成员。发送完成后即可结束任务，无需等待对方回复（除非 need_callback=true）。\n\n注意：agent 参数使用 role_id（如 'developer'、'designer'），不是完整的 agent_id（如 'developer_abc123'）。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "agent": {
                             "type": "string",
-                            "description": "目标身份ID，从 list_agents() 获取，例如 'developer' 或 'developer_1'"
+                            "description": "目标角色ID，使用 role_id：'coordinator'、'developer'、'designer' 或 'tester'。不是完整的 agent_id！"
                         },
                         "message": {
                             "type": "string",
