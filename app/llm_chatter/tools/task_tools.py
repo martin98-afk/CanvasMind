@@ -227,7 +227,8 @@ class TaskTools:
                 dirs[:] = [
                     d
                     for d in dirs
-                    if d not in {".git", "__pycache__", "env", "venv", "envs"}
+                    if d not in {'.mypy_cache', '.git', 'node_modules', '__pycache__', 'venv', '.venv',
+                           'dist', 'build', '.idea', '.vscode'}
                 ]
                 rel_root = Path(root).relative_to(target_path)
                 display_root = "." if str(rel_root) == "." else str(rel_root)
