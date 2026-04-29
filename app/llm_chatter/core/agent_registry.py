@@ -23,12 +23,11 @@ from loguru import logger
 @dataclass
 class AgentInfo:
     """智能体信息"""
-    id: str  # 唯一标识，如 "developer_1"
-    name: str  # 显示名称，如 "开发者1"
-    session_id: str  # 绑定的会话ID
-    role_type: str  # 角色类型：coordinator, developer, designer, tester, custom
-    prompt: str  # 角色提示词
-    color: str  # 颜色，如 "#4EC9B0"
+    id: str = ""  # 唯一标识，如 "coordinator_a1b2c3d4"
+    name: str = ""  # 显示名称，如 "统筹者"
+    role_type: str = ""  # 角色类型：coordinator, developer, designer, tester
+    prompt: str = ""  # 角色提示词
+    color: str = "#888888"  # 颜色
     status: str = "idle"  # idle / busy / done
     progress: int = 0  # 进度 0-100
     task: str = ""  # 当前任务描述
@@ -51,8 +50,6 @@ class AgentRegistry:
 
     def __init__(self):
         self._agents: Dict[str, AgentInfo] = {}  # agent_id -> AgentInfo
-        self._session_to_agent: Dict[str, str] = {}  # session_id -> agent_id
-        self._type_counters: Dict[str, int] = {}  # role_type -> counter for ID generation
 
     @classmethod
     def get_instance(cls) -> "AgentRegistry":
@@ -65,55 +62,47 @@ class AgentRegistry:
 
     def register(
         self,
-        session_id: str,
-        agent_id: Optional[str] = None,
-        role_type: str = "custom",
+        agent_id: str,
+        role_type: str = "",
         name: str = "",
         prompt: str = "",
         color: str = "#888888",
         workdir: str = "",
     ) -> AgentInfo:
-        """注册一个新身份"""
+        """注册一个新身份（agent_id 必须唯一且由调用方提供）"""
         with self._lock:
-            # 如果已存在 session 对应的 agent，先注销
-            if session_id in self._session_to_agent:
-                old_agent_id = self._session_to_agent[session_id]
-                self._agents.pop(old_agent_id, None)
-
-            # 生成 agent_id
-            if not agent_id:
-                agent_id = self._generate_agent_id(role_type)
+            # 如果已存在同名 agent，先注销
+            if agent_id in self._agents:
+                self._agents.pop(agent_id, None)
 
             # 创建 AgentInfo
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             agent = AgentInfo(
                 id=agent_id,
                 name=name or agent_id,
-                session_id=session_id,
                 role_type=role_type,
                 prompt=prompt,
                 color=color,
                 status="idle",
                 progress=0,
                 task="",
-                workdir=workdir or self._default_workdir(session_id),
+                workdir=workdir,
                 created_at=now,
             )
 
             self._agents[agent_id] = agent
-            self._session_to_agent[session_id] = agent_id
 
             # 创建工作目录
-            self._ensure_workdir(agent.workdir)
+            if workdir:
+                self._ensure_workdir(workdir)
 
-            logger.info(f"[AgentRegistry] Registered: {agent_id} -> session {session_id}")
+            logger.info(f"[AgentRegistry] Registered: {agent_id}")
             return agent
 
-    def unregister(self, session_id: str) -> bool:
+    def unregister(self, agent_id: str) -> bool:
         """注销身份"""
         with self._lock:
-            agent_id = self._session_to_agent.pop(session_id, None)
-            if agent_id:
+            if agent_id in self._agents:
                 self._agents.pop(agent_id, None)
                 logger.info(f"[AgentRegistry] Unregistered: {agent_id}")
                 return True
@@ -122,11 +111,6 @@ class AgentRegistry:
     def get_agent(self, agent_id: str) -> Optional[AgentInfo]:
         """根据 ID 获取智能体"""
         return self._agents.get(agent_id)
-
-    def get_agent_by_session(self, session_id: str) -> Optional[AgentInfo]:
-        """根据 session_id 获取智能体"""
-        agent_id = self._session_to_agent.get(session_id)
-        return self._agents.get(agent_id) if agent_id else None
 
     def list_agents(self, role_type: Optional[str] = None) -> List[AgentInfo]:
         """列出所有智能体，可按角色类型过滤"""
@@ -137,31 +121,27 @@ class AgentRegistry:
             return agents
 
     def list_all_agents_with_status(self) -> List[Dict]:
-        """列出所有智能体及其状态（用于 list_agents 工具返回）"""
+        """列出所有智能体及其状态"""
         agents = self.list_agents()
-        result = []
-        for agent in agents:
-            item = {
+        return [
+            {
                 "id": agent.id,
                 "name": agent.name,
                 "status": agent.status,
-                "session_id": agent.session_id,
+                "role_type": agent.role_type,
             }
-            if agent.status == "busy":
-                item["progress"] = agent.progress
-                item["task"] = agent.task
-            result.append(item)
-        return result
+            for agent in agents
+        ]
 
     def update_status(
         self,
-        session_id: str,
+        agent_id: str,
         status: Optional[str] = None,
         progress: Optional[int] = None,
         task: Optional[str] = None,
     ) -> bool:
         """更新智能体状态"""
-        agent = self.get_agent_by_session(session_id)
+        agent = self.get_agent(agent_id)
         if not agent:
             return False
 
@@ -176,26 +156,13 @@ class AgentRegistry:
         return True
 
     def find_idle_agent(self, role_type: str) -> Optional[AgentInfo]:
-        """查找空闲的同类型智能体（智能路由）"""
+        """查找空闲的同类型智能体"""
         with self._lock:
             idle_agents = [
                 a for a in self._agents.values()
                 if a.role_type == role_type and a.status == "idle"
             ]
             return idle_agents[0] if idle_agents else None
-
-    def _generate_agent_id(self, role_type: str) -> str:
-        """生成唯一的 agent_id"""
-        counter = self._type_counters.get(role_type, 0) + 1
-        self._type_counters[role_type] = counter
-
-        if counter == 1:
-            return role_type
-        return f"{role_type}_{counter}"
-
-    def _default_workdir(self, session_id: str) -> str:
-        """生成默认的工作目录路径"""
-        return f"canvas_files/agents/{session_id}/outcomes"
 
     def _ensure_workdir(self, workdir: str) -> None:
         """确保工作目录存在"""

@@ -641,35 +641,14 @@ class ToolExecutor:
         try:
             from app.llm_chatter.tools.agent_tools import create_agent_tools
 
-            session_id = self._session_id or ""
-            agent_id = ""
+            # agent_id 来自稳定的上下文，不随 session 切换而改变
+            agent_id = getattr(self, '_current_agent_id', '') or ''
 
-            # 尝试获取当前 agent id
-            try:
-                from app.llm_chatter.core.agent_registry import get_agent_registry
-                registry = get_agent_registry()
-                
-                # 检查 session_id
-                if not session_id:
-                    logger.warning(f"[AgentTools] No session_id available!")
-                    agent_tools = create_agent_tools("", "")
-                    return agent_tools.send_to_agent(
-                        agent=kwargs.get("agent") or (args[0] if args else ""),
-                        message=kwargs.get("message") or (args[1] if len(args) > 1 else ""),
-                        need_callback=kwargs.get("need_callback", False),
-                    )
-                
-                agent = registry.get_agent_by_session(session_id)
-                if agent:
-                    agent_id = agent.id
-                    logger.info(f"[AgentTools] Found agent: {agent_id} for session: {session_id}")
-                else:
-                    all_agents = registry.list_all_agents_with_status()
-                    logger.warning(f"[AgentTools] No agent for session {session_id}, all agents: {all_agents}")
-            except Exception as e:
-                logger.error(f"[AgentTools] Error getting agent: {e}")
+            logger.info(f"[AgentTools] _execute_agent_tool called:")
+            logger.info(f"  - agent_id: '{agent_id}'")
+            logger.info(f"  - session_id: '{self._session_id}'")
 
-            agent_tools = create_agent_tools(session_id, agent_id)
+            agent_tools = create_agent_tools(self._session_id or "", agent_id)
 
             if tool_name == "send_to_agent":
                 return agent_tools.send_to_agent(

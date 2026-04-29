@@ -58,10 +58,16 @@ class AgentTools:
         if target_agent.id == self.agent_id:
             return ToolResult(False, error="不能给自己发送消息")
 
+        # 获取发送者的信息（名称、颜色）
+        sender_agent = self._registry.get_agent(self.agent_id)
+        from_agent_name = sender_agent.name if sender_agent else self.agent_id
+        from_agent_color = sender_agent.color if sender_agent else "#888888"
+
         # 发送消息
         inter_msg = self._msg_manager.send_message(
             from_agent=self.agent_id,
-            from_session=self.session_id,
+            from_agent_name=from_agent_name,
+            from_agent_color=from_agent_color,
             to_agent=target_agent.id,
             content=message,
             need_callback=need_callback,
@@ -70,7 +76,7 @@ class AgentTools:
         # 更新发送者状态为忙碌（如果需要回调）
         if need_callback:
             self._registry.update_status(
-                self.session_id,
+                self.agent_id,
                 status="busy",
                 task=f"等待 {target_agent.name} 回调"
             )
@@ -118,12 +124,18 @@ class AgentTools:
         if not target_agents:
             return ToolResult(False, error="没有可接收广播的团队成员")
 
+        # 获取发送者的信息（名称、颜色）
+        sender_agent = self._registry.get_agent(self.agent_id)
+        from_agent_name = sender_agent.name if sender_agent else self.agent_id
+        from_agent_color = sender_agent.color if sender_agent else "#888888"
+
         # 广播消息
         count = 0
         for target in target_agents:
             self._msg_manager.send_message(
                 from_agent=self.agent_id,
-                from_session=self.session_id,
+                from_agent_name=from_agent_name,
+                from_agent_color=from_agent_color,
                 to_agent=target.id,
                 content=message,
                 need_callback=False,
@@ -142,14 +154,8 @@ class AgentTools:
         查询团队成员及其状态。
 
         用于了解谁空闲、谁忙碌，以便智能分配任务。
+        注意：此工具不需要身份即可使用，可以查看所有团队成员。
         """
-        # 检查是否选择了身份
-        if not self.agent_id:
-            return ToolResult(
-                False,
-                error="当前未选择身份，无法使用协作功能。请先在标题栏选择身份。"
-            )
-
         agents_data = self._registry.list_all_agents_with_status()
 
         if not agents_data:

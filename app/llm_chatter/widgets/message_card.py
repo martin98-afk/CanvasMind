@@ -1266,8 +1266,36 @@ class MessageCard(SimpleCardWidget):
                 "muted": "#B4C2D9",
                 "side": "right",
             },
+            "other_agent": {
+                "avatar": "📨",
+                "title": "来自其他成员",
+                "subtitle": "Inter-Agent",
+                "bg": "#1B2A43",
+                "border": "#4C74B5",
+                "accent": "#9FC3FF",
+                "text": "#F4F7FD",
+                "muted": "#B4C2D9",
+                "side": "right",
+            },
         }
         theme = dict(themes.get(role, themes["assistant"]))
+
+        # 检查是否有 "from_agent" 标签，如果有则覆盖样式
+        if role == "user" and self.context_tags.get("from_agent"):
+            name, color, prefix, tag_type = self.context_tags["from_agent"]
+            # 计算边框颜色（基于传入的颜色）
+            theme = {
+                "avatar": "📨",
+                "title": name,
+                "subtitle": prefix,
+                "bg": "#1B2A43",
+                "border": color,
+                "accent": color,
+                "text": "#F4F7FD",
+                "muted": "#B4C2D9",
+                "side": "right",
+            }
+
         if error:
             theme["bg"] = "#2A1F1F"
             theme["border"] = "#A94444"

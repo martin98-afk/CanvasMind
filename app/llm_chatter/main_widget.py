@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import re
+import uuid
 from pathlib import Path
 
 import sip
@@ -210,6 +211,11 @@ class OpenAIChatToolWindow(ToolWindow):
         # 问题修复：初始化未定义的属性
         self._pending_permission_tool_call_id: Optional[str] = None
         self._question_tool_call_id: Optional[str] = None
+
+        # 生成唯一的实例ID（用于多智能体通信，与 session_id 完全无关）
+        self._agent_instance_id = str(uuid.uuid4())[:8]  # 8位短ID
+        logger.info(f"[AgentInstance] Created instance: {self._agent_instance_id}")
+
         self.session_manager = SessionManager()
         self.session_manager.create_new_session()
         self._current_session_id = self.session_manager.get_current_session().session_id
@@ -3210,13 +3216,6 @@ class OpenAIChatToolWindow(ToolWindow):
     def _on_agent_role_changed(self, role_id: str):
         """角色变化时更新 agent 注册"""
         logger.info(f"[AgentRole] _on_agent_role_changed called with role_id: '{role_id}'")
-        
-        session_id = self._current_session_id
-        logger.info(f"[AgentRole] Current session_id: {session_id}")
-        
-        if not session_id:
-            logger.warning(f"[AgentRole] No session_id, cannot register")
-            return
 
         if not role_id:
             logger.warning(f"[AgentRole] Empty role_id, skipping")
@@ -3226,20 +3225,26 @@ class OpenAIChatToolWindow(ToolWindow):
         from app.llm_chatter.core.role_config import get_role_config_manager
         role_config_mgr = get_role_config_manager()
         role_config = role_config_mgr.get_role(role_id)
-        
+
         logger.info(f"[AgentRole] Got role_config: {role_config}")
 
         if role_config:
-            # 更新/注册 agent
+            # 更新/注册 agent（使用 {role_id}_{instance_id} 作为唯一标识）
             agent_reg = get_agent_registry()
+            unique_agent_id = f"{role_id}_{self._agent_instance_id}"
             agent = agent_reg.register(
-                session_id=session_id,
+                agent_id=unique_agent_id,  # 唯一的 agent_id
                 role_type=role_id,
                 name=role_config.name,
                 prompt=role_config.prompt,
                 color=role_config.color,
             )
-            logger.info(f"[AgentRole] Registered: {agent.id} for session: {session_id}")
+            logger.info(f"[AgentRole] Registered: {agent.id} (instance: {self._agent_instance_id})")
+
+            # 更新 tool_executor 的当前 agent_id
+            if self._tool_executor:
+                self._tool_executor._current_agent_id = agent.id
+                logger.info(f"[AgentRole] Updated tool_executor._current_agent_id: {agent.id}")
 
             # 更新输入区的 agent 标识
             if hasattr(self, 'input_area'):
@@ -3251,16 +3256,11 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_agent_role_cleared(self):
         """清除角色时注销 agent"""
-        session_id = self._current_session_id
-        if not session_id:
-            return
+        # 清除 tool_executor 的当前 agent_id
+        if self._tool_executor:
+            self._tool_executor._current_agent_id = ''
 
-        # 注销 agent
-        from app.llm_chatter.core.agent_registry import get_agent_registry
-        agent_reg = get_agent_registry()
-        agent_reg.unregister(session_id)
-
-        logger.info(f"[AgentRole] Cleared for session: {session_id}")
+        logger.info(f"[AgentRole] Cleared agent_id")
 
     def _on_edit_role_requested(self, role_id: str):
         """打开角色编辑弹窗"""
@@ -3285,18 +3285,16 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         from app.llm_chatter.core.inter_agent_message import get_message_manager
-        from app.llm_chatter.core.agent_registry import get_agent_registry
 
         msg_manager = get_message_manager()
-        agent_reg = get_agent_registry()
 
-        # 获取当前会话绑定的 agent_id
-        current_agent = agent_reg.get_agent_by_session(self._current_session_id)
-        if not current_agent:
+        # 获取当前 agent_id（来自 tool_executor）
+        current_agent_id = getattr(self._tool_executor, '_current_agent_id', '') if self._tool_executor else ''
+        if not current_agent_id:
             return
 
-        # 使用 agent_id 获取消息（更精确）
-        pending = msg_manager.get_pending_messages(self._current_session_id, current_agent.id)
+        # 使用 agent_id 直接获取消息
+        pending = msg_manager.get_pending_messages(current_agent_id)
 
         if not pending:
             return
@@ -3320,7 +3318,7 @@ class OpenAIChatToolWindow(ToolWindow):
                 self._deliver_inter_agent_message(msg)
 
                 # 从队列中移除消息
-                msg_manager.pop_message(self._current_session_id, current_agent.id)
+                msg_manager.pop_message(current_agent_id)
         finally:
             # 清除处理标记
             self._processing_messages = False
@@ -3335,15 +3333,16 @@ class OpenAIChatToolWindow(ToolWindow):
         from_agent_name = from_agent.name if from_agent else message.from_agent
         from_color = from_agent.color if from_agent else "#888888"
 
-        # 记录这是跨身份消息
+        # 记录这是跨身份消息（包含完整信息）
         self._pending_inter_agent_msg = {
             'from_agent': message.from_agent,
             'from_agent_name': from_agent_name,
+            'from_agent_color': message.from_agent_color or from_color,
             'content': message.content,
             'need_callback': message.need_callback,
         }
 
-        # 显示通知
+        # 显示通知（仅通知，不影响输入框）
         from qfluentwidgets import InfoBar, InfoBarPosition
         InfoBar.info(
             title=f"📩 来自 {from_agent_name} 的消息",
@@ -3355,14 +3354,9 @@ class OpenAIChatToolWindow(ToolWindow):
             parent=self,
         )
 
-        # 自动将消息填入输入框并发送
-        inter_agent_prefix = f"📩 来自 {from_agent_name}:\n{message.content}\n\n"
-        if hasattr(self, 'input_area'):
-            self.input_area.setText(inter_agent_prefix)
-
-        # 延迟发送，让用户看到消息内容
+        # 直接触发处理（不需要填入输入框）
         from PyQt5.QtCore import QTimer
-        QTimer.singleShot(500, lambda: self._send_inter_agent_message())
+        QTimer.singleShot(100, lambda: self._send_inter_agent_message())
 
     def _send_inter_agent_message(self):
         """自动发送跨身份消息"""
@@ -3372,31 +3366,46 @@ class OpenAIChatToolWindow(ToolWindow):
         msg_data = self._pending_inter_agent_msg
         self._pending_inter_agent_msg = None
 
-        # 构建完整消息内容
-        full_message = f"📩 来自 **{msg_data['from_agent_name']}** 的消息:\n\n{msg_data['content']}"
+        # 获取发送者信息
+        from_agent = msg_data.get('from_agent', '')  # 使用 agent_id 作为名称
+        from_agent_name = msg_data.get('from_agent_name', from_agent)
+        from_agent_color = msg_data.get('from_agent_color', '#888888')
+        need_callback = msg_data.get('need_callback', False)
+        content = msg_data.get('content', '')
 
-        # 显示来自其他智能体的消息（作为 assistant 卡片）
-        self._append_inter_agent_message(
-            from_agent=msg_data['from_agent'],
-            from_agent_name=msg_data['from_agent_name'],
-            content=full_message,
+        # 构建结构化消息（发送给 AI，包含 JSON 头部以便解析）
+        import json
+        message_header = {
+            "type": "inter_agent_message",
+            "from_agent": from_agent,
+            "from_agent_name": from_agent_name,
+            "from_agent_color": from_agent_color,
+            "need_callback": need_callback,
+        }
+        header_json = json.dumps(message_header, ensure_ascii=False)
+        # AI 收到的消息包含 JSON 头部
+        ai_message = f"<!-- INTER_AGENT_MESSAGE:{header_json} -->\n\n{content}"
+
+        # 显示消息卡片（纯内容，不包含 HTML 注释）
+        self._append_user_message(
+            content=content,  # 只显示纯内容
+            tag_params={
+                "from_agent": (from_agent, from_agent_color, "来自", "other_agent"),
+            }
         )
 
         # 设置回调状态
-        if msg_data.get('need_callback'):
+        if need_callback:
             from app.llm_chatter.core.agent_registry import get_agent_registry
             agent_reg = get_agent_registry()
             agent_reg.update_status(
                 self._current_session_id,
                 status="busy",
-                task=f"正在处理来自 {msg_data['from_agent_name']} 的任务"
+                task=f"正在处理来自 {from_agent_name} 的任务"
             )
 
-        # 自动发送回复（模拟用户输入消息触发对话）
-        reply_content = f"已收到来自 {msg_data['from_agent_name']} 的消息，正在处理..."
-
+        # 自动触发 AI 处理
         self._hide_welcome_cards()
-        self._append_user_message(reply_content)
 
         assistant_card = self._append_assistant_message()
         self._is_streaming = True
@@ -3406,10 +3415,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if session and self._tool_executor:
             self._tool_executor.set_session_context(session.session_id)
 
-        self._chat_engine.send_message(reply_content, {})
+        # 发送带 JSON 头部的消息给 AI
+        self._chat_engine.send_message(ai_message, {})
         self._current_assistant_card = assistant_card
 
-        logger.info(f"[InterAgentMessage] Auto-replied to {msg_data.get('from_agent_name')}")
+        logger.info(f"[InterAgentMessage] Auto-processed from {from_agent_name}")
 
     def _register_current_session_to_agent(self):
         """将当前会话注册到 agent registry"""
@@ -3426,13 +3436,18 @@ class OpenAIChatToolWindow(ToolWindow):
 
         if role_config:
             agent_reg = get_agent_registry()
-            agent_reg.register(
-                session_id=self._current_session_id,
+            unique_agent_id = f"{role_id}_{self._agent_instance_id}"
+            agent = agent_reg.register(
+                agent_id=unique_agent_id,  # 唯一的 agent_id
                 role_type=role_id,
                 name=role_config.name,
                 prompt=role_config.prompt,
                 color=role_config.color,
             )
+
+            # 更新 tool_executor 的当前 agent_id
+            if self._tool_executor:
+                self._tool_executor._current_agent_id = agent.id
 
             # 更新 session 的 system_prompt 以包含团队成员信息
             self._update_session_system_prompt()

@@ -124,7 +124,7 @@ class RoleConfigManager:
             meta = {}
             prompt = content
 
-        name = meta.get("description", role_type)
+        name = meta.get("name", meta.get("description", role_type))
         color = meta.get("color", "#888888")
 
         return RoleConfig(
