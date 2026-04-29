@@ -3194,18 +3194,14 @@ class OpenAIChatToolWindow(ToolWindow):
         except Exception:
             pass
 
-        # 关闭时更新 agent 状态（如果注册了 agent）
+        # 关闭时注销 agent
         try:
             from app.llm_chatter.core.agent_registry import get_agent_registry
             agent_reg = get_agent_registry()
-            if self._current_session_id:
-                current_agent = agent_reg.get_agent_by_session(self._current_session_id)
-                if current_agent:
-                    agent_reg.update_status(
-                        self._current_session_id,
-                        status="done",
-                        task=""
-                    )
+            current_agent_id = getattr(self._tool_executor, '_current_agent_id', '') if self._tool_executor else ''
+            if current_agent_id:
+                agent_reg.unregister(current_agent_id)
+                logger.info(f"[AgentRole] Unregistered agent on close: {current_agent_id}")
         except Exception:
             pass
 
@@ -3221,6 +3217,17 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.warning(f"[AgentRole] Empty role_id, skipping")
             return
 
+        # 检查是否已注册了相同身份
+        unique_agent_id = f"{role_id}_{self._agent_instance_id}"
+        agent_reg = get_agent_registry()
+        existing_agent = agent_reg.get_agent(unique_agent_id)
+        if existing_agent:
+            logger.info(f"[AgentRole] Agent {unique_agent_id} already registered, skipping")
+            # 只更新 tool_executor 的当前 agent_id
+            if self._tool_executor:
+                self._tool_executor._current_agent_id = unique_agent_id
+            return
+
         # 获取角色配置
         from app.llm_chatter.core.role_config import get_role_config_manager
         role_config_mgr = get_role_config_manager()
@@ -3229,9 +3236,7 @@ class OpenAIChatToolWindow(ToolWindow):
         logger.info(f"[AgentRole] Got role_config: {role_config}")
 
         if role_config:
-            # 更新/注册 agent（使用 {role_id}_{instance_id} 作为唯一标识）
-            agent_reg = get_agent_registry()
-            unique_agent_id = f"{role_id}_{self._agent_instance_id}"
+            # 注册新 agent
             agent = agent_reg.register(
                 agent_id=unique_agent_id,  # 唯一的 agent_id
                 role_type=role_id,
@@ -3430,13 +3435,21 @@ class OpenAIChatToolWindow(ToolWindow):
         if not role_id:
             return
 
+        # 检查是否已注册
+        unique_agent_id = f"{role_id}_{self._agent_instance_id}"
+        agent_reg = get_agent_registry()
+        if agent_reg.get_agent(unique_agent_id):
+            logger.info(f"[AgentRole] Agent {unique_agent_id} already registered, skipping")
+            # 只更新 tool_executor 的当前 agent_id
+            if self._tool_executor:
+                self._tool_executor._current_agent_id = unique_agent_id
+            return
+
         from app.llm_chatter.core.role_config import get_role_config_manager
         role_config_mgr = get_role_config_manager()
         role_config = role_config_mgr.get_role(role_id)
 
         if role_config:
-            agent_reg = get_agent_registry()
-            unique_agent_id = f"{role_id}_{self._agent_instance_id}"
             agent = agent_reg.register(
                 agent_id=unique_agent_id,  # 唯一的 agent_id
                 role_type=role_id,
