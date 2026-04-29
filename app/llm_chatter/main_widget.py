@@ -101,6 +101,9 @@ from app.llm_chatter.widgets.todo_floating_widget import (
 from app.llm_chatter.widgets.tool_floating_widget import (
     ToolFloatingWidget,
 )
+from app.llm_chatter.widgets.llm_settings_card import (
+    LLMSettingsCard,
+)
 from app.tool_window import (
     ToolWindow,
     DockPosition,
@@ -324,6 +327,13 @@ class OpenAIChatToolWindow(ToolWindow):
         """设置标题栏按钮"""
         title_bar = self.get_title_bar()
 
+        # 创建设置按钮
+        self._settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+        self._settings_btn.setFixedSize(28, 28)
+        self._settings_btn.setToolTip("设置")
+        self._settings_btn.clicked.connect(self._toggle_settings_card)
+        title_bar.add_button(self._settings_btn)
+
         # 创建复制窗口按钮
         self._copy_btn = TransparentToolButton(FluentIcon.COPY, self)
         self._copy_btn.setToolTip("复制窗口")
@@ -335,6 +345,13 @@ class OpenAIChatToolWindow(ToolWindow):
         self._api_btn.setToolTip("API 文档 (http://localhost:8765/docs)")
         self._api_btn.clicked.connect(self._open_api_docs)
         title_bar.add_button(self._api_btn)
+
+    def _toggle_settings_card(self):
+        """切换设置卡片的显示"""
+        if self._settings_popup.isVisible():
+            self._settings_popup.hide()
+        else:
+            self._settings_popup.show()
 
     def _open_api_docs(self):
         """打开 API 文档页面"""
@@ -584,6 +601,10 @@ class OpenAIChatToolWindow(ToolWindow):
         session_bar_layout.addLayout(right_layout)
         layout.addLayout(session_bar_layout)
 
+        self._settings_popup = LLMSettingsCard(self)
+        self._settings_popup.setVisible(False)
+        self._settings_popup.closed.connect(self._on_settings_closed)
+
         self._todo_floating_widget = TodoFloatingWidget(self)
         self._todo_floating_widget.setVisible(False)
         layout.addWidget(self._todo_floating_widget)
@@ -593,7 +614,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self._tool_floating_widget = ToolFloatingWidget(self)
         self._tool_floating_widget.setVisible(False)
-        self._tool_floating_widget.cancelled.connect(self._on_tool_cancelled)
+
+        layout.addWidget(self._settings_popup)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
         self.chat_scroll_area.setMinimumWidth(400)
@@ -654,7 +676,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.model_combo.pressed.connect(self._load_model_configs)
         hlayout.addWidget(self.model_combo)
 
-        self.settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
+        self.settings_btn = TransparentToolButton(get_icon("模型选择"), self)
         self.settings_btn.setToolTip("模型设置")
         self.settings_btn.clicked.connect(self._open_settings_popup)
         hlayout.addWidget(self.settings_btn)
@@ -730,39 +752,15 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
     def _open_settings_popup(self):
-        if self._settings_popup is None:
-            self._settings_popup = LLMConfigPopup(parent=self)
-            self._settings_popup.configApplied.connect(self._on_config_applied)
+        """打开设置卡片"""
+        self._settings_popup.show()
+        self._settings_popup.raise_()
+        self._settings_popup.activateWindow()
 
-        current_name = self.model_combo.currentText()
-        setting = Settings.get_instance()
-
-        if current_name == "系统默认配置":
-            config = {
-                "模型名称": setting.llm_model.value,
-                "API_KEY": setting.llm_api_key.value,
-                "API_URL": setting.llm_api_base.value,
-                "最大Token": setting.llm_max_tokens.value,
-                "温度": setting.llm_temperature.value,
-                "启用技能": setting.llm_enabled_skills.value,
-            }
-        else:
-            saved_providers = setting.llm_saved_providers.value or {}
-            provider_config = saved_providers.get(current_name, {})
-            custom_vars = getattr(self.homepage, "global_variables", None)
-            if current_name in (
-                custom_vars.custom
-                if custom_vars and hasattr(custom_vars, "custom")
-                else {}
-            ):
-                config = custom_vars.custom[current_name].value.copy()
-            else:
-                config = provider_config.copy()
-                config.pop("备注", None)
-                config.pop("获取地址", None)
-
-        self._settings_popup.set_config(self.model_combo.currentText(), config)
-        self._settings_popup.show_at(self.settings_btn)
+    def _on_settings_closed(self):
+        """设置卡片关闭时的回调"""
+        # 可以在这里添加一些清理逻辑
+        pass
 
     def _open_history_popup(self):
         if self._history_popup is None:

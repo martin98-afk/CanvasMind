@@ -431,7 +431,7 @@ class SettingDialog(QDialog):
 
     def _on_llm_api_enabled_changed(self, enabled):
         """API 服务开关变化时启动/停止服务"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+        from app.llm_chatter.api import (
             start_llm_api_service,
             stop_llm_api_service,
             is_service_running,
@@ -450,7 +450,7 @@ class SettingDialog(QDialog):
 
     def _on_llm_api_port_changed(self, port):
         """端口变化时，如果服务正在运行则重启服务"""
-        from app.widgets.side_dock_area.plugins.llm_chatter.api import (
+        from app.llm_chatter.api import (
             start_llm_api_service,
             stop_llm_api_service,
             is_service_running,
@@ -469,191 +469,6 @@ class SettingDialog(QDialog):
             self.llmApiEnabledCard.setContent(
                 self.tr("开启后可通过 HTTP 接口远程调用 LLM 对话功能，文档地址：http://localhost:{}/docs".format(port))
             )
-
-    def _create_plugin_card(self, context_id, plugin_name, entry, parent):
-        from qfluentwidgets import ComboBox, SwitchButton
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-        from app.tool_window import DockPosition
-
-        state = SideDockRegistry.get_plugin_state(context_id, plugin_name)
-        is_enabled = state.get("enabled", True)
-        position_value = state.get("position", DockPosition.HIDDEN.value)
-
-        card = QWidget(parent)
-        card.setFixedHeight(50)
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        card._plugin_name = plugin_name
-        card._context_id = context_id
-        card.setStyleSheet("""
-            QWidget {
-                background-color: #333333;
-                border-radius: 6px;
-            }
-        """)
-        card_layout = QHBoxLayout(card)
-        card_layout.setContentsMargins(16, 8, 16, 8)
-        card_layout.setSpacing(12)
-
-        name_label = BodyLabel(plugin_name)
-        name_label.setStyleSheet("color: #e0e0e0; font-size: 13px; min-width: 120px;")
-        card_layout.addWidget(name_label, 0, Qt.AlignLeft)
-
-        card_layout.addStretch(1)
-
-        position_label = BodyLabel(self.tr("位置:"))
-        position_label.setStyleSheet("color: #888888; font-size: 12px;")
-        card_layout.addWidget(position_label, 0, Qt.AlignRight)
-
-        position_combo = ComboBox()
-        position_combo.setFixedWidth(100)
-        position_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #2b2b2b;
-                color: #e0e0e0;
-                border: 1px solid #444444;
-                border-radius: 4px;
-                padding: 4px 8px;
-            }
-            QComboBox:hover {
-                border: 1px solid #0078d4;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #2b2b2b;
-                color: #e0e0e0;
-                border: 1px solid #444444;
-                selection-background-color: #0078d4;
-            }
-        """)
-        position_combo.addItems([self.tr("顶部"), self.tr("底部"), self.tr("隐藏")])
-        position_map = {
-            DockPosition.TOP.value: 0,
-            DockPosition.BOTTOM.value: 1,
-            DockPosition.HIDDEN.value: 2,
-        }
-        position_combo.setCurrentIndex(position_map.get(position_value, 2))
-        position_combo._context_id = context_id
-        position_combo._plugin_name = plugin_name
-        position_combo.currentIndexChanged.connect(
-            lambda idx, combo=position_combo: self._on_plugin_position_changed(
-                combo, idx
-            )
-        )
-        card_layout.addWidget(position_combo, 0, Qt.AlignRight)
-
-        border_color_label = BodyLabel(self.tr("边框:"))
-        border_color_label.setStyleSheet("color: #888888; font-size: 12px;")
-        card_layout.addWidget(border_color_label, 0, Qt.AlignRight)
-
-        border_color_combo = ComboBox()
-        border_color_combo.setFixedWidth(70)
-        border_color_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #2b2b2b;
-                color: #e0e0e0;
-                border: 1px solid #444444;
-                border-radius: 4px;
-                padding: 4px 8px;
-            }
-            QComboBox:hover {
-                border: 1px solid #0078d4;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #2b2b2b;
-                color: #e0e0e0;
-                border: 1px solid #444444;
-                selection-background-color: #0078d4;
-            }
-        """)
-        border_color_combo.addItems([self.tr("无"), self.tr("白色"), self.tr("黄色")])
-        border_color_map = {"none": 0, "white": 1, "yellow": 2}
-        border_color_value = state.get("border_color", "none")
-        border_color_combo.setCurrentIndex(border_color_map.get(border_color_value, 0))
-        border_color_combo._context_id = context_id
-        border_color_combo._plugin_name = plugin_name
-        border_color_combo.currentIndexChanged.connect(
-            lambda idx, combo=border_color_combo: self._on_plugin_border_color_changed(
-                combo, idx
-            )
-        )
-        card_layout.addWidget(border_color_combo, 0, Qt.AlignRight)
-
-        enable_switch = SwitchButton()
-        enable_switch.setOnText("")
-        enable_switch.setOffText("")
-        enable_switch.setChecked(is_enabled)
-        enable_switch.setFixedWidth(50)
-        enable_switch._context_id = context_id
-        enable_switch._plugin_name = plugin_name
-        enable_switch.checkedChanged.connect(
-            lambda checked, sw=enable_switch: self._on_plugin_enabled_changed(
-                sw, checked
-            )
-        )
-        card_layout.addWidget(enable_switch, 0, Qt.AlignRight)
-
-        return card
-
-    def _on_plugin_enabled_changed(self, switch_card, checked):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-
-        context_id = switch_card._context_id
-        plugin_name = switch_card._plugin_name
-        SideDockRegistry.set_plugin_enabled(context_id, plugin_name, checked)
-        self._save_plugin_states()
-        self.onConfigChanged()
-
-    def _on_plugin_position_changed(self, combo, index):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-        from app.tool_window import DockPosition
-
-        context_id = combo._context_id
-        plugin_name = combo._plugin_name
-
-        position_map = {
-            0: DockPosition.TOP,
-            1: DockPosition.BOTTOM,
-            2: DockPosition.HIDDEN,
-        }
-        new_position = position_map.get(index, DockPosition.HIDDEN)
-        SideDockRegistry.set_plugin_position(context_id, plugin_name, new_position)
-        self._save_plugin_states()
-        self.onConfigChanged()
-
-    def _on_plugin_border_color_changed(self, combo, index):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-
-        context_id = combo._context_id
-        plugin_name = combo._plugin_name
-
-        border_color_map = {
-            0: "none",
-            1: "white",
-            2: "yellow",
-        }
-        new_border_color = border_color_map.get(index, "none")
-        SideDockRegistry.set_plugin_border_color(context_id, plugin_name, new_border_color)
-        self._save_plugin_states()
-        self.onConfigChanged()
-
-    def _save_plugin_states(self):
-        from app.widgets.side_dock_area.registry import SideDockRegistry
-
-        all_states = {}
-        for key in self._plugin_cards.keys():
-            context_id, plugin_name = key.split("/", 1)
-            if context_id not in all_states:
-                all_states[context_id] = {}
-            all_states[context_id][plugin_name] = SideDockRegistry.get_plugin_state(
-                context_id, plugin_name
-            )
-
-        self.cfg.set(self.cfg.side_dock_plugins, all_states, save=True)
 
     def _on_llm_providers_changed(self, providers: dict):
         self.configChanged.emit()

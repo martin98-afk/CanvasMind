@@ -447,8 +447,14 @@ class DiffHtmlGenerator:
         )
 
     @classmethod
-    def generate_html_report(cls, diff_output: str, session_id: str = "") -> str:
-        """生成完整的 HTML diff 报告"""
+    def generate_html_report(cls, diff_output: str, session_id: str = "", lazy_load: bool = True) -> str:
+        """生成完整的 HTML diff 报告
+        
+        Args:
+            diff_output: diff 文本
+            session_id: 会话 ID
+            lazy_load: 是否启用懒加载（启用后只渲染前3个文件，后续滚动加载）
+        """
         if diff_output is None:
             diff_output = ""
 
@@ -460,14 +466,23 @@ class DiffHtmlGenerator:
         total_deletions = sum(f["deletions"] for f in files)
         total_files = len(files)
 
-        # 生成文件树 HTML
+        # 生成文件树 HTML 和懒加载数据
         file_tree_html = ""
         file_blocks_html = ""
 
+        # 预渲染前 3 个文件用于首屏快速显示
+        preload_count = 3 if lazy_load and total_files > 3 else total_files
+        
+        # 生成所有文件的懒加载数据
+        files_json = cls._generate_file_data_json(files)
+        
         for i, file_info in enumerate(files):
             file_id = f"file-{i}"
             file_tree_html += cls._generate_file_tree_item(file_info, file_id, i)
-            file_blocks_html += cls._generate_file_block(file_info, file_id, i)
+            
+            # 只预渲染前 preload_count 个文件
+            if i < preload_count:
+                file_blocks_html += cls._generate_file_block(file_info, file_id, i)
 
         # 如果没有差异
         if not files:
@@ -518,23 +533,64 @@ class DiffHtmlGenerator:
     </div>
 
     <script>
+        // 文件数据存储（用于懒加载）
+        window._diffFiles = {files_json};
+        window._loadedFiles = new Set({list(range(preload_count))});
+        window._preloadCount = {preload_count};
+        
+        function loadFileContent(fileId, index) {{
+            if (window._loadedFiles.has(index)) return;
+            window._loadedFiles.add(index);
+            
+            const fileInfo = window._diffFiles[index];
+            if (!fileInfo) return;
+            
+            const container = document.getElementById('diff-content');
+            const placeholder = document.getElementById('placeholder-' + fileId);
+            
+            if (placeholder) {{
+                placeholder.outerHTML = fileInfo.html;
+            }} else {{
+                // 直接追加
+                const div = document.createElement('div');
+                div.id = fileId;
+                div.className = 'file-block';
+                div.innerHTML = fileInfo.header + '<div class="diff-table">' + fileInfo.rows + '</div>';
+                container.appendChild(div);
+            }}
+        }}
+        
+        // 点击文件列表项时加载并滚动
         document.querySelectorAll('.file-item').forEach(item => {{
             item.addEventListener('click', function(e) {{
                 e.preventDefault();
                 const targetId = this.getAttribute('data-target');
+                const index = parseInt(targetId.replace('file-', ''));
+                
+                // 加载文件内容
+                loadFileContent(targetId, index);
+                
+                // 更新激活状态
+                document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 滚动到目标位置
                 const target = document.getElementById(targetId);
                 if (target) {{
-                    document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
-                    this.classList.add('active');
                     target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
                 }}
             }});
         }});
 
+        // 滚动时懒加载可见区域的文件
         const observer = new IntersectionObserver((entries) => {{
             entries.forEach(entry => {{
                 if (entry.isIntersecting) {{
                     const id = entry.target.id;
+                    const index = parseInt(id.replace('file-', ''));
+                    loadFileContent(id, index);
+                    
+                    // 更新激活状态
                     const correspondingItem = document.querySelector(`.file-item[data-target="${{id}}"]`);
                     if (correspondingItem) {{
                         document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
@@ -542,12 +598,14 @@ class DiffHtmlGenerator:
                     }}
                 }}
             }});
-        }}, {{ threshold: 0.1 }});
+        }}, {{ threshold: 0.1, rootMargin: '200px' }});
 
+        // 观察已加载的文件块
         document.querySelectorAll('.file-block').forEach(block => {{
             observer.observe(block);
         }});
 
+        // 激活第一个文件
         const firstItem = document.querySelector('.file-item');
         if (firstItem) firstItem.classList.add('active');
     </script>
@@ -639,17 +697,47 @@ class DiffHtmlGenerator:
             {badges}
         </a>
         '''
-
+    
     @classmethod
-    def _generate_file_block(cls, file_info: Dict, file_id: str, index: int) -> str:
-        """生成文件块 HTML"""
+    def _generate_file_data_json(cls, files: List[Dict]) -> str:
+        """生成文件数据 JSON（用于懒加载），包含每个文件的完整 HTML"""
+        import json
+        
+        files_data = []
+        for i, file_info in enumerate(files):
+            file_id = f"file-{i}"
+            rows_html = cls._generate_file_block_rows(file_info)
+            header_html = cls._generate_file_block_header(file_info, file_id)
+            
+            files_data.append({
+                "id": file_id,
+                "header": header_html,
+                "rows": rows_html
+            })
+        
+        return json.dumps(files_data, ensure_ascii=False)
+    
+    @classmethod
+    def _generate_file_block_header(cls, file_info: Dict, file_id: str) -> str:
+        """生成文件块头部 HTML"""
         path = file_info["path"]
         additions = file_info["additions"]
         deletions = file_info["deletions"]
-        lines = file_info["lines"]
-
         icon = cls._get_file_icon(path)
-
+        
+        return f'''<div class="file-header">
+            <span class="file-icon">{icon}</span>
+            <span class="file-path">{cls.escape_html(path)}</span>
+            <div class="file-stats">
+                {f'<span class="add-stat">+{additions}</span>' if additions > 0 else ""}
+                {f'<span class="del-stat">-{deletions}</span>' if deletions > 0 else ""}
+            </div>
+        </div>'''
+    
+    @classmethod
+    def _generate_file_block_rows(cls, file_info: Dict) -> str:
+        """生成文件块的行内容 HTML（不含外层容器）"""
+        lines = file_info["lines"]
         diff_rows_html = ""
         old_line_num = 1
         new_line_num = 1
@@ -709,19 +797,20 @@ class DiffHtmlGenerator:
                     <span class="line-code">{cls.escape_html(line)}</span>
                 </div>
                 """
+        
+        return diff_rows_html
 
+    @classmethod
+    def _generate_file_block(cls, file_info: Dict, file_id: str, index: int) -> str:
+        """生成文件块 HTML（包含头部和内容）"""
+        header_html = cls._generate_file_block_header(file_info, file_id)
+        rows_html = cls._generate_file_block_rows(file_info)
+        
         return f'''
         <div class="file-block" id="{file_id}">
-            <div class="file-header">
-                <span class="file-icon">{icon}</span>
-                <span class="file-path">{cls.escape_html(path)}</span>
-                <div class="file-stats">
-                    {f'<span class="add-stat">+{additions}</span>' if additions > 0 else ""}
-                    {f'<span class="del-stat">-{deletions}</span>' if deletions > 0 else ""}
-                </div>
-            </div>
+            {header_html}
             <div class="diff-table">
-                {diff_rows_html}
+                {rows_html}
             </div>
         </div>
         '''

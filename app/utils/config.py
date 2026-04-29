@@ -58,34 +58,12 @@ class Settings(QConfig):
         """获取配置实例（单例模式）"""
         if cls._instance is None:
             cls._instance = cls()
-            cls._instance._init_side_dock_plugins()
             CONFIG_FILE = "app.config"
             try:
                 cls._instance.load(CONFIG_FILE)
             except:
                 logger.exception("无法加载配置文件")
-            cls._instance._load_side_dock_plugin_states()
         return cls._instance
-
-    def _init_side_dock_plugins(self):
-        try:
-            from app.widgets.side_dock_area.registry import SideDockRegistry
-
-            SideDockRegistry.discover_plugins()
-        except Exception as e:
-            logger.error(f"[Settings] Failed to discover side dock plugins: {e}")
-
-    def _load_side_dock_plugin_states(self):
-        try:
-            from app.widgets.side_dock_area.registry import SideDockRegistry
-
-            saved_states = self.side_dock_plugins.value
-            if saved_states:
-                SideDockRegistry.load_states_from_config(saved_states)
-            else:
-                self.side_dock_plugins.value = SideDockRegistry.save_states_to_config()
-        except Exception:
-            pass
 
     @classmethod
     def save_config(cls):

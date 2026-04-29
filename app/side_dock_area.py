@@ -211,12 +211,7 @@ class ToolPopupDialog(QDialog):
         self._switch_btn = title_bar._switch_layout_btn
         self._switch_btn.hide()
 
-        # 设置按钮
-        settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
-        settings_btn.setFixedSize(28, 28)
-        settings_btn.setToolTip("设置")
-        settings_btn.clicked.connect(self._show_settings)
-        title_bar.add_popup_button(settings_btn)
+        # 设置按钮已移除（移到主窗口内）
 
         self._min_btn = TransparentToolButton(get_icon("最小化"), self)
         self._min_btn.setFixedSize(24, 24)
@@ -244,18 +239,8 @@ class ToolPopupDialog(QDialog):
         self.setMouseTracking(True)
 
     def _show_settings(self):
-        """显示设置弹窗"""
-        from app.widgets.dialog_widget.setting_popup import SettingDialog
-        from PyQt5.QtWidgets import QDesktopWidget
-
-        settings = SettingDialog(self)
-        # 显示在屏幕中心
-        screen = QDesktopWidget().screenGeometry()
-        settings.move(
-            (screen.width() - settings.width()) // 2,
-            (screen.height() - settings.height()) // 2
-        )
-        settings.exec()
+        """显示设置弹窗 - 已被移除，按钮已移到主窗口"""
+        pass
 
     def _toggle_maximize(self):
         if self._is_maximized:
