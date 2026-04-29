@@ -388,7 +388,7 @@ class ToolPopupDialog(QDialog):
             self._opacity_slider = OpacitySlider(self)
             self._opacity_slider.opacityChanged.connect(self._on_opacity_changed)
         self._opacity_slider.setOpacity(int(self.windowOpacity() * 100))
-        pos = self.mapToGlobal(QPoint(self.width() + 5, 10))
+        pos = self.mapToGlobal(QPoint(self.width(), 10))
         self._opacity_slider.move(pos)
         self._opacity_slider.show()
         self._opacity_slider.raise_()

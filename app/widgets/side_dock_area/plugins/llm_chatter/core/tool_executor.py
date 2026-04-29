@@ -281,7 +281,7 @@ class ToolExecutor:
         "bash": ["command"],
         "webfetch": ["url"],
         "websearch": ["query"],
-        "scan_repo": ["path"],
+        "scan_repo": [],
         "stage_files": ["files"],
         "run_verify": [],
         "git_status": [],
