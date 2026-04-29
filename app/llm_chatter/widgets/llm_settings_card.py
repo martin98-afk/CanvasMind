@@ -60,7 +60,7 @@ class LLMSettingsCard(CardWidget):
         icon_label = QLabel("⚙️", self)
         icon_label.setFont(get_unified_font(12))
 
-        title_label = StrongBodyLabel("大模型设置", self)
+        title_label = StrongBodyLabel("系统设置", self)
         title_label.setFont(get_unified_font(11, True))
         title_label.setStyleSheet("color: #f59e0b;")
 
@@ -160,19 +160,19 @@ class LLMSettingsCard(CardWidget):
         )
         content_layout.addWidget(self.llmSoundCard)
 
-        # API 服务开关
-        self.llmApiEnabledCard = SwitchSettingCard(
-            get_icon("API"),
-            "启用 API 服务",
-            f"http://localhost:{self.cfg.llm_api_port.value}/docs",
-            configItem=self.cfg.llm_api_enabled,
-            parent=self,
-        )
-        content_layout.addWidget(self.llmApiEnabledCard)
-
-        # 端口号设置
-        self._setup_port_card()
-        content_layout.addWidget(self.llmApiPortCard)
+        # # API 服务开关
+        # self.llmApiEnabledCard = SwitchSettingCard(
+        #     get_icon("API"),
+        #     "启用 API 服务",
+        #     f"http://localhost:{self.cfg.llm_api_port.value}/docs",
+        #     configItem=self.cfg.llm_api_enabled,
+        #     parent=self,
+        # )
+        # content_layout.addWidget(self.llmApiEnabledCard)
+        #
+        # # 端口号设置
+        # self._setup_port_card()
+        # content_layout.addWidget(self.llmApiPortCard)
 
         content_layout.addStretch(1)
         scroll.setWidget(content_widget)

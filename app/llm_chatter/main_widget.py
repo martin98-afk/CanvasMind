@@ -104,6 +104,15 @@ from app.llm_chatter.widgets.tool_floating_widget import (
 from app.llm_chatter.widgets.llm_settings_card import (
     LLMSettingsCard,
 )
+from app.llm_chatter.widgets.base_settings_card import (
+    BaseSettingsCard,
+)
+from app.llm_chatter.widgets.model_config_card import (
+    ModelConfigCard,
+)
+from app.llm_chatter.widgets.history_card import (
+    HistoryCard,
+)
 from app.tool_window import (
     ToolWindow,
     DockPosition,
@@ -326,25 +335,22 @@ class OpenAIChatToolWindow(ToolWindow):
     def _setup_title_bar(self):
         """设置标题栏按钮"""
         title_bar = self.get_title_bar()
-
+        # 创建复制窗口按钮
+        self._copy_btn = TransparentToolButton(FluentIcon.COPY, self)
+        self._copy_btn.setToolTip("复制窗口")
+        self._copy_btn.clicked.connect(self._duplicate_window)
+        title_bar.add_button(self._copy_btn)
         # 创建设置按钮
         self._settings_btn = TransparentToolButton(FluentIcon.SETTING, self)
         self._settings_btn.setFixedSize(28, 28)
         self._settings_btn.setToolTip("设置")
         self._settings_btn.clicked.connect(self._toggle_settings_card)
         title_bar.add_button(self._settings_btn)
-
-        # 创建复制窗口按钮
-        self._copy_btn = TransparentToolButton(FluentIcon.COPY, self)
-        self._copy_btn.setToolTip("复制窗口")
-        self._copy_btn.clicked.connect(self._duplicate_window)
-        title_bar.add_button(self._copy_btn)
-
-        # 创建 API 文档按钮
-        self._api_btn = TransparentToolButton(get_icon("Global"), self)
-        self._api_btn.setToolTip("API 文档 (http://localhost:8765/docs)")
-        self._api_btn.clicked.connect(self._open_api_docs)
-        title_bar.add_button(self._api_btn)
+        # # 创建 API 文档按钮
+        # self._api_btn = TransparentToolButton(get_icon("Global"), self)
+        # self._api_btn.setToolTip("API 文档 (http://localhost:8765/docs)")
+        # self._api_btn.clicked.connect(self._open_api_docs)
+        # title_bar.add_button(self._api_btn)
 
     def _toggle_settings_card(self):
         """切换设置卡片的显示"""
@@ -645,6 +651,27 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addWidget(self._sub_agent_floating_widget)
         layout.addWidget(self._tool_floating_widget)
 
+        # 模型配置卡片 - 在消息列表下方，和工具卡片同位置
+        self._model_config_card = BaseSettingsCard("模型配置", "🔧", self)
+        self._model_config_card.setFixedHeight(350)
+        self._model_config_popup = ModelConfigCard()
+        self._model_config_popup.configApplied.connect(self._on_config_applied)
+        self._model_config_card.content_layout.addWidget(self._model_config_popup)
+        self._model_config_card.setVisible(False)
+        layout.addWidget(self._model_config_card)
+
+        # 历史会话卡片 - 在消息列表下方，和工具卡片同位置
+        self._history_card = BaseSettingsCard("历史会话", "📜", self)
+        self._history_card.setFixedHeight(350)
+        self._history_popup_card = HistoryCard()
+        self._history_popup_card.sessionSelected.connect(self._on_history_session_selected)
+        self._history_popup_card.sessionArchived.connect(self._archive_history_session)
+        self._history_popup_card.sessionRenamed.connect(self._rename_history_session)
+        self._history_popup_card.refreshRequested.connect(self._refresh_history_toggle_panel)
+        self._history_card.content_layout.addWidget(self._history_popup_card)
+        self._history_card.setVisible(False)
+        layout.addWidget(self._history_card)
+
         self.node_preview = ConversationNodePreview(self)
         self.node_preview.nodeClicked.connect(self._on_node_preview_clicked)
         layout.addWidget(self.node_preview)
@@ -677,8 +704,8 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.addWidget(self.model_combo)
 
         self.settings_btn = TransparentToolButton(get_icon("模型选择"), self)
-        self.settings_btn.setToolTip("模型设置")
-        self.settings_btn.clicked.connect(self._open_settings_popup)
+        self.settings_btn.setToolTip("模型配置")
+        self.settings_btn.clicked.connect(self._toggle_model_config_card)
         hlayout.addWidget(self.settings_btn)
 
         hlayout.addSpacing(12)  # 和其他按钮分隔
@@ -697,8 +724,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
         self.history_btn = TransparentToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setFixedSize(26, 26)
-        self.history_btn.setToolTip("历史对话")
-        self.history_btn.clicked.connect(self._open_history_popup)
+        self.history_btn.setToolTip("历史会话")
+        self.history_btn.clicked.connect(self._toggle_history_card)
 
         # Diff 按钮 - 查看文件差异
         self.diff_btn = TransparentToolButton(get_icon("差异对比"), self)
@@ -761,6 +788,85 @@ class OpenAIChatToolWindow(ToolWindow):
         """设置卡片关闭时的回调"""
         # 可以在这里添加一些清理逻辑
         pass
+
+    def _toggle_model_config_card(self):
+        """切换模型配置卡片的显示"""
+        # 隐藏其他卡片
+        self._history_card.hide()
+        self._settings_popup.hide()
+
+        # 切换当前卡片
+        if self._model_config_card.isVisible():
+            self._model_config_card.hide()
+        else:
+            # 每次打开都重新加载配置
+            self._load_model_config_to_card()
+            self._model_config_card.show()
+
+    def _load_model_config_to_card(self):
+        """加载当前模型配置到卡片"""
+        current_name = self.model_combo.currentText()
+        setting = Settings.get_instance()
+
+        if current_name == "系统默认配置":
+            config = {
+                "模型名称": setting.llm_model.value,
+                "API_KEY": setting.llm_api_key.value,
+                "API_URL": setting.llm_api_base.value,
+                "最大Token": setting.llm_max_tokens.value,
+                "温度": setting.llm_temperature.value,
+                "启用技能": setting.llm_enabled_skills.value,
+            }
+        else:
+            saved_providers = setting.llm_saved_providers.value or {}
+            provider_config = saved_providers.get(current_name, {})
+            custom_vars = getattr(self.homepage, "global_variables", None)
+            if current_name in (
+                custom_vars.custom
+                if custom_vars and hasattr(custom_vars, "custom")
+                else {}
+            ):
+                config = custom_vars.custom[current_name].value.copy()
+            else:
+                config = provider_config.copy()
+                config.pop("备注", None)
+                config.pop("获取地址", None)
+
+        self._model_config_popup.set_config(current_name, config)
+
+    def _toggle_history_card(self):
+        """切换历史会话卡片的显示"""
+        # 隐藏其他卡片
+        self._model_config_card.hide()
+        self._settings_popup.hide()
+
+        # 切换当前卡片
+        if self._history_card.isVisible():
+            self._history_card.hide()
+        else:
+            self._history_card.show()
+            # 刷新数据
+            self._refresh_history_toggle_panel()
+
+    def _refresh_history_toggle_panel(self):
+        """刷新历史面板数据"""
+        current_idx = (
+            self.history_manager.find_index_by_session_id(self._current_session_id)
+            if self._current_session_id and self.history_manager
+            else None
+        )
+        history_list = self.history_manager.get_history_list() if self.history_manager else []
+        self._history_popup_card.set_history(history_list, current_idx)
+
+    def _on_history_session_selected(self, index: int):
+        """从历史面板选择会话"""
+        if index == -1:
+            # 新建会话
+            self._create_new_session()
+        else:
+            self._load_history_session_from_popup(index)
+        # 关闭历史会话卡片
+        self._history_card.hide()
 
     def _open_history_popup(self):
         if self._history_popup is None:
@@ -1818,31 +1924,17 @@ class OpenAIChatToolWindow(ToolWindow):
             self._show_initial_welcome()
             self.title_edit.setText("新对话")
 
-        if self._history_popup and self._history_popup.isVisible():
-            current_idx = (
-                self.history_manager.find_index_by_session_id(self._current_session_id)
-                if self._current_session_id
-                else None
-            )
-            self._history_popup.set_history(
-                self.history_manager.get_history_list(),
-                current_idx,
-            )
+        # 刷新历史会话卡片
+        if self._history_card.isVisible():
+            self._refresh_history_toggle_panel()
 
     def _rename_history_session(self, index: int, new_title: str):
         if not self.history_manager:
             return
         self.history_manager.update_session_title(index, new_title)
-        if self._history_popup and self._history_popup.isVisible():
-            current_idx = (
-                self.history_manager.find_index_by_session_id(self._current_session_id)
-                if self._current_session_id
-                else None
-            )
-            self._history_popup.set_history(
-                self.history_manager.get_history_list(),
-                current_idx,
-            )
+        # 刷新历史会话卡片
+        if self._history_card.isVisible():
+            self._refresh_history_toggle_panel()
 
     def _load_history_session(self, index: int):
         self._load_history_session_from_popup(index)
@@ -1893,6 +1985,10 @@ class OpenAIChatToolWindow(ToolWindow):
             self._tool_executor.set_session_context(self._current_session_id)
 
         self._display_current_session()
+
+        # 刷新历史会话卡片
+        if self._history_card.isVisible():
+            self._refresh_history_toggle_panel()
 
     def _append_user_message(
         self, content: str, timestamp: str = None, tag_params: dict = None
