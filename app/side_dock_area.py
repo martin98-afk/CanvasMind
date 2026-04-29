@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import isDarkTheme, FluentIcon as FIF, TransparentToolButton, FluentIcon
 
+from app.utils.config import Settings
 from app.utils.utils import get_icon
 
 
@@ -308,6 +309,7 @@ class ToolPopupDialog(QDialog):
         self._is_closing = True
         self._save_geometry()
         self._restore_title_bar()
+        Settings.get_instance().save()
         self.popupClosed.emit(
             self._restore_tool_name, self._restore_was_in_top, self._restore_btn
         )
