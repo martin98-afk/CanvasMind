@@ -1159,8 +1159,20 @@ class PlainTextViewer(QWidget):
         QTimer.singleShot(0, self._update_height)
 
     def _update_height(self):
-        doc_height = self.text_edit.document().size().height()
-        h = max(40, int(doc_height) + 16)
+        """避免初始时 document().size() 返回虚高值的问题"""
+        doc = self.text_edit.document()
+        doc_height = int(doc.size().height())
+
+        # 获取视口宽度，用于判断是否已布局完成
+        viewport_width = self.text_edit.viewport().width()
+
+        # 如果视口宽度为0，说明布局未完成，使用保守高度
+        if viewport_width < 10:
+            h = 40  # 最小高度，等resize时再更新
+        else:
+            # 布局完成后，使用文档实际高度 + padding
+            h = max(40, doc_height + 16)
+
         if abs(self.height() - h) > 2:
             self.setFixedHeight(h)
             self.contentHeightChanged.emit(h)
