@@ -43,7 +43,6 @@ params = [
     "--name=LLMChatter",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
     f"--add-data=app{os.pathsep}app",
-    f"--add-data=resource{os.pathsep}resource",
 ]
 
 if icon_arg:
