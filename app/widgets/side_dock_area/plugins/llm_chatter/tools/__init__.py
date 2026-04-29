@@ -472,22 +472,21 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "grep",
-                "description": "在指定目录下递归搜索匹配正则表达式的内容。",
+                "description": "在代码库中精确搜索关键词（grep）。\n\n【使用场景】需要定位某个变量、函数、类、字符串具体出现在哪些文件和行时使用。不是用来理解代码结构的工具。\n\n【使用要求 - 缺一不可】\n1. include: 必须指定文件类型，如 '*.py'、'*.js'、'*.html'\n2. path: 必须指定具体路径或文件名，不要搜整个目录\n3. pattern: 使用具体关键词，而非模糊模式\n\n【输出限制】结果最多返回100条匹配，超出则截断并提示「Too many matches」。总字符数限制15000。\n\n【重要】如果需要找相关文件或理解代码结构，先用 list/glob 确认文件位置，再对具体文件使用 grep。",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "pattern": {"type": "string", "description": "正则表达式"},
+                        "pattern": {"type": "string", "description": "正则表达式或关键词"},
                         "path": {
                             "type": "string",
-                            "description": "起始搜索目录 (默认当前目录)",
-                            "default": ".",
+                            "description": "具体路径或文件名（必填，不要省略）",
                         },
                         "include": {
                             "type": "string",
-                            "description": "文件过滤模式 (如 '*.py')",
+                            "description": "文件类型过滤，如 '*.py'、'*.js'（必填）",
                         },
                     },
-                    "required": ["pattern"],
+                    "required": ["pattern", "path", "include"],
                 },
             },
         },
@@ -505,6 +504,28 @@ def get_builtin_tools_schema() -> List[Dict]:
                             "default": ".",
                         }
                     },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "glob",
+                "description": "通过通配符查找文件路径（不搜内容）。\n\n【适用场景】\n- 知道文件名模式但不确定具体位置，如 '*.py'、'**/test_*.py'\n- 在项目中定位某种类型的文件\n- 配合 grep 使用：先 glob 找到文件，再 grep 搜内容\n\n【不适用】想搜文件里的内容，用 grep。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "通配符模式，如 '*.py'、'**/*.html'、'config/*.json'",
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "搜索起始路径（默认当前目录）",
+                            "default": ".",
+                        },
+                    },
+                    "required": ["pattern"],
                 },
             },
         },

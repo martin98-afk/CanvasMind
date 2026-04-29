@@ -20,7 +20,7 @@ from qfluentwidgets import (
     BodyLabel,
     PrimaryPushSettingCard,
     SwitchSettingCard,
-    FluentIcon,
+    FluentIcon, SpinBox,
 )
 
 from app.utils.config import Settings
@@ -72,8 +72,7 @@ class SettingDialog(QDialog):
                 super().__init__(FluentIcon.INFO, title, content, parent)
                 self.cfg = cfg
 
-                self.spinBox = QSpinBox()
-                self.spinBox.setFixedWidth(100)
+                self.spinBox = SpinBox()
                 self.spinBox.setRange(1024, 65535)
                 self.spinBox.setValue(cfg.llm_api_port.value)
                 self.spinBox.valueChanged.connect(self._on_value_changed)
