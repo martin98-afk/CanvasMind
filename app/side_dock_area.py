@@ -322,6 +322,15 @@ class ToolPopupDialog(QDialog):
             return
         self._is_closing = True
         self._save_geometry()
+
+        # 先关闭 tool_instance（触发其 closeEvent）
+        if self.tool_instance:
+            try:
+                self.tool_instance.close()
+                self.tool_instance.deleteLater()
+            except Exception:
+                pass
+
         self._restore_title_bar()
         self.popupClosed.emit(
             self._restore_tool_name, self._restore_was_in_top, self._restore_btn

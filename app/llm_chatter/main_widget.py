@@ -3210,25 +3210,31 @@ class OpenAIChatToolWindow(ToolWindow):
     # ========== 多智能体协作相关方法 ==========
 
     def _on_agent_role_changed(self, role_id: str):
-        """角色变化时更新 agent 注册"""
+        """角色变化时更新 agent 注册（一个窗口只有一个 agent）"""
         logger.info(f"[AgentRole] _on_agent_role_changed called with role_id: '{role_id}'")
 
         if not role_id:
             logger.warning(f"[AgentRole] Empty role_id, skipping")
             return
 
-        # 检查是否已注册了相同身份
-        unique_agent_id = f"{role_id}_{self._agent_instance_id}"
         agent_reg = get_agent_registry()
+        unique_agent_id = f"{role_id}_{self._agent_instance_id}"
+
+        # 先注销旧的 agent（如果有）
+        current_agent_id = getattr(self._tool_executor, '_current_agent_id', '') if self._tool_executor else ''
+        if current_agent_id and current_agent_id != unique_agent_id:
+            agent_reg.unregister(current_agent_id)
+            logger.info(f"[AgentRole] Unregistered old agent: {current_agent_id}")
+
+        # 检查是否已注册了相同身份
         existing_agent = agent_reg.get_agent(unique_agent_id)
         if existing_agent:
-            logger.info(f"[AgentRole] Agent {unique_agent_id} already registered, skipping")
-            # 只更新 tool_executor 的当前 agent_id
+            logger.info(f"[AgentRole] Agent {unique_agent_id} already registered")
             if self._tool_executor:
                 self._tool_executor._current_agent_id = unique_agent_id
             return
 
-        # 获取角色配置
+        # 获取角色配置并注册新 agent
         from app.llm_chatter.core.role_config import get_role_config_manager
         role_config_mgr = get_role_config_manager()
         role_config = role_config_mgr.get_role(role_id)
@@ -3236,15 +3242,17 @@ class OpenAIChatToolWindow(ToolWindow):
         logger.info(f"[AgentRole] Got role_config: {role_config}")
 
         if role_config:
-            # 注册新 agent
             agent = agent_reg.register(
-                agent_id=unique_agent_id,  # 唯一的 agent_id
+                agent_id=unique_agent_id,
                 role_type=role_id,
                 name=role_config.name,
                 prompt=role_config.prompt,
                 color=role_config.color,
             )
-            logger.info(f"[AgentRole] Registered: {agent.id} (instance: {self._agent_instance_id})")
+            logger.info(f"[AgentRole] Registered: {agent.id}")
+
+            if self._tool_executor:
+                self._tool_executor._current_agent_id = agent.id
 
             # 更新 tool_executor 的当前 agent_id
             if self._tool_executor:
