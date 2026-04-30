@@ -130,12 +130,17 @@ class ModelConfigCard(QWidget):
 
         # 动态字段
         skip_keys = ["模型名称", "API_URL", "认证方式", "获取地址"]
+        # 显示名称映射（存储字段名 -> UI显示名）
+        display_name_map = {
+            "最大Token": "上下文长度",
+        }
         for key, value in config.items():
             if key in skip_keys:
                 continue
             ui_type = self._infer_ui_type(key, value)
             widget = self._create_widget(key, ui_type, value)
-            label = BodyLabel(f"{key}：", self)
+            display_name = display_name_map.get(key, key)
+            label = BodyLabel(f"{display_name}：", self)
             if ui_type == "checkbox":
                 hlayout = QHBoxLayout()
                 hlayout.setContentsMargins(0, 0, 0, 0)
@@ -232,12 +237,9 @@ class ModelConfigCard(QWidget):
         elif ui_type == "spinbox":
             widget = SpinBox()
             val = int(value) if value else 2048
-            if val <= 1000:
-                widget.setRange(0, 2000)
-            elif val <= 32768:
-                widget.setRange(1024, 32768)
-            else:
-                widget.setRange(1024, 409600)
+            # 从 PARAM_RANGE_MAP 获取范围配置，默认为无限范围
+            range_info = PARAM_RANGE_MAP.get(key, {"min": 1, "max": 99999999})
+            widget.setRange(range_info["min"], range_info["max"])
             widget.setValue(val)
             widget.valueChanged.connect(lambda: self._on_field_changed())
             return widget

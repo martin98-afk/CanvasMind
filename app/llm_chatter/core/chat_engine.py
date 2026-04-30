@@ -898,11 +898,13 @@ class ChatEngine:
         profile = get_provider_profile(llm_config)
         context_limit = int(profile.get("context_limit", 128000))
 
+        # 支持多种上下文长度配置字段名
         for key in (
             "context_limit",
             "context_window",
             "max_context_tokens",
             "max_input_tokens",
+            "最大Token",  # 用户在服务商设置中配置的上下文长度
         ):
             value = llm_config.get(key)
             if value in (None, ""):
@@ -913,8 +915,8 @@ class ChatEngine:
             except Exception:
                 continue
 
-        max_tokens = llm_config.get(
-            "最大Token",
+        max_output_tokens = llm_config.get(
+            "最大新Token",
             llm_config.get(
                 "max_tokens",
                 llm_config.get(
@@ -923,19 +925,19 @@ class ChatEngine:
             ),
         )
         try:
-            max_tokens = int(max_tokens)
+            max_output_tokens = int(max_output_tokens)
         except Exception:
-            max_tokens = int(profile.get("max_output_tokens", 4096))
+            max_output_tokens = int(profile.get("max_output_tokens", 4096))
 
         model_name = str(llm_config.get("model", "")).lower()
         profile_max_output = int(profile.get("max_output_tokens", 4096))
 
-        if max_tokens > profile_max_output * 2:
-            context_limit = min(context_limit, max_tokens)
+        if max_output_tokens > profile_max_output * 2:
+            context_limit = min(context_limit, max_output_tokens)
 
-        reserved = min(800, max_tokens)
+        reserved = min(800, max_output_tokens)
         if "o1" in model_name or "o3" in model_name:
-            reserved = min(max_tokens, 32000)
+            reserved = min(max_output_tokens, 32000)
 
         return max(500, context_limit - reserved)
 

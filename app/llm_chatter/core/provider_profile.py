@@ -37,7 +37,7 @@ PROVIDER_CAPABILITIES = {
         "supports_vision": True,
     },
     "deepseek": {
-        "context_limit": 64000,
+        "context_limit": 320000,
         "max_output_tokens": 8192,
         "supports_vision": False,
     },
