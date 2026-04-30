@@ -105,25 +105,32 @@ class SubAgentExecutor(QThread):
         """执行子智能体对话循环"""
         current_messages = messages.copy()
         response_content = ""
+        current_reasoning = ""  # DeepSeek V4 thinking mode
 
         while not self._is_cancelled:
             if self._is_cancelled:
                 return ""
 
-            response_content, tool_calls = self._make_api_call(current_messages, tools)
+            response_content, tool_calls, reasoning_content = self._make_api_call(
+                current_messages, tools
+            )
+            current_reasoning = reasoning_content
 
             if self._is_cancelled:
                 return ""
 
             if not tool_calls:
                 return self._filter_thinking_content(response_content)
-            current_messages.append(
-                {
-                    "role": "assistant",
-                    "content": response_content,
-                    "tool_calls": tool_calls,
-                }
-            )
+
+            # DeepSeek V4 thinking mode: 需要传递 reasoning_content
+            assistant_msg = {
+                "role": "assistant",
+                "content": response_content,
+                "tool_calls": tool_calls,
+            }
+            if current_reasoning:
+                assistant_msg["reasoning_content"] = current_reasoning
+            current_messages.append(assistant_msg)
 
             tool_results = self._execute_tools(tool_calls)
 
@@ -230,6 +237,7 @@ class SubAgentExecutor(QThread):
         response = create_api_call_with_retry(client, create_completion)
 
         full_response = ""
+        reasoning_content = ""  # DeepSeek V4 thinking mode
         tool_calls_found = []
         tool_calls_buffer = {}
 
@@ -242,6 +250,11 @@ class SubAgentExecutor(QThread):
             if content:
                 content = self._filter_thinking_content(content)
                 full_response += content
+
+            # DeepSeek V4 thinking mode: 收集 reasoning_content
+            reasoning_delta = getattr(delta, "reasoning_content", None)
+            if reasoning_delta:
+                reasoning_content += reasoning_delta
 
             tool_calls = getattr(delta, "tool_calls", None)
             if tool_calls:
@@ -308,7 +321,7 @@ class SubAgentExecutor(QThread):
                 }
             )
 
-        return full_response, tool_calls_found
+        return full_response, tool_calls_found, reasoning_content
 
     def _cap_max_output_tokens(self, model: str, requested: int) -> int:
         try:
