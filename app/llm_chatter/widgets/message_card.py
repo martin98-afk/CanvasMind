@@ -1588,7 +1588,7 @@ class MessageCard(SimpleCardWidget):
             gradient.setColorAt(0.5, pulse)
             gradient.setColorAt(1.0, pulse.darker(130))
 
-        pen = QPen(gradient, 2)
+        pen = QPen(gradient, 3)
         painter.setPen(pen)
         painter.setBrush(QBrush(Qt.NoBrush))
         painter.drawRoundedRect(1, 1, w - 2, h - 2, radius, radius)

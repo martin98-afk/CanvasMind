@@ -495,6 +495,28 @@ def get_builtin_tools_schema() -> List[Dict]:
         {
             "type": "function",
             "function": {
+                "name": "glob",
+                "description": "通过通配符模式递归查找文件，支持 **, *, ? 等glob语法。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "文件匹配模式 (如 '*.py', '**/*.json', 'src/**/*.ts')"
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "搜索起始路径 (默认当前目录)",
+                            "default": ".",
+                        },
+                    },
+                    "required": ["pattern"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "multiedit",
                 "description": "在同一个文件中执行多处替换操作。",
                 "parameters": {
@@ -527,7 +549,7 @@ def get_builtin_tools_schema() -> List[Dict]:
             "type": "function",
             "function": {
                 "name": "patch",
-                "description": "通过 unified diff 格式对文件进行精确修改。支持追加行、删除行、替换行、在指定位置插入行等多处修改。适用于需要同时修改文件多个位置的场景。输入标准的 unified diff 格式（包含 @@ -start +start @@ 行号标记）。**推荐优先使用 patch**，比 write/edit 更安全可靠。",
+                "description": "通过 unified diff 格式对文件进行精确修改。支持追加行、删除行、替换行、在指定位置插入行等多处修改。适用于需要同时修改文件多个位置的场景。输入标准的 unified diff 格式（包含 @@ -start +start @@ 行号标记）。**推荐优先使用 patch**，比 write/edit 更安全可靠。\n\n使用规范：\n1. 修改前先用 read 确认文件当前行号和内容\n2. @@ 行号必须是文件中实际的行号（1-based），注意 context/delete 行数之和是旧文件行数\n3. context 行（以空格开头）是匹配锚点，必须与文件完全一致（缩进、空行、空格/制表符）\n4. 只保留必要的 context 行（上下各 1-2 行）减少出错\n\n常见失败原因：\n- @@ 行号不对：检查 hunk 第一行 context 在文件中的实际行号\n- 空行数量不匹配：文件有几个空行，patch 里也要有几个\n- 缩进/空格不一致：空格和制表符不能混用\n\n失败后修复：读取报错中提示的行号附近内容，对比 patch 与文件的差异，修正后重试",
                 "parameters": {
                     "type": "object",
                     "properties": {

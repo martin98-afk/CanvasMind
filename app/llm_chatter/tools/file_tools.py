@@ -432,6 +432,14 @@ class FileTools:
             return ToolResult(False, error=f"Glob error: {str(e)}")
 
     def apply_patch(self, path: str, patch_content: str) -> ToolResult:
+        """
+        应用 unified diff 格式的 patch 到指定文件。
+
+        修正说明（原实现有多个 bug）：
+        - context 匹配未考虑 '+' 行不占用文件行位置，导致 context 偏移错误
+        - 先删后插的索引计算未处理删除导致的偏移
+        - 重写为顺序逐行处理，与标准 patch 语义一致
+        """
         try:
             full_path = self._resolve_path(path)
             if not full_path.exists():
@@ -456,56 +464,68 @@ class FileTools:
             if not hunks:
                 return ToolResult(False, error="No valid hunk found in patch")
 
+            # 从后往前处理 hunk，避免索引偏移
             result = list(original_lines)
-            for hunk in hunks:
+            for hunk in reversed(hunks):
                 content = hunk['content']
-                old_start = hunk['old_start']
+                old_start = hunk['old_start']  # 1-based
 
-                ctx_lines = [(i, t) for i, (typ, t) in enumerate(content) if typ == ' ']
-                if not ctx_lines:
-                    return ToolResult(False, error="Patch hunk has no context lines, cannot verify position")
+                # ---------------------- 验证阶段 ----------------------
+                # 逐行校验：context 行和 delete 行必须匹配文件内容
+                # '+' 行不消耗文件行，所以 file_pos 只对 context/delete 递增
+                file_pos = old_start - 1  # 转为 0-based
+                for typ, text in content:
+                    if typ in (' ', '-'):
+                        if file_pos >= len(result):
+                            return ToolResult(False,
+                                error=f"❌ Patch context mismatch at line {file_pos + 1} (hunk @@ -{old_start},... @@):\n"
+                                      f"  Patch expects: {repr(text)}\n"
+                                      f"  File has:      <EOF>\n"
+                                      f"  → The patch goes beyond the end of file.\n"
+                                      f"  → Check if @@ -{old_start} line number is too large. "
+                                      f"The file has {len(result)} line(s) in total.")
+                        if result[file_pos] != text:
+                            # 获取周围上下文帮助定位问题
+                            prev_line = repr(result[file_pos - 1]) if file_pos > 0 else '<start>'
+                            next_line = repr(result[file_pos + 1]) if file_pos + 1 < len(result) else '<EOF>'
+                            return ToolResult(False,
+                                error=f"❌ Patch context mismatch at line {file_pos + 1} (hunk @@ -{old_start},... @@):\n"
+                                      f"  Patch expects:  {repr(text)}\n"
+                                      f"  File has:       {repr(result[file_pos])}\n"
+                                      f"  File line {file_pos}:     {prev_line}\n"
+                                      f"  File line {file_pos + 2}: {next_line}\n"
+                                      f"\n"
+                                      f"Possible causes:\n"
+                                      f"  1. @@ line number is wrong — the first context line '{content[0][1] if content else ''}' "
+                                      f"actually starts at a different position\n"
+                                      f"  2. Patch content doesn't exactly match the file (check indentation/spaces)\n"
+                                      f"  3. The file has been modified since it was last read")
+                        file_pos += 1
+                    # '+' 行不消耗文件行，跳过
 
-                hunk_start_pos = old_start - 1
-                matched = False
+                # ---------------------- 应用阶段 ----------------------
+                # 重新定位到 hunk 起始位置
+                file_pos = old_start - 1
+                replace_start = old_start - 1
+                replace_end = file_pos  # 会被下面的遍历更新
 
-                for candidate_start in range(max(0, hunk_start_pos - 100), min(len(result), hunk_start_pos + 100)):
-                    if candidate_start + len(content) > len(result):
-                        continue
-                    match = True
-                    for ctx_idx, ctx_text in ctx_lines:
-                        if result[candidate_start + ctx_idx] != ctx_text:
-                            match = False
-                            break
-                    if match:
-                        hunk_start_pos = candidate_start
-                        matched = True
-                        break
-
-                if not matched:
-                    return ToolResult(False,
-                        error=f"Cannot match patch context in file. Expected context around line {old_start}, but content differs. "
-                              f"The file may have been modified since it was read.")
-
-                ctx_offsets = {i for i, _ in ctx_lines}
-                removes = []
-                adds = []
-
-                for i, (typ, text) in enumerate(content):
-                    if typ == '-':
-                        file_pos = hunk_start_pos + i
-                        if 0 <= file_pos < len(result) and result[file_pos] == text:
-                            removes.append(file_pos)
+                # 构建替换内容
+                replacement = []
+                for typ, text in content:
+                    if typ == ' ':
+                        # context 行：保留原文件行
+                        replacement.append(result[file_pos])
+                        file_pos += 1
+                    elif typ == '-':
+                        # delete 行：跳过原文件行，不加入替换结果
+                        file_pos += 1
                     elif typ == '+':
-                        adds.append((hunk_start_pos + i, text))
+                        # add 行：加入替换结果，不推进文件指针
+                        replacement.append(text)
+                replace_end = file_pos  # 更新结束位置
 
-                removes_sorted = sorted(set(removes), reverse=True)
-                for pos in removes_sorted:
-                    del result[pos]
-
-                insert_pos = removes_sorted[-1] + 1 if removes_sorted else hunk_start_pos
-
-                for file_pos, text in sorted(adds, key=lambda x: -x[0]):
-                    result.insert(insert_pos, text)
+                # 执行替换
+                result[replace_start:replace_end] = replacement
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(result) + "\n")
@@ -517,7 +537,15 @@ class FileTools:
             return ToolResult(False, error=f"Patch error: {str(e)}")
 
     def _parse_unified_diff(self, patch_lines: list) -> list:
-        """解析 unified diff 格式，返回 hunks 列表"""
+        """
+        解析 unified diff 格式，返回 hunks 列表
+
+        每个 hunk 包含:
+        - old_start: 旧文件起始行号（1-based）
+        - old_count: 旧文件受影响行数（0 表示未知）
+        - new_count: 新文件受影响行数（0 表示未知）
+        - content: [(typ, text), ...] 其中 typ=' '/'-'/ '+'
+        """
         hunks = []
         i = 0
 
@@ -531,12 +559,14 @@ class FileTools:
                 i += 1
                 continue
 
-            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+            m = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
             if not m:
                 i += 1
                 continue
 
             old_start = int(m.group(1))
+            old_count = int(m.group(2)) if m.group(2) else 1  # 默认 1
+            new_count = int(m.group(4)) if m.group(4) else 1  # 默认 1
             hunk_content = []
 
             i += 1
@@ -558,6 +588,8 @@ class FileTools:
             if hunk_content:
                 hunks.append({
                     'old_start': old_start,
+                    'old_count': old_count,
+                    'new_count': new_count,
                     'content': hunk_content
                 })
 
