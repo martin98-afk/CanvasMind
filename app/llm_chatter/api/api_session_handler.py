@@ -614,6 +614,7 @@ class APISessionHandler:
         # 构建 worker 回调字典（API 模式直接调用，不通过 Qt 信号）
         worker_callbacks = {
             "content_received": make_callback("content"),
+            "reasoning_content_received": make_callback("reasoning"),
             "tool_call_started": make_callback("tool_call_started"),
             "tool_result_received": make_callback("tool_result"),
             "error_occurred": make_callback("error"),

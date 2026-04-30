@@ -270,6 +270,7 @@ class TitleGenerationTask(QRunnable):
 
 class OpenAIChatWorker(QThread):
     content_received = pyqtSignal(str)
+    reasoning_content_received = pyqtSignal(str)  # DeepSeek thinking mode
     error_occurred = pyqtSignal(str)
     finished_with_content = pyqtSignal(str)
     finished_with_messages = pyqtSignal(list)
@@ -1045,6 +1046,7 @@ class OpenAIChatWorker(QThread):
             reasoning_delta = getattr(delta, "reasoning_content", None)
             if reasoning_delta:
                 self._reasoning_content += reasoning_delta
+                self._emit_with_callback("reasoning_content_received", self.reasoning_content_received, reasoning_delta)
 
             if content:
                 self.full_response += content

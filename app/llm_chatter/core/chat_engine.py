@@ -1016,6 +1016,7 @@ class ChatEngine:
         else:
             # UI 模式：使用 Qt 信号-槽机制
             self._current_worker.content_received.connect(self._on_content_received)
+            self._current_worker.reasoning_content_received.connect(self._on_reasoning_content_received)
             self._current_worker.tool_call_started.connect(self._on_tool_call_started)
             self._current_worker.tool_result_received.connect(self._on_tool_result_received)
             self._current_worker.error_occurred.connect(self._on_error)
@@ -1033,6 +1034,10 @@ class ChatEngine:
 
     def _on_content_received(self, content_piece: str):
         self._emit("content_received", content_piece)
+
+    def _on_reasoning_content_received(self, reasoning_piece: str):
+        """DeepSeek 思考内容接收"""
+        self._emit("reasoning_content_received", reasoning_piece)
 
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str

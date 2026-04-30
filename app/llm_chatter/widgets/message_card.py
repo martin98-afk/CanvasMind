@@ -461,6 +461,7 @@ class CodeWebViewer(QWebEngineView):
         self._is_js_ready = False
         self._last_rendered_html = ""
         self._last_rendered_markdown = ""
+        self._reasoning_content = ""  # DeepSeek thinking mode
         self._min_render_interval = 50
         self._height_report_pending = False
         self._resize_debounce_timer = QTimer(self)
@@ -1014,6 +1015,12 @@ class CodeWebViewer(QWebEngineView):
             self._schedule_render()
 
     def _render_markdown_to_html(self, raw_md: str) -> str:
+        # DeepSeek thinking mode: 注入 reasoning_content 作为思考块
+        reasoning = getattr(self, '_reasoning_content', '') or ''
+        if reasoning:
+            think_html = _render_think_block(reasoning, completed=True)
+            raw_md = think_html + raw_md
+        
         safe_md = _sanitize_incomplete_markdown(raw_md)
         safe_md = _unwrap_code_blocks_with_context_links(safe_md)
         safe_md = _inject_context_links(safe_md)
@@ -1219,6 +1226,7 @@ class MessageCard(SimpleCardWidget):
         parent=None,
         tag_params: dict = None,
         error: bool = False,
+        reasoning_content: str = "",
     ):
         super().__init__(parent)
         self.parent = parent
@@ -1229,6 +1237,7 @@ class MessageCard(SimpleCardWidget):
         self._interactive_options: List[dict] = []
         self._content_data: Any = [] if role == "assistant" else ""
         self._streaming = False
+        self._reasoning_content = reasoning_content
         self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._update_anim)
         self._pulse_phase = 0.0
@@ -1735,6 +1744,13 @@ class MessageCard(SimpleCardWidget):
         except RuntimeError:
             pass
 
+    def set_reasoning_content(self, content: str):
+        """设置思考内容（用于 DeepSeek 思考模式）"""
+        self._reasoning_content = content
+        if content and hasattr(self.viewer, "_markdown_text"):
+            # 刷新渲染以显示思考内容
+            self.viewer._schedule_render(immediate=True)
+
     def set_html_direct(self, html: str):
         """直接设置 HTML，绕过打字机效果"""
         try:
@@ -1744,6 +1760,15 @@ class MessageCard(SimpleCardWidget):
                 self.viewer._perform_update()
         except RuntimeError:
             pass
+
+    def append_reasoning(self, text: str):
+        """追加思考内容（流式模式）"""
+        if not hasattr(self.viewer, '_reasoning_content'):
+            return
+        self._reasoning_content = (self._reasoning_content or '') + text
+        self.viewer._reasoning_content = self._reasoning_content
+        # 触发渲染更新
+        self.viewer._schedule_render(immediate=True)
 
     def add_interactive_option(self, option: Dict[str, Any]):
         """添加交互选项"""

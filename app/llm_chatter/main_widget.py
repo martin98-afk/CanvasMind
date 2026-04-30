@@ -266,6 +266,7 @@ class OpenAIChatToolWindow(ToolWindow):
         )
 
         self._chat_engine.set_callback("content_received", self._on_content_received)
+        self._chat_engine.set_callback("reasoning_content_received", self._on_reasoning_content_received)
         self._chat_engine.set_callback("tool_call_started", self._on_tool_call_started)
         self._chat_engine.set_callback(
             "tool_call_sync_requested", self._request_tool_start_ui_sync
@@ -2574,6 +2575,11 @@ class OpenAIChatToolWindow(ToolWindow):
         if not hasattr(self, "_accumulated_content"):
             self._accumulated_content = ""
         self._accumulated_content += content_piece
+
+    def _on_reasoning_content_received(self, reasoning_piece: str):
+        """处理 DeepSeek 思考内容（流式接收）"""
+        if self._current_assistant_card:
+            self._current_assistant_card.append_reasoning(reasoning_piece)
 
     def _on_tool_call_started(
         self, tool_call_id: str, tool_name: str, arguments: dict, round_id: str = None
