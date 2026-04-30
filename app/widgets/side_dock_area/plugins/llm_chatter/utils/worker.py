@@ -319,6 +319,7 @@ class OpenAIChatWorker(QThread):
         self._previewed_tool_call_ids = set()
         self._current_tool_calls = []
         self._tool_calls_buffer = {}
+        self._reasoning_content = ""
         self._response_content_blocks = []
         self._tool_execution_cancelled = False
         self._last_compaction_state = {
@@ -431,6 +432,7 @@ class OpenAIChatWorker(QThread):
             current_messages = compacted_messages
 
             self.full_response = ""
+            self._reasoning_content = ""
 
             while not self._is_cancelled:
                 if self._is_cancelled:
@@ -560,6 +562,9 @@ class OpenAIChatWorker(QThread):
             tool_call = tool_call_map.get(tool_call_id)
             if tool_call:
                 assistant_msg["tool_calls"] = [tool_call]
+            # DeepSeek V4 thinking mode: 添加 reasoning_content
+            if self._reasoning_content:
+                assistant_msg["reasoning_content"] = self._reasoning_content
             if assistant_msg.get("content") or assistant_msg.get("tool_calls"):
                 sequence.append(assistant_msg)
 
@@ -569,21 +574,25 @@ class OpenAIChatWorker(QThread):
                 sequence.append(tool_result)
 
         if pending_text_blocks:
-            sequence.append(
-                {
-                    "role": "assistant",
-                    "content": pending_text_blocks[0].get("text"),
-                    "timestamp": now_ts,
-                }
-            )
+            assistant_msg = {
+                "role": "assistant",
+                "content": pending_text_blocks[0].get("text"),
+                "timestamp": now_ts,
+            }
+            # DeepSeek V4 thinking mode: 添加 reasoning_content
+            if self._reasoning_content:
+                assistant_msg["reasoning_content"] = self._reasoning_content
+            sequence.append(assistant_msg)
         elif not sequence and self.full_response:
-            sequence.append(
-                {
-                    "role": "assistant",
-                    "content": append_text_block([], self.full_response)[0].get("text"),
-                    "timestamp": now_ts,
-                }
-            )
+            assistant_msg = {
+                "role": "assistant",
+                "content": append_text_block([], self.full_response)[0].get("text"),
+                "timestamp": now_ts,
+            }
+            # DeepSeek V4 thinking mode: 添加 reasoning_content
+            if self._reasoning_content:
+                assistant_msg["reasoning_content"] = self._reasoning_content
+            sequence.append(assistant_msg)
         elif not sequence and not self._response_content_blocks:
             sequence.append({"role": "assistant", "content": [], "timestamp": now_ts})
 
@@ -1031,6 +1040,11 @@ class OpenAIChatWorker(QThread):
                             self._tool_calls_buffer.pop(tc_id, None)
                         except json.JSONDecodeError:
                             pass
+
+            # 提取 reasoning_content (DeepSeek V4 thinking mode)
+            reasoning_delta = getattr(delta, "reasoning_content", None)
+            if reasoning_delta:
+                self._reasoning_content += reasoning_delta
 
             if content:
                 self.full_response += content

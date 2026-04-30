@@ -293,9 +293,13 @@ def normalize_message(message: Any) -> Optional[Dict[str, Any]]:
         ]
         if tool_calls:
             normalized["tool_calls"] = tool_calls
+        # DeepSeek V4 thinking mode: 保留 reasoning_content
+        reasoning = message.get("reasoning_content")
+        if reasoning:
+            normalized["reasoning_content"] = str(reasoning)
         if message.get("round_id"):
             normalized["round_id"] = str(message.get("round_id"))
-        if not normalized.get("content") and not normalized.get("tool_calls"):
+        if not normalized.get("content") and not normalized.get("tool_calls") and not normalized.get("reasoning_content"):
             return None
         return normalized
 
@@ -416,6 +420,10 @@ def to_api_message(message: Dict[str, Any]) -> Dict[str, Any]:
         tool_calls = normalized_message.get("tool_calls")
         if tool_calls:
             api_msg["tool_calls"] = tool_calls
+        # DeepSeek V4 thinking mode: 传递 reasoning_content
+        reasoning = normalized_message.get("reasoning_content")
+        if reasoning:
+            api_msg["reasoning_content"] = reasoning
         return api_msg
     elif role == "tool":
         return {
