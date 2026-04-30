@@ -1274,10 +1274,10 @@ class MessageCard(SimpleCardWidget):
                 "avatar": "AI",
                 "title": "Drifox",
                 "subtitle": "Assistant",
-                "bg": "rgba(16,23,32,150)",
+                "bg": "rgba(45, 30, 20, 150)",
                 "border": "none",
                 "accent": "#D35400",
-                "text": "#EAF1FC",
+                "text": "#FFD4B8",
                 "muted": "#8FA4C2",
                 "side": "left",
             },
@@ -1285,10 +1285,10 @@ class MessageCard(SimpleCardWidget):
                 "avatar": "DX",
                 "title": "Drifox",
                 "subtitle": "AI Copilot",
-                "bg": "rgba(22,26,34,150)",
+                "bg": "rgba(45, 30, 20, 150)",
                 "border": "none",
                 "accent": "#D35400",
-                "text": "#F2F5FB",
+                "text": "#FFD4B8",
                 "muted": "#95A4BC",
                 "side": "left",
             },
@@ -1561,7 +1561,6 @@ class MessageCard(SimpleCardWidget):
         else:
             bd, bg = self._base_border, self._base_bg
         self._apply_card_style(border=bd, bg=bg)
-        self._update_status_badge()
 
     def _on_link_click(self, k, t):
         if ContextRegistry and k in self.context_tags:
