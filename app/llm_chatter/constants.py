@@ -36,7 +36,7 @@ PROVIDER_MODELS = {
         "MiniMax-M2.1",
         "MiniMax-M2.1-highspeed",
     ],
-    "SiliconFlow (有免费额度)": [
+    "SiliconFlow (硅基流动)": [
         "Qwen/Qwen2.5-7B-Instruct",
         "Qwen/Qwen2.5-14B-Instruct",
         "Qwen/Qwen2.5-72B-Instruct",
@@ -60,7 +60,7 @@ PROVIDER_MODELS = {
         "deepseek-v4-flash",
         "deepseek-v4-pro",
     ],
-    "Groq (免费额度)": [
+    "Groq": [
         "openai/gpt-oss-120b",
         "qwen/qwen3-32b",
         "groq/compound",
@@ -74,7 +74,7 @@ PROVIDER_MODELS = {
         "ernie-speed-8k",
         "ernie-speed-128k",
     ],
-    "Ollama (本地)": [
+    "Ollama": [
         "llama3",
         "llama3.1",
         "qwen2.5",
@@ -120,7 +120,7 @@ FREE_PROVIDERS = {
         "认证方式": "bearer",
         "获取地址": "https://platform.minimaxi.com/user-center/basic-information/interface-key",
     },
-    "SiliconFlow (有免费额度)": {
+    "SiliconFlow (硅基流动)": {
         "API_URL": "https://api.siliconflow.cn/v1",
         "API_KEY": "",
         "模型名称": "Qwen/Qwen2.5-7B-Instruct",
@@ -138,7 +138,7 @@ FREE_PROVIDERS = {
         "认证方式": "bearer",
         "获取地址": "https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key",
     },
-    "智谱AI (免费模型)": {
+    "智谱AI": {
         "API_URL": "https://open.bigmodel.cn/api/paas/v4",
         "API_KEY": "",
         "模型名称": "glm-4-flash",
@@ -156,7 +156,7 @@ FREE_PROVIDERS = {
         "认证方式": "bearer",
         "获取地址": "https://platform.deepseek.com/api_keys",
     },
-    "Groq (免费额度)": {
+    "Groq": {
         "API_URL": "https://api.groq.com/openai/v1",
         "API_KEY": "",
         "模型名称": "llama-3.1-70b-versatile",
@@ -174,7 +174,7 @@ FREE_PROVIDERS = {
         "认证方式": "bce",
         "获取地址": "https://console.bce.baidu.com/qianfan/ais/console/apikey",
     },
-    "Ollama (本地)": {
+    "Ollama": {
         "API_URL": "http://localhost:11434/v1",
         "API_KEY": "not-needed",
         "模型名称": "llama3",
@@ -214,13 +214,13 @@ FREE_PROVIDERS = {
 
 PROVIDER_ICONS = {
     "MiniMax (月之暗面)": "MiniMax",
-    "SiliconFlow (有免费额度)": "siliconflow",
+    "SiliconFlow (硅基流动)": "siliconflow",
     "阿里云 (DashScope)": "qwen",
-    "智谱AI (免费模型)": "智谱",
+    "智谱AI": "智谱",
     "DeepSeek": "deepseek",
-    "Groq (免费额度)": "groq",
+    "Groq": "groq",
     "百度千帆": "baidu",
-    "Ollama (本地)": "Ollama",
+    "Ollama": "Ollama",
     "OpenAI": "大模型",
     "Anthropic (Claude)": "Anthropic",
     "Google Gemini": "gemini-ai",

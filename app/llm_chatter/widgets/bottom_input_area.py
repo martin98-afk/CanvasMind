@@ -20,7 +20,7 @@ class SendableTextEdit(QTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText("给 Drifox 发送消息，Enter 发送，Shift+Enter 换行")
+        self.setPlaceholderText("给 DriFox 发送消息，Enter 发送，Shift+Enter 换行")
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -29,8 +29,8 @@ class SendableTextEdit(QTextEdit):
         self.setStyleSheet("""
             QTextEdit {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(18, 24, 34, 245),
-                    stop:1 rgba(24, 31, 45, 245));
+                    stop:0 rgba(18, 24, 34, 150),
+                    stop:1 rgba(24, 31, 45, 150));
                 color: #F2F6FF;
                 border: 1px solid #2B3850;
                 border-radius: 18px;
@@ -40,7 +40,7 @@ class SendableTextEdit(QTextEdit):
             }
             QTextEdit:focus {
                 border: 1px solid #4E93FF;
-                background: rgba(22, 29, 41, 248);
+                background: rgba(22, 29, 41, 200);
             }
             QTextEdit QScrollBar:vertical {
                 background: rgba(255, 255, 255, 0.05);

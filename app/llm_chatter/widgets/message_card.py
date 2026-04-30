@@ -7,7 +7,7 @@ import re
 import urllib
 from datetime import datetime
 from html import escape
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.utils.utils import get_icon
 from app.llm_chatter.widgets.render_helpers import (
@@ -197,7 +197,7 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
                 {f'<span style="color: #FFA500; font-size: 13px; font-weight: bold;">{lang}</span>' if lang else '<span style="color: #888;">Plain Text</span>'}
                 <div style="display: flex; gap: 12px; align-items: center; padding-right: 4px;">
                     <button type="button" data-action="save_file" data-lang="{lang}" data-copy="{b64_copy}" class="code-btn" data-tooltip="保存本地文件" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
-                        <img src="qrc:/icons/导入文件.svg" style="width:22px; height:22px; pointer-events: none;" />
+                        <img src="qrc:/icons/导入.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
                     <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
                         <img src="qrc:/icons/复制.svg" style="width:22px; height:22px; pointer-events: none;" />
@@ -1274,9 +1274,9 @@ class MessageCard(SimpleCardWidget):
                 "avatar": "AI",
                 "title": "Drifox",
                 "subtitle": "Assistant",
-                "bg": "#101720",
-                "border": "#2B415E",
-                "accent": "#63D8FF",
+                "bg": "rgba(16,23,32,150)",
+                "border": "none",
+                "accent": "#D35400",
                 "text": "#EAF1FC",
                 "muted": "#8FA4C2",
                 "side": "left",
@@ -1285,9 +1285,9 @@ class MessageCard(SimpleCardWidget):
                 "avatar": "DX",
                 "title": "Drifox",
                 "subtitle": "AI Copilot",
-                "bg": "#161A22",
-                "border": "#635238",
-                "accent": "#FFB35C",
+                "bg": "rgba(22,26,34,150)",
+                "border": "none",
+                "accent": "#D35400",
                 "text": "#F2F5FB",
                 "muted": "#95A4BC",
                 "side": "left",
@@ -1296,8 +1296,8 @@ class MessageCard(SimpleCardWidget):
                 "avatar": "你",
                 "title": "你",
                 "subtitle": "Prompt",
-                "bg": "#1B2A43",
-                "border": "#4C74B5",
+                "bg": "rgba(27,42,67,150)",
+                "border": "none",
                 "accent": "#9FC3FF",
                 "text": "#F4F7FD",
                 "muted": "#B4C2D9",
@@ -1819,19 +1819,12 @@ def create_welcome_card(
 """
 
     welcome_md = f"""\
-### 👋 你好！我是 Drifox，你的工况范围调整智能体
+### 👋 你好！我是 Drifox 飘狐
 
 ---
 *如需切换智能体，请在输入框右下角下拉菜单中选择。*
 
 {agent_tendency}
-
----
-
-### 💬 快速开始：点击下方问题直接提问
-
-- [加载gk-optimizer技能](ask)
-
 """
 
     card = MessageCard(role="welcome", timestamp="就绪", parent=parent)
