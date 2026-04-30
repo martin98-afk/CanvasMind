@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QShortcut, QTextEdit
 from qfluentwidgets import FluentIcon, ComboBox
 from qfluentwidgets import TextEdit, TransparentToolButton
 from qtpy import QtCore
+from app.utils.utils import get_font_family_css
 
 
 class SendableTextEdit(QTextEdit):
@@ -26,8 +27,8 @@ class SendableTextEdit(QTextEdit):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setAcceptDrops(True)
         self.setMinimumHeight(96)
-        self.setStyleSheet("""
-            QTextEdit {
+        self.setStyleSheet(f"""
+            QTextEdit {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 rgba(18, 24, 34, 150),
                     stop:1 rgba(24, 31, 45, 150));
@@ -36,69 +37,69 @@ class SendableTextEdit(QTextEdit):
                 border-radius: 18px;
                 padding: 14px 128px 18px 16px;
                 selection-background-color: rgba(103, 197, 255, 0.28);
-                font-size: 14px;
-            }
-            QTextEdit:focus {
+                {get_font_family_css()} font-size: 14px;
+            }}
+            QTextEdit:focus {{
                 border: 1px solid #4E93FF;
                 background: rgba(22, 29, 41, 200);
-            }
-            QTextEdit QScrollBar:vertical {
+            }}
+            QTextEdit QScrollBar:vertical {{
                 background: rgba(255, 255, 255, 0.05);
                 width: 6px;
                 margin: 2px 0 2px 0;
                 border-radius: 3px;
-            }
-            QTextEdit QScrollBar::handle:vertical {
+            }}
+            QTextEdit QScrollBar::handle:vertical {{
                 background: rgba(255, 255, 255, 0.15);
                 border-radius: 3px;
                 min-height: 20px;
-            }
-            QTextEdit QScrollBar::handle:vertical:hover {
+            }}
+            QTextEdit QScrollBar::handle:vertical:hover {{
                 background: rgba(255, 255, 255, 0.25);
-            }
+            }}
             QTextEdit QScrollBar::add-line:vertical,
-            QTextEdit QScrollBar::sub-line:vertical {
+            QTextEdit QScrollBar::sub-line:vertical {{
                 height: 0px;
-            }
+            }}
             QTextEdit QScrollBar::add-page:vertical,
-            QTextEdit QScrollBar::sub-page:vertical {
+            QTextEdit QScrollBar::sub-page:vertical {{
                 background: none;
-            }
+            }}
         """)
 
         self._agent_combo = ComboBox(self)
         self._agent_combo.setFixedSize(86, 28)
-        self._agent_combo.setStyleSheet("""
-            ComboBox {
+        self._agent_combo.setStyleSheet(f"""
+            ComboBox {{
                 background-color: rgba(255, 255, 255, 0.05);
                 color: #EAF2FF;
                 border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: 10px;
                 padding: 3px 10px;
-                font-size: 12px;
-            }
-            ComboBox:hover {
+                {get_font_family_css()} font-size: 12px;
+            }}
+            ComboBox:hover {{
                 background-color: rgba(255, 255, 255, 0.08);
                 border-color: rgba(103, 197, 255, 0.45);
-            }
-            ComboBox::drop-down {
+            }}
+            ComboBox::drop-down {{
                 border: none;
                 width: 16px;
-            }
-            ComboBox::down-arrow {
+            }}
+            ComboBox::down-arrow {{
                 border-left: 4px solid transparent;
                 border-right: 4px solid transparent;
                 border-top: 5px solid #9BB0D3;
                 margin-right: 2px;
-            }
-            ComboBox AbstractItemView {
+            }}
+            ComboBox AbstractItemView {{
                 background-color: #192232;
                 color: #EAF2FF;
                 selection-background-color: #2B4C78;
                 border: 1px solid #2B3850;
                 border-radius: 10px;
                 padding: 4px;
-            }
+            }}
         """)
         self._agent_combo.currentTextChanged.connect(self._on_agent_changed)
 

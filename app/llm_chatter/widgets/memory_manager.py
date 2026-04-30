@@ -23,6 +23,7 @@ from qfluentwidgets import (
     SegmentedWidget,
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
+from app.utils.utils import get_font_family_css
 
 MEMORY_CATEGORIES_WIDGET = {
     "agent_identity": "【智能体自身身份记忆】",
@@ -79,7 +80,7 @@ class MemoryItemWidget(QWidget):
         if self.meta_text:
             self.meta_label = BodyLabel(self.meta_text, self)
             self.meta_label.setWordWrap(True)
-            self.meta_label.setStyleSheet("padding: 0 10px 5px 10px; color: #8c99ad; font-size: 11px;")
+            self.meta_label.setStyleSheet(f"padding: 0 10px 5px 10px; color: #8c99ad; {get_font_family_css()} font-size: 11px;")
             text_layout.addWidget(self.meta_label)
 
         main_layout.addWidget(text_wrap, 1)
@@ -174,11 +175,11 @@ class MemoryManagerDialog(QDialog):
         layout.setSpacing(10)
 
         title = BodyLabel("长期记忆管理", self)
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setStyleSheet(f"{get_font_family_css()} font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
 
         desc = BodyLabel("分类管理用户的偏好、特定需求和用户导向型内容", self)
-        desc.setStyleSheet("color: #888; font-size: 12px;")
+        desc.setStyleSheet(f"color: #888; {get_font_family_css()} font-size: 12px;")
         layout.addWidget(desc)
 
         self.segmented_widget = SegmentedWidget(self)
@@ -192,9 +193,9 @@ class MemoryManagerDialog(QDialog):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(10)
         self.category_header = BodyLabel(self)
-        self.category_header.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.category_header.setStyleSheet(f"font-weight: bold; {get_font_family_css()} font-size: 14px;")
         self.category_count_label = BodyLabel(self)
-        self.category_count_label.setStyleSheet("color: #888; font-size: 12px;")
+        self.category_count_label.setStyleSheet(f"color: #888; {get_font_family_css()} font-size: 12px;")
         header_layout.addWidget(self.category_header, 1)
         header_layout.addWidget(self.category_count_label, 0, Qt.AlignVCenter | Qt.AlignRight)  # type: ignore
         layout.addLayout(header_layout)

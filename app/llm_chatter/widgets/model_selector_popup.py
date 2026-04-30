@@ -25,7 +25,7 @@ from qfluentwidgets import (
     CardWidget,
     setFont,
 )
-from app.utils.utils import get_icon, get_unified_font
+from app.utils.utils import get_icon, get_unified_font, get_font_family_css
 from app.llm_chatter.constants import (
     PROVIDER_ICONS,
     PROVIDER_MODELS,
@@ -55,7 +55,7 @@ class ProviderHeader(QWidget):
 
         # 服务商名称
         self.name_label = QLabel(provider_name, self)
-        self.name_label.setStyleSheet("color: #e0e0e0; font-size: 12px; font-weight: bold;")
+        self.name_label.setStyleSheet(f"color: #e0e0e0; {get_font_family_css()} font-size: 12px; font-weight: bold;")
         layout.addWidget(self.name_label)
 
         layout.addStretch(1)
@@ -83,7 +83,7 @@ class ModelItem(QWidget):
         # 选中状态指示点
         self.dot = QLabel("●", self)
         self.dot.setStyleSheet(
-            "color: #0078d4; font-size: 10px;" if self.is_active else "color: transparent; font-size: 10px;"
+            f"color: #0078d4; {get_font_family_css()} font-size: 10px;" if self.is_active else f"color: transparent; {get_font_family_css()} font-size: 10px;"
         )
         self.dot.setFixedWidth(14)
         layout.addWidget(self.dot)
@@ -91,20 +91,20 @@ class ModelItem(QWidget):
         # 模型名
         self.name_label = QLabel(self.model_name, self)
         if self.is_active:
-            self.name_label.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #ffffff; font-weight: bold; {get_font_family_css()} font-size: 13px;")
         else:
-            self.name_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #cccccc; {get_font_family_css()} font-size: 13px;")
         layout.addWidget(self.name_label, 1)
 
     def set_active(self, active: bool):
         self.is_active = active
         self.dot.setStyleSheet(
-            "color: #0078d4; font-size: 10px;" if active else "color: transparent; font-size: 10px;"
+            f"color: #0078d4; {get_font_family_css()} font-size: 10px;" if active else f"color: transparent; {get_font_family_css()} font-size: 10px;"
         )
         if active:
-            self.name_label.setStyleSheet("color: #ffffff; font-weight: bold; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #ffffff; font-weight: bold; {get_font_family_css()} font-size: 13px;")
         else:
-            self.name_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #cccccc; {get_font_family_css()} font-size: 13px;")
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.provider_name, self.model_name)
@@ -112,12 +112,12 @@ class ModelItem(QWidget):
 
     def enterEvent(self, event):
         if not self.is_active:
-            self.name_label.setStyleSheet("color: #ffffff; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #ffffff; {get_font_family_css()} font-size: 13px;")
         super().enterEvent(event)
 
     def leaveEvent(self, event):
         if not self.is_active:
-            self.name_label.setStyleSheet("color: #cccccc; font-size: 13px;")
+            self.name_label.setStyleSheet(f"color: #cccccc; {get_font_family_css()} font-size: 13px;")
         super().leaveEvent(event)
 
 
@@ -167,7 +167,7 @@ class ModelSelectorPopup(QWidget):
                 border: 1px solid #555555;
                 border-radius: 6px;
                 padding: 6px 10px;
-                font-size: 13px;
+                {get_font_family_css()} font-size: 13px;
             }
             QLineEdit:focus {
                 border-color: #0078d4;
@@ -283,7 +283,7 @@ class ModelSelectorPopup(QWidget):
         if not self._all_model_items and search_text:
             no_result = QLabel(f"未找到匹配 \"{search_text}\" 的模型", self)
             no_result.setAlignment(Qt.AlignCenter)
-            no_result.setStyleSheet("color: #888888; font-size: 12px; padding: 20px;")
+            no_result.setStyleSheet(f"color: #888888; {get_font_family_css()} font-size: 12px; padding: 20px;")
             self.content_layout.addWidget(no_result)
 
         # 底部弹性空间

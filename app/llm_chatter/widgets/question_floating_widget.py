@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 from functools import partial
 
 from qfluentwidgets import CardWidget, PrimaryPushButton
-from app.utils.utils import get_unified_font
+from app.utils.utils import get_unified_font, get_font_family_css
 
 
 class WrappedOptionButton(QPushButton):
@@ -256,19 +256,19 @@ class QuestionFloatingWidget(CardWidget):
         self.close_btn.setFixedSize(24, 24)
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.setStyleSheet(
-            """
-            QPushButton {
+            f"""
+            QPushButton {{
                 background-color: transparent;
                 color: #8b95a7;
                 border: none;
                 border-radius: 6px;
-                font-size: 12px;
+                {get_font_family_css()} font-size: 12px;
                 font-weight: bold;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 color: #f4f7fb;
                 background-color: rgba(255, 255, 255, 0.08);
-            }
+            }}
             """
         )
         self.close_btn.clicked.connect(self._on_cancel)
@@ -296,20 +296,20 @@ class QuestionFloatingWidget(CardWidget):
         self.toggle_text_mode_btn = QPushButton("改为输入", self)
         self.toggle_text_mode_btn.setCursor(Qt.PointingHandCursor)
         self.toggle_text_mode_btn.setStyleSheet(
-            """
-            QPushButton {
+            f"""
+            QPushButton {{
                 color: #7dd3fc;
                 background-color: rgba(125, 211, 252, 0.08);
                 border: 1px solid rgba(125, 211, 252, 0.22);
                 border-radius: 6px;
                 padding: 6px 12px;
-                font-size: 11px;
+                {get_font_family_css()} font-size: 11px;
                 font-weight: bold;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 background-color: rgba(125, 211, 252, 0.16);
                 border-color: rgba(125, 211, 252, 0.36);
-            }
+            }}
             """
         )
         self.toggle_text_mode_btn.clicked.connect(self._toggle_text_mode)
@@ -351,23 +351,23 @@ class QuestionFloatingWidget(CardWidget):
         self.confirm_btn.setCursor(Qt.PointingHandCursor)
         self.confirm_btn.clicked.connect(self._on_confirm)
         self.confirm_btn.setStyleSheet(
-            """
-            PrimaryPushButton {
+            f"""
+            PrimaryPushButton {{
                 background-color: #0f766e;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 7px 18px;
-                font-size: 11px;
+                {get_font_family_css()} font-size: 11px;
                 font-weight: bold;
-            }
-            PrimaryPushButton:hover {
+            }}
+            PrimaryPushButton:hover {{
                 background-color: #0d9488;
-            }
-            PrimaryPushButton:disabled {
+            }}
+            PrimaryPushButton:disabled {{
                 background-color: #3f4b5f;
                 color: #93a0b4;
-            }
+            }}
             """
         )
 

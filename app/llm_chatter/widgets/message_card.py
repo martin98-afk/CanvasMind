@@ -9,7 +9,7 @@ from datetime import datetime
 from html import escape
 from typing import List, Dict, Any, Optional
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_font_family_css, get_icon
 from app.llm_chatter.widgets.render_helpers import (
     render_tool_block,
 )
@@ -1866,7 +1866,7 @@ class MessageCard(SimpleCardWidget):
         option_layout.setSpacing(8)
 
         label = QLabel(f"• {option.get('label', '选项')}", self)
-        label.setStyleSheet("color: #4a9eff; font-size: 13px; cursor: pointer;")
+        label.setStyleSheet(f"color: #4a9eff; {get_font_family_css()} font-size: 13px; cursor: pointer;")
         label.setCursor(Qt.PointingHandCursor)
         label.option_data = option
         label.mousePressEvent = lambda e, opt=option: self._on_option_clicked(opt)
@@ -1883,7 +1883,7 @@ class MessageCard(SimpleCardWidget):
             return
 
         title_label = QLabel("👉 请选择：", self)
-        title_label.setStyleSheet("color: #888; font-size: 12px; margin-top: 8px;")
+        title_label.setStyleSheet(f"color: #888; {get_font_family_css()} font-size: 12px; margin-top: 8px;")
         self.options_layout.addWidget(title_label)
 
         for option in options:

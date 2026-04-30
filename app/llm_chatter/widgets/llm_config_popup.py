@@ -19,6 +19,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
+from app.utils.utils import get_font_family_css
 from app.widgets.basic_widget.searchable_editable_combobox import (
     SearchableEditableComboBox,
 )
@@ -87,7 +88,7 @@ class LLMConfigPopup(QWidget):
 
         # 重建标题
         title_label = BodyLabel(title, self)
-        title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        title_label.setStyleSheet(f"font-weight: bold; {get_font_family_css()} font-size: 14px; color: white;")
         self.layout.addWidget(title_label, 0, Qt.AlignHCenter)
         self.layout.addWidget(CardSeparator(self))
 

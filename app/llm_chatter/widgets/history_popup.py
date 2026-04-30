@@ -21,7 +21,7 @@ from qfluentwidgets import (
 )
 from qfluentwidgets.components.widgets.card_widget import CardSeparator
 
-from app.utils.utils import get_icon
+from app.utils.utils import get_icon, get_font_family_css
 
 
 def format_relative_time(time_str: str) -> str:
@@ -235,9 +235,9 @@ class _SectionHeader(QLabel):
         display_text = text if count == 0 else f"{text} ({count})"
         self.setText(display_text)
         self.setStyleSheet(
-            """
+            f"""
             color: rgba(255, 255, 255, 0.45);
-            font-size: 12px;
+            {get_font_family_css()} font-size: 12px;
             font-weight: bold;
             padding: 4px 2px;
             """
@@ -284,7 +284,7 @@ class HistoryPopup(QWidget):
         layout.setSpacing(8)
 
         self.title_label = BodyLabel("历史对话", self.main_frame)
-        self.title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        self.title_label.setStyleSheet(f"font-weight: bold; {get_font_family_css()} font-size: 14px; color: white;")
         layout.addWidget(self.title_label)
 
         separator = CardSeparator(self.main_frame)
