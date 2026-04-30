@@ -202,11 +202,16 @@ class OpenAIChatToolWindow(ToolWindow):
         self._scroll_bottom_timer.setSingleShot(True)
         self._scroll_bottom_timer.setInterval(24)
         self._scroll_bottom_timer.timeout.connect(self._do_scroll_to_bottom)
-        # resize 防抖定时器
+        # resize 防抖定时器 - 性能优化：增加防抖时间减少卡顿
         self._resize_debounce_timer = QTimer(self)
         self._resize_debounce_timer.setSingleShot(True)
-        self._resize_debounce_timer.setInterval(16)  # ~60fps
+        self._resize_debounce_timer.setInterval(100)  # 100ms 防抖，减少 resize 期间的计算
         self._resize_debounce_timer.timeout.connect(self._do_debounced_resize)
+        # resize 完成后更新所有卡片的定时器（延迟更新非可见区域卡片）
+        self._resize_complete_timer = QTimer(self)
+        self._resize_complete_timer.setSingleShot(True)
+        self._resize_complete_timer.setInterval(500)  # resize 结束后 500ms 再更新所有卡片
+        self._resize_complete_timer.timeout.connect(self._sync_all_cards_width)
         self._pending_resize_sync = False
         self.toolStartUiSyncRequested.connect(
             self._handle_tool_start_ui_sync, type=Qt.BlockingQueuedConnection
@@ -985,14 +990,72 @@ class OpenAIChatToolWindow(ToolWindow):
         if not self._pending_resize_sync:
             self._pending_resize_sync = True
             self._resize_debounce_timer.start()
+            # 重置 resize 完成定时器，将在 resize 结束后更新所有卡片
+            self._resize_complete_timer.stop()
+            self._resize_complete_timer.start()
 
     def _do_debounced_resize(self):
-        """防抖执行卡片宽度同步"""
+        """防抖执行卡片宽度同步 - 性能优化：只更新可见区域的卡片"""
         self._pending_resize_sync = False
+        
+        # 获取滚动区域视口
+        scroll_area = getattr(self, 'chat_scroll_area', None)
+        if scroll_area:
+            viewport_rect = scroll_area.viewport().rect()
+            viewport_top = scroll_area.verticalScrollBar().value()
+            viewport_bottom = viewport_top + viewport_rect.height()
+        
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not (item and item.widget() and isinstance(item.widget(), MessageCard)):
+                continue
+            
+            card = item.widget()
+            
+            # 性能优化：只同步可见区域的卡片
+            if scroll_area:
+                card_rect = card.geometry()
+                card_top = card_rect.top()
+                card_bottom = card_rect.bottom()
+                
+                # 如果卡片完全不可见（上下都不在视口内），跳过
+                if card_bottom < viewport_top - 100 or card_top > viewport_bottom + 100:
+                    continue
+            
+            card.sync_width()
+    
+    def _sync_all_cards_width(self):
+        """resize 完成后更新所有卡片的宽度（包括非可见区域的）"""
         for i in range(self.chat_layout.count()):
             item = self.chat_layout.itemAt(i)
             if item and item.widget() and isinstance(item.widget(), MessageCard):
-                item.widget().sync_width()
+                item.widget().sync_width(force=True)
+    
+    def _sync_visible_cards_on_scroll(self):
+        """滚动时更新新进入可见区域的卡片"""
+        scroll_area = getattr(self, 'chat_scroll_area', None)
+        if not scroll_area:
+            return
+        
+        viewport_rect = scroll_area.viewport().rect()
+        viewport_top = scroll_area.verticalScrollBar().value()
+        viewport_bottom = viewport_top + viewport_rect.height()
+        
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not (item and item.widget() and isinstance(item.widget(), MessageCard)):
+                continue
+            
+            card = item.widget()
+            card_rect = card.geometry()
+            card_top = card_rect.top()
+            card_bottom = card_rect.bottom()
+            
+            # 只更新可见区域附近（缓冲200px）的卡片
+            if card_bottom < viewport_top - 200 or card_top > viewport_bottom + 200:
+                continue
+            
+            card.sync_width()
 
     def _on_config_applied(self, new_config: dict):
         current_name = self._current_provider_name
@@ -2234,6 +2297,8 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _on_scroll_changed(self, value):
         self._sync_node_preview_to_scroll()
+        # 性能优化：滚动时延迟更新新可见区域的卡片宽度
+        QTimer.singleShot(100, self._sync_visible_cards_on_scroll)
 
     def _truncate_session_from_user_round(self, round_index: int) -> bool:
         session = self.session_manager.get_current_session()

@@ -103,9 +103,12 @@ class ToolWindowTitleBar(QWidget):
         layout.addWidget(self._popup_btn)
 
         try:
-            font_name = Settings.get_instance().canvas_font_selected.value
+            font_name = Settings.get_instance().llm_font_family.value
         except Exception:
-            font_name = "Microsoft YaHei"
+            try:
+                font_name = Settings.get_instance().canvas_font_selected.value
+            except Exception:
+                font_name = "Microsoft YaHei"
 
         if isDarkTheme():
             bg = "#2d2d2d"
@@ -268,9 +271,12 @@ class ToolWindow(QWidget):
 
     def _init_unified_font(self):
         try:
-            font_name = Settings.get_instance().canvas_font_selected.value
+            font_name = Settings.get_instance().llm_font_family.value
         except Exception:
-            font_name = "Microsoft YaHei"
+            try:
+                font_name = Settings.get_instance().canvas_font_selected.value
+            except Exception:
+                font_name = "Microsoft YaHei"
 
         font = self.font()
         font.setFamily(font_name)

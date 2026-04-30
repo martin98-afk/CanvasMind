@@ -167,6 +167,8 @@ class Settings(QConfig):
         "beep",
         OptionsValidator(["beep", "short", "none"]),
     )
+    # 全局字体设置
+    llm_font_family = ConfigItem("LLM", "FontFamily", "Segoe UI")
 
     # ========== LLM API 服务配置 ==========
     llm_api_enabled = ConfigItem("LLM", "APIEnabled", False, BoolValidator())

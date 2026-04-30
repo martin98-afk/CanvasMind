@@ -179,9 +179,12 @@ def get_icon(icon_name: str) -> QIcon:
 
 def get_canvas_font(size=10, bold=False):
     try:
-        font_family = Settings.get_instance().canvas_font_selected.value
+        font_family = Settings.get_instance().llm_font_family.value
     except Exception:
-        font_family = "Segoe UI"
+        try:
+            font_family = Settings.get_instance().canvas_font_selected.value
+        except Exception:
+            font_family = "Segoe UI"
 
     font = QFont(font_family, size)
     if bold:
@@ -192,13 +195,28 @@ def get_canvas_font(size=10, bold=False):
 def get_unified_font(size=10, bold=False):
     """Get font with unified font family configured by user"""
     try:
-        font_family = Settings.get_instance().canvas_font_selected.value
+        font_family = Settings.get_instance().llm_font_family.value
     except Exception:
-        font_family = "Segoe UI"
+        try:
+            font_family = Settings.get_instance().canvas_font_selected.value
+        except Exception:
+            font_family = "Segoe UI"
     font = QFont(font_family, size)
     if bold:
         font.setBold(True)
     return font
+
+
+def get_font_family_css() -> str:
+    """获取 CSS font-family 字符串，用于 stylesheet 中保持字体统一"""
+    try:
+        font_family = Settings.get_instance().llm_font_family.value
+    except Exception:
+        try:
+            font_family = Settings.get_instance().canvas_font_selected.value
+        except Exception:
+            font_family = "Segoe UI"
+    return f"font-family: '{font_family}';"
 
 
 def str_to_bool(value):

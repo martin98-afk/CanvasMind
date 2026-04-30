@@ -24,6 +24,7 @@ from app.llm_chatter.utils.message_content import (
 from PyQt5.QtCore import (
     Qt,
     QTimer,
+    QTimerEvent,
     pyqtSignal,
     QUrl,
     QVariantAnimation,
@@ -38,6 +39,7 @@ from PyQt5.QtGui import (
     QLinearGradient,
     QPainterPath,
 )
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import (
     QWidget,
@@ -464,6 +466,13 @@ class CodeWebViewer(QWebEngineView):
     contextActionRequested = pyqtSignal(str, str)
     toolDiffRequested = pyqtSignal(str)  # tool_call_id
     saveFileRequested = pyqtSignal(str, str)  # code, lang
+    # WebEngine 上下文丢失信号
+    contextLost = pyqtSignal()
+    contextRestored = pyqtSignal()
+
+    # WebEngine 最大尺寸限制，防止 GPU 内存溢出
+    MAX_WIDTH = 1600
+    MAX_HEIGHT = 2000
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -475,10 +484,18 @@ class CodeWebViewer(QWebEngineView):
         self._reasoning_content = ""  # DeepSeek thinking mode
         self._min_render_interval = 50
         self._height_report_pending = False
+        self._context_lost = False  # 上下文丢失标志
+        self._context_lost_count = 0  # 上下文丢失次数统计
         self._resize_debounce_timer = QTimer(self)
         self._resize_debounce_timer.setSingleShot(True)
         self._resize_debounce_timer.setInterval(100)
         self._resize_debounce_timer.timeout.connect(self._do_resize_check)
+        # 性能优化：resize 锁，防止 resize 期间频繁报告高度
+        self._resize_locked = False
+        self._resize_unlock_timer = QTimer(self)
+        self._resize_unlock_timer.setSingleShot(True)
+        self._resize_unlock_timer.setInterval(150)  # resize 结束后 150ms 再报告高度
+        self._resize_unlock_timer.timeout.connect(self._on_resize_unlock)
 
         # 1. 渲染定时器
         self._render_timer = QTimer(self)
@@ -509,6 +526,63 @@ class CodeWebViewer(QWebEngineView):
         self._page.saveFileRequested.connect(self.saveFileRequested.emit)
 
         self._load_skeleton()
+
+    def _handle_context_lost(self):
+        """JavaScript 报告上下文丢失"""
+        if not self._context_lost:
+            self._context_lost = True
+            self._context_lost_count += 1
+            self.contextLost.emit()
+            # 尝试恢复上下文
+            self._schedule_context_restore()
+
+    def _schedule_context_restore(self):
+        """延迟恢复 WebEngine 上下文"""
+        QTimer.singleShot(500, self._try_restore_context)
+
+    def _try_restore_context(self):
+        """尝试恢复 WebEngine 上下文"""
+        try:
+            # 重新加载骨架 HTML
+            self._is_js_ready = False
+            self._load_skeleton()
+            self._context_lost = False
+            self.contextRestored.emit()
+            # 重新渲染内容
+            if self._markdown_text:
+                self._schedule_render(immediate=True)
+        except Exception as e:
+            print(f"Context restore failed: {e}")
+
+    def event(self, event):
+        """拦截 WebEngine 事件"""
+        # 处理上下文丢失
+        if event.type() == QTimerEvent and hasattr(self, '_context_lost_timer'):
+            pass
+        return super().event(event)
+
+    def setFixedSize(self, *args, **kwargs):
+        """限制最大尺寸，防止 GPU 内存溢出"""
+        # 计算安全尺寸
+        w = args[0] if len(args) > 0 else kwargs.get('width', self.MAX_WIDTH)
+        h = args[1] if len(args) > 1 else kwargs.get('height', self.MAX_HEIGHT)
+        
+        # 限制最大尺寸
+        safe_w = min(w, self.MAX_WIDTH) if isinstance(w, int) else w
+        safe_h = min(h, self.MAX_HEIGHT) if isinstance(h, int) else h
+        
+        super().setFixedSize(safe_w, safe_h)
+
+    def resize(self, *args, **kwargs):
+        """限制 resize 尺寸，防止过大导致 GPU 内存溢出"""
+        w = args[0] if len(args) > 0 else kwargs.get('width', self.MAX_WIDTH)
+        h = args[1] if len(args) > 1 else kwargs.get('height', self.MAX_HEIGHT)
+        
+        # 限制最大尺寸
+        safe_w = min(w, self.MAX_WIDTH) if isinstance(w, int) else w
+        safe_h = min(h, self.MAX_HEIGHT) if isinstance(h, int) else h
+        
+        super().resize(safe_w, safe_h)
 
     def _install_dialog_filter(self):
         """安装事件过滤器，监听对话框显示"""
@@ -569,11 +643,19 @@ class CodeWebViewer(QWebEngineView):
             pass
 
     def _do_resize_check(self):
+        # 如果处于 resize 锁定状态，跳过 height 报告
+        if self._resize_locked:
+            return
         try:
             if self.page():
                 self.page().runJavaScript("reportHeight();")
         except RuntimeError:
             pass
+    
+    def _on_resize_unlock(self):
+        """resize 结束后触发高度报告"""
+        self._resize_locked = False
+        self._do_resize_check()
 
     def _on_height_reported(self, h):
         self._height_report_pending = False
@@ -592,11 +674,17 @@ class CodeWebViewer(QWebEngineView):
         try:
             from app.utils.config import Settings
 
-            font_family = Settings.get_instance().canvas_font_selected.value
+            font_family = Settings.get_instance().llm_font_family.value
             if not font_family:
                 font_family = "Segoe UI, sans-serif"
         except Exception:
-            pass
+            try:
+                from app.utils.config import Settings
+                font_family = Settings.get_instance().canvas_font_selected.value
+                if not font_family:
+                    font_family = "Segoe UI, sans-serif"
+            except Exception:
+                pass
 
         tag_css = []
         for act, col in ACTION_COLOR_MAP.items():
@@ -1100,9 +1188,12 @@ class CodeWebViewer(QWebEngineView):
         super().resizeEvent(event)
         if self._streaming:
             return
-        if not self._height_report_pending:
-            self._height_report_pending = True
-        self._resize_debounce_timer.start()
+        
+        # 性能优化：使用 resize 锁，阻止 resize 期间频繁报告高度
+        if not self._resize_locked:
+            self._resize_locked = True
+            self._resize_unlock_timer.stop()
+            self._resize_unlock_timer.start()
 
     def wheelEvent(self, event: QWheelEvent):
         # 获取滚动条（向上找 QScrollArea）
@@ -1125,6 +1216,8 @@ class CodeWebViewer(QWebEngineView):
             self._resize_timer.stop()
         if self._resize_debounce_timer.isActive():
             self._resize_debounce_timer.stop()
+        if self._resize_unlock_timer.isActive():
+            self._resize_unlock_timer.stop()
         if self.page():
             self.page().deleteLater()
         super().deleteLater()
@@ -1266,6 +1359,11 @@ class MessageCard(SimpleCardWidget):
         self._theme = self._build_theme(role, error)
         self._base_bg = self._theme["bg"]
         self._base_border = self._theme["border"]
+        # 性能优化：缓存上次宽度值，避免不必要的更新
+        self._last_synced_width = 0
+        self._resize_anim_locked = False  # resize 动画锁，防止频繁触发
+        # WebEngine 上下文恢复标志
+        self._webengine_needs_restore = False
         self._setup_ui()
 
     def _build_theme(self, role: str, error: bool = False) -> Dict[str, str]:
@@ -1441,6 +1539,9 @@ class MessageCard(SimpleCardWidget):
             self.viewer.contentHeightChanged.connect(self._update_height)
             self.viewer.toolDiffRequested.connect(self.toolDiffRequested.emit)
             self.viewer.saveFileRequested.connect(self.saveFileRequested.emit)
+            # WebEngine 上下文丢失处理
+            self.viewer.contextLost.connect(self._on_webengine_context_lost)
+            self.viewer.contextRestored.connect(self._on_webengine_context_restored)
         main.addWidget(self.viewer)
 
         self.options_widget = QWidget(self)
@@ -1495,6 +1596,20 @@ class MessageCard(SimpleCardWidget):
             return
         self._apply_card_style()
         self.update()
+
+    def _on_webengine_context_lost(self):
+        """WebEngine 上下文丢失时显示恢复提示"""
+        # 设置卡片为错误状态样式
+        self._apply_card_style(border="#A94444")
+        # 标记需要恢复
+        self._webengine_needs_restore = True
+
+    def _on_webengine_context_restored(self):
+        """WebEngine 上下文恢复后恢复正常样式"""
+        self._apply_card_style()
+        self._webengine_needs_restore = False
+        # 重新同步宽度
+        self.sync_width(force=True)
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -1603,7 +1718,12 @@ class MessageCard(SimpleCardWidget):
         if parent:
             parent.updateGeometry()
 
-    def sync_width(self):
+    def sync_width(self, force: bool = False):
+        """同步卡片宽度
+        
+        Args:
+            force: 是否强制更新，即使宽度没变化
+        """
         parent = self.parentWidget()
         if not parent:
             return
@@ -1616,7 +1736,12 @@ class MessageCard(SimpleCardWidget):
             horizontal_margin = 72
 
         target_width = max(320, parent_width - horizontal_margin)
-        # 只有宽度变化时才更新，减少布局重计算
+        
+        # 性能优化：只有宽度真正变化时才更新
+        if not force and target_width == self._last_synced_width:
+            return
+        
+        self._last_synced_width = target_width
         if self.minimumWidth() != target_width or self.maximumWidth() != target_width:
             self.blockSignals(True)
             self.setMinimumWidth(target_width)
@@ -1784,7 +1909,14 @@ class MessageCard(SimpleCardWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.sync_width()
+        # 性能优化：使用节流，避免每次 resize 都触发 sync_width
+        if not self._resize_anim_locked:
+            self._resize_anim_locked = True
+            QTimer.singleShot(50, self._unlock_resize_and_sync)
+    
+    def _unlock_resize_and_sync(self):
+        self._resize_anim_locked = False
+        self.sync_width(force=True)
 
     def closeEvent(self, e):
         try:

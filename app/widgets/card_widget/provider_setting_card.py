@@ -149,7 +149,7 @@ class ProviderIconWidget(IconWidget):
         painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(self.rect(), 6, 6)
         painter.setPen(QColor(255, 255, 255))
-        painter.setFont(QFont("Segoe UI", self.width() // 3, QFont.Bold))
+        painter.setFont(QFont(get_unified_font().family(), self.width() // 3, QFont.Bold))
         painter.drawText(
             QRect(0, 0, self.width(), self.height()), Qt.AlignCenter, self._text
         )

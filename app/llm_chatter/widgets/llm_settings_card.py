@@ -3,6 +3,7 @@
 大模型设置卡片 - 垂直列表布局，高度不够滚动
 """
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -10,6 +11,8 @@ from PyQt5.QtWidgets import (
     QLabel,
     QScrollArea,
     QSizePolicy,
+    QFontComboBox,
+    QComboBox,
 )
 from qfluentwidgets import (
     CardWidget,
@@ -17,6 +20,8 @@ from qfluentwidgets import (
     BodyLabel,
     SwitchSettingCard,
     OptionsSettingCard,
+    SettingCard,
+    FluentIcon,
 )
 from app.utils.utils import get_icon, get_unified_font
 from app.utils.config import Settings
@@ -139,6 +144,10 @@ class LLMSettingsCard(CardWidget):
         )
         content_layout.addWidget(self.llmSkillsCard)
 
+        # 全局字体设置
+        self._setup_font_card()
+        content_layout.addWidget(self.llmFontCard)
+
         # 智能体完成通知
         self.llmNotifyCard = SwitchSettingCard(
             get_icon("提示"),
@@ -183,8 +192,69 @@ class LLMSettingsCard(CardWidget):
         self.llmSkillsCard.skillsChanged.connect(self._on_config_changed)
         self.cfg.llm_notify_enabled.valueChanged.connect(self._on_config_changed)
         self.llmSoundCard.optionChanged.connect(self._on_config_changed)
+        self.cfg.llm_font_family.valueChanged.connect(self._on_config_changed)
         self.cfg.llm_api_enabled.valueChanged.connect(self._on_llm_api_enabled_changed)
         self.cfg.llm_api_port.valueChanged.connect(self._on_llm_api_port_changed)
+
+    def _setup_font_card(self):
+        """创建字体设置卡片"""
+        from qfluentwidgets import SettingCard
+
+        class FontSettingCard(SettingCard):
+            def __init__(self, title, content, cfg, parent=None):
+                super().__init__(FluentIcon.FONT, title, content, parent)
+                self.cfg = cfg
+                self._parent = parent
+
+                self.fontCombo = QFontComboBox()
+                self.fontCombo.setMinimumWidth(200)
+                self.fontCombo.setStyleSheet("""
+                    QFontComboBox {
+                        color: #e0e0e0;
+                        background-color: #3d3d3d;
+                        border: 1px solid #555555;
+                        border-radius: 4px;
+                        padding: 4px 10px;
+                        min-height: 26px;
+                        selection-background-color: #0078d4;
+                    }
+                    QFontComboBox:hover {
+                        border: 1px solid #0078d4;
+                    }
+                    QFontComboBox::drop-down {
+                        border: none;
+                        width: 24px;
+                    }
+                    QFontComboBox QAbstractItemView {
+                        color: #e0e0e0;
+                        background-color: #2d2d2d;
+                        border: 1px solid #555555;
+                        selection-background-color: #0078d4;
+                        selection-color: #ffffff;
+                        outline: none;
+                    }
+                """)
+                # 设置当前字体
+                current_font = cfg.llm_font_family.value
+                self.fontCombo.setCurrentFont(QFont(current_font))
+                self.fontCombo.currentFontChanged.connect(self._on_font_changed)
+
+                self.hBoxLayout.addWidget(self.fontCombo)
+                self.hBoxLayout.addSpacing(16)
+
+            def _on_font_changed(self, font):
+                self.cfg.set(self.cfg.llm_font_family, font.family(), save=True)
+                self.cfg.save()
+                # 通知父级配置变化
+                if self._parent and hasattr(self._parent, '_on_config_changed'):
+                    self._parent._on_config_changed()
+
+        self.llmFontCard = FontSettingCard(
+            "全局字体",
+            "设置界面显示字体",
+            self.cfg,
+            self,
+        )
 
     def _setup_port_card(self):
         """创建端口设置卡片"""
