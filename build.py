@@ -27,7 +27,7 @@ to_remove = [
 # 2. 图标选择 (跨平台)
 icon_arg = None
 if platform.system() == "Windows":
-    icon_path = Path(base_dir) / "icons" / "logoico.ico"
+    icon_path = Path(base_dir) / "icons" / "drifox.ico"
     if icon_path.exists():
         icon_arg = f"--icon={icon_path}"
 elif platform.system() == "Darwin":
@@ -40,7 +40,7 @@ params = [
     "main.py",
     "--onedir",
     "--windowed",
-    "--name=LLMChatter",  # 直接指定名称，省去后期改名麻烦
+    "--name=Drifox",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
     f"--add-data=app/llm_chatter/agents{os.pathsep}app/llm_chatter",
 ]
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     PyInstaller.__main__.run(params)
 
     # 4. 后置处理
-    dist_final = os.path.join("dist", "LLMChatter")
+    dist_final = os.path.join("dist", "Drifox")
     if os.path.exists(dist_final):
         post_build_cleanup(dist_final)
 

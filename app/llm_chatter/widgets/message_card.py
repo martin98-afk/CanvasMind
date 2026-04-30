@@ -196,11 +196,8 @@ def _wrap_code_blocks_with_copy_button_web(html: str) -> str:
             ">
                 {f'<span style="color: #FFA500; font-size: 13px; font-weight: bold;">{lang}</span>' if lang else '<span style="color: #888;">Plain Text</span>'}
                 <div style="display: flex; gap: 12px; align-items: center; padding-right: 4px;">
-                    <button type="button" data-action="insert" data-copy="{b64_copy}" class="code-btn" data-tooltip="插入代码" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
-                        <img src="qrc:/icons/插入.svg" style="width:22px; height:22px; pointer-events: none;" />
-                    </button>
-                    <button type="button" data-action="create" data-copy="{b64_copy}" class="code-btn" data-tooltip="新建组件" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
-                        <img src="qrc:/icons/新建.svg" style="width:22px; height:22px; pointer-events: none;" />
+                    <button type="button" data-action="save_file" data-lang="{lang}" data-copy="{b64_copy}" class="code-btn" data-tooltip="保存本地文件" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
+                        <img src="qrc:/icons/导入文件.svg" style="width:22px; height:22px; pointer-events: none;" />
                     </button>
                     <button type="button" data-action="copy" data-copy="{b64_copy}" class="code-btn" data-tooltip="复制代码" style="width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 6px;">
                         <img src="qrc:/icons/复制.svg" style="width:22px; height:22px; pointer-events: none;" />
@@ -398,6 +395,7 @@ class ConsoleMonitorPage(QWebEnginePage):
     heightReported = pyqtSignal(int)
     contentReady = pyqtSignal()
     toolDiffRequested = pyqtSignal(str)  # tool_call_id
+    saveFileRequested = pyqtSignal(str, str)  # code, lang
 
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         msg = message.strip()
@@ -435,6 +433,18 @@ class ConsoleMonitorPage(QWebEnginePage):
                     self.toolDiffRequested.emit(tool_call_id)
                 except Exception:
                     pass
+            elif "save_file:" in msg:
+                # 处理保存文件请求
+                try:
+                    parts = msg.split("save_file:", 1)[1]
+                    # 格式: b64_code:lang
+                    sub_parts = parts.rsplit(":", 1)
+                    if len(sub_parts) == 2:
+                        b64_code, lang = sub_parts
+                        code = base64.b64decode(b64_code).decode("utf-8")
+                        self.saveFileRequested.emit(code, lang)
+                except Exception:
+                    pass
             else:
                 try:
                     p = msg.split(":")
@@ -453,6 +463,7 @@ class CodeWebViewer(QWebEngineView):
     codeActionRequested = pyqtSignal(str, str)
     contextActionRequested = pyqtSignal(str, str)
     toolDiffRequested = pyqtSignal(str)  # tool_call_id
+    saveFileRequested = pyqtSignal(str, str)  # code, lang
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -495,6 +506,7 @@ class CodeWebViewer(QWebEngineView):
         self._page.heightReported.connect(self._on_height_reported)
         self._page.contentReady.connect(self._on_js_ready)
         self._page.toolDiffRequested.connect(self.toolDiffRequested.emit)
+        self._page.saveFileRequested.connect(self.saveFileRequested.emit)
 
         self._load_skeleton()
 
@@ -950,8 +962,9 @@ class CodeWebViewer(QWebEngineView):
                     if (btn) {{
                         const act = btn.getAttribute('data-action');
                         const b64 = btn.getAttribute('data-copy');
+                        const lang = btn.getAttribute('data-lang') || '';
                         if (act === 'copy' && navigator.clipboard) navigator.clipboard.writeText(atob(b64));
-                        console.log('pywebview_action:' + act + ':' + b64);
+                        console.log('pywebview_action:' + act + ':' + b64 + ':' + lang);
                         return;
                     }}
                     const summary = e.target.closest('.cm-collapsible__summary');
@@ -1219,6 +1232,7 @@ class MessageCard(SimpleCardWidget):
     interventionRequested = pyqtSignal(dict)
     toolDiffRequested = pyqtSignal(str)  # tool_call_id
     cardDiffRequested = pyqtSignal(int)  # round_index
+    saveFileRequested = pyqtSignal(str, str)  # code, lang
 
     def __init__(
         self,
@@ -1238,6 +1252,7 @@ class MessageCard(SimpleCardWidget):
         self._interactive_options: List[dict] = []
         self._content_data: Any = [] if role == "assistant" else ""
         self._streaming = False
+        self._round_index: Optional[int] = None  # 用于卡片差异功能
         self._reasoning_content = reasoning_content
         self._anim_timer = QTimer(self)
         self._anim_timer.timeout.connect(self._update_anim)
@@ -1430,6 +1445,7 @@ class MessageCard(SimpleCardWidget):
             self.viewer.contextActionRequested.connect(self.contextActionRequested.emit)
             self.viewer.contentHeightChanged.connect(self._update_height)
             self.viewer.toolDiffRequested.connect(self.toolDiffRequested.emit)
+            self.viewer.saveFileRequested.connect(self.saveFileRequested.emit)
         main.addWidget(self.viewer)
 
         self.options_widget = QWidget(self)
@@ -1622,14 +1638,9 @@ class MessageCard(SimpleCardWidget):
                 pass
 
     def _emit_card_diff_requested(self):
-        """发射卡片差异请求信号，查找关联的 user card 的 round_index"""
-        # 找到当前 assistant card 对应的 round_index
-        # 需要向父组件查询 card 在布局中的位置
-        parent = self.parentWidget()
-        if parent and hasattr(parent, 'findRoundIndexForCard'):
-            round_index = parent.findRoundIndexForCard(self)
-            if round_index is not None:
-                self.cardDiffRequested.emit(round_index)
+        """发射卡片差异请求信号"""
+        if self._round_index is not None:
+            self.cardDiffRequested.emit(self._round_index)
 
     def _update_height(self, h):
         target_height = max(40, h)

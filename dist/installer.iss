@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only
 
-#define MyAppName "LLMChatter"
+#define MyAppName "Drifox"
 #define MyAppVersion "v0.4.7"
 #define MyAppPublisher "Jinshan Psychiatric Hospital"
-#define MyAppURL "https://LLMChatter-sphinx-build.readthedocs.io/zh-cn/latest/"
-#define MyAppExeName "LLMChatter.exe"
+#define MyAppURL "https://Drifox-sphinx-build.readthedocs.io/zh-cn/latest/"
+#define MyAppExeName "Drifox.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".workflow.json"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -24,7 +24,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
-OutputBaseFilename=LLMChatter_installer
+OutputBaseFilename=Drifox_installer
 Compression=lzma2
 SolidCompression=yes
 SetupIconFile=logoico.ico
@@ -51,7 +51,7 @@ Name: "chinesesimplified"; MessagesFile: "./ChineseSimplified.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
 
 [Files]
-Source: "LLMChatter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "Drifox\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
@@ -60,8 +60,8 @@ Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: s
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Icons]
-Name: "{autoprograms}\LLMChatter"; Filename: "{app}\LLMChatter.exe"
-Name: "{autodesktop}\LLMChatter"; Filename: "{app}\LLMChatter.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Drifox"; Filename: "{app}\Drifox.exe"
+Name: "{autodesktop}\Drifox"; Filename: "{app}\Drifox.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

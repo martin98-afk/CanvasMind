@@ -13,6 +13,7 @@ ICON_NAME_TO_FILE = {
     "console": "console.svg",
     "dataframe": "dataframe.svg",
     "deepseek": "deepseek.svg",
+    "drifox": "drifox.ico",
     "eraser": "eraser.svg",
     "expand_all": "expand_all.svg",
     "fill": "fill.svg",

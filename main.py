@@ -55,8 +55,8 @@ def main():
     # 创建应用
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    app.setApplicationName("LLM Chatter")
-    app.setApplicationDisplayName("LLM Chatter")
+    app.setApplicationName("Drifox")
+    app.setApplicationDisplayName("Drifox")
     
     app.setStyleSheet("""
         QToolTip {
@@ -116,7 +116,7 @@ def main():
     
     # 使用 ToolPopupDialog 包装
     popup = ToolPopupDialog(chat_window, None)
-    popup.setWindowTitle("LLM Chatter")
+    popup.setWindowTitle("Drifox")
     
     # 跳过历史会话恢复
     chat_window._skip_restore_history = True

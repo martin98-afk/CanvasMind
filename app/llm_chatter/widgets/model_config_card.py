@@ -68,84 +68,8 @@ class ModelConfigCard(QWidget):
         self._clear_layout(self.layout)
         self._widgets.clear()
 
-        # 检查是否是预置供应商
-        provider_key = title
-        if provider_key in PROVIDER_MODELS:
-            model_label = BodyLabel("选择模型：", self)
-            model_combo = SearchableEditableComboBox(self)
-            model_combo.setMinimumWidth(280)  # 统一宽度
-            saved_models = config.get("模型列表", [])
-            if isinstance(saved_models, str):
-                try:
-                    saved_models = ast.literal_eval(saved_models)
-                except:
-                    logger.exception("无法解析模型列表")
-                    saved_models = []
-            if isinstance(saved_models, list) and len(saved_models) > 0:
-                model_combo.addItems(saved_models)
-            elif provider_key in PROVIDER_MODELS:
-                model_combo.addItems(PROVIDER_MODELS[provider_key])
-            current_model = config.get("模型名称", "")
-            if current_model:
-                model_combo.setText(current_model)
-            model_combo.currentTextChanged.connect(lambda: self._on_field_changed())
-            # label 和 combo 同一行
-            hlayout = QHBoxLayout()
-            hlayout.setContentsMargins(0, 0, 0, 0)
-            hlayout.setSpacing(8)
-            hlayout.addWidget(model_label, 0)
-            hlayout.addWidget(model_combo, 1)
-            self.layout.addLayout(hlayout)
-            self._widgets["选择模型"] = (model_label, model_combo)
-
-        # API URL
-        if provider_key in PROVIDER_MODELS:
-            url_label = BodyLabel("API_URL：", self)
-            url_widget = self._create_widget("api_url", "line", config.get("API_URL", ""))
-            hlayout = QHBoxLayout()
-            hlayout.setContentsMargins(0, 0, 0, 0)
-            hlayout.setSpacing(8)
-            hlayout.addWidget(url_label, 0)
-            hlayout.addWidget(url_widget, 1)
-            self.layout.addLayout(hlayout)
-            self._widgets["API_URL"] = (url_label, url_widget)
-        else:
-            required_fields = {
-                "模型名称": ("model_name", "line"),
-                "API_URL": ("api_url", "line"),
-            }
-            for label_text, (key, ui_type) in required_fields.items():
-                value = config.get(label_text, "")
-                widget = self._create_widget(key, ui_type, value)
-                label = BodyLabel(f"{label_text}：", self)
-                hlayout = QHBoxLayout()
-                hlayout.setContentsMargins(0, 0, 0, 0)
-                hlayout.setSpacing(8)
-                hlayout.addWidget(label, 0)
-                hlayout.addWidget(widget, 1)
-                self.layout.addLayout(hlayout)
-                self._widgets[label_text] = (label, widget)
-
-        # 获取地址
-        if provider_key in FREE_PROVIDERS:
-            api_url = FREE_PROVIDERS[provider_key].get("获取地址", "")
-            if api_url:
-                url_label = BodyLabel("获取API Key：", self)
-                link_btn = PushButton("点击获取API Key →", self)
-                link_btn.setCursor(Qt.PointingHandCursor)
-                link_btn.clicked.connect(
-                    lambda checked, url=api_url: self._on_get_api_key(url)
-                )
-                hlayout = QHBoxLayout()
-                hlayout.setContentsMargins(0, 0, 0, 0)
-                hlayout.setSpacing(8)
-                hlayout.addWidget(url_label, 0)
-                hlayout.addWidget(link_btn, 0)
-                self.layout.addLayout(hlayout)
-                self._widgets["获取地址"] = (url_label, link_btn)
-
-        # 动态字段
-        skip_keys = ["模型名称", "API_URL", "认证方式", "获取地址"]
+        # 仅显示参数配置（温度、上下文长度等），不显示连接/模型字段
+        skip_keys = ["模型名称", "API_URL", "API_KEY", "认证方式", "获取地址", "模型列表", "选择模型"]
         # 显示名称映射（存储字段名 -> UI显示名）
         display_name_map = {
             "最大Token": "上下文长度",

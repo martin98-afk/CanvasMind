@@ -138,8 +138,8 @@ from app.llm_chatter.utils.diff_viewer import (
 
 
 class OpenAIChatToolWindow(ToolWindow):
-    name = "大模型对话"
-    icon = get_icon("大模型")
+    name = "飘狐 DriFox"
+    icon = get_icon("drifox")
     singleton = True
     default_position = DockPosition.TOP
     CATEGORIES = [DockCategory.PROJECT]
@@ -218,6 +218,7 @@ class OpenAIChatToolWindow(ToolWindow):
         # 问题修复：初始化未定义的属性
         self._pending_permission_tool_call_id: Optional[str] = None
         self._question_tool_call_id: Optional[str] = None
+        self._current_assistant_round_index: Optional[int] = None  # 跟踪当前应分配给 assistant 的 round_index
         self.session_manager = SessionManager()
         self.session_manager.create_new_session()
         self._current_session_id = self.session_manager.get_current_session().session_id
@@ -449,23 +450,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _get_current_model_config(self) -> Dict[str, Any]:
         """获取当前选中的模型配置，实时从系统配置读取"""
-        selected_name = (
-            self._current_provider_name
-            if hasattr(self, "_current_provider_name") and self._current_provider_name
-            else "系统默认配置"
-        )
+        selected_name = self._current_provider_name if self._current_provider_name else (list(self._valid_configs.keys())[0] if self._valid_configs else "")
 
         setting = Settings.get_instance()
-
-        if selected_name == "系统默认配置":
-            return {
-                "模型名称": setting.llm_model.value,
-                "API_KEY": setting.llm_api_key.value,
-                "API_URL": setting.llm_api_base.value,
-                "最大Token": setting.llm_max_tokens.value,
-                "温度": setting.llm_temperature.value,
-                "启用技能": setting.llm_enabled_skills.value,
-            }
 
         saved_providers = setting.llm_saved_providers.value or {}
         if selected_name in saved_providers:
@@ -624,6 +611,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self._settings_popup = LLMSettingsCard(self)
         self._settings_popup.setVisible(False)
         self._settings_popup.closed.connect(self._on_settings_closed)
+        self._settings_popup.configChanged.connect(self._load_model_configs)
 
         self._todo_floating_widget = TodoFloatingWidget(self)
         self._todo_floating_widget.setVisible(False)
@@ -638,6 +626,7 @@ class OpenAIChatToolWindow(ToolWindow):
         layout.addWidget(self._settings_popup)
 
         self.chat_scroll_area = SingleDirectionScrollArea(self)
+        self.chat_scroll_area.setMinimumHeight(10)
         self.chat_scroll_area.setMinimumWidth(400)
         self.chat_scroll_area.setStyleSheet(
             """
@@ -667,7 +656,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         # 模型配置卡片 - 在消息列表下方，和工具卡片同位置
         self._model_config_card = BaseSettingsCard("模型配置", "🔧", self)
-        self._model_config_card.setFixedHeight(350)
+        self._model_config_card.setMaximumHeight(120)
         self._model_config_popup = ModelConfigCard()
         self._model_config_popup.configApplied.connect(self._on_config_applied)
         self._model_config_card.content_layout.addWidget(self._model_config_popup)
@@ -912,34 +901,27 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _load_model_config_to_card(self):
         """加载当前模型配置到卡片（仅参数配置，不显示连接信息）"""
-        current_name = self._current_provider_name if self._current_provider_name else "系统默认配置"
+        current_name = self._current_provider_name if self._current_provider_name else "无"
         setting = Settings.get_instance()
 
-        if current_name == "系统默认配置":
-            config = {
-                "最大Token": setting.llm_max_tokens.value,
-                "温度": setting.llm_temperature.value,
-                "启用技能": setting.llm_enabled_skills.value,
-            }
+        saved_providers = setting.llm_saved_providers.value or {}
+        provider_config = saved_providers.get(current_name, {})
+        custom_vars = getattr(self.homepage, "global_variables", None)
+        if current_name in (
+            custom_vars.custom
+            if custom_vars and hasattr(custom_vars, "custom")
+            else {}
+        ):
+            config = custom_vars.custom[current_name].value.copy()
         else:
-            saved_providers = setting.llm_saved_providers.value or {}
-            provider_config = saved_providers.get(current_name, {})
-            custom_vars = getattr(self.homepage, "global_variables", None)
-            if current_name in (
-                custom_vars.custom
-                if custom_vars and hasattr(custom_vars, "custom")
-                else {}
-            ):
-                config = custom_vars.custom[current_name].value.copy()
-            else:
-                config = provider_config.copy()
-                config.pop("备注", None)
-                config.pop("获取地址", None)
-            # 只保留参数配置，移除连接信息
-            config.pop("模型名称", None)
-            config.pop("API_URL", None)
-            config.pop("API_KEY", None)
-            config.pop("模型列表", None)
+            config = provider_config.copy()
+            config.pop("备注", None)
+            config.pop("获取地址", None)
+        # 只保留参数配置，移除连接信息
+        config.pop("模型名称", None)
+        config.pop("API_URL", None)
+        config.pop("API_KEY", None)
+        config.pop("模型列表", None)
 
         self._model_config_popup.set_config(current_name, config)
 
@@ -1013,20 +995,12 @@ class OpenAIChatToolWindow(ToolWindow):
                 item.widget().sync_width()
 
     def _on_config_applied(self, new_config: dict):
-        current_name = self._current_provider_name if self._current_provider_name else "系统默认配置"
+        current_name = self._current_provider_name
+        if not current_name:
+            return
         is_free_provider = current_name in FREE_PROVIDERS
 
-        if current_name == "系统默认配置":
-            setting = Settings.get_instance()
-            setting.set(setting.llm_max_tokens, new_config.get("最大Token", setting.llm_max_tokens.value))
-            setting.set(setting.llm_temperature, new_config.get("温度", setting.llm_temperature.value))
-            setting.set(setting.llm_enabled_skills, new_config.get("启用技能", setting.llm_enabled_skills.value))
-            setting.save_config()
-            self._load_model_configs()
-            InfoBar.success(
-                "系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500
-            )
-        elif is_free_provider:
+        if is_free_provider:
             # 只更新参数，保留连接信息
             saved_providers = Settings.get_instance().llm_saved_providers.value or {}
             old_config = saved_providers.get(current_name, self._valid_configs.get(current_name, {}))
@@ -1079,8 +1053,6 @@ class OpenAIChatToolWindow(ToolWindow):
             "温度": setting.llm_temperature.value,
             "启用技能": setting.llm_enabled_skills.value,
         }
-        self._valid_configs["系统默认配置"] = default_config
-
         try:
             custom_vars = getattr(self.homepage, "global_variables", None)
             if custom_vars and hasattr(custom_vars, "custom"):
@@ -1088,8 +1060,7 @@ class OpenAIChatToolWindow(ToolWindow):
                     if hasattr(var_obj, "value") and isinstance(var_obj.value, dict):
                         val = var_obj.value
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
-                            if config_name != "系统默认配置":
-                                self._valid_configs[config_name] = val
+                            self._valid_configs[config_name] = val
         except Exception as e:
             logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
 
@@ -1106,7 +1077,7 @@ class OpenAIChatToolWindow(ToolWindow):
         elif old_provider and old_provider in self._valid_configs:
             self._current_provider_name = old_provider
         else:
-            self._current_provider_name = "系统默认配置" if "系统默认配置" in self._valid_configs else (list(self._valid_configs.keys())[0] if self._valid_configs else "")
+            self._current_provider_name = list(self._valid_configs.keys())[0] if self._valid_configs else ""
 
         if self._current_provider_name:
             provider_config = self._valid_configs.get(self._current_provider_name, {})
@@ -1725,6 +1696,18 @@ class OpenAIChatToolWindow(ToolWindow):
             cards.append(widget)
         return cards
 
+    def _get_current_user_round_index(self) -> int:
+        """获取当前 user message 应该是第几个 user（从 0 开始）"""
+        count = 0
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if isinstance(widget, MessageCard) and widget.role == "user":
+                count += 1
+        return count
+
     def _find_user_round_index_for_card(self, card: MessageCard) -> Optional[int]:
         round_index = 0
         for rendered_card in self._get_rendered_message_cards():
@@ -2101,6 +2084,10 @@ class OpenAIChatToolWindow(ToolWindow):
         session = self.session_manager.get_current_session()
         if session:
             self._displayed_session_id = session.session_id
+        
+        # 计算当前 user message 的 round_index
+        user_round_index = self._get_current_user_round_index()
+        
         card = MessageCard(
             parent=self,
             role="user",
@@ -2108,6 +2095,7 @@ class OpenAIChatToolWindow(ToolWindow):
             tag_params=tag_params
             or {},
         )
+        card._round_index = user_round_index
         card.update_content(content)
         card.finish_streaming()
         card.deleteRequested.connect(lambda: self._delete_message(card))
@@ -2115,6 +2103,9 @@ class OpenAIChatToolWindow(ToolWindow):
         card.actionRequested.connect(self._on_code_action)
         self._add_chat_widget(card)
         self._scroll_to_bottom()
+
+        # 更新当前 assistant 的 round_index 为这个 user message 的索引
+        self._current_assistant_round_index = user_round_index
 
         self._update_node_preview()
         return card
@@ -2124,11 +2115,14 @@ class OpenAIChatToolWindow(ToolWindow):
         if session:
             self._displayed_session_id = session.session_id
         card = MessageCard(parent=self, role="assistant", timestamp=timestamp)
+        # 设置卡片对应的 round_index（来自之前 user message 分配的）
+        card._round_index = self._current_assistant_round_index
         card.viewer._install_dialog_filter()
         card.actionRequested.connect(self._on_code_action)
         card.contextActionRequested.connect(self.handle_recommended_question)
         card.toolDiffRequested.connect(self._on_tool_diff_requested)
         card.cardDiffRequested.connect(self._on_card_diff_requested)
+        card.saveFileRequested.connect(self._on_save_file_requested)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -2422,6 +2416,40 @@ class OpenAIChatToolWindow(ToolWindow):
 
         return call_ids
 
+    def _get_tool_call_ids_in_round(self, round_index: int) -> List[str]:
+        """获取指定 round 范围内的所有 tool_call_id（不包括后续 round）"""
+        session = self.session_manager.get_current_session()
+        if not session:
+            return []
+
+        canonical_messages = consolidate_messages(session.messages)
+        round_ranges = get_user_round_ranges(canonical_messages)
+
+        if round_index < 0 or round_index >= len(round_ranges):
+            return []
+
+        # 获取该 round 的范围
+        start_idx, end_idx = round_ranges[round_index]
+        
+        # 只遍历该 round 范围内的消息
+        call_ids = []
+        for i in range(start_idx, end_idx):
+            msg = canonical_messages[i]
+            role = msg.get("role")
+            if role == "assistant":
+                tool_calls = msg.get("tool_calls", [])
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        tid = tc.get("id")
+                        if tid and tid not in call_ids:
+                            call_ids.append(tid)
+            elif role == "tool":
+                tid = msg.get("tool_call_id")
+                if tid and tid not in call_ids:
+                    call_ids.append(tid)
+
+        return call_ids
+
     def _show_undo_result(self, result):
         """显示撤销结果"""
         if result.failed_count > 0:
@@ -2600,8 +2628,8 @@ class OpenAIChatToolWindow(ToolWindow):
             return
 
         try:
-            # 获取该 round 之后的所有 tool_call_id
-            all_call_ids = self._get_all_tool_call_ids_from_round(round_index)
+            # 获取该 round 范围内的所有 tool_call_id
+            all_call_ids = self._get_tool_call_ids_in_round(round_index)
 
             if not all_call_ids:
                 InfoBar.warning(
@@ -2706,6 +2734,124 @@ class OpenAIChatToolWindow(ToolWindow):
             logger.error(f"[LLMChatter] 显示卡片差异失败: {e}")
             InfoBar.error(
                 "差异显示失败",
+                str(e),
+                duration=3000,
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+            )
+
+    def _on_save_file_requested(self, code: str, lang: str):
+        """
+        处理保存文件请求
+
+        Args:
+            code: 代码内容
+            lang: 代码语言
+        """
+        # 语言到文件后缀的映射
+        LANG_EXT_MAP = {
+            "python": ".py",
+            "py": ".py",
+            "javascript": ".js",
+            "js": ".js",
+            "typescript": ".ts",
+            "ts": ".ts",
+            "html": ".html",
+            "htm": ".html",
+            "css": ".css",
+            "scss": ".scss",
+            "sass": ".sass",
+            "less": ".less",
+            "json": ".json",
+            "yaml": ".yaml",
+            "yml": ".yaml",
+            "xml": ".xml",
+            "markdown": ".md",
+            "md": ".md",
+            "shell": ".sh",
+            "bash": ".sh",
+            "sh": ".sh",
+            "sql": ".sql",
+            "go": ".go",
+            "java": ".java",
+            "c": ".c",
+            "cpp": ".cpp",
+            "c++": ".cpp",
+            "csharp": ".cs",
+            "cs": ".cs",
+            "rust": ".rs",
+            "ruby": ".rb",
+            "php": ".php",
+            "swift": ".swift",
+            "kotlin": ".kt",
+            "scala": ".scala",
+            "r": ".r",
+            "lua": ".lua",
+            "perl": ".pl",
+            "powershell": ".ps1",
+            "dockerfile": "Dockerfile",
+            "makefile": "Makefile",
+            "toml": ".toml",
+            "ini": ".ini",
+            "cfg": ".cfg",
+            "conf": ".conf",
+            "txt": ".txt",
+            "csv": ".csv",
+            "vue": ".vue",
+            "jsx": ".jsx",
+            "tsx": ".tsx",
+            "graphql": ".graphql",
+            "proto": ".proto",
+            "docker": "Dockerfile",
+        }
+
+        # 获取文件后缀
+        lang_lower = lang.lower() if lang else ""
+        ext = LANG_EXT_MAP.get(lang_lower, ".txt")
+
+        # 如果是 Dockerfile 或 Makefile 等特殊文件名，直接使用
+        if lang_lower in ("dockerfile", "makefile"):
+            default_name = lang_lower
+        else:
+            # 尝试从代码中提取类名/函数名作为建议文件名
+            import re
+            class_match = re.search(r'class\s+(\w+)', code)
+            func_match = re.search(r'def\s+(\w+)|function\s+(\w+)', code)
+            if class_match:
+                default_name = class_match.group(1)
+            elif func_match:
+                default_name = func_match.group(1) or func_match.group(2)
+            else:
+                default_name = "code"
+            default_name += ext
+
+        # 弹出文件保存对话框
+        from PyQt5.QtWidgets import QFileDialog
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "保存代码文件",
+            default_name,
+            f"代码文件 (*{ext});;所有文件 (*.*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(code)
+            InfoBar.success(
+                "文件已保存",
+                file_path,
+                duration=3000,
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+            )
+        except Exception as e:
+            logger.error(f"[LLMChatter] 保存文件失败: {e}")
+            InfoBar.error(
+                "保存失败",
                 str(e),
                 duration=3000,
                 parent=self,
