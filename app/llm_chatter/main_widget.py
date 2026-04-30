@@ -49,6 +49,7 @@ from app.utils.utils import get_icon
 from app.llm_chatter.constants import (
     FREE_PROVIDERS,
     PROVIDER_ICONS,
+    PROVIDER_MODELS,
 )
 from app.llm_chatter.core import (
     ChatEngine,
@@ -109,6 +110,9 @@ from app.llm_chatter.widgets.base_settings_card import (
 )
 from app.llm_chatter.widgets.model_config_card import (
     ModelConfigCard,
+)
+from app.llm_chatter.widgets.model_selector_popup import (
+    ModelSelectorPopup,
 )
 from app.llm_chatter.widgets.history_card import (
     HistoryCard,
@@ -385,13 +389,13 @@ class OpenAIChatToolWindow(ToolWindow):
             # 复制模型选择（确保两个实例都已初始化 UI）
             try:
                 if (
-                    hasattr(self, "model_combo")
-                    and hasattr(new_instance, "model_combo")
-                    and self.model_combo.count() > 0
+                    hasattr(self, "_current_provider_name")
+                    and hasattr(new_instance, "_current_provider_name")
+                    and self._current_provider_name
                 ):
-                    new_instance.model_combo.setCurrentText(
-                        self.model_combo.currentText()
-                    )
+                    new_instance._current_provider_name = self._current_provider_name
+                    new_instance._current_model_name = self._current_model_name
+                    new_instance._update_model_selector_btn()
             except Exception:
                 pass  # 忽略模型复制失败
 
@@ -446,8 +450,8 @@ class OpenAIChatToolWindow(ToolWindow):
     def _get_current_model_config(self) -> Dict[str, Any]:
         """获取当前选中的模型配置，实时从系统配置读取"""
         selected_name = (
-            self.model_combo.currentText()
-            if hasattr(self, "model_combo")
+            self._current_provider_name
+            if hasattr(self, "_current_provider_name") and self._current_provider_name
             else "系统默认配置"
         )
 
@@ -700,21 +704,38 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(6)
 
-        # 模型选择相关 - 放在输入框左上
-        model_label = QLabel("模型：", self)
-        setFont(model_label, 12, QFont.Bold)
-        model_label.setStyleSheet("color: #ffffff;")
-        hlayout.addWidget(model_label)
-
-        self.model_combo = ComboBox(self)
-        self._load_model_configs()
-        setFont(self.model_combo, 12)
-        self.model_combo.currentTextChanged.connect(self._on_model_changed)
-        self.model_combo.pressed.connect(self._load_model_configs)
-        hlayout.addWidget(self.model_combo)
+        # 模型选择 - 扁平式上拉选择器（类似 OpenCode 风格）
+        self.current_model_btn = QWidget(self)
+        self.current_model_btn.setCursor(Qt.PointingHandCursor)
+        self.current_model_btn.setStyleSheet("""
+            QWidget {
+                background-color: rgba(255, 255, 255, 0.06);
+                border-radius: 8px;
+                padding: 0px;
+            }
+            QWidget:hover {
+                background-color: rgba(255, 255, 255, 0.10);
+            }
+        """)
+        self.current_model_btn.mousePressEvent = lambda e: self._show_model_selector_popup()
+        btn_layout = QHBoxLayout(self.current_model_btn)
+        btn_layout.setContentsMargins(8, 4, 12, 4)
+        btn_layout.setSpacing(6)
+        self._model_btn_icon = QLabel(self.current_model_btn)
+        self._model_btn_icon.setFixedSize(18, 18)
+        btn_layout.addWidget(self._model_btn_icon)
+        self._model_btn_text = QLabel("正在加载...", self.current_model_btn)
+        self._model_btn_text.setStyleSheet("color: #f3f6fc; font-size: 13px; font-weight: bold; background: transparent;")
+        btn_layout.addWidget(self._model_btn_text)
+        btn_layout.addStretch()
+        self.current_model_btn.setFixedHeight(30)
+        hlayout.addWidget(self.current_model_btn)
+        # 记下当前选中的服务商和模型，供弹窗使用
+        self._current_provider_name = ""
+        self._current_model_name = ""
 
         self.settings_btn = TransparentToolButton(get_icon("模型选择"), self)
-        self.settings_btn.setToolTip("模型配置")
+        self.settings_btn.setToolTip("模型参数配置")
         self.settings_btn.clicked.connect(self._toggle_model_config_card)
         hlayout.addWidget(self.settings_btn)
 
@@ -760,11 +781,87 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.agentChanged.connect(self._on_agent_changed)
         layout.addWidget(self.input_area)
 
-    def _on_model_changed(self, model_name: str):
-        if model_name:
+    def _on_model_changed(self, provider_name: str, model_name: str):
+        """从模型选择器选中模型后的回调"""
+        if provider_name:
+            self._current_provider_name = provider_name
+            self._current_model_name = model_name
             setting = Settings.get_instance()
-            setting.set(setting.llm_selected_model, model_name, save=True)
+            setting.set(setting.llm_selected_model, provider_name, save=True)
+            self._update_model_selector_btn()
+            self._refresh_context_usage_indicator()
+
+    def _show_model_selector_popup(self):
+        """显示扁平式模型选择上拉框"""
+        provider_models_data = []
+        for provider_name, config in self._valid_configs.items():
+            model_list = []
+            if "模型列表" in config:
+                saved_models = config["模型列表"]
+                if isinstance(saved_models, str):
+                    try:
+                        import ast; saved_models = ast.literal_eval(saved_models)
+                    except Exception:
+                        saved_models = []
+                if isinstance(saved_models, list):
+                    model_list = list(saved_models)
+            elif provider_name in PROVIDER_MODELS:
+                model_list = list(PROVIDER_MODELS[provider_name])
+            cur_model = config.get("模型名称", "")
+            if cur_model and cur_model not in model_list:
+                model_list.insert(0, cur_model)
+            if not model_list and cur_model:
+                model_list = [cur_model]
+            is_current = provider_name == self._current_provider_name
+            provider_models_data.append((provider_name, model_list, is_current))
+
+        if not hasattr(self, "_model_selector_popup") or not self._model_selector_popup:
+            from app.llm_chatter.widgets.model_selector_popup import ModelSelectorPopup
+            self._model_selector_popup = ModelSelectorPopup(self)
+            self._model_selector_popup.modelSelected.connect(self._on_model_selected_from_popup)
+
+        self._model_selector_popup.set_providers_data(
+            provider_models_data, self._current_provider_name or "", self._current_model_name or "",
+        )
+        self._model_selector_popup.show_at(self.current_model_btn)
+
+    def _on_model_selected_from_popup(self, provider_name: str, model_name: str):
+        """从弹窗选中模型后切换"""
+        self._current_provider_name = provider_name
+        self._current_model_name = model_name
+        if provider_name in self._valid_configs:
+            self._valid_configs[provider_name]["模型名称"] = model_name
+        setting = Settings.get_instance()
+        setting.set(setting.llm_selected_model, provider_name, save=True)
+        self._update_model_selector_btn()
         self._refresh_context_usage_indicator()
+
+    def _update_model_selector_btn(self):
+        """更新模型选择按钮的图标和文字显示"""
+        if not hasattr(self, "current_model_btn"):
+            return
+        # 设置图标
+        icon = None
+        if self._current_provider_name:
+            icon_name = PROVIDER_ICONS.get(self._current_provider_name, "")
+            if icon_name:
+                icon = get_icon(icon_name)
+
+        if icon and not icon.isNull():
+            self._model_btn_icon.setPixmap(icon.pixmap(18, 18))
+        else:
+            self._model_btn_icon.clear()
+
+        # 设置文字
+        if self._current_provider_name and self._current_model_name:
+            self._model_btn_text.setText(self._current_model_name)
+            self.current_model_btn.setToolTip(f"{self._current_provider_name} · {self._current_model_name}")
+        elif self._current_provider_name:
+            self._model_btn_text.setText(self._current_provider_name)
+            self.current_model_btn.setToolTip(self._current_provider_name)
+        else:
+            self._model_btn_text.setText("选择模型...")
+            self.current_model_btn.setToolTip("")
 
     def _on_context_selection_changed(self, _selected_keys=None):
         self._refresh_context_usage_indicator()
@@ -814,15 +911,12 @@ class OpenAIChatToolWindow(ToolWindow):
             self._model_config_card.show()
 
     def _load_model_config_to_card(self):
-        """加载当前模型配置到卡片"""
-        current_name = self.model_combo.currentText()
+        """加载当前模型配置到卡片（仅参数配置，不显示连接信息）"""
+        current_name = self._current_provider_name if self._current_provider_name else "系统默认配置"
         setting = Settings.get_instance()
 
         if current_name == "系统默认配置":
             config = {
-                "模型名称": setting.llm_model.value,
-                "API_KEY": setting.llm_api_key.value,
-                "API_URL": setting.llm_api_base.value,
                 "最大Token": setting.llm_max_tokens.value,
                 "温度": setting.llm_temperature.value,
                 "启用技能": setting.llm_enabled_skills.value,
@@ -841,6 +935,11 @@ class OpenAIChatToolWindow(ToolWindow):
                 config = provider_config.copy()
                 config.pop("备注", None)
                 config.pop("获取地址", None)
+            # 只保留参数配置，移除连接信息
+            config.pop("模型名称", None)
+            config.pop("API_URL", None)
+            config.pop("API_KEY", None)
+            config.pop("模型列表", None)
 
         self._model_config_popup.set_config(current_name, config)
 
@@ -914,31 +1013,27 @@ class OpenAIChatToolWindow(ToolWindow):
                 item.widget().sync_width()
 
     def _on_config_applied(self, new_config: dict):
-        current_name = self.model_combo.currentText()
+        current_name = self._current_provider_name if self._current_provider_name else "系统默认配置"
         is_free_provider = current_name in FREE_PROVIDERS
 
         if current_name == "系统默认配置":
             setting = Settings.get_instance()
-            setting.set(setting.llm_model, new_config["模型名称"])
-            setting.set(setting.llm_api_key, new_config["API_KEY"])
-            setting.set(setting.llm_api_base, new_config["API_URL"])
-            setting.set(setting.llm_max_tokens, new_config["最大Token"])
-            setting.set(setting.llm_temperature, new_config["温度"])
-            setting.set(setting.llm_enabled_skills, new_config.get("启用技能", []))
+            setting.set(setting.llm_max_tokens, new_config.get("最大Token", setting.llm_max_tokens.value))
+            setting.set(setting.llm_temperature, new_config.get("温度", setting.llm_temperature.value))
+            setting.set(setting.llm_enabled_skills, new_config.get("启用技能", setting.llm_enabled_skills.value))
             setting.save_config()
             self._load_model_configs()
             InfoBar.success(
                 "系统默认配置已更新", "已保存到系统配置。", parent=self, duration=1500
             )
         elif is_free_provider:
-            self._valid_configs[current_name] = new_config
-            setting = Settings.get_instance()
-            saved_providers = setting.llm_saved_providers.value or {}
-            old_model_list = saved_providers.get(current_name, {}).get("模型列表", [])
-            if old_model_list and "模型列表" not in new_config:
-                new_config["模型列表"] = old_model_list
-            saved_providers[current_name] = new_config
-            setting.set(setting.llm_saved_providers, saved_providers, save=True)
+            # 只更新参数，保留连接信息
+            saved_providers = Settings.get_instance().llm_saved_providers.value or {}
+            old_config = saved_providers.get(current_name, self._valid_configs.get(current_name, {}))
+            old_config.update(new_config)
+            self._valid_configs[current_name] = old_config
+            saved_providers[current_name] = old_config
+            Settings.get_instance().set(Settings.get_instance().llm_saved_providers, saved_providers, save=True)
             self._load_model_configs()
             InfoBar.success("已保存", "配置已保存到本地。", parent=self, duration=1500)
         else:
@@ -948,18 +1043,14 @@ class OpenAIChatToolWindow(ToolWindow):
             ):
                 custom_vars = self.homepage.global_variables.custom
                 if current_name in custom_vars:
-                    old_model_list = custom_vars[current_name].value.get("模型列表", [])
-                    if old_model_list and "模型列表" not in new_config:
-                        new_config["模型列表"] = old_model_list
-                    custom_vars[current_name].value = new_config
+                    old_config = custom_vars[current_name].value
+                    old_config.update(new_config)
+                    custom_vars[current_name].value = old_config
                     self.homepage._on_global_variables_changed(
                         "custom", current_name, "update"
                     )
 
                 self._load_model_configs()
-                idx = self.model_combo.findText(current_name)
-                if idx >= 0:
-                    self.model_combo.setCurrentIndex(idx)
                 InfoBar.success(
                     "已保存", "配置已保存到自定义配置。", parent=self, duration=1500
                 )
@@ -974,13 +1065,10 @@ class OpenAIChatToolWindow(ToolWindow):
     def _load_model_configs(self):
         setting = Settings.get_instance()
         saved_model = setting.llm_selected_model.value
-
-        current_text = (
-            self.model_combo.currentText() if self.model_combo.count() > 0 else ""
-        )
+        old_provider = self._current_provider_name
+        old_model = self._current_model_name
 
         self._valid_configs.clear()
-        self.model_combo.blockSignals(True)
 
         setting = Settings.get_instance()
         default_config = {
@@ -993,8 +1081,6 @@ class OpenAIChatToolWindow(ToolWindow):
         }
         self._valid_configs["系统默认配置"] = default_config
 
-        all_model_names = ["系统默认配置"]
-
         try:
             custom_vars = getattr(self.homepage, "global_variables", None)
             if custom_vars and hasattr(custom_vars, "custom"):
@@ -1004,46 +1090,32 @@ class OpenAIChatToolWindow(ToolWindow):
                         if {"API_URL", "API_KEY", "模型名称"}.issubset(val.keys()):
                             if config_name != "系统默认配置":
                                 self._valid_configs[config_name] = val
-                                all_model_names.append(config_name)
         except Exception as e:
             logger.error(f"[ERROR] 加载自定义模型配置失败: {e}")
 
         saved_providers = setting.llm_saved_providers.value or {}
-
         for provider_name in saved_providers:
             config = saved_providers[provider_name].copy()
             config.pop("备注", None)
             config.pop("获取地址", None)
             self._valid_configs[provider_name] = config
-            if provider_name not in all_model_names:
-                all_model_names.append(provider_name)
 
-        self._setup_combo_with_icons(all_model_names)
-        self.model_combo.setDisabled(len(all_model_names) == 0)
-
+        # 恢复或设置当前选中的服务商和模型
         if saved_model and saved_model in self._valid_configs:
-            idx = self.model_combo.findText(saved_model)
-            if idx >= 0:
-                self.model_combo.setCurrentIndex(idx)
-        elif current_text in self._valid_configs:
-            idx = self.model_combo.findText(current_text)
-            if idx >= 0:
-                self.model_combo.setCurrentIndex(idx)
-        elif self.model_combo.count() > 0:
-            self.model_combo.setCurrentIndex(0)
+            self._current_provider_name = saved_model
+        elif old_provider and old_provider in self._valid_configs:
+            self._current_provider_name = old_provider
+        else:
+            self._current_provider_name = "系统默认配置" if "系统默认配置" in self._valid_configs else (list(self._valid_configs.keys())[0] if self._valid_configs else "")
 
-        self.model_combo.blockSignals(False)
+        if self._current_provider_name:
+            provider_config = self._valid_configs.get(self._current_provider_name, {})
+            self._current_model_name = provider_config.get("模型名称", "")
+        else:
+            self._current_model_name = ""
+
+        self._update_model_selector_btn()
         self._refresh_context_usage_indicator()
-
-    def _setup_combo_with_icons(self, model_names: List[str]):
-        self.model_combo.clear()
-        for name in model_names:
-            if name in PROVIDER_ICONS:
-                icon_name = PROVIDER_ICONS.get(name, "API")
-                icon = get_icon(icon_name)
-                self.model_combo.addItem(icon=icon, text=name)
-            else:
-                self.model_combo.addItem(name)
 
     def _load_agent_list(self):
         """加载智能体列表到选择器（仅显示 primary agents）"""
@@ -1663,6 +1735,29 @@ class OpenAIChatToolWindow(ToolWindow):
             round_index += 1
         return None
 
+    def findRoundIndexForCard(self, card: MessageCard) -> Optional[int]:
+        """
+        供 MessageCard 回调使用，根据 assistant card 查找对应的 round_index。
+        通过遍历布局找到该 assistant card 前面的 user card 数量来确定 round_index。
+        """
+        if not card or card.role != "assistant":
+            return None
+        # 遍历布局，统计该 assistant card 之前有多少 user card
+        round_index = 0
+        for i in range(self.chat_layout.count()):
+            item = self.chat_layout.itemAt(i)
+            if not item or not item.widget():
+                continue
+            widget = item.widget()
+            if not isinstance(widget, MessageCard):
+                continue
+            if widget is card:
+                # 找到了，返回当前 round_index
+                return round_index
+            if widget.role == "user":
+                round_index += 1
+        return None
+
     def _remove_cards_for_round(self, round_index: int) -> bool:
         session = self.session_manager.get_current_session()
         if not session:
@@ -2033,6 +2128,7 @@ class OpenAIChatToolWindow(ToolWindow):
         card.actionRequested.connect(self._on_code_action)
         card.contextActionRequested.connect(self.handle_recommended_question)
         card.toolDiffRequested.connect(self._on_tool_diff_requested)
+        card.cardDiffRequested.connect(self._on_card_diff_requested)
         if hasattr(self.homepage, "on_context_action"):
             card.contextActionRequested.connect(self.homepage.on_context_action)
         else:
@@ -2474,6 +2570,140 @@ class OpenAIChatToolWindow(ToolWindow):
             
         except Exception as e:
             logger.error(f"[LLMChatter] 显示工具差异失败: {e}")
+            InfoBar.error(
+                "差异显示失败",
+                str(e),
+                duration=3000,
+                parent=self,
+                position=InfoBarPosition.TOP_RIGHT,
+            )
+
+    def _on_card_diff_requested(self, round_index: int):
+        """
+        处理卡片级差异对比请求，汇总一次对话中所有工具调用的文件修改。
+
+        Args:
+            round_index: 用户回合索引
+        """
+        if round_index is None:
+            return
+
+        session = self.session_manager.get_current_session()
+        if not session:
+            return
+
+        session_id = session.session_id
+
+        # 检查是否有 file_recorder
+        if not self._tool_executor or not self._tool_executor.file_recorder:
+            logger.warning("[LLMChatter] file_recorder 未初始化")
+            return
+
+        try:
+            # 获取该 round 之后的所有 tool_call_id
+            all_call_ids = self._get_all_tool_call_ids_from_round(round_index)
+
+            if not all_call_ids:
+                InfoBar.warning(
+                    "无差异信息",
+                    "此对话没有修改任何文件",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            # 收集所有工具的文件操作
+            all_operations = []
+            for call_id in all_call_ids:
+                operations = self._tool_executor.file_recorder.get_operations_for_preview(
+                    session_id=session_id,
+                    call_id=call_id
+                )
+                if operations:
+                    all_operations.extend(operations)
+
+            if not all_operations:
+                InfoBar.warning(
+                    "无差异信息",
+                    "此对话没有修改任何文件，或备份信息已丢失",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            # 为每个文件生成差异
+            from pathlib import Path
+            import difflib
+
+            def normalize_lines(content):
+                lines = content.splitlines(keepends=True)
+                if lines and not lines[-1].endswith('\n'):
+                    lines[-1] += '\n'
+                return lines
+
+            diff_parts = []
+            for op in all_operations:
+                backup_path = op.get("backup_path", "")
+                if not backup_path:
+                    continue
+
+                backup_file = Path(backup_path)
+                after_backup_path = str(backup_file.with_suffix('.after.bak'))
+                after_backup_file = Path(after_backup_path)
+
+                if not after_backup_file.exists():
+                    continue
+
+                try:
+                    with open(backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                        old_content = f.read()
+                    with open(after_backup_path, 'r', encoding='utf-8', errors='replace') as f:
+                        new_content = f.read()
+                except Exception:
+                    continue
+
+                old_lines = normalize_lines(old_content)
+                new_lines = normalize_lines(new_content)
+
+                diff = difflib.unified_diff(
+                    old_lines,
+                    new_lines,
+                    fromfile=f"a/{backup_file.name}",
+                    tofile=f"b/{backup_file.name}",
+                    lineterm='\n'
+                )
+                diff_output = ''.join(diff)
+                if diff_output:
+                    diff_parts.append(diff_output)
+
+            if not diff_parts:
+                InfoBar.warning(
+                    "无差异信息",
+                    "无法生成任何差异信息",
+                    duration=3000,
+                    parent=self,
+                    position=InfoBarPosition.TOP_RIGHT,
+                )
+                return
+
+            # 合并所有差异
+            combined_diff = '\n'.join(diff_parts)
+
+            # 生成并显示差异对比
+            from app.llm_chatter.utils.diff_viewer import (
+                DiffHtmlGenerator,
+                DiffViewerWindow,
+            )
+
+            html = DiffHtmlGenerator.generate_html_report(combined_diff, "")
+            viewer = DiffViewerWindow(parent=self)
+            viewer.load_html(html)
+            viewer.show()
+
+        except Exception as e:
+            logger.error(f"[LLMChatter] 显示卡片差异失败: {e}")
             InfoBar.error(
                 "差异显示失败",
                 str(e),
@@ -3052,7 +3282,7 @@ class OpenAIChatToolWindow(ToolWindow):
             self._pending_permission_tool_call_id = None
 
     def _maybe_generate_topic_summary(self):
-        selected_name = self.model_combo.currentText()
+        selected_name = self._current_provider_name if self._current_provider_name else "系统默认配置"
         llm_config = self._valid_configs.get(selected_name)
         if not llm_config:
             logger.warning("[Topic Summary] No LLM config found, skipping")
@@ -3254,11 +3484,9 @@ class OpenAIChatToolWindow(ToolWindow):
 
     def _toggle_send_stop(self, is_sending: bool):
         if is_sending:
-            self.model_combo.setDisabled(True)
             self.history_btn.setDisabled(True)
             self.input_area.toggle_send_button(False)
         else:
-            self.model_combo.setDisabled(False)
             self.history_btn.setDisabled(False)
             self.input_area.toggle_send_button(True)
 

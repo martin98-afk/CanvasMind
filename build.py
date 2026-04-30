@@ -42,7 +42,7 @@ params = [
     "--windowed",
     "--name=LLMChatter",  # 直接指定名称，省去后期改名麻烦
     # 数据文件包含
-    f"--add-data=app{os.pathsep}app",
+    f"--add-data=app/llm_chatter/agents{os.pathsep}app/llm_chatter",
 ]
 
 if icon_arg:

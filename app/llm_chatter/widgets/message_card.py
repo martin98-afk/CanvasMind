@@ -1218,6 +1218,7 @@ class MessageCard(SimpleCardWidget):
     optionSelected = pyqtSignal(dict)
     interventionRequested = pyqtSignal(dict)
     toolDiffRequested = pyqtSignal(str)  # tool_call_id
+    cardDiffRequested = pyqtSignal(int)  # round_index
 
     def __init__(
         self,
@@ -1367,6 +1368,11 @@ class MessageCard(SimpleCardWidget):
                     get_icon("复制"),
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
+                ),
+                (
+                    get_icon("差异对比"),
+                    "卡片差异",
+                    lambda: self._emit_card_diff_requested(),
                 ),
             ]
         elif self.role == "user":
@@ -1614,6 +1620,16 @@ class MessageCard(SimpleCardWidget):
                     exe(self.context_tags[k][2], t)
             except:
                 pass
+
+    def _emit_card_diff_requested(self):
+        """发射卡片差异请求信号，查找关联的 user card 的 round_index"""
+        # 找到当前 assistant card 对应的 round_index
+        # 需要向父组件查询 card 在布局中的位置
+        parent = self.parentWidget()
+        if parent and hasattr(parent, 'findRoundIndexForCard'):
+            round_index = parent.findRoundIndexForCard(self)
+            if round_index is not None:
+                self.cardDiffRequested.emit(round_index)
 
     def _update_height(self, h):
         target_height = max(40, h)

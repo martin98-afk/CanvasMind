@@ -29,6 +29,8 @@ PARAM_RANGE_MAP = {
 
 PROVIDER_MODELS = {
     "MiniMax (月之暗面)": [
+        "MiniMax-M2.7",
+        "MiniMax-M2.7-highspeed",
         "MiniMax-M2.5",
         "MiniMax-M2.5-highspeed",
         "MiniMax-M2.1",
@@ -45,16 +47,18 @@ PROVIDER_MODELS = {
         "deepseek-ai/DeepSeek-V2-Chat",
         "Qwen/Qwen2-72B-Instruct",
     ],
-    "智谱AI (免费模型)": [
+    "智谱AI": [
+        "glm-5.1",
+        "glm-5-turbo",
+        "glm-4-pro",
         "glm-4-flash",
         "glm-4-flashx",
         "glm-4-plus",
         "glm-4",
-        "glm-3-turbo",
     ],
     "DeepSeek": [
-        "deepseek-chat",
-        "deepseek-coder",
+        "deepseek-v4-flash",
+        "deepseek-v4-pro",
     ],
     "Groq (免费额度)": [
         "openai/gpt-oss-120b",
