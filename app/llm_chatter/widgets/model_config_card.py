@@ -50,7 +50,7 @@ class ModelConfigCard(QWidget):
     def _setup_ui(self):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 4, 0, 4)
-        self.layout.setSpacing(6)
+        self.layout.setSpacing(6)  # 恢复行间距
 
     def _clear_layout(self, layout):
         """递归清理 layout"""
@@ -72,9 +72,8 @@ class ModelConfigCard(QWidget):
         provider_key = title
         if provider_key in PROVIDER_MODELS:
             model_label = BodyLabel("选择模型：", self)
-            self.layout.addWidget(model_label)
-
             model_combo = SearchableEditableComboBox(self)
+            model_combo.setMinimumWidth(280)  # 统一宽度
             saved_models = config.get("模型列表", [])
             if isinstance(saved_models, str):
                 try:
@@ -90,15 +89,25 @@ class ModelConfigCard(QWidget):
             if current_model:
                 model_combo.setText(current_model)
             model_combo.currentTextChanged.connect(lambda: self._on_field_changed())
-            self.layout.addWidget(model_combo)
+            # label 和 combo 同一行
+            hlayout = QHBoxLayout()
+            hlayout.setContentsMargins(0, 0, 0, 0)
+            hlayout.setSpacing(8)
+            hlayout.addWidget(model_label, 0)
+            hlayout.addWidget(model_combo, 1)
+            self.layout.addLayout(hlayout)
             self._widgets["选择模型"] = (model_label, model_combo)
 
         # API URL
         if provider_key in PROVIDER_MODELS:
             url_label = BodyLabel("API_URL：", self)
-            self.layout.addWidget(url_label)
             url_widget = self._create_widget("api_url", "line", config.get("API_URL", ""))
-            self.layout.addWidget(url_widget)
+            hlayout = QHBoxLayout()
+            hlayout.setContentsMargins(0, 0, 0, 0)
+            hlayout.setSpacing(8)
+            hlayout.addWidget(url_label, 0)
+            hlayout.addWidget(url_widget, 1)
+            self.layout.addLayout(hlayout)
             self._widgets["API_URL"] = (url_label, url_widget)
         else:
             required_fields = {
@@ -109,8 +118,12 @@ class ModelConfigCard(QWidget):
                 value = config.get(label_text, "")
                 widget = self._create_widget(key, ui_type, value)
                 label = BodyLabel(f"{label_text}：", self)
-                self.layout.addWidget(label)
-                self.layout.addWidget(widget)
+                hlayout = QHBoxLayout()
+                hlayout.setContentsMargins(0, 0, 0, 0)
+                hlayout.setSpacing(8)
+                hlayout.addWidget(label, 0)
+                hlayout.addWidget(widget, 1)
+                self.layout.addLayout(hlayout)
                 self._widgets[label_text] = (label, widget)
 
         # 获取地址
@@ -118,14 +131,17 @@ class ModelConfigCard(QWidget):
             api_url = FREE_PROVIDERS[provider_key].get("获取地址", "")
             if api_url:
                 url_label = BodyLabel("获取API Key：", self)
-                self.layout.addWidget(url_label)
-
                 link_btn = PushButton("点击获取API Key →", self)
                 link_btn.setCursor(Qt.PointingHandCursor)
                 link_btn.clicked.connect(
                     lambda checked, url=api_url: self._on_get_api_key(url)
                 )
-                self.layout.addWidget(link_btn)
+                hlayout = QHBoxLayout()
+                hlayout.setContentsMargins(0, 0, 0, 0)
+                hlayout.setSpacing(8)
+                hlayout.addWidget(url_label, 0)
+                hlayout.addWidget(link_btn, 0)
+                self.layout.addLayout(hlayout)
                 self._widgets["获取地址"] = (url_label, link_btn)
 
         # 动态字段
@@ -141,23 +157,21 @@ class ModelConfigCard(QWidget):
             widget = self._create_widget(key, ui_type, value)
             display_name = display_name_map.get(key, key)
             label = BodyLabel(f"{display_name}：", self)
-            if ui_type == "checkbox":
-                hlayout = QHBoxLayout()
-                hlayout.setContentsMargins(0, 0, 0, 0)
-                hlayout.addWidget(label)
-                hlayout.addStretch()
-                hlayout.addWidget(widget)
-                self.layout.addLayout(hlayout)
-            else:
-                self.layout.addWidget(label)
-                self.layout.addWidget(widget)
+            # label 和 widget 放同一行
+            hlayout = QHBoxLayout()
+            hlayout.setContentsMargins(0, 0, 0, 0)
+            hlayout.setSpacing(8)
+            hlayout.addWidget(label, 0)
+            hlayout.addWidget(widget, 1)
+            self.layout.addLayout(hlayout)
             self._widgets[key] = (label, widget)
 
     def _infer_ui_type(self, key: str, value) -> str:
         key_lower = key.lower()
         if key in PARAM_UI_MAP:
             return PARAM_UI_MAP[key]
-        if "key" in key_lower or "token" in key_lower:
+        # 排除最大Token和上下文长度，避免被误判为password
+        if "key" in key_lower or ("token" in key_lower and key not in ["最大Token", "上下文长度"]):
             return "password"
         if isinstance(value, (int, float)):
             if 0 <= value <= 1 or 0 <= value <= 2:
@@ -170,6 +184,7 @@ class ModelConfigCard(QWidget):
         if ui_type == "password":
             widget = PasswordLineEdit(self)
             widget.setText(str(value) if value else "")
+            widget.setMinimumWidth(280)  # 统一宽度
             widget.textChanged.connect(lambda: self._on_field_changed())
             return widget
         elif ui_type == "slider":
@@ -187,19 +202,21 @@ class ModelConfigCard(QWidget):
             slider_value = int(round(current * scale))
 
             container = QWidget(self)
+            container.setFixedHeight(28)  # 固定高度，避免占用过大空间
             hlayout = QHBoxLayout(container)
             hlayout.setContentsMargins(0, 0, 0, 0)
 
             slider = Slider(Qt.Horizontal, self)
             slider.setRange(slider_min, slider_max)
             slider.setValue(slider_value)
+            slider.setMinimumHeight(22)
             slider.valueChanged.connect(lambda: self._on_field_changed())
 
             display_value = current if is_float else int(current)
             label = BodyLabel(
                 f"{display_value:.2f}" if is_float else str(int(display_value)), self
             )
-            label.setFixedWidth(50)
+            label.setFixedWidth(60)
             label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
             def _update_label(v):
@@ -211,7 +228,7 @@ class ModelConfigCard(QWidget):
 
             slider.valueChanged.connect(_update_label)
 
-            hlayout.addWidget(slider)
+            hlayout.addWidget(slider, 1)
             hlayout.addWidget(label)
 
             container.slider = slider
@@ -241,11 +258,12 @@ class ModelConfigCard(QWidget):
             range_info = PARAM_RANGE_MAP.get(key, {"min": 1, "max": 99999999})
             widget.setRange(range_info["min"], range_info["max"])
             widget.setValue(val)
+            widget.setMinimumWidth(280)  # 统一宽度
             widget.valueChanged.connect(lambda: self._on_field_changed())
             return widget
         else:
             widget = LineEdit(self)
-            widget.setMinimumWidth(200)
+            widget.setMinimumWidth(280)  # 统一宽度
             widget.setText(str(value) if value else "")
             widget.textChanged.connect(lambda: self._on_field_changed())
             return widget

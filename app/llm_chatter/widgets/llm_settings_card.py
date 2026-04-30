@@ -40,7 +40,7 @@ class LLMSettingsCard(CardWidget):
 
     def _setup_ui(self):
         self.setSizePolicy(1, 0)  # 水平方向可扩展
-        self.setFixedHeight(380)  # 固定高度，超出滚动
+        self.setFixedHeight(350)  # 固定高度，超出滚动
         self.setStyleSheet("""
             CardWidget {
                 background-color: rgba(33, 33, 38, 250);

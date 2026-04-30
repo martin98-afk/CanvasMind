@@ -335,6 +335,15 @@ class OpenAIChatToolWindow(ToolWindow):
     def _setup_title_bar(self):
         """设置标题栏按钮"""
         title_bar = self.get_title_bar()
+        # # 创建极简模式切换按钮
+        # self._minimal_btn = TransparentToolButton(get_icon("极简"), self)
+        # self._minimal_btn.setFixedSize(28, 28)
+        # self._minimal_btn.setToolTip("极简模式")
+        # self._minimal_btn.setCheckable(True)
+        # self._minimal_btn.toggled.connect(self._toggle_minimal_mode)
+        # title_bar.add_button(self._minimal_btn)
+        # self._minimal_mode = False
+        # self._minimal_status_widget = None
         # 创建复制窗口按钮
         self._copy_btn = TransparentToolButton(FluentIcon.COPY, self)
         self._copy_btn.setToolTip("复制窗口")

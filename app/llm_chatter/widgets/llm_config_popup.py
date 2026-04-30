@@ -200,7 +200,8 @@ class LLMConfigPopup(QWidget):
         key_lower = key.lower()
         if key in PARAM_UI_MAP:
             return PARAM_UI_MAP[key]
-        if "key" in key_lower or "token" in key_lower:
+        # 排除最大Token和上下文长度，避免被误判为password
+        if "key" in key_lower or ("token" in key_lower and key not in ["最大Token", "上下文长度"]):
             return "password"
         if isinstance(value, (int, float)):
             if 0 <= value <= 1 or 0 <= value <= 2:  # 如 temperature=0.7
