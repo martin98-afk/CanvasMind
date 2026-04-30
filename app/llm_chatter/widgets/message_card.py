@@ -1272,7 +1272,7 @@ class MessageCard(SimpleCardWidget):
         themes = {
             "assistant": {
                 "avatar": "AI",
-                "title": "大模型",
+                "title": "Drifox",
                 "subtitle": "Assistant",
                 "bg": "#101720",
                 "border": "#2B415E",
@@ -1282,9 +1282,9 @@ class MessageCard(SimpleCardWidget):
                 "side": "left",
             },
             "welcome": {
-                "avatar": "CM",
-                "title": "大模型",
-                "subtitle": "Workspace Copilot",
+                "avatar": "DX",
+                "title": "Drifox",
+                "subtitle": "AI Copilot",
                 "bg": "#161A22",
                 "border": "#635238",
                 "accent": "#FFB35C",
@@ -1318,21 +1318,31 @@ class MessageCard(SimpleCardWidget):
         top = QHBoxLayout()
         top.setSpacing(10)
 
-        av = QLabel(self._theme["avatar"], self)
-        av.setStyleSheet(
-            f"""
-            QLabel {{
-                font-size: 12px;
-                color: #FFFFFF;
-                font-weight: 700;
-                background: {self._theme["accent"]};
-                border: 1px solid rgba(255,255,255,0.12);
-                border-radius: 15px;
-            }}
-            """
-        )
-        av.setFixedSize(30, 30)
-        av.setAlignment(Qt.AlignCenter)
+        av = QLabel(self)
+        if self.role in ("welcome", "assistant"):
+            # 品牌图标头像
+            av_icon = get_icon("drifox")
+            pixmap = av_icon.pixmap(28, 28)
+            av.setPixmap(pixmap)
+            av.setFixedSize(30, 30)
+            av.setAlignment(Qt.AlignCenter)
+        else:
+            # user 和其他：圆形文字头像
+            av.setText(self._theme["avatar"])
+            av.setStyleSheet(
+                f"""
+                QLabel {{
+                    font-size: 12px;
+                    color: #FFFFFF;
+                    font-weight: 700;
+                    background: {self._theme["accent"]};
+                    border: 1px solid rgba(255,255,255,0.12);
+                    border-radius: 15px;
+                }}
+                """
+            )
+            av.setFixedSize(30, 30)
+            av.setAlignment(Qt.AlignCenter)
 
         title_wrap = QWidget(self)
         title_layout = QVBoxLayout(title_wrap)
@@ -1367,9 +1377,6 @@ class MessageCard(SimpleCardWidget):
                 """
             )
             top.addWidget(ts)
-        self.status_badge = QLabel(self._initial_status_text(), self)
-        self.status_badge.setStyleSheet(self._status_badge_style("#7f8ca3"))
-        top.addWidget(self.status_badge)
         top.addStretch()
 
         btns = QWidget(self)
@@ -1380,14 +1387,14 @@ class MessageCard(SimpleCardWidget):
         if self.role == "assistant":
             specs = [
                 (
+                    get_icon("差异对比"),
+                    "文档差异对比",
+                    lambda: self._emit_card_diff_requested(),
+                ),
+                (
                     get_icon("复制"),
                     "复制",
                     lambda: self.actionRequested.emit(self.get_plain_text(), "copy"),
-                ),
-                (
-                    get_icon("差异对比"),
-                    "卡片差异",
-                    lambda: self._emit_card_diff_requested(),
                 ),
             ]
         elif self.role == "user":
@@ -1404,20 +1411,8 @@ class MessageCard(SimpleCardWidget):
             b = TransparentToolButton(ic, self)
             b.setToolTip(tp)
             b.clicked.connect(cb)
-            b.setFixedSize(28, 28)
+            b.setFixedSize(32, 32)
             b.installEventFilter(ToolTipFilter(b))
-            b.setStyleSheet(
-                """
-                TransparentToolButton {
-                    background: rgba(255, 255, 255, 0.02);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                }
-                TransparentToolButton:hover {
-                    background: rgba(255, 255, 255, 0.08);
-                }
-                """
-            )
             bl.addWidget(b)
         top.addWidget(btns)
         main.addLayout(top)
@@ -1465,71 +1460,12 @@ class MessageCard(SimpleCardWidget):
             }}
             """
         )
-        self._update_status_badge()
-
-    def _initial_status_text(self) -> str:
-        if self.error:
-            return "Error"
-        if self.role == "user":
-            return "Prompt"
-        if self.role == "welcome":
-            return "Ready"
-        return "Idle"
-
-    def _status_badge_style(
-        self, border_color: str, text_color: str = "#dbe7f8"
-    ) -> str:
-        return f"""
-            QLabel {{
-                font-size: 10px;
-                color: {text_color};
-                background: rgba(255,255,255,0.03);
-                border: 1px solid {border_color};
-                border-radius: 9px;
-                padding: 2px 8px;
-                letter-spacing: 0.04em;
-                font-weight: 600;
-            }}
-        """
-
-    def _update_status_badge(self):
-        if not hasattr(self, "status_badge"):
-            return
-        if self.error:
-            self.status_badge.setText("Error")
-            self.status_badge.setStyleSheet(
-                self._status_badge_style("#A94444", "#FFB4B4")
-            )
-            return
-        if self.role == "user":
-            self.status_badge.setText("Prompt")
-            self.status_badge.setStyleSheet(
-                self._status_badge_style("#4C74B5", "#DCE9FF")
-            )
-            return
-        if self.role == "welcome":
-            self.status_badge.setText("Workspace")
-            self.status_badge.setStyleSheet(
-                self._status_badge_style("#6B583C", "#FFE3BC")
-            )
-            return
-        if self._streaming:
-            self.status_badge.setText("Thinking")
-            self.status_badge.setStyleSheet(
-                self._status_badge_style("#63D8FF", "#DDF7FF")
-            )
-        else:
-            self.status_badge.setText("Ready")
-            self.status_badge.setStyleSheet(
-                self._status_badge_style("#3B516F", "#D7E4F5")
-            )
 
     def start_streaming_anim(self):
         if self._streaming:
             return
         self._streaming = True
         self._pulse_phase = 0.0
-        self._update_status_badge()
         try:
             self._anim_timer.start(80)
         except RuntimeError:
@@ -1558,7 +1494,6 @@ class MessageCard(SimpleCardWidget):
         except RuntimeError:
             return
         self._apply_card_style()
-        self._update_status_badge()
         self.update()
 
     def paintEvent(self, event):
@@ -1884,7 +1819,7 @@ def create_welcome_card(
 """
 
     welcome_md = f"""\
-### 👋 你好！我是你的工况范围调整智能体
+### 👋 你好！我是 Drifox，你的工况范围调整智能体
 
 ---
 *如需切换智能体，请在输入框右下角下拉菜单中选择。*
