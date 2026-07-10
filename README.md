@@ -427,8 +427,6 @@ This project is licensed under the [GPLv3 License](LICENSE).
 
 ## Star History
 
-## Star History
-
 <a href="https://www.star-history.com/?repos=martin98-afk%2FCanvasMind&type=date&legend=top-left">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=martin98-afk/CanvasMind&type=date&theme=dark&legend=top-left&sealed_token=w4iihSZInbJcfwyBCqmC3UavHQzwoNwKIA1JjM8b4AKUhHB79BddMojMJLqDo_O1rNXAlSUA--_B4GdN4WTWYFXydgD7rw-NefliCkY39Fn67zejp9u9q8Rqcz3_oehjfv1dd6tG1-NNL19GRpL8R6-uVE6lIoi2ih37_r87VmCoccGO6C-HwlMZvmDc" />
