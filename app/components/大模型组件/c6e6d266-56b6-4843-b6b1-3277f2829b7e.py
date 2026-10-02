@@ -107,7 +107,7 @@ class Component(BaseComponent):
         api_key = model_config.get("API_KEY", "").strip()
         self.logger.info(f"使用模型：{model_name}")
         self.logger.info(f"地址：{api_url}")
-        self.logger.info(f"api_key: {api_key}")
+        self.logger.info(f"api_key: {api_key[:4]}***")
         system_prompt = params.system_prompt
         temperature = float(params.temperature)
         max_tokens = int(params.max_tokens)
